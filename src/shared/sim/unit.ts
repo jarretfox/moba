@@ -1,0 +1,295 @@
+import { DT, type Team } from '../constants';
+import { add, angleOf, clamp, dirTo, dist, lerpVec, scale, sub, type Vec2 } from '../math';
+import type { EntitySnap, StatusKind } from '../protocol';
+import type { Entity } from './entity';
+import type { World } from './world';
+
+export interface Stats {
+  maxHp: number;
+  /** Per second. */
+  hpRegen: number;
+  maxMana: number;
+  /** Per second. */
+  manaRegen: number;
+  ad: number;
+  ap: number;
+  armor: number;
+  mr: number;
+  /** Attacks per second. */
+  attackSpeed: number;
+  /** Edge-to-edge reach. */
+  attackRange: number;
+  moveSpeed: number;
+}
+
+export type Order =
+  | { kind: 'idle' }
+  | { kind: 'move'; dest: Vec2 }
+  | { kind: 'attack'; targetId: number };
+
+interface Status {
+  kind: StatusKind;
+  until: number;
+  /** Slow strength (0..1); unused by other kinds. */
+  amount: number;
+}
+
+/** Share of each attack's timer spent winding up before the hit lands or the shot leaves. Moving during it cancels the attack. */
+const WINDUP_FRACTION = 0.2;
+/** How often a unit chasing an attack target recomputes its path. */
+const REPATH_INTERVAL = 0.25;
+
+/** Anything with health that moves, attacks, and gets crowd-controlled: champions, dummies, later chuds and jungle mobs. */
+export abstract class Unit implements Entity {
+  abstract readonly kind: 'champion' | 'dummy';
+  removed = false;
+  pos: Vec2;
+  facing = 0;
+  stats: Stats;
+  hp: number;
+  mana: number;
+  dead = false;
+  respawnAt = Infinity;
+  order: Order = { kind: 'idle' };
+  path: Vec2[] = [];
+  lastDamagedAt = -Infinity;
+  protected statuses: Status[] = [];
+  protected attackReadyAt = 0;
+  protected windup: { targetId: number; fireAt: number; prevReadyAt: number } | null = null;
+  /** While casting, the unit can't move or attack until this time. */
+  protected lockedUntil = 0;
+  protected dash: { from: Vec2; to: Vec2; start: number; end: number } | null = null;
+  protected readonly spawnPos: Vec2;
+  private nextRepathAt = 0;
+
+  constructor(
+    readonly id: number,
+    public team: Team,
+    pos: Vec2,
+    public radius: number,
+    protected readonly base: Stats,
+    public name: string,
+  ) {
+    this.pos = { ...pos };
+    this.spawnPos = { ...pos };
+    this.stats = { ...base };
+    this.hp = base.maxHp;
+    this.mana = base.maxMana;
+  }
+
+  update(world: World): void {
+    if (this.dead) {
+      if (world.time >= this.respawnAt) this.respawn();
+      return;
+    }
+    this.statuses = this.statuses.filter((s) => s.until > world.time);
+    this.stats = this.computeStats(world);
+    this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.hpRegen * DT);
+    this.mana = Math.min(this.stats.maxMana, this.mana + this.stats.manaRegen * DT);
+    this.think(world);
+    this.updateAttack(world);
+    this.updateMovement(world);
+  }
+
+  /** This tick's stats: base values plus whatever buffs a subclass layers on. */
+  protected computeStats(_world: World): Stats {
+    return { ...this.base };
+  }
+
+  /** AI hook for units that drive themselves (dummies now; chuds, mobs and bots later). */
+  protected think(_world: World): void {}
+
+  // ─── State ────────────────────────────────────────────────────────────────
+
+  has(kind: StatusKind): boolean {
+    return this.statuses.some((s) => s.kind === kind);
+  }
+
+  isTargetable(): boolean {
+    return !this.dead;
+  }
+
+  canMove(world: World): boolean {
+    return !this.has('root') && !this.has('stun') && world.time >= this.lockedUntil && !this.windup;
+  }
+
+  /** Can start an attack or a cast. */
+  canAct(world: World): boolean {
+    return !this.has('stun') && world.time >= this.lockedUntil && !this.dash;
+  }
+
+  get moveSpeed(): number {
+    let slow = 0;
+    for (const s of this.statuses) if (s.kind === 'slow') slow = Math.max(slow, s.amount);
+    return this.stats.moveSpeed * (1 - slow);
+  }
+
+  addStatus(world: World, kind: StatusKind, duration: number, amount = 0): void {
+    if (this.dead) return;
+    this.statuses.push({ kind, until: world.time + duration, amount });
+    if (kind === 'stun') this.cancelWindup();
+  }
+
+  // ─── Orders (from player commands or AI) ───────────────────────────────────
+
+  commandMove(world: World, dest: Vec2): void {
+    this.cancelWindup();
+    this.order = { kind: 'move', dest };
+    this.path = this.dash ? [] : world.findPath(this.pos, dest);
+  }
+
+  commandAttack(target: Unit): void {
+    if (this.order.kind === 'attack' && this.order.targetId === target.id) return;
+    this.cancelWindup();
+    this.order = { kind: 'attack', targetId: target.id };
+    this.path = [];
+    this.nextRepathAt = 0;
+  }
+
+  commandStop(): void {
+    this.cancelWindup();
+    this.order = { kind: 'idle' };
+    this.path = [];
+  }
+
+  startDash(world: World, to: Vec2, duration: number): void {
+    this.cancelWindup();
+    this.dash = { from: { ...this.pos }, to, start: world.time, end: world.time + duration };
+    this.path = [];
+    if (dist(to, this.pos) > 1) this.facing = angleOf(sub(to, this.pos));
+  }
+
+  // ─── Basic attacks ────────────────────────────────────────────────────────
+
+  private updateAttack(world: World): void {
+    if (this.order.kind !== 'attack') return;
+    const target = world.getUnit(this.order.targetId);
+    if (!target || !target.isTargetable()) {
+      this.cancelWindup();
+      this.order = { kind: 'idle' };
+      this.path = [];
+      return;
+    }
+
+    if (this.windup) {
+      if (!this.canAct(world)) {
+        this.cancelWindup();
+        return;
+      }
+      this.facing = angleOf(sub(target.pos, this.pos));
+      if (world.time >= this.windup.fireAt) {
+        this.windup = null;
+        this.launchAttack(world, target);
+      }
+      return;
+    }
+
+    const reach = this.stats.attackRange + this.radius + target.radius;
+    if (dist(this.pos, target.pos) > reach) {
+      this.chase(world, target.pos);
+      return;
+    }
+    this.path = [];
+    if (world.time >= this.attackReadyAt && this.canAct(world)) {
+      const attackTime = 1 / this.stats.attackSpeed;
+      this.windup = { targetId: target.id, fireAt: world.time + attackTime * WINDUP_FRACTION, prevReadyAt: this.attackReadyAt };
+      this.attackReadyAt = world.time + attackTime;
+      this.facing = angleOf(sub(target.pos, this.pos));
+      world.emit({ e: 'attack', src: this.id, target: target.id });
+    }
+  }
+
+  /** Runs when the windup completes. Default is an instant melee hit; ranged units override it to fire a projectile. */
+  protected launchAttack(world: World, target: Unit): void {
+    world.damage(this, target, this.stats.ad, 'physical');
+  }
+
+  protected cancelWindup(): void {
+    if (!this.windup) return;
+    this.attackReadyAt = this.windup.prevReadyAt;
+    this.windup = null;
+  }
+
+  private chase(world: World, targetPos: Vec2): void {
+    if (world.time < this.nextRepathAt && this.path.length > 0) return;
+    this.path = world.findPath(this.pos, targetPos);
+    this.nextRepathAt = world.time + REPATH_INTERVAL;
+  }
+
+  // ─── Movement ─────────────────────────────────────────────────────────────
+
+  private updateMovement(world: World): void {
+    if (this.dash) {
+      const d = this.dash;
+      const t = clamp((world.time - d.start) / (d.end - d.start), 0, 1);
+      this.pos = lerpVec(d.from, d.to, t);
+      if (t >= 1) {
+        this.dash = null;
+        if (this.order.kind === 'move') this.path = world.findPath(this.pos, this.order.dest);
+      }
+      return;
+    }
+    if (!this.canMove(world)) return;
+
+    let budget = this.moveSpeed * DT;
+    while (budget > 0 && this.path.length > 0) {
+      const next = this.path[0];
+      const d = dist(this.pos, next);
+      if (d > 1e-6) this.facing = angleOf(sub(next, this.pos));
+      if (d <= budget) {
+        this.pos = { x: next.x, y: next.y };
+        this.path.shift();
+        budget -= d;
+      } else {
+        this.pos = add(this.pos, scale(dirTo(this.pos, next), budget));
+        budget = 0;
+      }
+    }
+    if (this.path.length === 0 && this.order.kind === 'move') this.order = { kind: 'idle' };
+  }
+
+  // ─── Death ────────────────────────────────────────────────────────────────
+
+  die(world: World, _killer: Unit | null): void {
+    this.dead = true;
+    this.hp = 0;
+    this.order = { kind: 'idle' };
+    this.path = [];
+    this.windup = null;
+    this.dash = null;
+    this.statuses = [];
+    this.respawnAt = world.time + this.respawnDelay();
+    world.emit({ e: 'death', id: this.id });
+  }
+
+  protected respawnDelay(): number {
+    return 6;
+  }
+
+  protected respawn(): void {
+    this.dead = false;
+    this.respawnAt = Infinity;
+    this.pos = { ...this.spawnPos };
+    this.hp = this.stats.maxHp;
+    this.mana = this.stats.maxMana;
+    this.lockedUntil = 0;
+    this.attackReadyAt = 0;
+  }
+
+  snapshot(_world: World): EntitySnap {
+    return {
+      id: this.id,
+      k: this.kind,
+      tm: this.team,
+      x: Math.round(this.pos.x),
+      y: Math.round(this.pos.y),
+      f: Math.round(this.facing * 100) / 100,
+      r: this.radius,
+      hp: Math.ceil(this.hp),
+      mhp: Math.round(this.stats.maxHp),
+      name: this.name,
+      st: this.statuses.length ? [...new Set(this.statuses.map((s) => s.kind))] : undefined,
+      dead: this.dead || undefined,
+    };
+  }
+}
