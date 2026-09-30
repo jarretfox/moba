@@ -4,6 +4,7 @@ import { NavGrid } from '../map/navGrid';
 import { Pathfinder } from '../map/pathfind';
 import type { Vec2 } from '../math';
 import type { DamageType, EntitySnap, GameEvent } from '../protocol';
+import { resolveUnitCollisions } from './collision';
 import type { Entity } from './entity';
 import { Unit } from './unit';
 
@@ -93,6 +94,7 @@ export class World {
     }
 
     for (const e of this.entities.values()) e.update(this);
+    resolveUnitCollisions(this);
     for (const [id, e] of this.entities) if (e.removed) this.entities.delete(id);
   }
 

@@ -38,6 +38,12 @@ interface Status {
 const WINDUP_FRACTION = 0.2;
 /** How often a unit chasing an attack target recomputes its path. */
 const REPATH_INTERVAL = 0.25;
+/** A walker that gains less than this on its destination per tick is being blocked. */
+const STUCK_PROGRESS = 1;
+/** Blocked this long close to its destination (e.g. someone is standing on it), a unit gives up and stops. */
+const STUCK_GIVE_UP = 0.3;
+/** "Close" for giving up: within this much of the destination beyond the unit's own width. */
+const STUCK_NEAR = 120;
 
 /** Anything with health that moves, attacks, and gets crowd-controlled: champions, dummies, later chuds and jungle mobs. */
 export abstract class Unit implements Entity {
@@ -53,6 +59,10 @@ export abstract class Unit implements Entity {
   order: Order = { kind: 'idle' };
   path: Vec2[] = [];
   lastDamagedAt = -Infinity;
+  /** Can't be shoved by other units (training dummies now; structures later). */
+  readonly immovable: boolean = false;
+  /** Direction walked this tick, or null if the unit stood still. Collision uses it to decide who gives way. */
+  moveDir: Vec2 | null = null;
   protected statuses: Status[] = [];
   protected attackReadyAt = 0;
   protected windup: { targetId: number; fireAt: number; prevReadyAt: number } | null = null;
@@ -61,6 +71,7 @@ export abstract class Unit implements Entity {
   protected dash: { from: Vec2; to: Vec2; start: number; end: number } | null = null;
   protected readonly spawnPos: Vec2;
   private nextRepathAt = 0;
+  private stuck = { goal: null as Vec2 | null, dist: Infinity, time: 0 };
 
   constructor(
     readonly id: number,
@@ -107,6 +118,11 @@ export abstract class Unit implements Entity {
 
   isTargetable(): boolean {
     return !this.dead;
+  }
+
+  /** Takes part in unit collision. Dashing units pass through everyone. */
+  hasBody(): boolean {
+    return !this.dead && !this.dash;
   }
 
   canMove(world: World): boolean {
@@ -219,6 +235,7 @@ export abstract class Unit implements Entity {
   // ─── Movement ─────────────────────────────────────────────────────────────
 
   private updateMovement(world: World): void {
+    this.moveDir = null;
     if (this.dash) {
       const d = this.dash;
       const t = clamp((world.time - d.start) / (d.end - d.start), 0, 1);
@@ -230,12 +247,16 @@ export abstract class Unit implements Entity {
       return;
     }
     if (!this.canMove(world)) return;
+    if (this.path.length > 0) this.giveUpIfBlocked();
 
     let budget = this.moveSpeed * DT;
     while (budget > 0 && this.path.length > 0) {
       const next = this.path[0];
       const d = dist(this.pos, next);
-      if (d > 1e-6) this.facing = angleOf(sub(next, this.pos));
+      if (d > 1e-6) {
+        this.facing = angleOf(sub(next, this.pos));
+        this.moveDir ??= dirTo(this.pos, next);
+      }
       if (d <= budget) {
         this.pos = { x: next.x, y: next.y };
         this.path.shift();
@@ -246,6 +267,29 @@ export abstract class Unit implements Entity {
       }
     }
     if (this.path.length === 0 && this.order.kind === 'move') this.order = { kind: 'idle' };
+  }
+
+  /**
+   * Collision can leave a walker pressing forever against someone standing on its destination.
+   * If it has stopped gaining ground while already close, treat it as arrived.
+   */
+  private giveUpIfBlocked(): void {
+    const goal = this.path[this.path.length - 1];
+    const d = dist(this.pos, goal);
+    const s = this.stuck;
+    if (!s.goal || s.goal.x !== goal.x || s.goal.y !== goal.y) {
+      s.goal = goal;
+      s.time = 0;
+    } else if (d > s.dist - STUCK_PROGRESS) {
+      s.time += DT;
+    } else {
+      s.time = 0;
+    }
+    s.dist = d;
+    if (s.time >= STUCK_GIVE_UP && d < this.radius * 2 + STUCK_NEAR) {
+      this.path = [];
+      s.time = 0;
+    }
   }
 
   // ─── Death ────────────────────────────────────────────────────────────────

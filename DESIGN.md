@@ -179,7 +179,7 @@ src/
 | M5 | Balance tools, playtests | |
 
 ### Known gaps after M0
-- Units overlap freely, since there's no unit collision yet.
+- ~~Units overlap freely~~ Fixed in M1: soft unit collision (`src/shared/sim/collision.ts`). Walkers slide around units standing still, and dashes pass through.
 - Every ability is at rank 1 with no leveling, so Longshot is available from the start.
 - Traps are visible to everyone until fog of war exists.
 - Only practice dummies; there's no enemy AI yet.

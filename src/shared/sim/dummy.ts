@@ -14,6 +14,7 @@ const RESET_AFTER = 3;
 /** Practice target. Can pace back and forth between two points so skillshots have something to lead. */
 export class Dummy extends Unit {
   readonly kind = 'dummy';
+  readonly immovable = true;
   private towardB = false;
 
   constructor(world: World, pos: Vec2, name: string, private readonly pace?: [Vec2, Vec2]) {

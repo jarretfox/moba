@@ -26,6 +26,12 @@ Then open http://localhost:5173. You spawn in Da Base as the Marksman; the pract
 ## Checks
 
 ```bash
+npm test
+```
+
+Runs the headless sim tests (Vitest). No browser needed. The game logic runs the same in Node as in the host's Web Worker.
+
+```bash
 npm run build
 ```
 
