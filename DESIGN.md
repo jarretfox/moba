@@ -70,7 +70,17 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Death timer:** 5s at level 1, plus 2.5s for each level after that (35s at 13).
   - **HUD:** level badge, experience bar, gold, rank pips and a kill feed. Champion health bars show their level.
   - Bots spend points as soon as they have them: ultimate first, then a per-champion order.
-- **Shop:** about 15 items, 4 inventory slots, and you can only buy at Da Base.
+- **Shop** (items in `src/shared/items.ts`): 16 items, 4 inventory slots. Press P or click your gold.
+  - You can buy and sell only in your own fountain, or while dead. Selling returns 70% of the price.
+  - No recipes: each item is bought whole.
+    - **Basics** (300–435) stack.
+    - **Boots**: one pair at a time.
+    - **Core items** (1000–3000): one of each.
+  - Items add stats, including two that only come from items:
+    - **Ability haste:** 100 haste halves cooldowns.
+    - **Lifesteal:** heals a share of basic-attack damage, but not against structures.
+  - Health and mana from a new item come already filled. Mana items don't raise the Barbarian's Rage cap.
+  - Names lean into the lore: Pride Longbow (Logan wants his mane back), Royal Plate (King Rix had it let out twice), Warden's Link, Glowworm Lantern (HunnaG's design).
   - No Flash-style summoner spells in v1. Everyone gets Recall and one shared blink on a long cooldown.
 - **Bots** ("decent new player"; numbers at the top of `src/shared/bots/bot.ts`, each champion's habits in `profiles.ts`):
   - They play through the same commands a human sends, rethinking about 5 times a second.
@@ -79,8 +89,9 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Safety:** they won't walk under an enemy Shootie unless at least 2 of their Chuds are tanking it, and they leave immediately if it targets them.
   - **Fighting:** they engage enemy champions within 700 when they're at least as healthy, or the enemy is below 35%. They avoid trading into a crowd of enemy Chuds, never dive towers, and give ground when hit by someone they won't fight. Each champion uses its kit in fights: for example the Marksman rolls away from melee champions and fires Longshot at low targets, and the Barbarian leaps in and uses Berserk when things get close.
   - **Going home:** below 25% health (35% with an enemy near), they recall if it's safe, or run home using escape abilities. They come back at 90%.
+  - **Shopping:** each champion has a fixed build (in `profiles.ts`). They buy the next item whenever they're in the shop and can afford it, selling basics to make room. With 900+ gold that buys the next item and no enemy around, they go home to spend it.
   - **What they don't do:** dodge skillshots, plan ganks, or coordinate as a team.
-  - A bots-only match currently ends in roughly 23 minutes. Human pressure ends games sooner.
+  - A bots-only match currently ends in roughly 27 minutes. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items. Human pressure ends games sooner.
 
 ## Lore
 
@@ -234,8 +245,7 @@ src/
 | M5 | Balance tools, playtests | |
 
 ### Known gaps after M1
-- **Gold has nothing to buy yet** (the shop is the next M3 step).
-  - Structure health is still tuned down for level-1 champions (outer Shootie 1800). M3 will raise it again.
+- **Structure health is still tuned down** for level-1 champions (outer Shootie 1800). M3 will raise it again now that champions level and buy items.
 - **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster).
 - **No jungle camps or Warden yet (M3),** so all three bots per side lane.
 - Bots don't dodge skillshots or coordinate as a team.

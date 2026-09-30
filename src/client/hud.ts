@@ -1,7 +1,9 @@
 import { atRank, perRank, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot } from '../shared/constants';
+import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
 import type { EntitySnap, MeSnap } from '../shared/protocol';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
+import { ShopPanel, itemGlyph } from './shop';
 
 interface SlotEls {
   root: HTMLElement;
@@ -23,6 +25,7 @@ const HELP = [
   ['Shift+Q W E R', 'level up an ability'],
   ['S', 'stop'],
   ['B', 'recall home (4s, breaks if hit)'],
+  ['P', 'shop (at your fountain)'],
   ['Space', 'center camera (hold)'],
   ['Y', 'lock / unlock camera'],
   ['Wheel', 'zoom'],
@@ -36,6 +39,11 @@ const FEED_TIME = 7;
 export class Hud {
   /** Called when the player clicks an ability's "+" to spend a skill point. */
   onLevelUp: ((slot: Slot) => void) | null = null;
+  onBuy: ((id: ItemId) => void) | null = null;
+  onSell: ((slot: number) => void) | null = null;
+  readonly shop: ShopPanel;
+  private readonly inv: HTMLElement[] = [];
+  private invItems: (ItemId | undefined)[] = [];
   private readonly debug: HTMLElement;
   private readonly clockTime: HTMLElement;
   private readonly clockWave: HTMLElement;
@@ -75,7 +83,10 @@ export class Hud {
           <div class="res mp"><div class="fill"></div><span></span></div>
           <div class="res xp"><div class="fill"></div><span></span></div>
         </div>
-        <div class="purse"><span class="coin"></span><span class="gold">0</span></div>
+        <div class="side">
+          <div class="inv">${'<div class="item"></div>'.repeat(INVENTORY_SLOTS)}</div>
+          <button class="purse" title="Shop (P)"><span class="coin"></span><span class="gold">0</span></button>
+        </div>
       </div>
       <div class="tooltip" hidden></div>`;
     const q = (sel: string, parent: ParentNode = root) => parent.querySelector(sel) as HTMLElement;
@@ -102,6 +113,17 @@ export class Hud {
       el.addEventListener('mouseenter', () => this.showTooltip(el, i));
       el.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
     });
+    root.querySelectorAll<HTMLElement>('.inv .item').forEach((el, i) => {
+      this.inv.push(el);
+      el.addEventListener('mouseenter', () => this.showItemTooltip(el, i));
+      el.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
+    });
+    q('.purse').addEventListener('click', () => this.shop.toggle());
+    this.shop = new ShopPanel(
+      root,
+      (id) => this.onBuy?.(id),
+      (slot) => this.onSell?.(slot),
+    );
     this.portrait.addEventListener('mouseenter', () => this.showTooltip(this.portrait, -1));
     this.portrait.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
   }
@@ -128,6 +150,13 @@ export class Hud {
     this.set(this.xp.text, 'text', me.xpNext ? `${me.xp} / ${me.xpNext} xp` : 'max level');
     this.set(this.level, 'text', String(me.level));
     this.set(this.gold, 'text', String(me.gold));
+    this.invItems = me.items;
+    this.inv.forEach((el, i) => {
+      const id = me.items[i];
+      this.set(el, 'text', id ? itemGlyph(id) : '');
+      this.set(el, 'class', id ? `item tier-${ITEMS[id].tier}` : 'item');
+    });
+    this.shop.update(me);
     this.set(this.stacks, 'text', me.passiveStacks ? String(me.passiveStacks) : '');
     this.set(this.portrait, 'class', me.empowered ? 'portrait empowered' : 'portrait');
 
@@ -135,7 +164,7 @@ export class Hud {
       const el = this.slots[i];
       const info = this.info!.abilities[i];
       this.ranks[i] = a.rank;
-      const cdMax = atRank(info.cooldown, a.rank);
+      const cdMax = atRank(info.cooldown, a.rank) * hasteMultiplier(me.stats.haste);
       const cost = atRank(info.cost, a.rank);
       const noMana = a.rank > 0 && (self.mp ?? 0) < cost;
       const canLevel = me.points > 0 && canRankUp(i as Slot, a.rank, me.level);
@@ -224,6 +253,29 @@ export class Hud {
       const cost = a.cost.some((c) => c > 0) ? `${perRank(a.cost)} ${this.info.resource}` : 'No cost';
       line('tt-meta', `${cost} · ${perRank(a.cooldown)}s cooldown${a.castTime ? ` · ${a.castTime}s cast` : ''}`);
       line('tt-desc', a.description);
+    }
+    t.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    t.style.left = `${Math.max(8, Math.min(window.innerWidth - 328, r.left + r.width / 2 - 160))}px`;
+    t.style.bottom = `${window.innerHeight - r.top + 10}px`;
+  }
+
+  private showItemTooltip(anchor: HTMLElement, slot: number): void {
+    const id = this.invItems[slot];
+    if (!id) return;
+    const it = ITEMS[id];
+    const t = this.tooltip;
+    t.replaceChildren();
+    for (const [cls, text] of [
+      ['tt-name', it.name],
+      ['tt-meta', `${it.cost} gold · sells for ${sellPrice(id)}`],
+      ['tt-desc', statLines(it.stats).join(' · ')],
+      ['tt-flavor', it.flavor],
+    ]) {
+      const d = document.createElement('div');
+      d.className = cls;
+      d.textContent = text;
+      t.appendChild(d);
     }
     t.hidden = false;
     const r = anchor.getBoundingClientRect();

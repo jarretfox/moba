@@ -3,6 +3,7 @@
 // (PeerJS) and are relayed to it by that tab. Nothing from a client is trusted.
 import type { ChampionId } from './champions/types';
 import type { PlayerTeam, Slot, Team } from './constants';
+import type { ItemId } from './items';
 import type { StructureRole } from './map/mapData';
 import type { SnapshotDelta } from './snapshotCodec';
 
@@ -16,7 +17,11 @@ export type Command =
   | { k: 'cast'; slot: Slot; x: number; y: number }
   | { k: 'recall' }
   /** Spend a skill point on an ability. */
-  | { k: 'levelUp'; slot: Slot };
+  | { k: 'levelUp'; slot: Slot }
+  /** Shop, only in your fountain or while dead. */
+  | { k: 'buy'; item: ItemId }
+  /** Sell the item in this inventory slot. */
+  | { k: 'sell'; slot: number };
 
 export type ClientMessage =
   /** Enter the lobby. */
@@ -126,6 +131,11 @@ export interface MeSnap {
   /** Unspent skill points. */
   points: number;
   gold: number;
+  items: ItemId[];
+  /** Standing where the shop will serve you. */
+  inShop: boolean;
+  /** For the shop's stat panel. `as` is attacks per second; `ls` is lifesteal in percent. */
+  stats: { ad: number; ap: number; armor: number; mr: number; as: number; ms: number; haste: number; ls: number };
 }
 
 export interface Snapshot {

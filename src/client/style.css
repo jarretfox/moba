@@ -553,14 +553,65 @@ kbd {
   place-items: center;
 }
 
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: stretch;
+  justify-content: space-between;
+}
+
+.inv {
+  display: grid;
+  grid-template-columns: repeat(2, 34px);
+  gap: 5px;
+}
+
+.inv .item {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  border: 1px solid #36404d;
+  background: #0b1016;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.item.tier-basic,
+.shop-card.tier-basic .glyph {
+  border-color: #8b97a5;
+  background: linear-gradient(160deg, #2a323c, #151a20);
+}
+
+.item.tier-boots,
+.shop-card.tier-boots .glyph {
+  border-color: #6fcf97;
+  background: linear-gradient(160deg, #1f3a2c, #10201a);
+}
+
+.item.tier-core,
+.shop-card.tier-core .glyph {
+  border-color: var(--gold);
+  background: linear-gradient(160deg, #4a3a18, #221a0a);
+}
+
 .purse {
-  align-self: center;
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 64px;
-  font: 800 18px ui-monospace, 'Cascadia Mono', monospace;
+  padding: 3px 8px;
+  border: 1px solid #5a4a22;
+  border-radius: 6px;
+  background: #15120a;
+  font: 800 16px ui-monospace, 'Cascadia Mono', monospace;
   color: var(--gold);
+  cursor: pointer;
+}
+
+.purse:hover {
+  border-color: var(--gold);
 }
 
 .purse .coin {
@@ -829,6 +880,238 @@ kbd {
   border-radius: 8px;
   font-size: 13px;
   line-height: 1.45;
+}
+
+.tt-flavor {
+  margin-top: 6px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* ─── Shop ───────────────────────────────────────────────────────────── */
+
+.shop {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 250px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 14, 18, 0.96);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  pointer-events: auto;
+  z-index: 5;
+}
+
+.shop[hidden] {
+  display: none;
+}
+
+.shop-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.shop-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.shop-gold {
+  font: 800 15px ui-monospace, 'Cascadia Mono', monospace;
+  color: var(--gold);
+}
+
+.shop-close {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  background: #1b222b;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.shop-note {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #ffb36b;
+  background: rgba(255, 179, 107, 0.08);
+}
+
+.shop-note:empty {
+  display: none;
+}
+
+.shop-body {
+  display: flex;
+  gap: 14px;
+  padding: 10px 14px 14px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.shop-items {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.shop-sub {
+  margin: 8px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.shop-sub:first-child {
+  margin-top: 0;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px;
+}
+
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 8px;
+  border: 1px solid #2b3440;
+  border-radius: 8px;
+  background: #121820;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shop-card:hover {
+  border-color: var(--gold);
+  background: #18202a;
+}
+
+.shop-card.blocked {
+  opacity: 0.5;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.shop-card .glyph {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.card-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.card-cost {
+  font: 800 12px ui-monospace, 'Cascadia Mono', monospace;
+  color: var(--gold);
+}
+
+.card-stats {
+  font-size: 11px;
+  color: #9bd4ff;
+}
+
+.card-flavor {
+  font-size: 11px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.shop-side {
+  flex: none;
+  width: 190px;
+}
+
+.inv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 30px;
+  margin-bottom: 4px;
+  padding: 0 4px 0 8px;
+  border: 1px solid #2b3440;
+  border-left-width: 3px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.inv-row.empty {
+  color: #4a5563;
+}
+
+.inv-row.tier-basic {
+  border-left-color: #8b97a5;
+}
+
+.inv-row.tier-boots {
+  border-left-color: #6fcf97;
+}
+
+.inv-row.tier-core {
+  border-left-color: var(--gold);
+}
+
+.inv-row button {
+  padding: 2px 6px;
+  border: 1px solid #5a4a22;
+  border-radius: 5px;
+  background: #15120a;
+  color: var(--gold);
+  font: 700 11px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.inv-row button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+.stat-row b {
+  color: var(--text);
 }
 
 .tt-name {

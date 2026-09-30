@@ -1,6 +1,8 @@
 import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
+import { INVENTORY_SLOTS, ITEMS, conflicts, hasteMultiplier, sellPrice, sumItemStats, type ItemId } from '../items';
 import type { EntitySnap, MeSnap } from '../protocol';
+import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { MAX_LEVEL, PASSIVE_GOLD, STARTING_GOLD, canRankUp, xpToNext } from '../sim/progression';
 import { REVEAL_TIME, Unit, type Stats } from '../sim/unit';
 import type { World } from '../sim/world';
@@ -32,6 +34,9 @@ export abstract class Champion extends Unit {
   gold = STARTING_GOLD;
   /** Kills without dying; raises the bounty on your head. */
   streak = 0;
+  /** Up to INVENTORY_SLOTS items, in the order bought. */
+  readonly items: ItemId[] = [];
+  private itemStats = sumItemStats([]);
   private recallStartedAt: number | null = null;
 
   constructor(
@@ -62,20 +67,33 @@ export abstract class Champion extends Unit {
 
   // ─── Levels and gold ──────────────────────────────────────────────────────
 
-  /** Base stats plus what each level beyond the first adds. Subclasses layer their buffs on top. */
+  /** Base stats plus what each level beyond the first adds, plus items. Subclasses layer their buffs on top. */
   protected computeStats(world: World): Stats {
     const s = super.computeStats(world);
     const n = this.level - 1;
     const g = this.growth;
-    s.maxHp += g.maxHp * n;
-    s.hpRegen += g.hpRegen * n;
-    s.maxMana += g.maxMana * n;
+    const it = this.itemStats;
+    s.maxHp += g.maxHp * n + it.maxHp;
+    s.hpRegen += g.hpRegen * n + it.hpRegen;
+    // Rage has a fixed cap, so mana items don't raise it.
+    if (this.info.resource === 'mana') s.maxMana += g.maxMana * n + it.maxMana;
     s.manaRegen += g.manaRegen * n;
-    s.ad += g.ad * n;
-    s.armor += g.armor * n;
-    s.mr += g.mr * n;
-    s.attackSpeed *= 1 + g.attackSpeedPct * n;
+    s.ad += g.ad * n + it.ad;
+    s.ap += it.ap;
+    s.armor += g.armor * n + it.armor;
+    s.mr += g.mr * n + it.mr;
+    s.moveSpeed += it.moveSpeed;
+    // Bonus attack speed from levels and items adds up, then multiplies the base (League's rule).
+    s.attackSpeed *= 1 + g.attackSpeedPct * n + it.attackSpeedPct;
     return s;
+  }
+
+  get haste(): number {
+    return this.itemStats.haste;
+  }
+
+  get lifesteal(): number {
+    return this.itemStats.lifesteal;
   }
 
   gainXp(world: World, amount: number): void {
@@ -121,6 +139,51 @@ export abstract class Champion extends Unit {
     return values[Math.min(values.length - 1, Math.max(0, this.abilities[slot].rank - 1))];
   }
 
+  // ─── Items ────────────────────────────────────────────────────────────────
+
+  /** The shop only serves you in your own fountain, or while you're dead. */
+  inShop(): boolean {
+    return this.dead || dist(this.pos, this.spawnPos) <= FOUNTAIN_RADIUS;
+  }
+
+  /** Why `id` can't be bought right now, or null if it can. */
+  cantBuy(id: ItemId): string | null {
+    if (!this.inShop()) return 'Shop at your fountain';
+    if (this.items.some((owned) => conflicts(owned, id))) return ITEMS[id].tier === 'boots' ? 'Already have boots' : 'Already owned';
+    if (this.items.length >= INVENTORY_SLOTS) return 'Inventory full';
+    if (this.gold < ITEMS[id].cost) return 'Not enough gold';
+    return null;
+  }
+
+  buy(world: World, id: ItemId): boolean {
+    if (this.cantBuy(id) !== null) return false;
+    this.gold -= ITEMS[id].cost;
+    this.items.push(id);
+    this.refreshItems(world);
+    return true;
+  }
+
+  /** Sell the item in inventory slot `index` for part of its price. */
+  sell(world: World, index: number): boolean {
+    if (!this.inShop() || !Number.isInteger(index) || index < 0 || index >= this.items.length) return false;
+    const [id] = this.items.splice(index, 1);
+    this.gold += sellPrice(id);
+    this.refreshItems(world);
+    return true;
+  }
+
+  private refreshItems(world: World): void {
+    const before = this.stats;
+    this.itemStats = sumItemStats(this.items);
+    const after = this.computeStats(world);
+    // Like levelling up, new health and mana come already filled; selling just caps them.
+    if (!this.dead) {
+      this.hp = Math.min(after.maxHp, this.hp + Math.max(0, after.maxHp - before.maxHp));
+      if (this.info.resource === 'mana') this.mana = Math.min(after.maxMana, this.mana + Math.max(0, after.maxMana - before.maxMana));
+    }
+    this.stats = after;
+  }
+
   // ─── Recall ───────────────────────────────────────────────────────────────
 
   get recalling(): boolean {
@@ -153,7 +216,7 @@ export abstract class Champion extends Unit {
 
     const target = this.resolveAim(info.targeting, aim);
     this.mana -= cost;
-    state.readyAt = world.time + this.byRank(slot, info.cooldown);
+    state.readyAt = world.time + this.byRank(slot, info.cooldown) * hasteMultiplier(this.haste);
     this.cancelWindup();
     this.revealedUntil = world.time + REVEAL_TIME;
     if (dist(target, this.pos) > 1) this.facing = angleOf(sub(target, this.pos));
@@ -210,6 +273,18 @@ export abstract class Champion extends Unit {
       xpNext: this.level >= MAX_LEVEL ? 0 : xpToNext(this.level),
       points: this.skillPoints,
       gold: Math.floor(this.gold),
+      items: [...this.items],
+      inShop: this.inShop(),
+      stats: {
+        ad: Math.round(this.stats.ad),
+        ap: Math.round(this.stats.ap),
+        armor: Math.round(this.stats.armor),
+        mr: Math.round(this.stats.mr),
+        as: Math.round(this.stats.attackSpeed * 100) / 100,
+        ms: Math.round(this.moveSpeed),
+        haste: this.haste,
+        ls: Math.round(this.lifesteal * 100),
+      },
     };
   }
 }

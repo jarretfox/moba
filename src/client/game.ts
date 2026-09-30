@@ -64,6 +64,8 @@ export class GameClient {
   ) {
     this.hud = new Hud(hudRoot);
     this.hud.onLevelUp = (slot) => this.send({ k: 'levelUp', slot });
+    this.hud.onBuy = (item) => this.send({ k: 'buy', item });
+    this.hud.onSell = (slot) => this.send({ k: 'sell', slot });
     this.buffer = new SnapshotBuffer(conn.interpDelay);
     this.groundLayer.addChild(buildMap(MAP));
     this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.fog.sprite, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
@@ -317,7 +319,11 @@ export class GameClient {
       case 'Backquote':
         this.toggleNavOverlay();
         break;
+      case 'KeyP':
+        this.hud.shop.toggle();
+        break;
       case 'Escape':
+        if (this.aiming === null) this.hud.shop.toggle(false);
         this.aiming = null;
         break;
     }

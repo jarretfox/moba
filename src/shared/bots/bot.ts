@@ -11,6 +11,7 @@ import type { Unit } from '../sim/unit';
 import { mitigate, type World } from '../sim/world';
 import { pointAlong, progressAlong } from './lanes';
 import { PROFILES, type BotContext } from './profiles';
+import { nextPurchase } from './shopping';
 
 // ─── Tuning: a "decent new player" ────────────────────────────────────────────
 
@@ -38,6 +39,8 @@ const MIN_TOWER_COVER = 2;
 const CHUD_AGGRO_LIMIT = 4;
 /** Don't reissue a move unless the destination has shifted this far. */
 const MOVE_RESEND = 60;
+/** Head home to shop once there's this much gold to spend (and it buys the next item). */
+const SHOPPING_TRIP = 900;
 
 /**
  * Plays one champion through the same commands a human sends. It farms its lane from behind its own
@@ -69,6 +72,7 @@ export class Bot {
     const out: Command[] = [];
     const levelUp = this.pickSkill();
     if (levelUp !== null) out.push({ k: 'levelUp', slot: levelUp });
+    this.shop(out);
     if (this.champion.dead) {
       this.state = 'lane';
       this.lastMove = null;
@@ -86,6 +90,23 @@ export class Bot {
     return order.find((slot) => canRankUp(slot, me.abilities[slot].rank, me.level)) ?? null;
   }
 
+  /** Buys the next item on the build whenever the shop is open to us and we can afford it. */
+  private shop(out: Command[]): void {
+    const me = this.champion;
+    if (!me.inShop()) return;
+    const plan = nextPurchase(PROFILES[me.info.id].build, me.items);
+    if (!plan || me.gold < plan.net) return;
+    for (const slot of plan.sell) out.push({ k: 'sell', slot });
+    out.push({ k: 'buy', item: plan.item });
+  }
+
+  /** A full purse that buys the next item: time to go home and spend it. */
+  private wantsToShop(): boolean {
+    const me = this.champion;
+    const plan = nextPurchase(PROFILES[me.info.id].build, me.items);
+    return plan !== null && me.gold >= SHOPPING_TRIP && me.gold >= plan.net;
+  }
+
   private decide(world: World, out: Command[]): void {
     const me = this.champion;
     const hp = me.hp / me.stats.maxHp;
@@ -98,7 +119,7 @@ export class Bot {
     // Never stand in a Shootie's fire.
     if (this.shootieShootingMe(world)) return this.moveTo(out, this.stepBack(400));
 
-    if (hp < RETREAT_HP || (nearest && hp < RETREAT_HP_UNDER_PRESSURE)) this.state = 'retreat';
+    if (hp < RETREAT_HP || (nearest && hp < RETREAT_HP_UNDER_PRESSURE) || (!nearest && this.wantsToShop())) this.state = 'retreat';
     if (this.state === 'retreat') return this.retreat(world, out, hp, nearest);
 
     if (nearest && this.shouldFight(world, nearest, hp)) return this.fight(world, out, nearest);

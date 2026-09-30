@@ -1,5 +1,6 @@
 import type { Champion } from '../champions/champion';
 import { clamp, type Vec2 } from '../math';
+import { isItemId } from '../items';
 import type { Command } from '../protocol';
 import type { World } from './world';
 
@@ -11,6 +12,15 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
   // Spending skill points is allowed while dead or recalling, and doesn't interrupt anything.
   if (cmd.k === 'levelUp') {
     if (cmd.slot === 0 || cmd.slot === 1 || cmd.slot === 2 || cmd.slot === 3) unit.rankUp(cmd.slot);
+    return;
+  }
+  // So is shopping (the champion checks it's in the fountain or dead).
+  if (cmd.k === 'buy') {
+    if (isItemId(cmd.item)) unit.buy(world, cmd.item);
+    return;
+  }
+  if (cmd.k === 'sell') {
+    if (typeof cmd.slot === 'number') unit.sell(world, cmd.slot);
     return;
   }
   if (unit.dead) return;

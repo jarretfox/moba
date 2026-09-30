@@ -1,6 +1,7 @@
 import type { Champion } from '../champions/champion';
 import type { ChampionId } from '../champions/types';
 import type { Slot } from '../constants';
+import type { ItemId } from '../items';
 import { add, dirTo, dist, lerpVec, scale, type Vec2 } from '../math';
 import type { Command } from '../protocol';
 import { enemiesInCone } from '../sim/query';
@@ -17,6 +18,8 @@ export interface BotContext {
 export interface BotProfile {
   /** Which basic abilities to max first; the ultimate is always taken as soon as it's allowed. */
   skillOrder: Slot[];
+  /** Items in the order to buy them. Cheap early ones get sold to make room for the later ones. */
+  build: ItemId[];
   /** In a fight with `foe`. */
   fight(ctx: BotContext, foe: Unit): Command | null;
   /** Running from `threat`. */
@@ -42,6 +45,7 @@ function lead(u: Unit, seconds: number): Vec2 {
 
 const marksman: BotProfile = {
   skillOrder: [0, 2, 1],
+  build: ['shiv', 'treads', 'fang', 'striders', 'longbow', 'reaver', 'link'],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -61,6 +65,7 @@ const marksman: BotProfile = {
 
 const barbarian: BotProfile = {
   skillOrder: [0, 2, 1],
+  build: ['shiv', 'treads', 'leather', 'drum', 'link', 'plate', 'reaver'],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);

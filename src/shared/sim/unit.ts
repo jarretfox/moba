@@ -166,12 +166,18 @@ export abstract class Unit implements Entity {
     if (kind === 'stun') this.cancelWindup();
   }
 
-  heal(world: World, amount: number): void {
+  /** `quiet` skips the floating number, for small constant trickles like lifesteal. */
+  heal(world: World, amount: number, quiet = false): void {
     if (this.dead || amount <= 0) return;
     const healed = Math.min(amount, this.stats.maxHp - this.hp);
     if (healed <= 0) return;
     this.hp += healed;
-    world.emit({ e: 'heal', target: this.id, amount: Math.round(healed) });
+    if (!quiet) world.emit({ e: 'heal', target: this.id, amount: Math.round(healed) });
+  }
+
+  /** Share of basic-attack damage healed back (champions get it from items). */
+  get lifesteal(): number {
+    return 0;
   }
 
   // ─── Combat hooks ─────────────────────────────────────────────────────────

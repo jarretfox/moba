@@ -103,7 +103,7 @@ export class World {
   }
 
   /** Apply mitigated damage. Returns the amount actually dealt. */
-  damage(source: Unit | null, target: Unit, amount: number, type: DamageType, _opts: { basic?: boolean } = {}): number {
+  damage(source: Unit | null, target: Unit, amount: number, type: DamageType, opts: { basic?: boolean } = {}): number {
     if (!target.isTargetable() || amount <= 0) return 0;
     if (source) amount *= 1 - source.strongest('weaken');
     const resist = type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0;
@@ -116,6 +116,7 @@ export class World {
       if (target.kind === 'champion' && source.team !== target.team) this.helpCalls.push({ attacker: source, victim: target, time: this.time });
     }
     target.onDamaged(this, source, dealt);
+    if (opts.basic && source && source.lifesteal > 0 && target.kind !== 'structure') source.heal(this, dealt * source.lifesteal, true);
     if (target.hp <= 0) {
       const helpers = [...target.championHits]
         .filter(([, t]) => this.time - t <= TAKEDOWN_WINDOW)
