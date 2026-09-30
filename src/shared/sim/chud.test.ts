@@ -121,15 +121,15 @@ describe('Chud targeting', () => {
 });
 
 describe('Chuds and Shooties', () => {
-  it('lose a fixed share of their health per Shootie shot: three for melee, two for ranged, eight for siege', () => {
-    for (const [type, shots] of [['melee', 3], ['ranged', 2], ['siege', 8]] as const) {
+  it('lose a fixed share of their health per Shootie shot: three for melee, two for ranged, eight for siege, fifteen for a Brute', () => {
+    for (const [type, shots] of [['melee', 3], ['ranged', 2], ['siege', 8], ['brute', 15]] as const) {
       const world = new World(MAP);
       const structures = spawnStructures(world);
       const blueOuter = structures.find((s) => s.team === TEAM.blue && s.role === 'outerShootie' && s.lane === 'top')!;
       const red = chudAt(world, TEAM.red, type, blueOuter.pos.x + 400);
       let hits = 0;
 
-      run(world, 12, (events) => {
+      run(world, 21, (events) => {
         for (const ev of events) if (ev.e === 'dmg' && ev.target === red.id && ev.type === 'true') hits++;
       });
 

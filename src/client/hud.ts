@@ -37,6 +37,7 @@ export class Hud {
   private readonly mp: BarEls;
   private readonly tooltip: HTMLElement;
   private readonly respawn: HTMLElement;
+  private readonly gameOver: HTMLElement;
   private info: ChampionInfo | null = null;
   private readonly written = new WeakMap<HTMLElement, Map<string, string>>();
 
@@ -46,6 +47,7 @@ export class Hud {
       <div class="clock"><span class="time">0:00</span><span class="wave"></span></div>
       <div class="help"><div class="help-title">Practice Range</div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
+      <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Play again</button></div>
       <div class="bar" hidden>
         <div class="portrait"><span class="initial"></span><span class="stacks"></span></div>
         <div class="center">
@@ -66,6 +68,8 @@ export class Hud {
     this.stacks = q('.stacks');
     this.tooltip = q('.tooltip');
     this.respawn = q('.respawn');
+    this.gameOver = q('.gameover');
+    q('.gameover-again').addEventListener('click', () => location.reload());
     this.hp = { fill: q('.hp .fill'), text: q('.hp span') };
     this.mp = { fill: q('.mp .fill'), text: q('.mp span') };
     root.querySelectorAll<HTMLElement>('.slot').forEach((el, i) => {
@@ -108,6 +112,16 @@ export class Hud {
     });
 
     this.set(this.respawn, 'text', me.respawnIn > 0 ? `Respawning in ${Math.ceil(me.respawnIn)}` : '');
+  }
+
+  showGameOver(victory: boolean): void {
+    if (!this.gameOver.hidden) return;
+    this.gameOver.hidden = false;
+    this.gameOver.classList.toggle('victory', victory);
+    (this.gameOver.querySelector('.gameover-title') as HTMLElement).textContent = victory ? 'VICTORY' : 'DEFEAT';
+    (this.gameOver.querySelector('.gameover-sub') as HTMLElement).textContent = victory
+      ? 'Their Da Base has fallen.'
+      : 'Your Da Base has fallen.';
   }
 
   /** Match clock, plus a countdown while the next Chud wave is close. */

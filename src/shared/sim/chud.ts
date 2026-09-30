@@ -8,14 +8,16 @@ import type { World } from './world';
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
 
-function chudStats(maxHp: number, ad: number, attackSpeed: number, attackRange: number, armor = 0): Stats {
-  return { maxHp, hpRegen: 0, maxMana: 0, manaRegen: 0, ad, ap: 0, armor, mr: 0, attackSpeed, attackRange, moveSpeed: 325 };
+function chudStats(maxHp: number, ad: number, attackSpeed: number, attackRange: number, armor = 0, mr = 0): Stats {
+  return { maxHp, hpRegen: 0, maxMana: 0, manaRegen: 0, ad, ap: 0, armor, mr, attackSpeed, attackRange, moveSpeed: 325 };
 }
 
 export const CHUD_DEFS: Record<ChudType, { name: string; radius: number; stats: Stats; shot?: { speed: number; vis: string } }> = {
   melee: { name: 'Chud', radius: 28, stats: chudStats(450, 13, 1.25, 90) },
   ranged: { name: 'Slinger Chud', radius: 24, stats: chudStats(290, 22, 0.67, 500), shot: { speed: 1200, vis: 'pebble' } },
   siege: { name: 'Siege Chud', radius: 38, stats: chudStats(850, 40, 0.8, 300, 20), shot: { speed: 1000, vis: 'boulder' } },
+  /** Only marches while the enemy Oakner in its lane is down. */
+  brute: { name: 'Chud Brute', radius: 42, stats: chudStats(1500, 60, 0.85, 110, 30, 30) },
 };
 
 /** How far a Chud looks for a fight, edge to edge. */

@@ -272,6 +272,7 @@ export class StructureView implements EntityView {
 }
 
 const CHUD_SKIN = 0x87916c;
+const CHUD_BRUTE_SKIN = 0x6c7652;
 const CHUD_EYES = 0xffe066;
 
 /** Hunched tunnel-dwellers in team-colored hoods, drawn facing +x. */
@@ -284,11 +285,21 @@ function drawChud(g: Graphics, type: ChudType, r: number, team: number): void {
     g.circle(r * 0.35, 0, r * 0.45).fill(0x8d8d8d).stroke(outline);
     return;
   }
-  g.circle(0, 0, r).fill(CHUD_SKIN).stroke(outline);
+  if (type === 'brute') {
+    // Spikes poking out of a team-colored helmet, and a club the size of a regular Chud.
+    const spikes: number[] = [];
+    for (let i = 0; i < 14; i++) {
+      const a = Math.PI / 2 + (i / 13) * Math.PI;
+      const rr = i % 2 === 0 ? r * 1.25 : r * 0.95;
+      spikes.push(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    g.poly(spikes).fill(team).stroke(outline);
+  }
+  g.circle(0, 0, r).fill(type === 'brute' ? CHUD_BRUTE_SKIN : CHUD_SKIN).stroke(outline);
   g.moveTo(0, 0).arc(0, 0, r, Math.PI / 2, Math.PI * 1.5).closePath().fill(team); // hood over the back
   g.circle(r * 0.45, -r * 0.28, r * 0.14).fill(CHUD_EYES);
   g.circle(r * 0.45, r * 0.28, r * 0.14).fill(CHUD_EYES);
-  if (type === 'melee') g.roundRect(r * 0.25, r * 0.55, r * 1.0, r * 0.3, 3).fill(PALETTE.bark).stroke(outline); // club
+  if (type === 'melee' || type === 'brute') g.roundRect(r * 0.25, r * 0.55, r * 1.0, r * 0.3, 3).fill(PALETTE.bark).stroke(outline); // club
   else g.circle(r * 1.05, 0, r * 0.3).fill(0x6e6e6e).stroke(outline); // stone ready in the sling
 }
 

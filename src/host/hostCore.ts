@@ -54,6 +54,8 @@ export class HostCore {
   }
 
   step(): void {
+    // Once a Da Base falls the world freezes on the final snapshot, which carries the winner.
+    if (this.world.winner) return;
     for (const p of this.players.values()) {
       const unit = this.world.getUnit(p.unitId);
       if (unit instanceof Champion) for (const cmd of p.queue) this.apply(unit, cmd);
@@ -74,6 +76,7 @@ export class HostCore {
           ev,
           me: me instanceof Champion ? me.meSnapshot(this.world) : undefined,
           nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
+          winner: this.world.winner ?? undefined,
         },
       });
     }

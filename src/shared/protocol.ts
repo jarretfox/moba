@@ -20,7 +20,7 @@ export type HostMessage =
 
 export type DamageType = 'physical' | 'magic' | 'true';
 export type StatusKind = 'root' | 'stun' | 'slow';
-export type ChudType = 'melee' | 'ranged' | 'siege';
+export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
 export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'projectile' | 'trap';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
@@ -85,4 +85,6 @@ export interface Snapshot {
   me?: MeSnap;
   /** Seconds until the next Chud wave leaves Da Base. */
   nextWave?: number;
+  /** Set on the final snapshot, once a Da Base has fallen. */
+  winner?: Team;
 }

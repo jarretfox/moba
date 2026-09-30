@@ -1,4 +1,4 @@
-import { DT, type Team } from '../constants';
+import { DT, type PlayerTeam, type Team } from '../constants';
 import type { MapData } from '../map/mapData';
 import { NavGrid } from '../map/navGrid';
 import { Pathfinder } from '../map/pathfind';
@@ -31,6 +31,8 @@ export interface WorldSystem {
 export class World {
   tick = 0;
   time = 0;
+  /** Set once a Da Base falls. The host stops the match there. */
+  winner: PlayerTeam | null = null;
   readonly grid: NavGrid;
   private readonly pathfinder: Pathfinder;
   private readonly entities = new Map<number, Entity>();
@@ -43,6 +45,10 @@ export class World {
   constructor(readonly map: MapData) {
     this.grid = new NavGrid(map);
     this.pathfinder = new Pathfinder(this.grid);
+  }
+
+  declareWinner(team: PlayerTeam): void {
+    this.winner ??= team;
   }
 
   /** Match-level logic that runs every tick before the entities do (e.g. the Chud wave clock). */

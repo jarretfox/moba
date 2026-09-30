@@ -19,7 +19,7 @@ const SHOOTIE_WARMUP = { perShot: 0.4, maxStacks: 3 };
  * three shots and a ranged one two, whatever the game time. Last-hitting under a Shootie means timing
  * your hit around its shots.
  */
-const SHOOTIE_VS_CHUD: Record<ChudType, number> = { melee: 0.45, ranged: 0.7, siege: 0.14 };
+const SHOOTIE_VS_CHUD: Record<ChudType, number> = { melee: 0.45, ranged: 0.7, siege: 0.14, brute: 0.07 };
 const SHOOTIE_SHOT_SPEED = 1400;
 
 function structureStats(maxHp: number, armor: number, attack = NO_ATTACK): Stats {
@@ -143,6 +143,7 @@ export class Structure extends Unit {
     super.die(world, killer);
     this.grid.removeObstacle(this.pos, this.radius);
     this.warmup = { targetId: -1, stacks: 0 };
+    if (this.role === 'daBase') world.declareWinner(this.team === 1 ? 2 : 1);
   }
 
   protected respawnDelay(): number {

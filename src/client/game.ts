@@ -103,6 +103,7 @@ export class GameClient {
     const latest = this.buffer.latest;
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
     this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
+    if (latest?.winner) this.hud.showGameOver(latest.winner === this.myTeam);
   }
 
   private syncViews(dt: number): void {

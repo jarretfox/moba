@@ -35,7 +35,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Damage numbers only appear for damage you deal or take, as in League. A lane full of Chuds would be unreadable otherwise.
 - **Structures per lane, per team:** 2 Shooties and 1 Oakner. Da Base is guarded by one more Shootie. Numbers live in `src/shared/sim/structure.ts`.
   - **They fall in order:** outer Shootie → inner Shootie → Oakner in the same lane. The base Shootie can be hit while either Oakner is down, and Da Base only once the base Shootie is gone. Until then a structure is shielded: grey health bar, and it can't be attacked.
-  - Killing an Oakner makes that lane spawn Chud Brutes.
+  - While an enemy Oakner is down, every one of your waves in that lane is led by a **Chud Brute**: 1500 HP, tough, and it takes 15 Shootie shots to kill.
   - Oakners regrow after 4 minutes. If both are standing again, the base Shootie is shielded again.
   - Structures block movement while standing. Units path around them, and the rubble of a fallen one can be walked over.
   - Skillshots fly over structures; only basic attacks damage them.
@@ -43,6 +43,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - They shoot Chuds before champions, nearest first.
   - Once locked on, they stay on that target until it dies or leaves range.
   - Each consecutive shot at the same champion hits 40% harder, up to +120%. Standing under an enemy Shootie gets deadly fast.
+- **Winning:** destroy the enemy Da Base. The match freezes on the spot and everyone gets a Victory or Defeat screen with Play again.
 - **Call for help:** if an enemy champion hurts your champion nearby, your Chuds and Shooties switch to that enemy. This rule is what makes trading and tower dives work.
 - **Vision:**
   - Every unit sees in a radius. Walls block sight, and brush hides whoever is inside it.
@@ -183,7 +184,7 @@ src/
 | # | Scope | Status |
 |---|---|---|
 | M0 | Project, host-in-worker, map blockout, nav grid + A*, click-to-move, basic attacks, full Marksman kit, training dummies, HUD | ✅ done |
-| M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | In progress: ✅ collision, ✅ structures, ✅ Chud waves |
+| M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | In progress: ✅ collision, ✅ structures, ✅ Chud waves, ✅ Brutes + winning |
 | M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression | |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | |
 | M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |

@@ -109,6 +109,58 @@ kbd {
   text-shadow: 0 2px 8px #000;
 }
 
+.gameover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: radial-gradient(circle, rgba(40, 8, 10, 0.55), rgba(0, 0, 0, 0.8));
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.gameover[hidden] {
+  display: none;
+}
+
+.gameover.victory {
+  background: radial-gradient(circle, rgba(10, 30, 60, 0.5), rgba(0, 0, 0, 0.8));
+}
+
+.gameover-title {
+  font-size: 88px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #ff5a5f;
+  text-shadow: 0 4px 24px #000;
+}
+
+.gameover.victory .gameover-title {
+  color: var(--gold);
+}
+
+.gameover-sub {
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.gameover-again {
+  margin-top: 14px;
+  padding: 10px 26px;
+  border: 1px solid var(--gold);
+  border-radius: 8px;
+  background: #1b222b;
+  color: var(--text);
+  font: 700 15px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.gameover-again:hover {
+  background: #2a3442;
+}
+
 /* ─── Bottom ability bar ─────────────────────────────────────────────── */
 
 .bar {
