@@ -1,6 +1,8 @@
 # MOBA
 
-3v3 browser MOBA for friends. See [DESIGN.md](DESIGN.md) for the game design, lore, and architecture.
+3v3 browser MOBA for friends. **Play it: https://jarretfox.github.io/moba/**
+
+See [DESIGN.md](DESIGN.md) for the game design, lore, and architecture.
 
 ## Run it
 
