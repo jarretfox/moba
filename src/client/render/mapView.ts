@@ -44,8 +44,6 @@ export function buildMap(map: MapData): Container {
     t.position.set(x, y);
     root.addChild(t);
   };
-  label('DA BASE', map.spawns[1].x + 600, map.spawns[1].y);
-  label('DA BASE', map.spawns[2].x - 600, map.spawns[2].y);
   label('THE WARDEN', map.width / 2, map.height / 2);
   label('TOP LANE', map.width / 2, 1100);
   label('BOT LANE', map.width / 2, map.height - 1100);

@@ -14,6 +14,8 @@ export class NavGrid {
   readonly open: Uint8Array;
   /** Walkable with one cell of clearance from walls — what units actually move on. */
   readonly walkable: Uint8Array;
+  /** How many live obstacles (structures) cover each cell. Anything above zero blocks it. */
+  private readonly obstacles: Uint16Array;
 
   constructor(map: MapData) {
     this.cellSize = map.cellSize;
@@ -21,6 +23,7 @@ export class NavGrid {
     this.rows = Math.ceil(map.height / map.cellSize);
     this.open = new Uint8Array(this.cols * this.rows);
     this.walkable = new Uint8Array(this.cols * this.rows);
+    this.obstacles = new Uint16Array(this.cols * this.rows);
 
     for (let cy = 0; cy < this.rows; cy++) {
       for (let cx = 0; cx < this.cols; cx++) {
@@ -55,7 +58,31 @@ export class NavGrid {
   }
 
   isWalkableCell(cx: number, cy: number): boolean {
-    return cx >= 0 && cy >= 0 && cx < this.cols && cy < this.rows && this.walkable[cy * this.cols + cx] === 1;
+    if (cx < 0 || cy < 0 || cx >= this.cols || cy >= this.rows) return false;
+    const i = cy * this.cols + cx;
+    return this.walkable[i] === 1 && this.obstacles[i] === 0;
+  }
+
+  /** Block a circular footprint (plus the usual one-cell clearance) until removeObstacle is called with the same values. */
+  addObstacle(center: Vec2, radius: number): void {
+    this.stampObstacle(center, radius, 1);
+  }
+
+  removeObstacle(center: Vec2, radius: number): void {
+    this.stampObstacle(center, radius, -1);
+  }
+
+  private stampObstacle(center: Vec2, radius: number, delta: number): void {
+    const reach = radius + this.cellSize;
+    const x0 = Math.max(0, this.cellX(center.x - reach));
+    const x1 = Math.min(this.cols - 1, this.cellX(center.x + reach));
+    const y0 = Math.max(0, this.cellY(center.y - reach));
+    const y1 = Math.min(this.rows - 1, this.cellY(center.y + reach));
+    for (let cy = y0; cy <= y1; cy++) {
+      for (let cx = x0; cx <= x1; cx++) {
+        if (dist(this.cellCenter(cx, cy), center) <= reach) this.obstacles[cy * this.cols + cx] += delta;
+      }
+    }
   }
 
   isWalkable(p: Vec2): boolean {

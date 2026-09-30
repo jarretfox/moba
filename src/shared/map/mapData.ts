@@ -9,6 +9,17 @@ export interface GroundPiece {
   shape: Shape;
 }
 
+export type Lane = 'top' | 'bot';
+export type StructureRole = 'outerShootie' | 'innerShootie' | 'oakner' | 'baseShootie' | 'daBase';
+
+export interface StructureSpot {
+  role: StructureRole;
+  team: PlayerTeam;
+  /** Null for the structures inside the base. */
+  lane: Lane | null;
+  pos: Vec2;
+}
+
 export interface MapData {
   width: number;
   height: number;
@@ -18,6 +29,7 @@ export interface MapData {
   ground: GroundPiece[];
   /** Solid terrain carved back out of the ground. */
   blockers: Shape[];
+  structures: StructureSpot[];
   spawns: Record<PlayerTeam, Vec2>;
 }
 
@@ -27,13 +39,14 @@ const H = 7000;
 // The layout is authored for the top-left quadrant only (blue base, top lane, blue's top jungle)
 // and mirrored into the other three, so both teams and both lanes are identical.
 //
-//              TOP LANE
-//  ┌──●──●───────── river ─────────●──●──┐
-//  │  jungle   jungle  ~~   jungle   jungle│
-// [B]──exit      pillar  WARDEN pillar   exit──[R]
-//  │  jungle   jungle  ~~   jungle   jungle│
-//  └──●──●───────── river ─────────●──●──┘
-//              BOT LANE
+//                  TOP LANE
+//    ┌─O──i────o───────── river ─────────o────i──O─┐
+//    │       jungle        ~~        jungle        │
+// [D s]──back door   pillar  WARDEN  pillar  back door──[s D]
+//    │       jungle        ~~        jungle        │
+//    └─O──i────o───────── river ─────────o────i──O─┘
+//                  BOT LANE
+// D = Da Base, s = base Shootie, O = Oakner, i = inner Shootie, o = outer Shootie
 const quadrantGround: GroundPiece[] = [
   { style: 'base', shape: { type: 'circle', x: 1100, y: 3500, r: 950 } },
   // Lane: climbs out of the base, then runs along the top edge to the river.
@@ -58,8 +71,30 @@ const quadrantBlockers: Shape[] = [
   { type: 'rect', x: 5250, y: 2650, w: 250, h: 500 },
 ];
 
+// Blue's top-lane structures, walking out from the base; mirrored to bot lane and to red.
+const quadrantStructures: StructureSpot[] = [
+  { role: 'oakner', team: 1, lane: 'top', pos: { x: 1620, y: 2540 } },
+  { role: 'innerShootie', team: 1, lane: 'top', pos: { x: 2500, y: 1100 } },
+  { role: 'outerShootie', team: 1, lane: 'top', pos: { x: 4300, y: 1100 } },
+];
+
+// Blue's base structures sit on the horizontal center line, so they only mirror across to red.
+const baseStructures: StructureSpot[] = [
+  { role: 'daBase', team: 1, lane: null, pos: { x: 1100, y: 3500 } },
+  { role: 'baseShootie', team: 1, lane: null, pos: { x: 1650, y: 3500 } },
+];
+
 function mirror4<T>(items: T[], map: (item: T, mx: boolean, my: boolean) => T): T[] {
   return [false, true].flatMap((mx) => [false, true].flatMap((my) => items.map((it) => map(it, mx, my))));
+}
+
+function mirrorStructure(s: StructureSpot, mx: boolean, my: boolean): StructureSpot {
+  return {
+    role: s.role,
+    team: mx ? 2 : 1,
+    lane: s.lane && my ? 'bot' : s.lane,
+    pos: { x: mx ? W - s.pos.x : s.pos.x, y: my ? H - s.pos.y : s.pos.y },
+  };
 }
 
 export const MAP: MapData = {
@@ -68,6 +103,10 @@ export const MAP: MapData = {
   cellSize: 50,
   ground: mirror4(quadrantGround, (g, mx, my) => ({ ...g, shape: mirrorShape(g.shape, W, H, mx, my) })),
   blockers: mirror4(quadrantBlockers, (s, mx, my) => mirrorShape(s, W, H, mx, my)),
+  structures: [
+    ...mirror4(quadrantStructures, mirrorStructure),
+    ...baseStructures.flatMap((s) => [s, mirrorStructure(s, true, false)]),
+  ],
   spawns: {
     1: { x: 500, y: 3500 },
     2: { x: W - 500, y: 3500 },

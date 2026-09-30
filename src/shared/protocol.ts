@@ -2,6 +2,7 @@
 // browser; in M2 the same messages travel over WebRTC to whichever friend is hosting.
 import type { ChampionId } from './champions/types';
 import type { Slot, Team } from './constants';
+import type { StructureRole } from './map/mapData';
 
 export type Command =
   | { k: 'move'; x: number; y: number }
@@ -19,7 +20,7 @@ export type HostMessage =
 
 export type DamageType = 'physical' | 'magic' | 'true';
 export type StatusKind = 'root' | 'stun' | 'slow';
-export type EntityKind = 'champion' | 'dummy' | 'projectile' | 'trap';
+export type EntityKind = 'champion' | 'dummy' | 'structure' | 'projectile' | 'trap';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind = 'aimLine' | 'trapSnap' | 'roll';
@@ -51,6 +52,11 @@ export interface EntitySnap {
   vis?: string;
   dead?: boolean;
   armed?: boolean;
+  role?: StructureRole;
+  /** Structure can't be damaged yet (the ones in front of it are still standing). */
+  inv?: boolean;
+  /** Seconds until a destroyed Oakner regrows. */
+  regrow?: number;
 }
 
 export interface AbilitySnap {

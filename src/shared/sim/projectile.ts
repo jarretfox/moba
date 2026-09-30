@@ -91,9 +91,10 @@ export class LineProjectile implements Entity {
     const from = this.pos;
     const to = add(from, scale(s.dir, step));
 
+    // Skillshots fly over structures, like League's.
     const hits = world
       .units()
-      .filter((u) => u.team !== this.team && u.isTargetable() && !this.hit.has(u.id) && (s.canHit?.(u) ?? true))
+      .filter((u) => u.team !== this.team && u.kind !== 'structure' && u.isTargetable() && !this.hit.has(u.id) && (s.canHit?.(u) ?? true))
       .map((u) => ({ u, ...segmentDistance(u.pos, from, to) }))
       .filter((h) => h.d <= this.radius + h.u.radius)
       .sort((a, b) => a.t - b.t);

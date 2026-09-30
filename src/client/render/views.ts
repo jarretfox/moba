@@ -1,5 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { EntitySnap } from '../../shared/protocol';
+import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 
 export type Relation = 'self' | 'ally' | 'enemy';
 
@@ -11,11 +12,23 @@ export const PALETTE = {
   mana: 0x5aa9ff,
   dummy: 0xb58b52,
   outline: 0x0b0f14,
+  invulnerable: 0x8a93a0,
+  stone: 0x59606c,
+  stoneDark: 0x3a3f48,
+  bark: 0x6b4a2b,
+  leaf: 0x3f7a35,
+  leafDark: 0x2c5a26,
 } as const;
+
+/** What a view might need to know beyond its own entity. */
+export interface ViewContext {
+  /** The viewer's champion, if alive. */
+  me: EntitySnap | undefined;
+}
 
 export interface EntityView {
   readonly container: Container;
-  update(s: EntitySnap, dt: number): void;
+  update(s: EntitySnap, dt: number, ctx: ViewContext): void;
   onAttack?(): void;
 }
 
@@ -110,9 +123,16 @@ export class UnitView implements EntityView {
 export class ProjectileView implements EntityView {
   readonly container = new Graphics();
 
-  constructor(s: EntitySnap) {
+  constructor(s: EntitySnap, relation: Relation) {
     const g = this.container;
     switch (s.vis) {
+      case 'shootie': {
+        const color = relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
+        g.circle(0, 0, 22).fill({ color, alpha: 0.3 });
+        g.circle(0, 0, 13).fill(color);
+        g.circle(0, 0, 6).fill(0xffffff);
+        break;
+      }
       case 'arrowHeavy':
         g.rect(-30, -6, 44, 12).fill({ color: 0xffc94d, alpha: 0.35 });
         g.rect(-24, -2.5, 34, 5).fill(0xffe7a3);
@@ -159,4 +179,148 @@ export class TrapView implements EntityView {
     this.container.position.set(s.x, s.y);
     this.container.alpha = s.armed ? 1 : 0.4;
   }
+}
+
+/** Shooties, Oakners and Da Base. The body is redrawn only when it changes state (standing, shielded, fallen). */
+export class StructureView implements EntityView {
+  readonly container = new Container();
+  private readonly range = new Graphics();
+  private readonly body = new Graphics();
+  private readonly bars = new Graphics();
+  private readonly note: Text;
+  private bodyKey = '';
+  private barKey = '';
+  private rangeShown = false;
+
+  constructor(s: EntitySnap, private readonly relation: Relation) {
+    this.note = new Text({
+      text: '',
+      style: { fontFamily: 'system-ui, sans-serif', fontSize: 15, fontWeight: '800', fill: 0xffffff, stroke: { color: 0x000000, width: 4 } },
+    });
+    this.note.anchor.set(0.5, 0);
+    this.note.position.set(0, s.r + 12);
+    this.container.addChild(this.range, this.body, this.bars, this.note);
+    this.container.position.set(s.x, s.y);
+  }
+
+  update(s: EntitySnap, _dt: number, ctx: ViewContext): void {
+    const bodyKey = `${s.dead ? 'fallen' : 'up'}|${s.inv ? 'shielded' : ''}`;
+    if (bodyKey !== this.bodyKey) {
+      this.bodyKey = bodyKey;
+      this.drawBody(s);
+    }
+    const barKey = s.dead ? 'fallen' : `${s.hp}|${s.mhp}|${s.inv ? 1 : 0}`;
+    if (barKey !== this.barKey) {
+      this.barKey = barKey;
+      this.drawBars(s);
+    }
+    const note = s.regrow ? `Regrows in ${clock(s.regrow)}` : s.role === 'daBase' && !s.dead ? 'DA BASE' : '';
+    if (this.note.text !== note) this.note.text = note;
+    this.updateRange(s, ctx.me);
+  }
+
+  /** Enemy Shooties show their reach when you get close, like League's tower range. */
+  private updateRange(s: EntitySnap, me: EntitySnap | undefined): void {
+    const attackRange = s.role ? STRUCTURE_DEFS[s.role].stats.attackRange : 0;
+    const reach = attackRange + s.r + (me?.r ?? 0);
+    const show = !s.dead && this.relation === 'enemy' && attackRange > 0 && !!me && Math.hypot(me.x - s.x, me.y - s.y) < reach + 400;
+    if (show === this.rangeShown) return;
+    this.rangeShown = show;
+    this.range.clear();
+    if (show) this.range.circle(0, 0, reach).fill({ color: PALETTE.enemy, alpha: 0.06 }).stroke({ width: 3, color: PALETTE.enemy, alpha: 0.55 });
+  }
+
+  private drawBody(s: EntitySnap): void {
+    const g = this.body.clear();
+    const r = s.r;
+    const team = this.relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
+    if (s.dead) {
+      if (s.role === 'oakner') drawStump(g, r);
+      else drawRubble(g, r);
+      return;
+    }
+    if (s.role === 'oakner') drawOakner(g, r, team);
+    else if (s.role === 'daBase') drawDaBase(g, r, team);
+    else drawShootie(g, r, team);
+    if (s.inv) g.circle(0, 0, r + 12).stroke({ width: 5, color: 0xdfe6ee, alpha: 0.35 });
+  }
+
+  private drawBars(s: EntitySnap): void {
+    const g = this.bars.clear();
+    if (s.dead) return;
+    const w = s.role === 'daBase' ? 180 : 120;
+    const h = 10;
+    const x = -w / 2;
+    const y = -s.r - 26;
+    const mhp = s.mhp ?? 1;
+    const color = s.inv ? PALETTE.invulnerable : this.relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
+    g.rect(x - 2, y - 2, w + 4, h + 4).fill({ color: 0x000000, alpha: 0.75 });
+    g.rect(x, y, (w * Math.max(0, s.hp ?? 0)) / mhp, h).fill(color);
+    for (let v = 500; v < mhp; v += 500) g.rect(x + (w * v) / mhp, y, 1, h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
+  }
+}
+
+function clock(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function regularPolygon(sides: number, radius: number, rotation = 0, cx = 0, cy = 0): number[] {
+  const pts: number[] = [];
+  for (let i = 0; i < sides; i++) {
+    const a = rotation + (i / sides) * Math.PI * 2;
+    pts.push(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius);
+  }
+  return pts;
+}
+
+function drawShadow(g: Graphics, r: number): void {
+  g.circle(6, 9, r).fill({ color: 0x000000, alpha: 0.35 });
+}
+
+function drawShootie(g: Graphics, r: number, team: number): void {
+  drawShadow(g, r);
+  g.poly(regularPolygon(8, r, Math.PI / 8)).fill(PALETTE.stone).stroke({ width: 4, color: PALETTE.stoneDark });
+  g.poly(regularPolygon(8, r * 0.7, Math.PI / 8)).fill(PALETTE.stoneDark);
+  g.circle(0, 0, r * 0.45).fill(team).stroke({ width: 3, color: PALETTE.outline });
+  g.circle(0, 0, r * 0.17).fill({ color: 0xffffff, alpha: 0.85 });
+}
+
+function drawOakner(g: Graphics, r: number, team: number): void {
+  drawShadow(g, r);
+  g.circle(0, 0, r + 6).stroke({ width: 5, color: team });
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    g.circle(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5, r * 0.5).fill(i % 2 ? PALETTE.leaf : PALETTE.leafDark);
+  }
+  g.circle(0, 0, r * 0.45).fill(PALETTE.leaf);
+  g.circle(0, 0, r * 0.16).fill(team);
+}
+
+function drawStump(g: Graphics, r: number): void {
+  const ring = { width: 2, color: 0x3d2a18, alpha: 0.7 };
+  g.circle(0, 0, r * 0.5).fill(PALETTE.bark).stroke({ width: 3, color: 0x3d2a18 });
+  g.circle(0, 0, r * 0.32).stroke(ring);
+  g.circle(0, 0, r * 0.15).stroke(ring);
+}
+
+function drawDaBase(g: Graphics, r: number, team: number): void {
+  drawShadow(g, r);
+  g.poly(regularPolygon(6, r)).fill(PALETTE.stoneDark).stroke({ width: 6, color: PALETTE.outline });
+  g.poly(regularPolygon(6, r * 0.78)).fill(team).stroke({ width: 4, color: PALETTE.outline, alpha: 0.6 });
+  g.poly(regularPolygon(6, r * 0.45, Math.PI / 6)).fill(PALETTE.stone);
+  g.circle(0, 0, r * 0.2).fill({ color: 0xffffff, alpha: 0.9 });
+}
+
+/** Fixed pattern so a fallen structure's rubble doesn't reshuffle every redraw. */
+const RUBBLE: [number, number, number][] = [
+  [-0.4, -0.2, 0.28],
+  [0.3, -0.35, 0.22],
+  [0.1, 0.35, 0.3],
+  [-0.35, 0.4, 0.18],
+  [0.45, 0.15, 0.2],
+];
+
+function drawRubble(g: Graphics, r: number): void {
+  g.circle(0, 0, r * 0.9).fill({ color: PALETTE.stoneDark, alpha: 0.6 });
+  RUBBLE.forEach(([x, y, size], i) => g.poly(regularPolygon(5, r * size, i, x * r, y * r)).fill(PALETTE.stone));
 }

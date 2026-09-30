@@ -4,6 +4,7 @@ import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { clamp, type Vec2 } from '../shared/math';
 import type { ClientMessage, Command, HostMessage } from '../shared/protocol';
+import { spawnStructures } from '../shared/sim/structure';
 import { World } from '../shared/sim/world';
 import { setupPracticeRange } from './practice';
 
@@ -25,6 +26,7 @@ export class HostCore {
   private readonly players = new Map<string, Player>();
 
   constructor(private readonly send: (connId: string, msg: HostMessage) => void) {
+    spawnStructures(this.world);
     setupPracticeRange(this.world);
   }
 

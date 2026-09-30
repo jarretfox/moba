@@ -12,7 +12,7 @@ import { Hud } from './hud';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
 import { buildMap, buildNavOverlay } from './render/mapView';
-import { ProjectileView, TrapView, UnitView, type EntityView, type Relation } from './render/views';
+import { ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotBuffer } from './snapshotBuffer';
 
 /** How far behind the host we render. Two ticks is plenty for a host in this tab; remote hosts (M2) will want ~100ms. */
@@ -28,6 +28,7 @@ export class GameClient {
   private readonly worldLayer = new Container();
   private readonly groundLayer = new Container();
   private readonly underLayer = new Container();
+  private readonly structureLayer = new Container();
   private readonly unitLayer = new Container();
   private readonly projectileLayer = new Container();
   private readonly indicator = new Graphics();
@@ -58,7 +59,7 @@ export class GameClient {
   ) {
     this.hud = new Hud(hudRoot);
     this.groundLayer.addChild(buildMap(MAP));
-    this.worldLayer.addChild(this.groundLayer, this.underLayer, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
+    this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
     app.stage.addChild(this.worldLayer);
     conn.listen((msg) => this.onMessage(msg));
     this.bindInput();
@@ -109,13 +110,15 @@ export class GameClient {
       view.container.destroy({ children: true });
       this.views.delete(id);
     }
+    const me = this.ents.get(this.myId);
+    const ctx: ViewContext = { me: me && !me.dead ? me : undefined };
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);
       if (!view) {
         view = this.createView(s);
         this.views.set(s.id, view);
       }
-      view.update(s, dt);
+      view.update(s, dt, ctx);
     }
   }
 
@@ -125,12 +128,16 @@ export class GameClient {
     let layer: Container;
     switch (s.k) {
       case 'projectile':
-        view = new ProjectileView(s);
+        view = new ProjectileView(s, rel);
         layer = this.projectileLayer;
         break;
       case 'trap':
         view = new TrapView(s, rel);
         layer = this.underLayer;
+        break;
+      case 'structure':
+        view = new StructureView(s, rel);
+        layer = this.structureLayer;
         break;
       default:
         view = new UnitView(s, rel);
@@ -273,11 +280,13 @@ export class GameClient {
     this.send({ k: 'cast', slot, x: Math.round(p.x), y: Math.round(p.y) });
   }
 
+  /** The enemy under the cursor that a right-click would attack. Shielded structures don't count. */
   private enemyAt(p: Vec2): EntitySnap | null {
     let best: EntitySnap | null = null;
     let bestD = Infinity;
     for (const e of this.ents.values()) {
-      if ((e.k !== 'champion' && e.k !== 'dummy') || e.dead || e.tm === this.myTeam) continue;
+      const attackable = e.k === 'champion' || e.k === 'dummy' || (e.k === 'structure' && !e.inv);
+      if (!attackable || e.dead || e.tm === this.myTeam) continue;
       const d = dist(p, e);
       if (d <= e.r + CLICK_SLOP && d < bestD) {
         best = e;

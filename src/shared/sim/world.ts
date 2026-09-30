@@ -13,6 +13,16 @@ export function mitigate(amount: number, resist: number): number {
   return resist >= 0 ? (amount * 100) / (100 + resist) : amount * (2 - 100 / (100 - resist));
 }
 
+/** An enemy champion just hurt this champion. Shooties (and later Chuds) nearby answer by switching to the attacker. */
+export interface HelpCall {
+  attacker: Unit;
+  victim: Unit;
+  time: number;
+}
+
+/** How long a call for help stays fresh. */
+const HELP_CALL_WINDOW = 0.5;
+
 /** The whole game state, advanced one fixed tick at a time. Knows nothing about networking or rendering. */
 export class World {
   tick = 0;
@@ -22,6 +32,7 @@ export class World {
   private readonly entities = new Map<number, Entity>();
   private events: GameEvent[] = [];
   private timers: { at: number; fn: () => void }[] = [];
+  private helpCalls: HelpCall[] = [];
   private nextId = 1;
 
   constructor(readonly map: MapData) {
@@ -76,13 +87,22 @@ export class World {
     target.hp -= dealt;
     target.lastDamagedAt = this.time;
     this.emit({ e: 'dmg', target: target.id, amount: Math.round(dealt), type });
+    if (source?.kind === 'champion' && target.kind === 'champion' && source.team !== target.team) {
+      this.helpCalls.push({ attacker: source, victim: target, time: this.time });
+    }
     if (target.hp <= 0) target.die(this, source);
     return dealt;
+  }
+
+  /** Champion-on-champion hits from the last moment, newest last. */
+  recentHelpCalls(): readonly HelpCall[] {
+    return this.helpCalls;
   }
 
   step(): void {
     this.tick++;
     this.time = this.tick * DT;
+    this.helpCalls = this.helpCalls.filter((c) => this.time - c.time <= HELP_CALL_WINDOW);
 
     if (this.timers.length) {
       const now = this.time + 1e-9;
