@@ -622,6 +622,44 @@ kbd {
   box-shadow: 0 0 0 1px #6b4f16;
 }
 
+/* ─── Jungle buffs ───────────────────────────────────────────────────── */
+
+.buffs {
+  position: absolute;
+  bottom: 176px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.buff {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.buff b {
+  font: 800 12px ui-monospace, 'Cascadia Mono', monospace;
+}
+
+.buff-ember {
+  border-color: #ff7a2f;
+  color: #ffb07a;
+}
+
+.buff-glowcap {
+  border-color: #6fd6ff;
+  color: #aee9ff;
+}
+
 /* ─── Kill feed ──────────────────────────────────────────────────────── */
 
 .feed {

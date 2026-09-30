@@ -49,7 +49,7 @@ const STUCK_NEAR = 120;
 
 /** Anything with health that moves, attacks, and gets crowd-controlled: champions, dummies, later chuds and jungle mobs. */
 export abstract class Unit implements Entity {
-  abstract readonly kind: 'champion' | 'dummy' | 'chud' | 'structure';
+  abstract readonly kind: 'champion' | 'dummy' | 'chud' | 'structure' | 'monster';
   removed = false;
   pos: Vec2;
   facing = 0;
@@ -175,10 +175,8 @@ export abstract class Unit implements Entity {
     if (!quiet) world.emit({ e: 'heal', target: this.id, amount: Math.round(healed) });
   }
 
-  /** Share of basic-attack damage healed back (champions get it from items). */
-  get lifesteal(): number {
-    return 0;
-  }
+  /** Everything a unit's basic attack does on top of its damage (lifesteal, on-hit buffs). Runs after the hit resolves. */
+  onBasicHit(_world: World, _target: Unit, _dealt: number): void {}
 
   // ─── Combat hooks ─────────────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 import { Champion } from '../champions/champion';
 import { dist } from '../math';
 import { Chud } from './chud';
+import { CAMPS, MONSTERS, Monster } from './jungle';
 import { ASSIST_GOLD, CHUD_REWARD, STRUCTURE_GOLD, XP_SHARE_RANGE, killBounty, killXp, xpShare } from './progression';
 import { Structure } from './structure';
 import type { Unit } from './unit';
@@ -12,6 +13,7 @@ import type { World } from './world';
  */
 export function rewardDeath(world: World, victim: Unit, source: Unit | null, helpers: Unit[]): void {
   if (victim instanceof Chud) return rewardChud(world, victim, source);
+  if (victim instanceof Monster) return rewardMonster(world, victim, source, helpers);
   if (victim instanceof Structure) return rewardStructure(world, victim, source);
   if (victim.isChampionLike()) rewardTakedown(world, victim, source, helpers);
 }
@@ -25,6 +27,17 @@ function rewardChud(world: World, chud: Chud, source: Unit | null): void {
     .filter((u): u is Champion => u instanceof Champion && !u.dead && u.team !== chud.team && dist(u.pos, chud.pos) <= XP_SHARE_RANGE);
   const each = reward.xp * xpShare(nearby.length);
   for (const c of nearby) c.gainXp(world, each);
+}
+
+/** Jungle gold and experience go to whoever gets the kill, and so does a camp's buff. */
+function rewardMonster(world: World, m: Monster, source: Unit | null, helpers: Unit[]): void {
+  const killer = source instanceof Champion ? source : helpers.find((h): h is Champion => h instanceof Champion);
+  if (!killer) return;
+  const def = MONSTERS[m.monster];
+  killer.gainGold(world, def.gold);
+  killer.gainXp(world, def.xp);
+  const buff = CAMPS[m.camp.kind].buff;
+  if (buff && m.camp.members[0] === m) killer.gainBuff(world, buff);
 }
 
 /** The whole destroying team gets paid. */
@@ -49,6 +62,8 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
     killer.streak++;
   }
   for (const a of assisters) a.gainGold(world, ASSIST_GOLD / assisters.length);
+  // Jungle buffs change hands with the kill.
+  if (killer) for (const b of victim.lostBuffs) killer.gainBuff(world, b.kind, b.left);
   const xpTakers = killer ? [killer, ...assisters] : assisters;
   for (const c of xpTakers) c.gainXp(world, killXp(victim.level) / xpTakers.length);
   victim.streak = 0;

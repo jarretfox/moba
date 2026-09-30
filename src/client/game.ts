@@ -169,7 +169,7 @@ export class GameClient {
   }
 
   private relation(s: EntitySnap): Relation {
-    return s.id === this.myId ? 'self' : s.tm === this.myTeam ? 'ally' : 'enemy';
+    return s.id === this.myId ? 'self' : s.tm === this.myTeam ? 'ally' : s.tm === TEAM.neutral ? 'neutral' : 'enemy';
   }
 
   private playEvent(ev: GameEvent): void {
@@ -363,7 +363,7 @@ export class GameClient {
     let best: EntitySnap | null = null;
     let bestD = Infinity;
     for (const e of this.ents.values()) {
-      const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || (e.k === 'structure' && !e.inv);
+      const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || e.k === 'monster' || (e.k === 'structure' && !e.inv);
       if (!attackable || e.dead || e.tm === this.myTeam) continue;
       const d = dist(p, e);
       if (d <= e.r + CLICK_SLOP && d < bestD) {

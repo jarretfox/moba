@@ -1,7 +1,8 @@
 import { atRank, perRank, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot } from '../shared/constants';
 import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
-import type { EntitySnap, MeSnap } from '../shared/protocol';
+import type { BuffKind, EntitySnap, MeSnap } from '../shared/protocol';
+import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
 import { ShopPanel, itemGlyph } from './shop';
 
@@ -31,6 +32,11 @@ const HELP = [
   ['Wheel', 'zoom'],
   ['`', 'nav grid overlay'],
 ];
+
+const BUFF_TEXT: Record<BuffKind, string> = {
+  ember: `Basic attacks burn for ${EMBER.damage(1)} + 2 per level true damage and slow ${EMBER.slow * 100}% for ${EMBER.slowFor}s.`,
+  glowcap: `+${GLOWCAP.haste} ability haste, and ${GLOWCAP.manaRegenPct * 100}% of max mana back each second.`,
+};
 
 /** Seconds a kill-feed line stays up. */
 const FEED_TIME = 7;
@@ -62,6 +68,7 @@ export class Hud {
   private readonly gameOver: HTMLElement;
   private info: ChampionInfo | null = null;
   private ranks: number[] = [0, 0, 0, 0];
+  private readonly buffBar: HTMLElement;
   private readonly written = new WeakMap<HTMLElement, Map<string, string>>();
 
   constructor(root: HTMLElement) {
@@ -72,6 +79,7 @@ export class Hud {
       <div class="help"><div class="help-title"></div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
       <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Back to menu</button></div>
+      <div class="buffs"></div>
       <div class="bar" hidden>
         <div class="portrait"><span class="initial"></span><span class="stacks"></span><span class="lvl">1</span></div>
         <div class="center">
@@ -92,6 +100,7 @@ export class Hud {
     const q = (sel: string, parent: ParentNode = root) => parent.querySelector(sel) as HTMLElement;
     this.debug = q('.debug');
     this.feed = q('.feed');
+    this.buffBar = q('.buffs');
     this.clockTime = q('.clock .time');
     this.clockWave = q('.clock .wave');
     this.bar = q('.bar');
@@ -157,6 +166,7 @@ export class Hud {
       this.set(el, 'class', id ? `item tier-${ITEMS[id].tier}` : 'item');
     });
     this.shop.update(me);
+    this.updateBuffs(me);
     this.set(this.stacks, 'text', me.passiveStacks ? String(me.passiveStacks) : '');
     this.set(this.portrait, 'class', me.empowered ? 'portrait empowered' : 'portrait');
 
@@ -179,6 +189,26 @@ export class Hud {
 
     const recalling = self.st?.includes('recall');
     this.set(this.respawn, 'text', me.respawnIn > 0 ? `Respawning in ${Math.ceil(me.respawnIn)}` : recalling ? 'Recalling…' : '');
+  }
+
+  /** One chip per jungle buff, with seconds left. Rebuilt only when the set of buffs changes. */
+  private updateBuffs(me: MeSnap): void {
+    const kinds = me.buffs.map((b) => b.kind).join();
+    if (this.buffBar.dataset.kinds !== kinds) {
+      this.buffBar.dataset.kinds = kinds;
+      this.buffBar.replaceChildren(
+        ...me.buffs.map((b) => {
+          const chip = document.createElement('div');
+          chip.className = `buff buff-${b.kind}`;
+          chip.title = `${BUFFS[b.kind].name}: ${BUFF_TEXT[b.kind]}`;
+          const name = document.createElement('span');
+          name.textContent = BUFFS[b.kind].name;
+          chip.append(name, document.createElement('b'));
+          return chip;
+        }),
+      );
+    }
+    me.buffs.forEach((b, i) => this.set(this.buffBar.children[i].querySelector('b') as HTMLElement, 'text', `${b.left}s`));
   }
 
   /** A line in the kill feed; `ours` colors it for the viewer's side. */

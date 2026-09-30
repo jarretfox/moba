@@ -1,4 +1,4 @@
-import type { PlayerTeam } from '../constants';
+import { TEAM, type PlayerTeam } from '../constants';
 import type { Lane } from '../map/mapData';
 import { dist, segmentDistance, type Vec2 } from '../math';
 import type { ChudType, EntitySnap } from '../protocol';
@@ -31,7 +31,7 @@ const CORPSE_TIME = 1;
 /** Chuds get tougher as the match goes on, so late waves hit structures harder and stalemates break. */
 const GROWTH_PER_MINUTE = { hp: 0.04, ad: 0.04 };
 /** Lower tiers are preferred: other Chuds first, then structures, then champions. */
-const TARGET_TIER: Record<Unit['kind'], number> = { chud: 0, dummy: 0, structure: 1, champion: 2 };
+const TARGET_TIER: Record<Unit['kind'], number> = { chud: 0, dummy: 0, structure: 1, champion: 2, monster: 9 };
 
 /**
  * Lane minions. They march their lane's waypoints and fight whatever they meet, preferring other
@@ -86,7 +86,8 @@ export class Chud extends Unit {
   }
 
   private canFight(world: World, u: Unit, range: number): boolean {
-    return u.team !== this.team && u.isTargetable() && this.near(u, range) && world.vision.canSee(this.team, u);
+    // Jungle monsters are nobody's business but the champions'.
+    return u.team !== this.team && u.team !== TEAM.neutral && u.isTargetable() && this.near(u, range) && world.vision.canSee(this.team, u);
   }
 
   private near(u: Unit, range: number): boolean {

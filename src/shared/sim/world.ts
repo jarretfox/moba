@@ -116,7 +116,6 @@ export class World {
       if (target.kind === 'champion' && source.team !== target.team) this.helpCalls.push({ attacker: source, victim: target, time: this.time });
     }
     target.onDamaged(this, source, dealt);
-    if (opts.basic && source && source.lifesteal > 0 && target.kind !== 'structure') source.heal(this, dealt * source.lifesteal, true);
     if (target.hp <= 0) {
       const helpers = [...target.championHits]
         .filter(([, t]) => this.time - t <= TAKEDOWN_WINDOW)
@@ -126,6 +125,7 @@ export class World {
       target.die(this, source);
       rewardDeath(this, target, source, helpers);
     }
+    if (opts.basic && source) source.onBasicHit(this, target, dealt);
     return dealt;
   }
 

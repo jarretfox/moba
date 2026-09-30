@@ -46,7 +46,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Each consecutive shot at the same champion hits 40% harder, up to +120%. Standing under an enemy Shootie gets deadly fast.
 - **Winning:** destroy the enemy Da Base. The match freezes on the spot and everyone gets a Victory or Defeat screen with Play again.
 - **Death and going home:**
-  - Death timers grow with the match clock: 6s at the start, +1.5s per minute, up to 45s. That's about 21s at 10:00 and 36s at 20:00, so late deaths let the enemy push.
+  - Death timers grow with level (see Progression): 5s at level 1 up to 35s at 13, so late deaths let the enemy push.
   - **Recall (B):** channel for 4s to teleport home. Taking damage, a stun, or any other order breaks it.
   - **Fountain:** standing within 500 of your spawn restores 12% of max health and mana per second. Rage isn't refilled; it's earned.
 - **Call for help:** if an enemy champion hurts your champion nearby, your Chuds and Shooties switch to that enemy. This rule is what makes trading and tower dives work.
@@ -70,6 +70,22 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Death timer:** 5s at level 1, plus 2.5s for each level after that (35s at 13).
   - **HUD:** level badge, experience bar, gold, rank pips and a kill feed. Champion health bars show their level.
   - Bots spend points as soon as they have them: ultimate first, then a per-champion order.
+- **Jungle camps** (numbers in `src/shared/sim/jungle.ts`; spots in `mapData.ts`): 4 per side, on neutral team 0.
+  - **Camps:** each side has one of each:
+    - **Gutter Rats:** a Rat King and two rats.
+    - **Mossback:** one big, slow, tanky tortoise.
+    - **Ember Toad** (buff).
+    - **Glowcap** (buff).
+  - **Where:** on each side, the top half has the Rats and the Toad, and the bottom half has the Mossback and the Glowcap.
+  - **Timing:** they first appear at 1:15. A cleared camp comes back 100s (Rats), 120s (Mossback) or 150s (buffs) later, and monsters toughen 3% per minute of match time.
+  - **Fighting:** monsters stand still until a champion hits the camp. Then the whole camp fights back, on whoever hit it most recently.
+  - **Leash:** a monster won't follow anyone more than 750 from the camp. Past that the camp walks home, can't be hit on the way, and heals to full.
+  - **Rewards:** gold and experience go to whoever gets the kill (or the last champion who hit it).
+  - **Ignored by the lanes:** Chuds and Shooties ignore monsters, and monsters ignore them.
+  - **Buffs** last 90s and pass to whoever kills the holder:
+    - **Ember Toad's Heat:** basic attacks burn for 8 + 2 per level bonus true damage and slow 20% for 1s.
+    - **Glowcap's Glow:** +20 ability haste, and 1% of max mana back per second.
+  - Bots don't take camps yet.
 - **Shop** (items in `src/shared/items.ts`): 16 items, 4 inventory slots. Press P or click your gold.
   - You can buy and sell only in your own fountain, or while dead. Selling returns 70% of the price.
   - No recipes: each item is bought whole.
@@ -247,5 +263,5 @@ src/
 ### Known gaps after M1
 - **Structure health is still tuned down** for level-1 champions (outer Shootie 1800). M3 will raise it again now that champions level and buy items.
 - **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster).
-- **No jungle camps or Warden yet (M3),** so all three bots per side lane.
+- **Bots don't jungle.** All three per side lane; the camps are there for humans. No Warden yet (M3).
 - Bots don't dodge skillshots or coordinate as a team.

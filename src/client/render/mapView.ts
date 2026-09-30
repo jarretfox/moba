@@ -39,6 +39,11 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): Container {
   for (const b of map.blockers) strokeShape(g, b, COLORS.wallEdge);
   for (const b of map.blockers) drawShape(g, b, COLORS.wall);
   for (const b of map.brush) drawBrush(g, b);
+  // Trampled nests where the jungle camps live, so an empty camp still reads as one.
+  for (const c of map.camps) {
+    g.circle(c.pos.x, c.pos.y + 20, 150).fill({ color: 0x000000, alpha: 0.18 });
+    g.circle(c.pos.x, c.pos.y + 20, 150).stroke({ width: 3, color: 0x000000, alpha: 0.12 });
+  }
 
   const label = (text: string, x: number, y: number) => {
     const t = new Text({

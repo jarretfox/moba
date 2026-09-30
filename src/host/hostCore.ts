@@ -9,6 +9,7 @@ import { LOCAL_CONN, type ClientMessage, type Command, type EntitySnap, type Gam
 import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
+import { Jungle } from '../shared/sim/jungle';
 import { spawnStructures } from '../shared/sim/structure';
 import { WaveSpawner } from '../shared/sim/waves';
 import { World } from '../shared/sim/world';
@@ -48,6 +49,7 @@ export class HostCore {
   constructor(private readonly send: (connId: string, msg: HostMessage) => void) {
     spawnStructures(this.world);
     this.world.addSystem(new Fountain());
+    this.world.addSystem(new Jungle(this.world));
   }
 
   receive(connId: string, raw: unknown): void {

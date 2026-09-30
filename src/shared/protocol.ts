@@ -62,9 +62,12 @@ export type HostMessage =
 
 export type DamageType = 'physical' | 'magic' | 'true';
 /** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk, recall (channeling home). */
-export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk' | 'recall';
+export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk' | 'recall' | BuffKind;
+/** Jungle buffs: Ember Toad's and Glowcap's. */
+export type BuffKind = 'ember' | 'glowcap';
+export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap';
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
-export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'projectile' | 'trap';
+export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'projectile' | 'trap';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind = 'aimLine' | 'trapSnap' | 'roll' | 'cleave' | 'warCry' | 'slam' | 'berserk' | 'recall';
@@ -105,6 +108,7 @@ export interface EntitySnap {
   armed?: boolean;
   role?: StructureRole;
   chud?: ChudType;
+  mon?: MonsterKind;
   /** Structure can't be damaged yet (the ones in front of it are still standing). */
   inv?: boolean;
   /** Seconds until a destroyed Oakner regrows. */
@@ -134,6 +138,8 @@ export interface MeSnap {
   items: ItemId[];
   /** Standing where the shop will serve you. */
   inShop: boolean;
+  /** Jungle buffs and the seconds left on each. */
+  buffs: { kind: BuffKind; left: number }[];
   /** For the shop's stat panel. `as` is attacks per second; `ls` is lifesteal in percent. */
   stats: { ad: number; ap: number; armor: number; mr: number; as: number; ms: number; haste: number; ls: number };
 }

@@ -12,6 +12,15 @@ export interface GroundPiece {
 export type Lane = 'top' | 'bot';
 export type StructureRole = 'outerShootie' | 'innerShootie' | 'oakner' | 'baseShootie' | 'daBase';
 
+export type CampKind = 'gutterRats' | 'mossback' | 'emberToad' | 'glowcap';
+
+export interface CampSpot {
+  kind: CampKind;
+  pos: Vec2;
+  /** Whose half of the map the camp is on (anyone can take it). */
+  side: PlayerTeam;
+}
+
 export interface StructureSpot {
   role: StructureRole;
   team: PlayerTeam;
@@ -32,6 +41,8 @@ export interface MapData {
   /** Tall grass: hides whoever stands in it from anyone outside that patch. */
   brush: Shape[];
   structures: StructureSpot[];
+  /** Jungle camps. */
+  camps: CampSpot[];
   /** Chud routes, written from blue's side (blue Da Base → red Da Base). Use lanePath for either team. */
   lanes: Record<Lane, Vec2[]>;
   spawns: Record<PlayerTeam, Vec2>;
@@ -96,6 +107,12 @@ const quadrantStructures: StructureSpot[] = [
   { role: 'outerShootie', team: 1, lane: 'top', pos: { x: 4300, y: 1100 } },
 ];
 
+// Jungle camps in blue's top quadrant: [kind here, kind in the mirrored bottom quadrant]. Each team gets one of each.
+const quadrantCamps: { pos: Vec2; kinds: [CampKind, CampKind] }[] = [
+  { pos: { x: 3450, y: 2170 }, kinds: ['gutterRats', 'mossback'] }, // off the side path from the lane
+  { pos: { x: 4600, y: 2150 }, kinds: ['emberToad', 'glowcap'] }, // deeper in, toward the river
+];
+
 // Blue's base structures sit on the horizontal center line, so they only mirror across to red.
 const baseStructures: StructureSpot[] = [
   { role: 'daBase', team: 1, lane: null, pos: { x: 1100, y: 3500 } },
@@ -135,6 +152,15 @@ export const MAP: MapData = {
     ...mirror4(quadrantStructures, mirrorStructure),
     ...baseStructures.flatMap((s) => [s, mirrorStructure(s, true, false)]),
   ],
+  camps: [false, true].flatMap((mx) =>
+    [false, true].flatMap((my) =>
+      quadrantCamps.map((c) => ({
+        kind: c.kinds[my ? 1 : 0],
+        pos: { x: mx ? W - c.pos.x : c.pos.x, y: my ? H - c.pos.y : c.pos.y },
+        side: (mx ? 2 : 1) as PlayerTeam,
+      })),
+    ),
+  ),
   lanes: {
     top: topLane,
     bot: topLane.map((p) => ({ x: p.x, y: H - p.y })),

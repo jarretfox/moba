@@ -1,9 +1,9 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
-import type { ChudType, EntitySnap } from '../../shared/protocol';
+import type { ChudType, EntitySnap, MonsterKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 
-export type Relation = 'self' | 'ally' | 'enemy';
+export type Relation = 'self' | 'ally' | 'enemy' | 'neutral';
 
 /** Colors are relative to the viewer, like League: you're green, allies blue, enemies red. */
 export const PALETTE = {
@@ -13,6 +13,8 @@ export const PALETTE = {
   mana: 0x5aa9ff,
   rage: 0xff6b3d,
   dummy: 0xb58b52,
+  /** Jungle monsters: nobody's side. */
+  neutral: 0xe8a33d,
   outline: 0x0b0f14,
   invulnerable: 0x8a93a0,
   stone: 0x59606c,
@@ -62,6 +64,8 @@ export class UnitView implements EntityView {
     if (s.k === 'chud') {
       // Chuds turn to face what they're fighting, so the whole figure lives on the rotating layer.
       drawChud(this.facing, s.chud ?? 'melee', r, color);
+    } else if (s.k === 'monster') {
+      drawMonster(this.facing, s.mon ?? 'rat', r);
     } else if (s.k === 'dummy') {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: PALETTE.outline });
       this.body.circle(0, 0, r * 0.62).stroke({ width: 5, color: PALETTE.enemy });
@@ -124,7 +128,7 @@ export class UnitView implements EntityView {
     const x = -w / 2;
     const y = -s.r - (s.k === 'chud' ? 12 : 20);
     const showMana = this.relation !== 'enemy' && (s.mmp ?? 0) > 0;
-    const hpColor = this.relation === 'self' ? PALETTE.selfHp : this.relation === 'ally' ? PALETTE.ally : PALETTE.enemy;
+    const hpColor = this.relation === 'self' ? PALETTE.selfHp : this.relation === 'ally' ? PALETTE.ally : this.relation === 'neutral' ? PALETTE.neutral : PALETTE.enemy;
     const mhp = s.mhp ?? 1;
 
     g.rect(x - 2, y - 2, w + 4, h + 4 + (showMana ? 6 : 0)).fill({ color: 0x000000, alpha: 0.75 });
@@ -151,6 +155,8 @@ export class UnitView implements EntityView {
     if (st.includes('slow')) g.circle(0, 0, r + 5).stroke({ width: 3, color: 0x9bd4ff, alpha: 0.8 });
     if (st.includes('weaken')) g.circle(0, 0, r + 18).stroke({ width: 2, color: 0xb57bff, alpha: 0.7 });
     if (st.includes('berserk')) g.circle(0, 0, r + 8).fill({ color: 0xff3b30, alpha: 0.18 }).stroke({ width: 5, color: 0xff3b30, alpha: 0.75 });
+    if (st.includes('ember')) g.circle(0, 0, r + 12).stroke({ width: 3, color: 0xff7a2f, alpha: 0.85 });
+    if (st.includes('glowcap')) g.circle(0, 0, r + 15).stroke({ width: 3, color: 0x6fd6ff, alpha: 0.85 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }
 }
@@ -332,6 +338,57 @@ function drawChud(g: Graphics, type: ChudType, r: number, team: number): void {
   g.circle(r * 0.45, r * 0.28, r * 0.14).fill(CHUD_EYES);
   if (type === 'melee' || type === 'brute') g.roundRect(r * 0.25, r * 0.55, r * 1.0, r * 0.3, 3).fill(PALETTE.bark).stroke(outline); // club
   else g.circle(r * 1.05, 0, r * 0.3).fill(0x6e6e6e).stroke(outline); // stone ready in the sling
+}
+
+const MONSTER_OUTLINE = { width: 2, color: PALETTE.outline };
+
+/** Jungle monsters, drawn facing right (the layer rotates toward whatever they're fighting). */
+function drawMonster(g: Graphics, kind: MonsterKind, r: number): void {
+  const o = MONSTER_OUTLINE;
+  switch (kind) {
+    case 'rat':
+    case 'ratKing': {
+      // A tail curling out the back, a pointed snout, round ears and beady red eyes.
+      g.moveTo(-r * 0.8, 0).bezierCurveTo(-r * 1.6, -r * 0.2, -r * 1.7, r * 0.6, -r * 2.1, r * 0.3).stroke({ width: 3, color: 0xd99a9a });
+      g.ellipse(0, 0, r * 1.05, r * 0.85).fill(kind === 'ratKing' ? 0x6b5f55 : 0x7d7268).stroke(o);
+      g.poly([r * 0.7, -r * 0.45, r * 1.35, 0, r * 0.7, r * 0.45]).fill(0x8e8278).stroke(o);
+      g.circle(r * 0.2, -r * 0.7, r * 0.3).fill(0xd99a9a).stroke(o);
+      g.circle(r * 0.2, r * 0.7, r * 0.3).fill(0xd99a9a).stroke(o);
+      g.circle(r * 0.75, -r * 0.2, r * 0.1).fill(0xff3b30);
+      g.circle(r * 0.75, r * 0.2, r * 0.1).fill(0xff3b30);
+      if (kind === 'ratKing') g.poly([-r * 0.35, -r * 0.3, -r * 0.2, 0, -r * 0.35, r * 0.3, 0.05 * r, r * 0.3, 0.05 * r, -r * 0.3]).fill(0xffd166).stroke(o); // a stolen crown
+      return;
+    }
+    case 'mossback': {
+      // A great mossy shell with a blunt head poking out the front.
+      g.circle(r * 0.95, 0, r * 0.32).fill(0x7c8a5a).stroke(o);
+      g.circle(0, 0, r).fill(0x3d5a2e).stroke(o);
+      g.poly(regularPolygon(6, r * 0.5)).fill(0x557a3b).stroke({ width: 2, color: 0x2a3f20 });
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
+        g.circle(Math.cos(a) * r * 0.75, Math.sin(a) * r * 0.75, r * 0.14).fill(0x6fa04a);
+      }
+      return;
+    }
+    case 'emberToad': {
+      // A squat orange toad dotted with glowing embers, big eyes up front.
+      g.ellipse(0, 0, r, r * 0.9).fill(0xc2491d).stroke(o);
+      for (const [x, y, rr] of [[-0.4, -0.35, 0.16], [-0.1, 0.45, 0.13], [-0.55, 0.25, 0.1], [0.05, -0.1, 0.12]]) g.circle(x * r, y * r, rr * r).fill(0xffb347);
+      g.circle(r * 0.55, -r * 0.45, r * 0.24).fill(0xfff1c1).stroke(o);
+      g.circle(r * 0.55, r * 0.45, r * 0.24).fill(0xfff1c1).stroke(o);
+      g.circle(r * 0.62, -r * 0.45, r * 0.1).fill(0x1a0d05);
+      g.circle(r * 0.62, r * 0.45, r * 0.1).fill(0x1a0d05);
+      return;
+    }
+    case 'glowcap': {
+      // A giant glowing mushroom, seen from above: a speckled blue cap with a faint halo.
+      g.circle(0, 0, r * 1.2).fill({ color: 0x6fd6ff, alpha: 0.15 });
+      g.circle(0, 0, r).fill(0x2f7fb8).stroke(o);
+      g.circle(0, 0, r * 0.62).fill({ color: 0x9fe6ff, alpha: 0.35 });
+      for (const [x, y, rr] of [[0.45, -0.35, 0.14], [-0.35, 0.5, 0.12], [-0.5, -0.3, 0.16], [0.3, 0.45, 0.1], [0, 0, 0.12]]) g.circle(x * r, y * r, rr * r).fill(0xdff7ff);
+      return;
+    }
+  }
 }
 
 function clock(seconds: number): string {

@@ -1,8 +1,9 @@
 import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
 import { INVENTORY_SLOTS, ITEMS, conflicts, hasteMultiplier, sellPrice, sumItemStats, type ItemId } from '../items';
-import type { EntitySnap, MeSnap } from '../protocol';
+import type { BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
+import { BUFFS, EMBER, GLOWCAP } from '../sim/jungle';
 import { MAX_LEVEL, PASSIVE_GOLD, STARTING_GOLD, canRankUp, xpToNext } from '../sim/progression';
 import { REVEAL_TIME, Unit, type Stats } from '../sim/unit';
 import type { World } from '../sim/world';
@@ -37,6 +38,8 @@ export abstract class Champion extends Unit {
   /** Up to INVENTORY_SLOTS items, in the order bought. */
   readonly items: ItemId[] = [];
   private itemStats = sumItemStats([]);
+  /** Jungle buffs this champion had when it died, for whoever gets the kill. */
+  lostBuffs: { kind: BuffKind; left: number }[] = [];
   private recallStartedAt: number | null = null;
 
   constructor(
@@ -78,6 +81,7 @@ export abstract class Champion extends Unit {
     // Rage has a fixed cap, so mana items don't raise it.
     if (this.info.resource === 'mana') s.maxMana += g.maxMana * n + it.maxMana;
     s.manaRegen += g.manaRegen * n;
+    if (this.has('glowcap') && this.info.resource === 'mana') s.manaRegen += s.maxMana * GLOWCAP.manaRegenPct;
     s.ad += g.ad * n + it.ad;
     s.ap += it.ap;
     s.armor += g.armor * n + it.armor;
@@ -89,7 +93,7 @@ export abstract class Champion extends Unit {
   }
 
   get haste(): number {
-    return this.itemStats.haste;
+    return this.itemStats.haste + (this.has('glowcap') ? GLOWCAP.haste : 0);
   }
 
   get lifesteal(): number {
@@ -137,6 +141,33 @@ export abstract class Champion extends Unit {
   /** The current rank's value from a per-rank table (rank 1 if not learned yet, for tooltips and safety). */
   protected byRank<T>(slot: Slot, values: readonly T[]): T {
     return values[Math.min(values.length - 1, Math.max(0, this.abilities[slot].rank - 1))];
+  }
+
+  onBasicHit(world: World, target: Unit, dealt: number): void {
+    if (target.kind === 'structure') return;
+    if (this.lifesteal > 0) this.heal(world, dealt * this.lifesteal, true);
+    if (this.has('ember') && target.isTargetable()) {
+      world.damage(this, target, EMBER.damage(this.level), 'true');
+      target.addStatus(world, 'slow', EMBER.slowFor, EMBER.slow);
+    }
+  }
+
+  // ─── Jungle buffs ─────────────────────────────────────────────────────────
+
+  buffsLeft(world: World): { kind: BuffKind; left: number }[] {
+    return (Object.keys(BUFFS) as BuffKind[]).flatMap((kind) => {
+      const until = Math.max(-Infinity, ...this.statuses.filter((s) => s.kind === kind).map((s) => s.until));
+      return until > world.time ? [{ kind, left: until - world.time }] : [];
+    });
+  }
+
+  gainBuff(world: World, kind: BuffKind, duration = BUFFS[kind].duration): void {
+    this.addStatus(world, kind, duration);
+  }
+
+  die(world: World, killer: Unit | null): void {
+    this.lostBuffs = this.buffsLeft(world);
+    super.die(world, killer);
   }
 
   // ─── Items ────────────────────────────────────────────────────────────────
@@ -275,6 +306,7 @@ export abstract class Champion extends Unit {
       gold: Math.floor(this.gold),
       items: [...this.items],
       inShop: this.inShop(),
+      buffs: this.buffsLeft(world).map((b) => ({ kind: b.kind, left: Math.ceil(b.left) })),
       stats: {
         ad: Math.round(this.stats.ad),
         ap: Math.round(this.stats.ap),
