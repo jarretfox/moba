@@ -17,10 +17,24 @@ export type Targeting =
 export interface AbilityInfo {
   name: string;
   description: string;
-  cost: number;
-  cooldown: number;
+  /** Per rank: index 0 is rank 1. */
+  cost: number[];
+  /** Seconds, per rank, before ability haste. */
+  cooldown: number[];
   castTime: number;
   targeting: Targeting;
+}
+
+/** What a champion gains each level after the first. Attack speed grows as a percentage of base. */
+export interface StatGrowth {
+  maxHp: number;
+  hpRegen: number;
+  maxMana: number;
+  manaRegen: number;
+  ad: number;
+  armor: number;
+  mr: number;
+  attackSpeedPct: number;
 }
 
 export interface ChampionInfo {
@@ -31,3 +45,9 @@ export interface ChampionInfo {
   passive: { name: string; description: string };
   abilities: [AbilityInfo, AbilityInfo, AbilityInfo, AbilityInfo];
 }
+
+/** Rank-scaled numbers written the way League's tooltips do: "60/95/130/165". */
+export const perRank = (values: readonly number[], fmt: (n: number) => string = String): string => values.map(fmt).join('/');
+
+/** A per-rank table's value at `rank` (rank 1's value while unlearned). */
+export const atRank = <T>(values: readonly T[], rank: number): T => values[Math.min(values.length - 1, Math.max(0, rank - 1))];

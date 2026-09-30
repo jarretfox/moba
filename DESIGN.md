@@ -57,11 +57,19 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Always and never visible:** structures are always visible to both sides. Enemy traps never are.
   - **The host enforces it:** each team is only sent the enemies it can see, and only the damage, effects and casts it could see. Chuds, Shooties and bots can't target or react to what their team can't see, and an attack on a unit that disappears into fog or brush is dropped.
   - **Drawing it:** each client computes its own team's fog from its own units, with the same code, so fog costs no bandwidth.
-- **Progression:**
-  - Level cap around 13, with ultimates unlocking at level 5.
-  - Experience is shared among nearby allies.
-  - Gold comes from last hits and a trickle over time.
-  - Kill-streak bounties help losing teams catch up.
+- **Progression** (all numbers in `src/shared/sim/progression.ts`, payouts in `rewards.ts`):
+  - **Levels:** cap of 13. Level 2 takes 180 experience, and each level after needs 70 more. Every level adds stats (per-champion growth) and heals you by the extra maximum health and mana.
+  - **Ability ranks:** you start with one skill point and gain one per level. Basics go to rank 4, learnable at levels 1/3/5/7; the ultimate goes to rank 3 at levels 5/9/13, as in League. Nothing is learned at the start, and an unlearned ability can't be cast. Click the "+" over an ability or press Shift+Q/W/E/R.
+  - **Chud experience:** every enemy champion within 1400 of a dying Chud shares it, whoever landed the kill. Two champions each get 65%, so laning together costs less than half.
+  - **Gold:** start with 500, plus 2 per second from 1:00.
+    - Last hits: melee Chud 21, ranged 14, siege and brute 60.
+    - Champion kills: 300, plus 75 per kill of the victim's streak beyond 2 (cap 750). Assisters split 150.
+    - Kill credit goes to the last enemy champion who hurt the victim in the last few seconds, even if a Shootie finished them.
+    - Structures pay the whole team: outer Shootie 125, inner 150, Oakner 100, base Shootie 150.
+  - **Kill experience:** 100 + 30 × the victim's level, split among killer and assisters.
+  - **Death timer:** 5s at level 1, plus 2.5s for each level after that (35s at 13).
+  - **HUD:** level badge, experience bar, gold, rank pips and a kill feed. Champion health bars show their level.
+  - Bots spend points as soon as they have them: ultimate first, then a per-champion order.
 - **Shop:** about 15 items, 4 inventory slots, and you can only buy at Da Base.
   - No Flash-style summoner spells in v1. Everyone gets Recall and one shared blink on a long cooldown.
 - **Bots** ("decent new player"; numbers at the top of `src/shared/bots/bot.ts`, each champion's habits in `profiles.ts`):
@@ -72,7 +80,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Fighting:** they engage enemy champions within 700 when they're at least as healthy, or the enemy is below 35%. They avoid trading into a crowd of enemy Chuds, never dive towers, and give ground when hit by someone they won't fight. Each champion uses its kit in fights: for example the Marksman rolls away from melee champions and fires Longshot at low targets, and the Barbarian leaps in and uses Berserk when things get close.
   - **Going home:** below 25% health (35% with an enemy near), they recall if it's safe, or run home using escape abilities. They come back at 90%.
   - **What they don't do:** dodge skillshots, plan ganks, or coordinate as a team.
-  - A bots-only match currently ends in roughly 28–30 minutes. Human pressure ends games sooner, and gold and levels (M3) will tighten it further.
+  - A bots-only match currently ends in roughly 23 minutes. Human pressure ends games sooner.
 
 ## Lore
 
@@ -226,9 +234,8 @@ src/
 | M5 | Balance tools, playtests | |
 
 ### Known gaps after M1
-- **No gold, experience or levels yet (M3).** Every ability is at rank 1, so ultimates are available from the start.
-  - Structure health is tuned down for level-1 champions (outer Shootie 1800). M3 will raise it again.
-  - Games are decided by Chud growth and death timers rather than by getting ahead. Bots-only matches take about 28–30 minutes.
+- **Gold has nothing to buy yet** (the shop is the next M3 step).
+  - Structure health is still tuned down for level-1 champions (outer Shootie 1800). M3 will raise it again.
 - **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster).
 - **No jungle camps or Warden yet (M3),** so all three bots per side lane.
 - Bots don't dodge skillshots or coordinate as a team.

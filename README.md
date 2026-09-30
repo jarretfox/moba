@@ -35,6 +35,7 @@ Friends just open that link. Whoever clicks **Host a Lobby** runs the match in t
 |---|---|
 | Right-click | Move / attack (hold to keep steering) |
 | Q W E R | Hold to aim, release to cast (or left-click while aiming) |
+| Shift+Q W E R | Level up an ability (or click the + above it) |
 | S | Stop |
 | B | Recall home (4s channel, breaks if you take damage) |
 | Space | Center camera (hold) |

@@ -160,7 +160,11 @@ export class Vision {
       case 'cast':
         return byId(ev.src);
       case 'death':
+      case 'level':
+      case 'gold':
         return byId(ev.id);
+      case 'kill':
+        return true; // the kill feed is announced to everyone
       case 'fx':
         return ev.team === team || this.visible[team][this.grid.cellOf(ev)] === 1;
     }

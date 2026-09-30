@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Marksman } from '../champions/marksman';
+import { learnAll } from '../champions/testing';
 import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
 import { MAP, type Lane, type StructureRole } from '../map/mapData';
 import { dist } from '../math';
@@ -23,7 +24,7 @@ function run(world: World, seconds: number, eachTick?: () => void): void {
 }
 
 function champ(world: World, team: PlayerTeam, x: number, y: number): Marksman {
-  const c = world.add(new Marksman(world, team));
+  const c = learnAll(world.add(new Marksman(world, team)));
   c.pos = { x, y };
   return c;
 }

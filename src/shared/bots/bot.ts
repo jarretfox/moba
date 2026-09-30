@@ -1,10 +1,11 @@
 import type { Champion } from '../champions/champion';
-import { DT, type PlayerTeam } from '../constants';
+import { DT, type PlayerTeam, type Slot } from '../constants';
 import { lanePath, type Lane } from '../map/mapData';
 import { dist, type Vec2 } from '../math';
 import type { Command } from '../protocol';
 import { Chud } from '../sim/chud';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
+import { canRankUp } from '../sim/progression';
 import { STRUCTURE_DEFS, Structure, isShootie } from '../sim/structure';
 import type { Unit } from '../sim/unit';
 import { mitigate, type World } from '../sim/world';
@@ -65,14 +66,24 @@ export class Bot {
   think(world: World): Command[] {
     if (world.time < this.nextThinkAt) return [];
     this.nextThinkAt = world.time + THINK_INTERVAL;
+    const out: Command[] = [];
+    const levelUp = this.pickSkill();
+    if (levelUp !== null) out.push({ k: 'levelUp', slot: levelUp });
     if (this.champion.dead) {
       this.state = 'lane';
       this.lastMove = null;
-      return [];
+      return out;
     }
-    const out: Command[] = [];
     this.decide(world, out);
     return out;
+  }
+
+  /** Ultimate whenever allowed, otherwise the champion's preferred basic ability order. */
+  private pickSkill(): Slot | null {
+    const me = this.champion;
+    if (me.skillPoints <= 0) return null;
+    const order: Slot[] = [3, ...PROFILES[me.info.id].skillOrder];
+    return order.find((slot) => canRankUp(slot, me.abilities[slot].rank, me.level)) ?? null;
   }
 
   private decide(world: World, out: Command[]): void {

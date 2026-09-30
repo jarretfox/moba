@@ -1,6 +1,6 @@
 import { Container, Graphics, type Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
-import type { ChampionInfo } from '../shared/champions/types';
+import { atRank, type ChampionInfo } from '../shared/champions/types';
 import { TEAM, type Slot, type Team } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { NavGrid } from '../shared/map/navGrid';
@@ -63,6 +63,7 @@ export class GameClient {
     hudRoot: HTMLElement,
   ) {
     this.hud = new Hud(hudRoot);
+    this.hud.onLevelUp = (slot) => this.send({ k: 'levelUp', slot });
     this.buffer = new SnapshotBuffer(conn.interpDelay);
     this.groundLayer.addChild(buildMap(MAP));
     this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.fog.sprite, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
@@ -192,6 +193,19 @@ export class GameClient {
         if (t) this.fx.healNumber(t.x, t.y - t.r, ev.amount);
         return;
       }
+      case 'gold': {
+        const t = ev.id === this.myId ? this.ents.get(ev.id) : undefined;
+        if (t && ev.amount > 0) this.fx.goldNumber(t.x, t.y - t.r - 18, ev.amount);
+        return;
+      }
+      case 'level': {
+        const t = ev.id === this.myId ? this.ents.get(ev.id) : undefined;
+        if (t) this.fx.levelUp(t.x, t.y, t.r, ev.level);
+        return;
+      }
+      case 'kill':
+        this.hud.pushFeed(ev.killer, ev.victim, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
+        return;
       case 'fx':
         this.playFx(ev);
         return;
@@ -275,6 +289,10 @@ export class GameClient {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const slot = SLOT_BY_CODE[e.code];
     if (slot !== undefined) {
+      if (e.shiftKey && down) {
+        if (!e.repeat) this.send({ k: 'levelUp', slot });
+        return;
+      }
       if (down && !e.repeat) this.aiming = slot;
       else if (!down && this.aiming === slot) this.castAimed();
       return;
@@ -325,7 +343,8 @@ export class GameClient {
     const latest = this.buffer.latest;
     const self = latest?.ents.find((e) => e.id === this.myId);
     const cd = latest?.me?.abilities[slot].cd ?? 0;
-    if (cd > 0 || (self?.mp ?? 0) < this.myInfo.abilities[slot].cost) {
+    const rank = latest?.me?.abilities[slot].rank ?? 0;
+    if (rank === 0 || cd > 0 || (self?.mp ?? 0) < atRank(this.myInfo.abilities[slot].cost, rank)) {
       this.hud.flash(slot);
       return;
     }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Marksman } from '../champions/marksman';
+import { learnAll } from '../champions/testing';
 import { TEAM, TICK_RATE } from '../constants';
 import { MAP } from '../map/mapData';
 import { dist, type Vec2 } from '../math';
@@ -11,7 +12,7 @@ import { World } from './world';
 const ROW_Y = 3500;
 
 function champAt(world: World, x: number, y = ROW_Y): Marksman {
-  const c = world.add(new Marksman(world, TEAM.blue));
+  const c = learnAll(world.add(new Marksman(world, TEAM.blue)));
   c.pos = { x, y };
   return c;
 }

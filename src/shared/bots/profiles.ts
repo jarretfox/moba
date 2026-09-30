@@ -15,6 +15,8 @@ export interface BotContext {
 
 /** How one champion's bot uses its kit. Each hook returns at most one cast per think. */
 export interface BotProfile {
+  /** Which basic abilities to max first; the ultimate is always taken as soon as it's allowed. */
+  skillOrder: Slot[];
   /** In a fight with `foe`. */
   fight(ctx: BotContext, foe: Unit): Command | null;
   /** Running from `threat`. */
@@ -25,7 +27,8 @@ export interface BotProfile {
 
 export function ready(ctx: BotContext, slot: Slot): boolean {
   const { me, world } = ctx;
-  return me.abilities[slot].readyAt <= world.time && me.mana >= me.info.abilities[slot].cost && me.canAct(world);
+  const a = me.abilities[slot];
+  return a.rank > 0 && a.readyAt <= world.time && me.mana >= me.costOf(slot) && me.canAct(world);
 }
 
 const cast = (slot: Slot, at: Vec2): Command => ({ k: 'cast', slot, x: Math.round(at.x), y: Math.round(at.y) });
@@ -38,6 +41,7 @@ function lead(u: Unit, seconds: number): Vec2 {
 }
 
 const marksman: BotProfile = {
+  skillOrder: [0, 2, 1],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -56,6 +60,7 @@ const marksman: BotProfile = {
 };
 
 const barbarian: BotProfile = {
+  skillOrder: [0, 2, 1],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);

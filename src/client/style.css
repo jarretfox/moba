@@ -538,6 +538,85 @@ kbd {
   display: none;
 }
 
+.portrait .lvl {
+  position: absolute;
+  left: -4px;
+  bottom: -4px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  border: 2px solid var(--gold);
+  background: #10151c;
+  color: #ffe29a;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+}
+
+.purse {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 64px;
+  font: 800 18px ui-monospace, 'Cascadia Mono', monospace;
+  color: var(--gold);
+}
+
+.purse .coin {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff1b8, #c8962e);
+  box-shadow: 0 0 0 1px #6b4f16;
+}
+
+/* ─── Kill feed ──────────────────────────────────────────────────────── */
+
+.feed {
+  position: absolute;
+  top: 34px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.feed-line {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--panel);
+  border-left: 3px solid var(--muted);
+  font-size: 13px;
+  animation: feed-in 0.2s ease-out;
+}
+
+.feed-line.ours {
+  border-left-color: var(--mp);
+}
+
+.feed-line.theirs {
+  border-left-color: #ff5a5f;
+}
+
+.feed-line.ours b:first-child,
+.feed-line.theirs b:last-child {
+  color: #7cc4ff;
+}
+
+.feed-line.theirs b:first-child,
+.feed-line.ours b:last-child {
+  color: #ff8a8e;
+}
+
+@keyframes feed-in {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+}
+
 .center {
   display: flex;
   flex-direction: column;
@@ -556,12 +635,11 @@ kbd {
   border-radius: 8px;
   border: 2px solid #56657a;
   background: linear-gradient(160deg, #2a3a52, #141c28);
-  overflow: hidden;
 }
 
 .slot .name {
   position: absolute;
-  inset: 6px 4px auto;
+  inset: 11px 4px auto;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.15;
@@ -571,6 +649,57 @@ kbd {
 .slot .cd {
   position: absolute;
   inset: 0;
+  border-radius: 6px;
+}
+
+.slot .pips {
+  position: absolute;
+  inset: 1px 0 auto;
+  font-size: 7px;
+  letter-spacing: 2px;
+  text-align: center;
+  color: var(--gold);
+}
+
+.slot .up {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #ffe29a;
+  border-radius: 6px;
+  background: linear-gradient(#e8c46a, #9a7428);
+  color: #1a1408;
+  font: 900 18px/18px system-ui, sans-serif;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.7);
+  animation: bob 1s ease-in-out infinite alternate;
+}
+
+.slot .up[hidden] {
+  display: none;
+}
+
+@keyframes bob {
+  to {
+    transform: translate(-50%, -3px);
+  }
+}
+
+.slot.unlearned .name,
+.slot.unlearned kbd {
+  opacity: 0.35;
+}
+
+.slot.unlearned {
+  background: #141a22;
+}
+
+.slot.levelable {
+  border-color: var(--gold);
 }
 
 .slot .cdtext {
@@ -644,6 +773,24 @@ kbd {
 
 .res.mp .fill {
   background: var(--mp);
+}
+
+.res.xp {
+  height: 7px;
+}
+
+.res.xp .fill {
+  background: #b57bff;
+}
+
+.res.xp span {
+  line-height: 7px;
+  font-size: 7px;
+  opacity: 0;
+}
+
+.res.xp:hover span {
+  opacity: 1;
 }
 
 .bar.rage .res.mp .fill {

@@ -5,38 +5,40 @@ import { enemiesInCone, enemiesInRadius } from '../sim/query';
 import type { Stats, Unit } from '../sim/unit';
 import type { World } from '../sim/world';
 import { Champion } from './champion';
-import type { ChampionInfo } from './types';
+import { perRank, type ChampionInfo, type StatGrowth } from './types';
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
-// Every number for this champion lives here. Per-rank scaling arrives with leveling (M3).
+// Every number for this champion lives here. Arrays are per rank (rank 1 first).
 
 const BASE_STATS: Stats = {
   maxHp: 700, hpRegen: 4, maxMana: 100, manaRegen: 0, // "mana" is Rage for him
   ad: 66, ap: 0, armor: 34, mr: 32,
   attackSpeed: 0.7, attackRange: 125, moveSpeed: 345,
 };
+const GROWTH: StatGrowth = { maxHp: 105, hpRegen: 0.8, maxMana: 0, manaRegen: 0, ad: 3.8, armor: 4.4, mr: 1.4, attackSpeedPct: 0.025 };
 const RADIUS = 38;
+const FREE = [0, 0, 0, 0];
 
 const RAGE = { max: 100, perAttack: 8, perAbilityHit: 5, perHitTaken: 2, decayAfter: 6, decayPerSecond: 10 };
 const CLEAVE = {
-  cooldown: 5, castTime: 0.15, range: 300, angle: 110,
-  damage: 40, adRatio: 1.0, healPerEnemy: 10, healPerChampion: 30,
+  cooldown: [5, 4.5, 4, 3.5], castTime: 0.15, range: 300, angle: 110,
+  damage: [40, 70, 100, 130], adRatio: 1.0, healPerEnemy: 10, healPerChampion: [30, 40, 50, 60],
   brutal: { range: 380, damageMult: 1.5, healMult: 2 },
 };
 const WAR_CRY = {
-  cooldown: 12, radius: 350, slow: 0.3, slowDuration: 2, weaken: 0.2, weakenDuration: 4,
+  cooldown: [12, 11, 10, 9], radius: 350, slow: [0.3, 0.35, 0.4, 0.45], slowDuration: 2, weaken: 0.2, weakenDuration: 4,
   brutal: { slow: 0.6, slowDuration: 3, weaken: 0.35 },
 };
 const LEAP = {
-  cooldown: 10, range: 600, radius: 180, airTime: 0.45,
-  damage: 50, adRatio: 0.6, slow: 0.4, slowDuration: 1.5,
+  cooldown: [10, 9, 8, 7], range: 600, radius: 180, airTime: 0.45,
+  damage: [50, 85, 120, 155], adRatio: 0.6, slow: 0.4, slowDuration: 1.5,
   brutal: { radius: 240, stun: 0.75 },
 };
 const BERSERK = {
-  cooldown: 80, duration: 6, maxDuration: 12, takedownExtend: 2,
-  tenacity: 0.4, attackSpeed: 0.3, size: 1.2, rageOnCast: 50,
+  cooldown: [80, 70, 60], duration: [6, 7, 8], maxDuration: 12, takedownExtend: 2,
+  tenacity: 0.4, attackSpeed: [0.3, 0.45, 0.6], size: 1.2, rageOnCast: 50,
   cleaveRadius: 200, cleaveShare: 0.5,
-  brutal: { duration: 9 },
+  brutal: { extraDuration: 3 },
 };
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -54,32 +56,32 @@ export const BARBARIAN_INFO: ChampionInfo = {
   abilities: [
     {
       name: 'Cleave',
-      description: `Swing through everything in front of you for ${CLEAVE.damage} (+${pct(CLEAVE.adRatio)} AD) physical damage, healing ${CLEAVE.healPerEnemy} per enemy hit and ${CLEAVE.healPerChampion} per champion. Brutal: longer reach, ${pct(CLEAVE.brutal.damageMult - 1)} more damage, double healing.`,
-      cost: 0,
+      description: `Swing through everything in front of you for ${perRank(CLEAVE.damage)} (+${pct(CLEAVE.adRatio)} AD) physical damage, healing ${CLEAVE.healPerEnemy} per enemy hit and ${perRank(CLEAVE.healPerChampion)} per champion. Brutal: longer reach, ${pct(CLEAVE.brutal.damageMult - 1)} more damage, double healing.`,
+      cost: FREE,
       cooldown: CLEAVE.cooldown,
       castTime: CLEAVE.castTime,
       targeting: { kind: 'cone', range: CLEAVE.range, angle: CLEAVE.angle },
     },
     {
       name: 'War Cry',
-      description: `Nearby enemies are slowed by ${pct(WAR_CRY.slow)} for ${WAR_CRY.slowDuration}s and deal ${pct(WAR_CRY.weaken)} less damage for ${WAR_CRY.weakenDuration}s. Brutal: ${pct(WAR_CRY.brutal.slow)} slow for ${WAR_CRY.brutal.slowDuration}s, ${pct(WAR_CRY.brutal.weaken)} less damage.`,
-      cost: 0,
+      description: `Nearby enemies are slowed by ${perRank(WAR_CRY.slow, pct)} for ${WAR_CRY.slowDuration}s and deal ${pct(WAR_CRY.weaken)} less damage for ${WAR_CRY.weakenDuration}s. Brutal: ${pct(WAR_CRY.brutal.slow)} slow for ${WAR_CRY.brutal.slowDuration}s, ${pct(WAR_CRY.brutal.weaken)} less damage.`,
+      cost: FREE,
       cooldown: WAR_CRY.cooldown,
       castTime: 0,
       targeting: { kind: 'self', radius: WAR_CRY.radius },
     },
     {
       name: 'Leap',
-      description: `Leap to a spot (even over walls), dealing ${LEAP.damage} (+${pct(LEAP.adRatio)} AD) physical damage where you land and slowing by ${pct(LEAP.slow)}. Brutal: a wider landing that stuns for ${LEAP.brutal.stun}s instead.`,
-      cost: 0,
+      description: `Leap to a spot (even over walls), dealing ${perRank(LEAP.damage)} (+${pct(LEAP.adRatio)} AD) physical damage where you land and slowing by ${pct(LEAP.slow)}. Brutal: a wider landing that stuns for ${LEAP.brutal.stun}s instead.`,
+      cost: FREE,
       cooldown: LEAP.cooldown,
       castTime: 0,
       targeting: { kind: 'point', range: LEAP.range, radius: LEAP.radius },
     },
     {
       name: 'Berserk',
-      description: `For ${BERSERK.duration}s: grow bigger, gain ${pct(BERSERK.attackSpeed)} attack speed and ${pct(BERSERK.tenacity)} shorter crowd control, and your attacks splash ${pct(BERSERK.cleaveShare)} damage around your target. Gain ${BERSERK.rageOnCast} Rage. Takedowns add ${BERSERK.takedownExtend}s. Brutal: lasts ${BERSERK.brutal.duration}s.`,
-      cost: 0,
+      description: `For ${perRank(BERSERK.duration)}s: grow bigger, gain ${perRank(BERSERK.attackSpeed, pct)} attack speed and ${pct(BERSERK.tenacity)} shorter crowd control, and your attacks splash ${pct(BERSERK.cleaveShare)} damage around your target. Gain ${BERSERK.rageOnCast} Rage. Takedowns add ${BERSERK.takedownExtend}s. Brutal: lasts ${BERSERK.brutal.extraDuration}s longer.`,
+      cost: FREE,
       cooldown: BERSERK.cooldown,
       castTime: 0,
       targeting: { kind: 'self' },
@@ -95,7 +97,7 @@ export class Barbarian extends Champion {
   private brutalCast = false;
 
   constructor(world: World, team: PlayerTeam) {
-    super(world, team, RADIUS, BASE_STATS, 'Barbarian');
+    super(world, team, RADIUS, BASE_STATS, GROWTH, 'Barbarian');
     this.mana = 0; // Rage starts empty
   }
 
@@ -116,7 +118,7 @@ export class Barbarian extends Champion {
   }
 
   protected launchAttack(world: World, target: Unit): void {
-    world.damage(this, target, this.stats.ad, 'physical');
+    world.damage(this, target, this.stats.ad, 'physical', { basic: true });
     this.gainRage(world, RAGE.perAttack);
     if (!this.berserking(world)) return;
     for (const u of enemiesInRadius(world, this.team, target.pos, BERSERK.cleaveRadius)) {
@@ -147,11 +149,11 @@ export class Barbarian extends Champion {
     const range = brutal ? c.brutal.range : c.range;
     const dir = dirTo(this.pos, aim);
     const hits = enemiesInCone(world, this.team, this.pos, dir, range, (c.angle / 2) * DEG);
-    const damage = (c.damage + c.adRatio * this.stats.ad) * (brutal ? c.brutal.damageMult : 1);
+    const damage = (this.byRank(0, c.damage) + c.adRatio * this.stats.ad) * (brutal ? c.brutal.damageMult : 1);
     let heal = 0;
     for (const u of hits) {
       world.damage(this, u, damage, 'physical');
-      heal += u.isChampionLike() ? c.healPerChampion : c.healPerEnemy;
+      heal += u.isChampionLike() ? this.byRank(0, c.healPerChampion) : c.healPerEnemy;
     }
     this.heal(world, heal * (brutal ? c.brutal.healMult : 1));
     if (hits.length) this.gainRage(world, RAGE.perAbilityHit * hits.length);
@@ -163,7 +165,7 @@ export class Barbarian extends Champion {
     const w = WAR_CRY;
     const hits = enemiesInRadius(world, this.team, this.pos, w.radius);
     for (const u of hits) {
-      u.addStatus(world, 'slow', brutal ? w.brutal.slowDuration : w.slowDuration, brutal ? w.brutal.slow : w.slow);
+      u.addStatus(world, 'slow', brutal ? w.brutal.slowDuration : w.slowDuration, brutal ? w.brutal.slow : this.byRank(1, w.slow));
       u.addStatus(world, 'weaken', w.weakenDuration, brutal ? w.brutal.weaken : w.weaken);
     }
     if (hits.length) this.gainRage(world, RAGE.perAbilityHit * hits.length);
@@ -182,7 +184,7 @@ export class Barbarian extends Champion {
     const radius = brutal ? LEAP.brutal.radius : LEAP.radius;
     const hits = enemiesInRadius(world, this.team, at, radius);
     for (const u of hits) {
-      world.damage(this, u, LEAP.damage + LEAP.adRatio * this.stats.ad, 'physical');
+      world.damage(this, u, this.byRank(2, LEAP.damage) + LEAP.adRatio * this.stats.ad, 'physical');
       if (brutal) u.addStatus(world, 'stun', LEAP.brutal.stun);
       else u.addStatus(world, 'slow', LEAP.slowDuration, LEAP.slow);
     }
@@ -193,7 +195,8 @@ export class Barbarian extends Champion {
   // ─── Ultimate: Berserk ────────────────────────────────────────────────────
 
   private goBerserk(world: World, brutal: boolean): void {
-    this.berserk = { from: world.time, until: world.time + (brutal ? BERSERK.brutal.duration : BERSERK.duration) };
+    const duration = this.byRank(3, BERSERK.duration) + (brutal ? BERSERK.brutal.extraDuration : 0);
+    this.berserk = { from: world.time, until: world.time + duration };
     this.gainRage(world, BERSERK.rageOnCast);
     world.emit({ e: 'fx', fx: 'berserk', x: this.pos.x, y: this.pos.y, r: RADIUS * BERSERK.size, team: this.team });
   }
@@ -209,7 +212,7 @@ export class Barbarian extends Champion {
 
   protected computeStats(world: World): Stats {
     const s = super.computeStats(world);
-    if (this.berserking(world)) s.attackSpeed *= 1 + BERSERK.attackSpeed;
+    if (this.berserking(world)) s.attackSpeed *= 1 + this.byRank(3, BERSERK.attackSpeed);
     return s;
   }
 

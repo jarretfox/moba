@@ -65,15 +65,16 @@ describe('the fountain', () => {
 });
 
 describe('the match clock', () => {
-  it('makes death timers longer as the game goes on', () => {
+  it('makes death timers longer as champions level up', () => {
     const early = setup();
     early.world.damage(null, early.m, 1e6, 'true');
-    const lateWorld = setup();
-    run(lateWorld.world, 20 * 60);
-    lateWorld.world.damage(null, lateWorld.m, 1e6, 'true');
+    const late = setup();
+    late.m.gainXp(late.world, 1e6); // straight to max level
+    late.world.damage(null, late.m, 1e6, 'true');
 
-    expect(early.m.respawnAt - early.world.time).toBeCloseTo(6);
-    expect(lateWorld.m.respawnAt - lateWorld.world.time).toBeCloseTo(36);
+    expect(early.m.respawnAt - early.world.time).toBeCloseTo(5);
+    expect(late.m.level).toBe(13);
+    expect(late.m.respawnAt - late.world.time).toBeCloseTo(35);
   });
 
   it('makes Chuds tougher as the game goes on', () => {

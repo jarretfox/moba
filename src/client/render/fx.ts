@@ -91,6 +91,34 @@ export class FxLayer {
     });
   }
 
+  /** Gold you just earned, floating off whatever paid it. */
+  goldNumber(x: number, y: number, amount: number): void {
+    const txt = new Text({
+      text: `+${amount}g`,
+      style: { fontFamily: 'system-ui, sans-serif', fontWeight: '800', fontSize: 18, fill: 0xffd166, stroke: { color: 0x000000, width: 4 } },
+    });
+    txt.anchor.set(0.5);
+    this.add(txt, 1.1, (t) => {
+      txt.position.set(x, y - 10 - t * 40);
+      txt.alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+    });
+  }
+
+  /** A golden ring and a "LEVEL n" banner over your champion. */
+  levelUp(x: number, y: number, r: number, level: number): void {
+    this.shockwave(x, y, r * 3, 0xffd166, 0.6);
+    const txt = new Text({
+      text: `LEVEL ${level}`,
+      style: { fontFamily: 'system-ui, sans-serif', fontWeight: '900', fontSize: 22, fill: 0xffe29a, stroke: { color: 0x000000, width: 5 }, letterSpacing: 2 },
+    });
+    txt.anchor.set(0.5);
+    this.add(txt, 1.4, (t) => {
+      txt.position.set(x, y - r - 40 - t * 30);
+      txt.scale.set(t < 0.15 ? 0.6 + (t / 0.15) * 0.4 : 1);
+      txt.alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+    });
+  }
+
   /** A wedge that flashes and fades: Cleave. (x2, y2) is the tip of the swing; spread is in degrees. */
   wedge(x: number, y: number, x2: number, y2: number, spreadDeg: number, color: number): void {
     const g = new Graphics();

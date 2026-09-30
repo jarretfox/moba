@@ -14,7 +14,9 @@ export type Command =
   | { k: 'attack'; target: number }
   | { k: 'stop' }
   | { k: 'cast'; slot: Slot; x: number; y: number }
-  | { k: 'recall' };
+  | { k: 'recall' }
+  /** Spend a skill point on an ability. */
+  | { k: 'levelUp'; slot: Slot };
 
 export type ClientMessage =
   /** Enter the lobby. */
@@ -68,6 +70,10 @@ export type GameEvent =
   | { e: 'cast'; src: number; slot: Slot; x: number; y: number }
   | { e: 'heal'; target: number; amount: number }
   | { e: 'death'; id: number }
+  | { e: 'level'; id: number; level: number }
+  | { e: 'gold'; id: number; amount: number }
+  /** For the kill feed, which everyone sees. `team` is the killer's side (0 when nobody gets the credit). */
+  | { e: 'kill'; killer: string; victim: string; team: Team }
   | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team };
 
 export interface EntitySnap {
@@ -85,6 +91,8 @@ export interface EntitySnap {
   mmp?: number;
   name?: string;
   champ?: ChampionId;
+  /** Champion level. */
+  lv?: number;
   st?: StatusKind[];
   /** Projectile look. */
   vis?: string;
@@ -111,6 +119,13 @@ export interface MeSnap {
   passiveStacks: number;
   empowered: boolean;
   respawnIn: number;
+  level: number;
+  xp: number;
+  /** Experience needed for the next level; 0 at max level. */
+  xpNext: number;
+  /** Unspent skill points. */
+  points: number;
+  gold: number;
 }
 
 export interface Snapshot {

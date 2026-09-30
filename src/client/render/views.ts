@@ -42,6 +42,8 @@ export class UnitView implements EntityView {
   private readonly statusRing = new Graphics();
   private readonly bars = new Graphics();
   private readonly label: Text;
+  /** Champion level, in a box left of the health bar. */
+  private readonly levelText: Text | null = null;
   private barKey = '';
   private statusKey = '';
   private pulse = 0;
@@ -78,6 +80,11 @@ export class UnitView implements EntityView {
     this.label.position.set(0, -r - 24);
 
     this.container.addChild(this.statusRing, this.body, this.facing, this.bars, this.label);
+    if (s.k === 'champion') {
+      this.levelText = new Text({ text: '', style: { fontFamily: 'system-ui, sans-serif', fontSize: 11, fontWeight: '800', fill: 0xffe29a } });
+      this.levelText.anchor.set(0.5);
+      this.container.addChild(this.levelText);
+    }
   }
 
   update(s: EntitySnap, dt: number, ctx: ViewContext): void {
@@ -94,7 +101,7 @@ export class UnitView implements EntityView {
     this.body.scale.set(size);
     this.facing.scale.set(size);
 
-    const barKey = `${s.hp}|${s.mhp}|${s.mp}|${s.mmp}`;
+    const barKey = `${s.hp}|${s.mhp}|${s.mp}|${s.mmp}|${s.lv}`;
     if (barKey !== this.barKey) {
       this.barKey = barKey;
       this.drawBars(s);
@@ -127,6 +134,12 @@ export class UnitView implements EntityView {
       g.rect(x + (w * v) / mhp, y, 1, v % 1000 === 0 ? h : h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
     }
     if (showMana) g.rect(x, y + h + 2, (w * (s.mp ?? 0)) / (s.mmp ?? 1), 4).fill(this.resourceColor);
+    if (this.levelText) {
+      const size = h + 4 + (showMana ? 6 : 0);
+      g.rect(x - 2 - size, y - 2, size, size).fill({ color: 0x000000, alpha: 0.85 }).stroke({ width: 1, color: 0xffe29a, alpha: 0.5 });
+      this.levelText.text = String(s.lv ?? 1);
+      this.levelText.position.set(x - 2 - size / 2, y - 2 + size / 2);
+    }
   }
 
   private drawStatus(s: EntitySnap): void {

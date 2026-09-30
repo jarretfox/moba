@@ -5,6 +5,7 @@ import { Pathfinder } from '../map/pathfind';
 import type { Vec2 } from '../math';
 import type { DamageType, EntitySnap, GameEvent } from '../protocol';
 import { resolveUnitCollisions } from './collision';
+import { rewardDeath } from './rewards';
 import { Vision } from './vision';
 import type { Entity } from './entity';
 import { Unit } from './unit';
@@ -102,7 +103,7 @@ export class World {
   }
 
   /** Apply mitigated damage. Returns the amount actually dealt. */
-  damage(source: Unit | null, target: Unit, amount: number, type: DamageType): number {
+  damage(source: Unit | null, target: Unit, amount: number, type: DamageType, _opts: { basic?: boolean } = {}): number {
     if (!target.isTargetable() || amount <= 0) return 0;
     if (source) amount *= 1 - source.strongest('weaken');
     const resist = type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0;
@@ -116,9 +117,13 @@ export class World {
     }
     target.onDamaged(this, source, dealt);
     if (target.hp <= 0) {
-      const helpers = [...target.championHits].filter(([, t]) => this.time - t <= TAKEDOWN_WINDOW).map(([id]) => id);
+      const helpers = [...target.championHits]
+        .filter(([, t]) => this.time - t <= TAKEDOWN_WINDOW)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id]) => this.getUnit(id))
+        .filter((u): u is Unit => u !== undefined);
       target.die(this, source);
-      if (target.isChampionLike()) for (const id of helpers) this.getUnit(id)?.onTakedown(this, target);
+      rewardDeath(this, target, source, helpers);
     }
     return dealt;
   }

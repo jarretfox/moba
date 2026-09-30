@@ -9,6 +9,7 @@ import { spawnStructures } from '../sim/structure';
 import { World } from '../sim/world';
 import { Barbarian } from './barbarian';
 import { Marksman } from './marksman';
+import { learnAll } from './testing';
 
 // Open jungle floor through blue's back door.
 const Y = 3500;
@@ -22,7 +23,7 @@ function run(world: World, seconds: number, onEvents?: (events: GameEvent[]) => 
 }
 
 function barbAt(world: World, x: number, y = Y): Barbarian {
-  const b = world.add(new Barbarian(world, TEAM.blue));
+  const b = learnAll(world.add(new Barbarian(world, TEAM.blue)));
   b.pos = { x, y };
   return b;
 }
@@ -30,7 +31,7 @@ function barbAt(world: World, x: number, y = Y): Barbarian {
 const dummyAt = (world: World, x: number, y = Y) => world.add(new Dummy(world, { x, y }, 'Dummy'));
 
 function redChampAt(world: World, x: number, y = Y): Marksman {
-  const c = world.add(new Marksman(world, TEAM.red as PlayerTeam));
+  const c = learnAll(world.add(new Marksman(world, TEAM.red as PlayerTeam)));
   c.pos = { x, y };
   return c;
 }

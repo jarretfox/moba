@@ -8,6 +8,11 @@ import type { World } from './world';
  * people's browsers, so nothing in them is trusted: coordinates are checked, targets validated.
  */
 export function applyCommand(world: World, unit: Champion, cmd: Command): void {
+  // Spending skill points is allowed while dead or recalling, and doesn't interrupt anything.
+  if (cmd.k === 'levelUp') {
+    if (cmd.slot === 0 || cmd.slot === 1 || cmd.slot === 2 || cmd.slot === 3) unit.rankUp(cmd.slot);
+    return;
+  }
   if (unit.dead) return;
   if (cmd.k !== 'recall') unit.cancelRecall(); // any other order breaks a recall
   switch (cmd.k) {
