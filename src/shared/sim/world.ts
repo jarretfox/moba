@@ -23,6 +23,10 @@ export interface HelpCall {
 /** How long a call for help stays fresh. */
 const HELP_CALL_WINDOW = 0.5;
 
+export interface WorldSystem {
+  update(world: World): void;
+}
+
 /** The whole game state, advanced one fixed tick at a time. Knows nothing about networking or rendering. */
 export class World {
   tick = 0;
@@ -33,11 +37,18 @@ export class World {
   private events: GameEvent[] = [];
   private timers: { at: number; fn: () => void }[] = [];
   private helpCalls: HelpCall[] = [];
+  private readonly systems: WorldSystem[] = [];
   private nextId = 1;
 
   constructor(readonly map: MapData) {
     this.grid = new NavGrid(map);
     this.pathfinder = new Pathfinder(this.grid);
+  }
+
+  /** Match-level logic that runs every tick before the entities do (e.g. the Chud wave clock). */
+  addSystem<T extends WorldSystem>(system: T): T {
+    this.systems.push(system);
+    return system;
   }
 
   newId(): number {
@@ -86,7 +97,7 @@ export class World {
     const dealt = type === 'true' ? amount : mitigate(amount, resist);
     target.hp -= dealt;
     target.lastDamagedAt = this.time;
-    this.emit({ e: 'dmg', target: target.id, amount: Math.round(dealt), type });
+    this.emit({ e: 'dmg', src: source?.id, target: target.id, amount: Math.round(dealt), type });
     if (source?.kind === 'champion' && target.kind === 'champion' && source.team !== target.team) {
       this.helpCalls.push({ attacker: source, victim: target, time: this.time });
     }
@@ -113,6 +124,7 @@ export class World {
       }
     }
 
+    for (const s of this.systems) s.update(this);
     for (const e of this.entities.values()) e.update(this);
     resolveUnitCollisions(this);
     for (const [id, e] of this.entities) if (e.removed) this.entities.delete(id);

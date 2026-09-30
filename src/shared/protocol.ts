@@ -20,13 +20,14 @@ export type HostMessage =
 
 export type DamageType = 'physical' | 'magic' | 'true';
 export type StatusKind = 'root' | 'stun' | 'slow';
-export type EntityKind = 'champion' | 'dummy' | 'structure' | 'projectile' | 'trap';
+export type ChudType = 'melee' | 'ranged' | 'siege';
+export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'projectile' | 'trap';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind = 'aimLine' | 'trapSnap' | 'roll';
 
 export type GameEvent =
-  | { e: 'dmg'; target: number; amount: number; type: DamageType }
+  | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
   | { e: 'attack'; src: number; target: number }
   | { e: 'cast'; src: number; slot: Slot; x: number; y: number }
   | { e: 'death'; id: number }
@@ -53,6 +54,7 @@ export interface EntitySnap {
   dead?: boolean;
   armed?: boolean;
   role?: StructureRole;
+  chud?: ChudType;
   /** Structure can't be damaged yet (the ones in front of it are still standing). */
   inv?: boolean;
   /** Seconds until a destroyed Oakner regrows. */
@@ -81,4 +83,6 @@ export interface Snapshot {
   ents: EntitySnap[];
   ev: GameEvent[];
   me?: MeSnap;
+  /** Seconds until the next Chud wave leaves Da Base. */
+  nextWave?: number;
 }

@@ -2,7 +2,8 @@ import type { Team } from '../constants';
 import type { Lane, StructureRole, StructureSpot } from '../map/mapData';
 import type { NavGrid } from '../map/navGrid';
 import { dist } from '../math';
-import type { EntitySnap } from '../protocol';
+import type { ChudType, DamageType, EntitySnap } from '../protocol';
+import { Chud } from './chud';
 import { HomingProjectile } from './projectile';
 import { Unit, type Stats } from './unit';
 import type { World } from './world';
@@ -13,6 +14,12 @@ const NO_ATTACK = { ad: 0, attackSpeed: 0, attackRange: 0 };
 const SHOOTIE_ATTACK = { ad: 150, attackSpeed: 0.8, attackRange: 650 };
 /** Each consecutive shot at the same champion hits this much harder, so tanking a Shootie gets worse fast. */
 const SHOOTIE_WARMUP = { perShot: 0.4, maxStacks: 3 };
+/**
+ * Against Chuds a Shootie deals a fixed share of their max health (true damage), so a melee Chud takes
+ * three shots and a ranged one two, whatever the game time. Last-hitting under a Shootie means timing
+ * your hit around its shots.
+ */
+const SHOOTIE_VS_CHUD: Record<ChudType, number> = { melee: 0.45, ranged: 0.7, siege: 0.14 };
 const SHOOTIE_SHOT_SPEED = 1400;
 
 function structureStats(maxHp: number, armor: number, attack = NO_ATTACK): Stats {
@@ -111,6 +118,11 @@ export class Structure extends Unit {
 
   protected launchAttack(world: World, target: Unit): void {
     let damage = this.stats.ad;
+    let type: DamageType = 'physical';
+    if (target instanceof Chud) {
+      damage = target.stats.maxHp * SHOOTIE_VS_CHUD[target.chudType];
+      type = 'true';
+    }
     if (target.kind === 'champion') {
       if (this.warmup.targetId !== target.id) this.warmup = { targetId: target.id, stacks: 0 };
       damage *= 1 + this.warmup.stacks * SHOOTIE_WARMUP.perShot;
@@ -120,7 +132,7 @@ export class Structure extends Unit {
     }
     world.add(
       new HomingProjectile(world, this, target, SHOOTIE_SHOT_SPEED, 'shootie', (w, t) => {
-        w.damage(this, t, damage, 'physical');
+        w.damage(this, t, damage, type);
       }),
     );
   }

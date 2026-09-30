@@ -27,6 +27,8 @@ const HELP = [
 /** DOM overlay for everything screen-space. Only touches the DOM when a value actually changes. */
 export class Hud {
   private readonly debug: HTMLElement;
+  private readonly clockTime: HTMLElement;
+  private readonly clockWave: HTMLElement;
   private readonly bar: HTMLElement;
   private readonly portrait: HTMLElement;
   private readonly stacks: HTMLElement;
@@ -41,6 +43,7 @@ export class Hud {
   constructor(root: HTMLElement) {
     root.innerHTML = `
       <div class="debug"></div>
+      <div class="clock"><span class="time">0:00</span><span class="wave"></span></div>
       <div class="help"><div class="help-title">Practice Range</div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
       <div class="bar" hidden>
@@ -56,6 +59,8 @@ export class Hud {
       <div class="tooltip" hidden></div>`;
     const q = (sel: string, parent: ParentNode = root) => parent.querySelector(sel) as HTMLElement;
     this.debug = q('.debug');
+    this.clockTime = q('.clock .time');
+    this.clockWave = q('.clock .wave');
     this.bar = q('.bar');
     this.portrait = q('.portrait');
     this.stacks = q('.stacks');
@@ -105,6 +110,12 @@ export class Hud {
     this.set(this.respawn, 'text', me.respawnIn > 0 ? `Respawning in ${Math.ceil(me.respawnIn)}` : '');
   }
 
+  /** Match clock, plus a countdown while the next Chud wave is close. */
+  setClock(gameTime: number, nextWave: number | undefined): void {
+    this.set(this.clockTime, 'text', mmss(gameTime));
+    this.set(this.clockWave, 'text', nextWave !== undefined && nextWave <= 10 ? `Chuds in ${nextWave}` : '');
+  }
+
   /** Brief red flash when you press an ability that isn't ready. */
   flash(slot: number): void {
     const el = this.slots[slot]?.root;
@@ -150,5 +161,7 @@ export class Hud {
     else el.style[prop] = value;
   }
 }
+
+const mmss = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 
 const pct = (v: number, max: number) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;

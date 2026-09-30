@@ -5,6 +5,7 @@ import { MAP } from '../shared/map/mapData';
 import { clamp, type Vec2 } from '../shared/math';
 import type { ClientMessage, Command, HostMessage } from '../shared/protocol';
 import { spawnStructures } from '../shared/sim/structure';
+import { WaveSpawner } from '../shared/sim/waves';
 import { World } from '../shared/sim/world';
 import { setupPracticeRange } from './practice';
 
@@ -24,6 +25,8 @@ const MAX_QUEUED = 32;
 export class HostCore {
   readonly world = new World(MAP);
   private readonly players = new Map<string, Player>();
+
+  private readonly waves = this.world.addSystem(new WaveSpawner());
 
   constructor(private readonly send: (connId: string, msg: HostMessage) => void) {
     spawnStructures(this.world);
@@ -70,6 +73,7 @@ export class HostCore {
           ents: this.world.visibleTo(p.team),
           ev,
           me: me instanceof Champion ? me.meSnapshot(this.world) : undefined,
+          nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
         },
       });
     }

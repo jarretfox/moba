@@ -30,7 +30,14 @@ export interface MapData {
   /** Solid terrain carved back out of the ground. */
   blockers: Shape[];
   structures: StructureSpot[];
+  /** Chud routes, written from blue's side (blue Da Base → red Da Base). Use lanePath for either team. */
+  lanes: Record<Lane, Vec2[]>;
   spawns: Record<PlayerTeam, Vec2>;
+}
+
+/** The route a team's Chuds march down a lane, starting beside their own Da Base. */
+export function lanePath(map: MapData, team: PlayerTeam, lane: Lane): Vec2[] {
+  return team === 1 ? map.lanes[lane] : [...map.lanes[lane]].reverse();
 }
 
 const W = 12000;
@@ -84,6 +91,15 @@ const baseStructures: StructureSpot[] = [
   { role: 'baseShootie', team: 1, lane: null, pos: { x: 1650, y: 3500 } },
 ];
 
+// Blue's top-lane Chud route to the river: out beside Da Base, up the climb, along the top edge.
+const blueTopToRiver: Vec2[] = [
+  { x: 1350, y: 3000 },
+  { x: 2000, y: 1450 },
+  { x: 2150, y: 1150 },
+  { x: 6000, y: 1100 },
+];
+const topLane: Vec2[] = [...blueTopToRiver, ...blueTopToRiver.slice(0, -1).reverse().map((p) => ({ x: W - p.x, y: p.y }))];
+
 function mirror4<T>(items: T[], map: (item: T, mx: boolean, my: boolean) => T): T[] {
   return [false, true].flatMap((mx) => [false, true].flatMap((my) => items.map((it) => map(it, mx, my))));
 }
@@ -107,6 +123,10 @@ export const MAP: MapData = {
     ...mirror4(quadrantStructures, mirrorStructure),
     ...baseStructures.flatMap((s) => [s, mirrorStructure(s, true, false)]),
   ],
+  lanes: {
+    top: topLane,
+    bot: topLane.map((p) => ({ x: p.x, y: H - p.y })),
+  },
   spawns: {
     1: { x: 500, y: 3500 },
     2: { x: W - 500, y: 3500 },

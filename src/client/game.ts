@@ -102,6 +102,7 @@ export class GameClient {
 
     const latest = this.buffer.latest;
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
+    this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
   }
 
   private syncViews(dt: number): void {
@@ -154,6 +155,8 @@ export class GameClient {
   private playEvent(ev: GameEvent): void {
     switch (ev.e) {
       case 'dmg': {
+        // Like League, only damage you deal or take gets a number; a lane full of Chuds would be unreadable otherwise.
+        if (ev.src !== this.myId && ev.target !== this.myId) return;
         const t = this.ents.get(ev.target);
         if (t) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);
         return;
@@ -285,7 +288,7 @@ export class GameClient {
     let best: EntitySnap | null = null;
     let bestD = Infinity;
     for (const e of this.ents.values()) {
-      const attackable = e.k === 'champion' || e.k === 'dummy' || (e.k === 'structure' && !e.inv);
+      const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || (e.k === 'structure' && !e.inv);
       if (!attackable || e.dead || e.tm === this.myTeam) continue;
       const d = dist(p, e);
       if (d <= e.r + CLICK_SLOP && d < bestD) {

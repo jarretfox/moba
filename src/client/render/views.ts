@@ -1,5 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import type { EntitySnap } from '../../shared/protocol';
+import type { ChudType, EntitySnap } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 
 export type Relation = 'self' | 'ally' | 'enemy';
@@ -48,11 +48,15 @@ export class UnitView implements EntityView {
     const color = s.k === 'dummy' ? PALETTE.dummy : relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
 
     this.body.circle(4, 6, r).fill({ color: 0x000000, alpha: 0.35 });
-    this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: relation === 'self' ? 0xffffff : PALETTE.outline });
-    if (s.k === 'dummy') {
+    if (s.k === 'chud') {
+      // Chuds turn to face what they're fighting, so the whole figure lives on the rotating layer.
+      drawChud(this.facing, s.chud ?? 'melee', r, color);
+    } else if (s.k === 'dummy') {
+      this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: PALETTE.outline });
       this.body.circle(0, 0, r * 0.62).stroke({ width: 5, color: PALETTE.enemy });
       this.body.circle(0, 0, r * 0.24).fill(PALETTE.enemy);
     } else {
+      this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: relation === 'self' ? 0xffffff : PALETTE.outline });
       this.body.circle(0, 0, r * 0.55).fill({ color: 0xffffff, alpha: 0.12 });
       this.facing.poly([r - 6, -10, r + 12, 0, r - 6, 10]).fill(0xffffff).stroke({ width: 2, color: PALETTE.outline });
     }
@@ -93,10 +97,10 @@ export class UnitView implements EntityView {
 
   private drawBars(s: EntitySnap): void {
     const g = this.bars.clear();
-    const w = s.k === 'champion' ? 84 : 70;
-    const h = 9;
+    const w = s.k === 'champion' ? 84 : s.k === 'chud' ? 44 : 70;
+    const h = s.k === 'chud' ? 5 : 9;
     const x = -w / 2;
-    const y = -s.r - 20;
+    const y = -s.r - (s.k === 'chud' ? 12 : 20);
     const showMana = this.relation !== 'enemy' && (s.mmp ?? 0) > 0;
     const hpColor = this.relation === 'self' ? PALETTE.selfHp : this.relation === 'ally' ? PALETTE.ally : PALETTE.enemy;
     const mhp = s.mhp ?? 1;
@@ -104,7 +108,7 @@ export class UnitView implements EntityView {
     g.rect(x - 2, y - 2, w + 4, h + 4 + (showMana ? 6 : 0)).fill({ color: 0x000000, alpha: 0.75 });
     g.rect(x, y, (w * Math.max(0, s.hp ?? 0)) / mhp, h).fill(hpColor);
     // A notch every 100 health so big and small health pools read differently at a glance.
-    for (let v = 100; v < mhp; v += 100) {
+    for (let v = 100; s.k !== 'chud' && v < mhp; v += 100) {
       g.rect(x + (w * v) / mhp, y, 1, v % 1000 === 0 ? h : h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
     }
     if (showMana) g.rect(x, y + h + 2, (w * (s.mp ?? 0)) / (s.mmp ?? 1), 4).fill(PALETTE.mana);
@@ -133,6 +137,13 @@ export class ProjectileView implements EntityView {
         g.circle(0, 0, 6).fill(0xffffff);
         break;
       }
+      case 'pebble':
+        g.circle(0, 0, 6).fill(0xa3a3a3).stroke({ width: 1.5, color: 0x333333 });
+        break;
+      case 'boulder':
+        g.circle(0, 0, 14).fill(0x7d7d7d).stroke({ width: 2, color: 0x333333 });
+        g.circle(-4, -4, 4).fill({ color: 0xffffff, alpha: 0.2 });
+        break;
       case 'arrowHeavy':
         g.rect(-30, -6, 44, 12).fill({ color: 0xffc94d, alpha: 0.35 });
         g.rect(-24, -2.5, 34, 5).fill(0xffe7a3);
@@ -258,6 +269,27 @@ export class StructureView implements EntityView {
     g.rect(x, y, (w * Math.max(0, s.hp ?? 0)) / mhp, h).fill(color);
     for (let v = 500; v < mhp; v += 500) g.rect(x + (w * v) / mhp, y, 1, h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
   }
+}
+
+const CHUD_SKIN = 0x87916c;
+const CHUD_EYES = 0xffe066;
+
+/** Hunched tunnel-dwellers in team-colored hoods, drawn facing +x. */
+function drawChud(g: Graphics, type: ChudType, r: number, team: number): void {
+  const outline = { width: 2, color: PALETTE.outline };
+  if (type === 'siege') {
+    // A rickety cart with a boulder loaded up front and the team's banner at the back.
+    g.roundRect(-r, -r * 0.75, r * 1.8, r * 1.5, 6).fill(PALETTE.bark).stroke(outline);
+    g.rect(-r * 0.95, -r * 0.8, r * 0.45, r * 1.6).fill(team);
+    g.circle(r * 0.35, 0, r * 0.45).fill(0x8d8d8d).stroke(outline);
+    return;
+  }
+  g.circle(0, 0, r).fill(CHUD_SKIN).stroke(outline);
+  g.moveTo(0, 0).arc(0, 0, r, Math.PI / 2, Math.PI * 1.5).closePath().fill(team); // hood over the back
+  g.circle(r * 0.45, -r * 0.28, r * 0.14).fill(CHUD_EYES);
+  g.circle(r * 0.45, r * 0.28, r * 0.14).fill(CHUD_EYES);
+  if (type === 'melee') g.roundRect(r * 0.25, r * 0.55, r * 1.0, r * 0.3, 3).fill(PALETTE.bark).stroke(outline); // club
+  else g.circle(r * 1.05, 0, r * 0.3).fill(0x6e6e6e).stroke(outline); // stone ready in the sling
 }
 
 function clock(seconds: number): string {

@@ -50,6 +50,34 @@ kbd {
   color: var(--muted);
 }
 
+.clock {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 14px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 8px;
+}
+
+.clock .time {
+  font: 700 18px ui-monospace, 'Cascadia Mono', monospace;
+}
+
+.clock .wave {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.clock .wave:empty {
+  display: none;
+}
+
 .help {
   position: absolute;
   top: 10px;
