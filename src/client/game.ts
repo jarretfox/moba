@@ -15,6 +15,7 @@ import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
 import { buildMap, buildNavOverlay } from './render/mapView';
 import { PALETTE, ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
+import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
 
 /** While right mouse is held, re-send the move target this often. */
@@ -40,6 +41,7 @@ export class GameClient {
 
   private readonly camera = new Camera(MAP);
   private readonly buffer: SnapshotBuffer;
+  private readonly decoder = new SnapshotDecoder();
   private readonly views = new Map<number, EntityView>();
   private readonly hud: Hud;
 
@@ -80,7 +82,7 @@ export class GameClient {
         this.groundLayer.addChildAt(buildMap(MAP, msg.team), 0);
       }
     } else if (msg.t === 'snap') {
-      this.buffer.push(msg.snap, performance.now() / 1000);
+      this.buffer.push(this.decoder.decode(msg.snap), performance.now() / 1000);
     }
   }
 

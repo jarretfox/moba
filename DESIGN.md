@@ -200,10 +200,14 @@ src/
 - The host enforces fog of war: non-host players only receive what their team can see.
   - The host has zero ping and could in principle read the full game state. That's accepted among friends.
 - Everything a client sends is validated: message shapes, names (trimmed, 16 characters max), team numbers, and champion IDs (own keys only, so `__proto__` isn't a champion).
-- **Bandwidth is the M2 problem.** The host uploads snapshots to five players, so snapshots need to shrink: rounded numbers, only what changed, and a lower rate for distant units. Today the full state is sent every tick, which is fine for a host in the same tab.
+- **Bandwidth** (`src/shared/snapshotCodec.ts`):
+  - Each player gets deltas: new entities in full, only the changed fields of known ones (`null` when a field goes away), and the IDs that left.
+  - Friends get 15 updates a second, with events batched between them; the host's own client gets 30.
+  - Measured over a bots match: a friend downloads about 8 KB/s, versus 143 KB/s for full state 30 times a second. Five friends cost the host roughly 42 KB/s of upload.
+  - The channel is reliable and ordered, so no acknowledgements are needed.
 
 **The client:**
-- It sends commands (`move`, `attack`, `stop`, `cast`) and draws snapshots about 67ms in the past, smoothed between updates.
+- It sends commands (`move`, `attack`, `stop`, `cast`, `recall`) and draws the game slightly in the past (67ms for the host, 150ms for friends), smoothed between updates.
 - Game events such as damage numbers fire when playback reaches them, so they line up with the visuals.
 
 **Hand-coded abilities:**
@@ -216,7 +220,7 @@ src/
 |---|---|---|
 | M0 | Project, host-in-worker, map blockout, nav grid + A*, click-to-move, basic attacks, full Marksman kit, training dummies, HUD | ✅ done |
 | M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | ✅ done (plus Recall, fountain, champion select, growing death timers and Chuds) |
-| M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | In progress: ✅ online lobbies, ✅ fog of war + brush |
+| M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | In progress: ✅ online lobbies, ✅ fog of war + brush, ✅ delta snapshots |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | |
 | M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |
 | M5 | Balance tools, playtests | |

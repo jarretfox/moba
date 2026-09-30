@@ -4,6 +4,7 @@
 import type { ChampionId } from './champions/types';
 import type { PlayerTeam, Slot, Team } from './constants';
 import type { StructureRole } from './map/mapData';
+import type { SnapshotDelta } from './snapshotCodec';
 
 /** Connection id of the hosting player's own client. Remote players get `peer:`-prefixed ids, so nobody else can claim it. */
 export const LOCAL_CONN = 'local';
@@ -47,7 +48,7 @@ export type HostMessage =
   | { t: 'lobby'; lobby: LobbyState; you: string }
   /** The match started; this is your champion. */
   | { t: 'welcome'; unitId: number; team: Team }
-  | { t: 'snap'; snap: Snapshot }
+  | { t: 'snap'; snap: SnapshotDelta }
   | { t: 'refused'; reason: string }
   /** Keep-alive, handled by the network layer. */
   | { t: 'ping' };

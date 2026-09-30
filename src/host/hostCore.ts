@@ -5,7 +5,8 @@ import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
 import type { ChampionId } from '../shared/champions/types';
 import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
-import { LOCAL_CONN, type ClientMessage, type Command, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode } from '../shared/protocol';
+import { LOCAL_CONN, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode } from '../shared/protocol';
+import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
 import { spawnStructures } from '../shared/sim/structure';
@@ -17,7 +18,15 @@ interface Player {
   unitId: number;
   team: PlayerTeam;
   queue: Command[];
+  encoder: SnapshotEncoder;
+  /** Friends over the network get updates at a lower rate than the host's own client. */
+  remote: boolean;
+  /** Events since this player's last update. */
+  pendingEv: GameEvent[];
 }
+
+/** Remote players get an update every this many ticks (15 a second); events in between are batched, never dropped. */
+const REMOTE_SEND_EVERY = 2;
 
 /** Cap on commands buffered per player per tick, so one client can't flood the host. */
 const MAX_QUEUED = 32;
@@ -104,7 +113,7 @@ export class HostCore {
     for (const p of everyone) {
       const champ = this.world.add(createChampion(p.champion!, this.world, p.team));
       champ.name = p.name;
-      this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [] });
+      this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
       this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team });
     }
     if (mode === 'practice') {
@@ -146,20 +155,24 @@ export class HostCore {
     this.world.step();
 
     const ev = this.world.drainEvents();
+    const sendRemote = this.world.tick % REMOTE_SEND_EVERY === 0 || this.world.winner !== null;
+    const views = new Map<PlayerTeam, EntitySnap[]>();
     for (const [connId, p] of this.players) {
+      for (const e of ev) if (this.world.vision.canSeeEvent(p.team, e)) p.pendingEv.push(e);
+      if (p.remote && !sendRemote) continue;
+      if (!views.has(p.team)) views.set(p.team, this.world.visibleTo(p.team));
       const me = this.world.getUnit(p.unitId);
-      this.send(connId, {
-        t: 'snap',
-        snap: {
-          tick: this.world.tick,
-          time: this.world.time,
-          ents: this.world.visibleTo(p.team),
-          ev: ev.filter((e) => this.world.vision.canSeeEvent(p.team, e)),
-          me: me instanceof Champion ? me.meSnapshot(this.world) : undefined,
-          nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
-          winner: this.world.winner ?? undefined,
-        },
+      const snap = p.encoder.encode({
+        tick: this.world.tick,
+        time: this.world.time,
+        ents: views.get(p.team)!,
+        ev: p.pendingEv,
+        me: me instanceof Champion ? me.meSnapshot(this.world) : undefined,
+        nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
+        winner: this.world.winner ?? undefined,
       });
+      p.pendingEv = [];
+      this.send(connId, { t: 'snap', snap });
     }
   }
 }

@@ -100,7 +100,8 @@ export class PeerHost {
 
 /** A friend's link to someone else's lobby. */
 export class PeerLink implements Connection {
-  readonly interpDelay = 0.12;
+  // Updates arrive 15 times a second over the network, so render a couple of intervals behind.
+  readonly interpDelay = 0.15;
   private handler: ((msg: HostMessage) => void) | null = null;
   private closeHandler: ((reason: string) => void) | null = null;
   private closed = false;
