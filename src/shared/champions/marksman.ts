@@ -45,6 +45,7 @@ export const MARKSMAN_INFO: ChampionInfo = {
   id: 'marksman',
   name: 'Marksman',
   title: 'The Steady Hand',
+  resource: 'mana',
   passive: {
     name: 'Steady Rhythm',
     description: `Each basic attack on the same target grants ${pct(STEADY_RHYTHM.attackSpeedPerStack)} attack speed (max ${STEADY_RHYTHM.maxStacks} stacks, ${STEADY_RHYTHM.duration}s). Switching targets starts the rhythm over.`,
@@ -85,8 +86,6 @@ export const MARKSMAN_INFO: ChampionInfo = {
   ],
 };
 
-/** Champions — plus training dummies, which stand in for them. */
-const isChampionLike = (u: Unit) => u.kind === 'champion' || u.kind === 'dummy';
 
 export class Marksman extends Champion {
   readonly info = MARKSMAN_INFO;
@@ -178,7 +177,7 @@ export class Marksman extends Champion {
     world.add(
       new LineProjectile(world, this, {
         from: this.pos, dir: dirTo(this.pos, aim), speed: l.speed, range: l.range, width: l.width,
-        vis: 'longshot', pierce: false, canHit: isChampionLike,
+        vis: 'longshot', pierce: false, canHit: (u) => u.isChampionLike(),
         onHit: (w, target) => {
           const missing = 1 - target.hp / target.stats.maxHp;
           w.damage(this, target, damage * (1 + l.missingHpBonus * missing), 'physical');
@@ -221,7 +220,7 @@ class SnareTrap implements Entity {
     if (world.time < this.armedAt) return;
     const victim = world
       .units()
-      .find((u) => u.team !== this.team && u.isTargetable() && isChampionLike(u) && dist(u.pos, this.pos) <= this.radius + u.radius);
+      .find((u) => u.team !== this.team && u.isTargetable() && u.isChampionLike() && dist(u.pos, this.pos) <= this.radius + u.radius);
     if (!victim) return;
     victim.addStatus(world, 'root', SNARE_TRAP.rootDuration);
     world.emit({ e: 'fx', fx: 'trapSnap', x: this.pos.x, y: this.pos.y, team: this.team });

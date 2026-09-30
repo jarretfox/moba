@@ -1,6 +1,7 @@
 import { Application } from 'pixi.js';
 import { LocalHostConnection } from './connection';
 import { GameClient } from './game';
+import { pickChampion } from './select';
 import './style.css';
 
 async function boot(): Promise<void> {
@@ -14,11 +15,14 @@ async function boot(): Promise<void> {
   });
   document.getElementById('stage')!.appendChild(app.canvas);
 
-  // M0: this tab is the host. M2 adds "host a lobby" / "join with a code" in front of this.
+  // This tab is the host. M2 adds "host a lobby" / "join with a code" in front of this.
   const conn = new LocalHostConnection();
-  const game = new GameClient(app, conn, document.getElementById('hud')!);
-  conn.send({ t: 'join', name: 'You', champion: 'marksman' });
+  const hudRoot = document.getElementById('hud')!;
+  const game = new GameClient(app, conn, hudRoot);
   if (import.meta.env.DEV) Object.assign(window, { game }); // poke at it from devtools
+
+  const champion = await pickChampion(hudRoot);
+  conn.send({ t: 'join', name: 'You', champion });
 }
 
 void boot();

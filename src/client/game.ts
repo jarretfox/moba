@@ -12,7 +12,7 @@ import { Hud } from './hud';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
 import { buildMap, buildNavOverlay } from './render/mapView';
-import { ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
+import { PALETTE, ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotBuffer } from './snapshotBuffer';
 
 /** How far behind the host we render. Two ticks is plenty for a host in this tab; remote hosts (M2) will want ~100ms. */
@@ -170,13 +170,39 @@ export class GameClient {
         if (t) this.fx.death(t.x, t.y, t.r);
         return;
       }
+      case 'heal': {
+        if (ev.target !== this.myId) return;
+        const t = this.ents.get(ev.target);
+        if (t) this.fx.healNumber(t.x, t.y - t.r, ev.amount);
+        return;
+      }
       case 'fx':
-        if (ev.fx === 'aimLine') this.fx.aimLine(ev.x, ev.y, ev.x2 ?? ev.x, ev.y2 ?? ev.y, ev.dur ?? 1, ev.team === this.myTeam);
-        else if (ev.fx === 'trapSnap') this.fx.burst(ev.x, ev.y, 0xffd166);
-        else if (ev.fx === 'roll') this.fx.streak(ev.x, ev.y, ev.x2 ?? ev.x, ev.y2 ?? ev.y);
+        this.playFx(ev);
         return;
       case 'cast':
         return;
+    }
+  }
+
+  private playFx(ev: Extract<GameEvent, { e: 'fx' }>): void {
+    const x2 = ev.x2 ?? ev.x;
+    const y2 = ev.y2 ?? ev.y;
+    const teamColor = ev.team === this.myTeam ? PALETTE.ally : PALETTE.enemy;
+    switch (ev.fx) {
+      case 'aimLine':
+        return this.fx.aimLine(ev.x, ev.y, x2, y2, ev.dur ?? 1, ev.team === this.myTeam);
+      case 'trapSnap':
+        return this.fx.burst(ev.x, ev.y, 0xffd166);
+      case 'roll':
+        return this.fx.streak(ev.x, ev.y, x2, y2);
+      case 'cleave':
+        return this.fx.wedge(ev.x, ev.y, x2, y2, ev.r ?? 90, 0xffb36b);
+      case 'warCry':
+        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 300, teamColor, 0.5);
+      case 'slam':
+        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 180, 0xc9a86a, 0.35);
+      case 'berserk':
+        return this.fx.shockwave(ev.x, ev.y, (ev.r ?? 45) * 3, 0xff3b30, 0.45);
     }
   }
 

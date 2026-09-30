@@ -134,17 +134,52 @@ export abstract class Unit implements Entity {
     return !this.has('stun') && world.time >= this.lockedUntil && !this.dash;
   }
 
+  /** Champions and training dummies (which stand in for champions in practice). */
+  isChampionLike(): boolean {
+    return this.kind === 'champion' || this.kind === 'dummy';
+  }
+
+  /** Strongest active amount of a status (slows and weakens don't stack; the biggest one wins). */
+  strongest(kind: StatusKind): number {
+    let best = 0;
+    for (const s of this.statuses) if (s.kind === kind) best = Math.max(best, s.amount);
+    return best;
+  }
+
   get moveSpeed(): number {
-    let slow = 0;
-    for (const s of this.statuses) if (s.kind === 'slow') slow = Math.max(slow, s.amount);
-    return this.stats.moveSpeed * (1 - slow);
+    return this.stats.moveSpeed * (1 - this.strongest('slow'));
+  }
+
+  /** Share (0..1) knocked off the length of incoming stuns, roots and slows. */
+  protected tenacity(_world: World): number {
+    return 0;
   }
 
   addStatus(world: World, kind: StatusKind, duration: number, amount = 0): void {
     if (this.dead) return;
+    if (kind === 'stun' || kind === 'root' || kind === 'slow') duration *= 1 - this.tenacity(world);
     this.statuses.push({ kind, until: world.time + duration, amount });
     if (kind === 'stun') this.cancelWindup();
   }
+
+  heal(world: World, amount: number): void {
+    if (this.dead || amount <= 0) return;
+    const healed = Math.min(amount, this.stats.maxHp - this.hp);
+    if (healed <= 0) return;
+    this.hp += healed;
+    world.emit({ e: 'heal', target: this.id, amount: Math.round(healed) });
+  }
+
+  // ─── Combat hooks ─────────────────────────────────────────────────────────
+
+  /** Champions who hurt this unit recently, by id → last hit time. World.damage uses it to hand out takedowns. */
+  readonly championHits = new Map<number, number>();
+
+  /** Called after this unit takes damage (and survives or not). */
+  onDamaged(_world: World, _source: Unit | null, _amount: number): void {}
+
+  /** Called on every champion who got a kill or assist on a champion (or training dummy). */
+  onTakedown(_world: World, _victim: Unit): void {}
 
   // ─── Orders (from player commands or AI) ───────────────────────────────────
 
@@ -302,6 +337,7 @@ export abstract class Unit implements Entity {
     this.windup = null;
     this.dash = null;
     this.statuses = [];
+    this.championHits.clear();
     this.respawnAt = world.time + this.respawnDelay();
     world.emit({ e: 'death', id: this.id });
   }
@@ -328,7 +364,7 @@ export abstract class Unit implements Entity {
       x: Math.round(this.pos.x),
       y: Math.round(this.pos.y),
       f: Math.round(this.facing * 100) / 100,
-      r: this.radius,
+      r: Math.round(this.radius),
       hp: Math.ceil(this.hp),
       mhp: Math.round(this.stats.maxHp),
       name: this.name,

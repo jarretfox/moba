@@ -19,19 +19,21 @@ export type HostMessage =
   | { t: 'snap'; snap: Snapshot };
 
 export type DamageType = 'physical' | 'magic' | 'true';
-export type StatusKind = 'root' | 'stun' | 'slow';
+/** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk. */
+export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk';
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
 export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'projectile' | 'trap';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
-export type FxKind = 'aimLine' | 'trapSnap' | 'roll';
+export type FxKind = 'aimLine' | 'trapSnap' | 'roll' | 'cleave' | 'warCry' | 'slam' | 'berserk';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
   | { e: 'attack'; src: number; target: number }
   | { e: 'cast'; src: number; slot: Slot; x: number; y: number }
+  | { e: 'heal'; target: number; amount: number }
   | { e: 'death'; id: number }
-  | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; dur?: number; team?: Team };
+  | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team };
 
 export interface EntitySnap {
   id: number;

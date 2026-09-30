@@ -85,9 +85,10 @@ export class Hud {
     this.info = info;
     this.bar.hidden = false;
     (this.portrait.querySelector('.initial') as HTMLElement).textContent = info.name.slice(0, 2).toUpperCase();
+    this.bar.classList.toggle('rage', info.resource === 'rage');
     info.abilities.forEach((a, i) => {
       (this.slots[i].root.querySelector('.name') as HTMLElement).textContent = a.name;
-      this.slots[i].cost.textContent = String(a.cost);
+      this.slots[i].cost.textContent = a.cost ? String(a.cost) : '';
     });
   }
 
@@ -156,7 +157,8 @@ export class Hud {
     } else {
       const a = this.info.abilities[slot];
       line('tt-name', `${a.name} [${SLOT_KEYS[slot]}]`);
-      line('tt-meta', `${a.cost} mana · ${a.cooldown}s cooldown${a.castTime ? ` · ${a.castTime}s cast` : ''}`);
+      const cost = a.cost ? `${a.cost} ${this.info.resource}` : 'No cost';
+      line('tt-meta', `${cost} · ${a.cooldown}s cooldown${a.castTime ? ` · ${a.castTime}s cast` : ''}`);
       line('tt-desc', a.description);
     }
     t.hidden = false;

@@ -110,12 +110,14 @@ The numbers live at the top of `src/shared/champions/marksman.ts`.
 - **E, Roll:** a short dash. The next basic attack within 3s is ready instantly and deals bonus damage.
 - **R, Longshot:** a 1s telegraphed aim, then a map-wide shot at the first champion hit. It deals up to 50% more damage the more health the target is missing.
 
-### Barbarian (M1)
-- **Passive, Blood Rage:** at 100 Rage, his next ability gets a stronger "Brutal" version.
-- **Q, Cleave:** a cone in front of him that heals him for each champion hit.
-- **W, War Cry:** slows nearby enemies and makes them deal 20% less damage.
-- **E, Leap:** jumps to a spot and slows enemies where he lands.
-- **R, Berserk:** for 6s he grows bigger, gains tenacity, and his basic attacks hit everyone in front of him. Kills and assists extend it.
+### Barbarian ✅ implemented
+
+The numbers live at the top of `src/shared/champions/barbarian.ts`. Resource: Rage, which starts empty.
+- **Passive, Blood Rage:** hitting (+8 per basic attack, +5 per enemy an ability hits) and getting hit (+2) builds Rage. It burns off after 6s out of combat. At 100 Rage his next ability is **Brutal**: stronger, and it spends all his Rage. Brutal is decided the moment you press the key.
+- **Q, Cleave:** a 110° swing in front of him. Heals 10 per enemy hit and 30 per champion. Brutal: longer reach, +50% damage, double healing.
+- **W, War Cry:** nearby enemies are slowed 30% for 2s and deal 20% less damage for 4s. Brutal: a 60% slow and 35% less damage.
+- **E, Leap:** jumps to a spot, even over walls, and slows enemies where he lands. Brutal: a wider landing that stuns instead.
+- **R, Berserk:** for 6s he grows bigger, gains +30% attack speed and 40% tenacity, and his basic attacks splash half damage around the target. Gives 50 Rage. Takedowns (kills and assists) add 2s, up to 12s. Brutal: 9s.
 
 ### Willmore (M4)
 - **Passive, Scavenger:** minions and monsters he kills drop scrap. Picking it up heals him and grants stacking armor.
@@ -184,7 +186,7 @@ src/
 | # | Scope | Status |
 |---|---|---|
 | M0 | Project, host-in-worker, map blockout, nav grid + A*, click-to-move, basic attacks, full Marksman kit, training dummies, HUD | ✅ done |
-| M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | In progress: ✅ collision, ✅ structures, ✅ Chud waves, ✅ Brutes + winning |
+| M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | In progress: ✅ collision, ✅ structures, ✅ Chud waves, ✅ Brutes + winning, ✅ Barbarian + champion select |
 | M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression | |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | |
 | M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |

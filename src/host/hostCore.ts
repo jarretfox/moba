@@ -54,8 +54,8 @@ export class HostCore {
   }
 
   step(): void {
-    // Once a Da Base falls the world freezes on the final snapshot, which carries the winner.
-    if (this.world.winner) return;
+    // The match clock starts when the first player is in, and freezes on the final snapshot once a Da Base falls.
+    if (this.players.size === 0 || this.world.winner) return;
     for (const p of this.players.values()) {
       const unit = this.world.getUnit(p.unitId);
       if (unit instanceof Champion) for (const cmd of p.queue) this.apply(unit, cmd);

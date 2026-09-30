@@ -79,6 +79,44 @@ export class FxLayer {
     });
   }
 
+  healNumber(x: number, y: number, amount: number): void {
+    const txt = new Text({
+      text: `+${amount}`,
+      style: { fontFamily: 'system-ui, sans-serif', fontWeight: '800', fontSize: 20, fill: 0x4ade80, stroke: { color: 0x000000, width: 4 } },
+    });
+    txt.anchor.set(0.5);
+    this.add(txt, 0.9, (t) => {
+      txt.position.set(x, y - 20 - t * 45);
+      txt.alpha = t < 0.65 ? 1 : 1 - (t - 0.65) / 0.35;
+    });
+  }
+
+  /** A wedge that flashes and fades: Cleave. (x2, y2) is the tip of the swing; spread is in degrees. */
+  wedge(x: number, y: number, x2: number, y2: number, spreadDeg: number, color: number): void {
+    const g = new Graphics();
+    const a = Math.atan2(y2 - y, x2 - x);
+    const range = Math.hypot(x2 - x, y2 - y);
+    const half = ((spreadDeg / 2) * Math.PI) / 180;
+    this.add(g, 0.25, (t) => {
+      g.clear()
+        .moveTo(x, y)
+        .arc(x, y, range * (0.7 + 0.3 * t), a - half, a + half)
+        .closePath()
+        .fill({ color, alpha: 0.45 * (1 - t) });
+    });
+  }
+
+  /** A ring that sweeps out to `radius`: War Cry, landings. */
+  shockwave(x: number, y: number, radius: number, color: number, life = 0.4): void {
+    const g = new Graphics();
+    this.add(g, life, (t) => {
+      g.clear()
+        .circle(x, y, radius * (0.3 + 0.7 * t))
+        .fill({ color, alpha: 0.12 * (1 - t) })
+        .stroke({ width: 8 * (1 - t) + 2, color, alpha: 1 - t });
+    });
+  }
+
   death(x: number, y: number, r: number): void {
     const g = new Graphics();
     this.add(g, 0.6, (t) => {

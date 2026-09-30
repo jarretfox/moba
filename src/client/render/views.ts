@@ -1,4 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
+import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChudType, EntitySnap } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 
@@ -10,6 +11,7 @@ export const PALETTE = {
   enemy: 0xe5484d,
   selfHp: 0x4ade80,
   mana: 0x5aa9ff,
+  rage: 0xff6b3d,
   dummy: 0xb58b52,
   outline: 0x0b0f14,
   invulnerable: 0x8a93a0,
@@ -42,9 +44,15 @@ export class UnitView implements EntityView {
   private barKey = '';
   private statusKey = '';
   private pulse = 0;
+  private air = 0;
+  /** The radius the body was drawn at; Berserk grows the real one. */
+  private readonly baseR: number;
+  private readonly resourceColor: number;
 
   constructor(s: EntitySnap, private readonly relation: Relation) {
     const r = s.r;
+    this.baseR = r;
+    this.resourceColor = s.champ && CHAMPION_INFO[s.champ].resource === 'rage' ? PALETTE.rage : PALETTE.mana;
     const color = s.k === 'dummy' ? PALETTE.dummy : relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
 
     this.body.circle(4, 6, r).fill({ color: 0x000000, alpha: 0.35 });
@@ -77,7 +85,12 @@ export class UnitView implements EntityView {
     this.facing.rotation = s.f;
 
     this.pulse = Math.max(0, this.pulse - dt * 6);
-    this.body.scale.set(1 + this.pulse * 0.08);
+    // Leaping units swell toward the camera and settle back as they land.
+    const airborne = s.st?.includes('airborne') ?? false;
+    this.air = airborne ? Math.min(1, this.air + dt * 8) : Math.max(0, this.air - dt * 8);
+    const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3);
+    this.body.scale.set(size);
+    this.facing.scale.set(size);
 
     const barKey = `${s.hp}|${s.mhp}|${s.mp}|${s.mmp}`;
     if (barKey !== this.barKey) {
@@ -111,7 +124,7 @@ export class UnitView implements EntityView {
     for (let v = 100; s.k !== 'chud' && v < mhp; v += 100) {
       g.rect(x + (w * v) / mhp, y, 1, v % 1000 === 0 ? h : h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
     }
-    if (showMana) g.rect(x, y + h + 2, (w * (s.mp ?? 0)) / (s.mmp ?? 1), 4).fill(PALETTE.mana);
+    if (showMana) g.rect(x, y + h + 2, (w * (s.mp ?? 0)) / (s.mmp ?? 1), 4).fill(this.resourceColor);
   }
 
   private drawStatus(s: EntitySnap): void {
@@ -121,6 +134,8 @@ export class UnitView implements EntityView {
     if (st.includes('root')) g.circle(0, 0, r + 9).stroke({ width: 6, color: 0x8b5a2b, alpha: 0.95 });
     if (st.includes('stun')) g.circle(0, 0, r + 14).stroke({ width: 4, color: 0xffd166 });
     if (st.includes('slow')) g.circle(0, 0, r + 5).stroke({ width: 3, color: 0x9bd4ff, alpha: 0.8 });
+    if (st.includes('weaken')) g.circle(0, 0, r + 18).stroke({ width: 2, color: 0xb57bff, alpha: 0.7 });
+    if (st.includes('berserk')) g.circle(0, 0, r + 8).fill({ color: 0xff3b30, alpha: 0.18 }).stroke({ width: 5, color: 0xff3b30, alpha: 0.75 });
   }
 }
 

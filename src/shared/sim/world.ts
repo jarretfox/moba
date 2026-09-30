@@ -22,6 +22,8 @@ export interface HelpCall {
 
 /** How long a call for help stays fresh. */
 const HELP_CALL_WINDOW = 0.5;
+/** A champion who hurt someone within this many seconds of their death gets a takedown (kill or assist). */
+const TAKEDOWN_WINDOW = 10;
 
 export interface WorldSystem {
   update(world: World): void;
@@ -99,15 +101,22 @@ export class World {
   /** Apply mitigated damage. Returns the amount actually dealt. */
   damage(source: Unit | null, target: Unit, amount: number, type: DamageType): number {
     if (!target.isTargetable() || amount <= 0) return 0;
+    if (source) amount *= 1 - source.strongest('weaken');
     const resist = type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0;
     const dealt = type === 'true' ? amount : mitigate(amount, resist);
     target.hp -= dealt;
     target.lastDamagedAt = this.time;
     this.emit({ e: 'dmg', src: source?.id, target: target.id, amount: Math.round(dealt), type });
-    if (source?.kind === 'champion' && target.kind === 'champion' && source.team !== target.team) {
-      this.helpCalls.push({ attacker: source, victim: target, time: this.time });
+    if (source?.kind === 'champion') {
+      target.championHits.set(source.id, this.time);
+      if (target.kind === 'champion' && source.team !== target.team) this.helpCalls.push({ attacker: source, victim: target, time: this.time });
     }
-    if (target.hp <= 0) target.die(this, source);
+    target.onDamaged(this, source, dealt);
+    if (target.hp <= 0) {
+      const helpers = [...target.championHits].filter(([, t]) => this.time - t <= TAKEDOWN_WINDOW).map(([id]) => id);
+      target.die(this, source);
+      if (target.isChampionLike()) for (const id of helpers) this.getUnit(id)?.onTakedown(this, target);
+    }
     return dealt;
   }
 

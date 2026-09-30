@@ -161,6 +161,79 @@ kbd {
   background: #2a3442;
 }
 
+/* ─── Champion select ───────────────────────────────────────────────── */
+
+.select {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 22px;
+  background: rgba(6, 9, 12, 0.86);
+  pointer-events: auto;
+}
+
+.select-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+.select-cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.select-card {
+  width: 250px;
+  padding: 16px 18px;
+  text-align: left;
+  border: 2px solid var(--panel-edge);
+  border-radius: 12px;
+  background: linear-gradient(160deg, #1f2c42, #10161f);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+}
+
+.select-card.rage {
+  background: linear-gradient(160deg, #3d1f1b, #160e0c);
+}
+
+.select-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-3px);
+}
+
+.select-name {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.select-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.select-passive {
+  font-size: 13px;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+
+.select-ability {
+  font-size: 13px;
+  line-height: 1.9;
+}
+
 /* ─── Bottom ability bar ─────────────────────────────────────────────── */
 
 .bar {
@@ -324,6 +397,18 @@ kbd {
 
 .res.mp .fill {
   background: var(--mp);
+}
+
+.bar.rage .res.mp .fill {
+  background: #ff6b3d;
+}
+
+.bar.rage .portrait {
+  background: radial-gradient(circle at 35% 30%, #c7614d, #55201b);
+}
+
+.bar.rage .portrait.empowered {
+  box-shadow: 0 0 0 3px #ffb199, 0 0 22px #ff3b30;
 }
 
 .res span {
