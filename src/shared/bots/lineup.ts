@@ -14,6 +14,11 @@ const SLOTS: { lane: Lane; champion: ChampionId }[] = [
 
 export const TEAM_SIZE = 3;
 
+/** A lane for a bot taking over a champion mid-match: top if no bot of that team is there yet, else the duo lane. */
+export function laneForNewBot(bots: Bot[], team: PlayerTeam): Lane {
+  return bots.some((b) => b.champion.team === team && b.lane === 'top') ? 'bot' : 'top';
+}
+
 /** Adds `count` bot champions to a team, filling its slots in order. */
 export function addBots(world: World, team: PlayerTeam, count: number): Bot[] {
   return SLOTS.slice(0, count).map(({ lane, champion }) => {

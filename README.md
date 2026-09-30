@@ -9,10 +9,13 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173, pick a mode and a champion:
+Then open http://localhost:5173:
 
-- **Match vs Bots:** you and 2 bots against 3 bots. Destroy their Da Base.
+- **Play vs Bots:** you and 2 bots against 3 bots. Destroy their Da Base.
+- **Host a Lobby:** you get a 5-letter code. Friends open the game, type it under "or join a friend", pick teams and champions, and you start the match. Bots fill any empty slots.
 - **Practice Range:** just you, the Chud waves, and training dummies through the back door into the jungle.
+
+Friends can only reach your lobby once the game is hosted online (see DESIGN.md); on `localhost`, two browser tabs on your own machine work for testing.
 
 ## Controls
 

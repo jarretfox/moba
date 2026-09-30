@@ -16,6 +16,6 @@ const CONSTRUCTORS: Record<ChampionId, new (world: World, team: PlayerTeam) => C
 };
 
 export function createChampion(id: ChampionId, world: World, team: PlayerTeam): Champion {
-  const Ctor = CONSTRUCTORS[id] ?? Marksman; // unknown ids from a remote client fall back rather than crash
+  const Ctor = Object.hasOwn(CONSTRUCTORS, id) ? CONSTRUCTORS[id] : Marksman; // unknown ids from a remote client fall back rather than crash
   return new Ctor(world, team);
 }

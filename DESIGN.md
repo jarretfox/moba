@@ -167,24 +167,35 @@ The numbers live at the top of `src/shared/champions/barbarian.ts`. Resource: Ra
 src/
   shared/      pure TypeScript: no browser or Node APIs. This IS the game.
     map/         map layout, nav grid, A* pathfinding
-    sim/         World (fixed 30 Hz tick), Unit, projectiles, dummies
+    sim/         World (fixed 30 Hz tick), units, Chuds, structures, projectiles, collision
     champions/   Champion base class + one hand-coded file per champion
+    bots/        bot brain, lane helpers, per-champion habits, lineups
     protocol.ts  every message between client and host
-  host/        HostCore: players, command validation, snapshots. Runs in a Web Worker.
+  host/        HostCore: lobby, players, bots, snapshots. Runs in a Web Worker.
   client/      PixiJS rendering, input, HUD, snapshot interpolation. Never runs the game itself.
+    net/         host worker relay, PeerJS host and join links
+    ui/          main menu, lobby
 ```
 
 **How the host model works:**
 - The hosting player's tab runs `HostCore` in a Web Worker.
   - Rendering hitches can't stall the game.
-  - It should keep ticking when the tab is in the background (to verify in M2).
-- Friends connect over WebRTC data channels using PeerJS, and the lobby code is the host's peer ID.
-  - Data channels can't live inside a worker in most browsers, so the host tab's main thread passes those messages to and from the worker.
-  - PeerJS's free public signaling server is fine for a friend group.
-  - A few networks (mobile hotspots, some ISPs) need a TURN relay server. Add one only if a friend can't connect.
+  - It should keep ticking when the tab is in the background (still to verify).
+- **Lobby:**
+  - Hosting claims a 5-letter code on PeerJS's free public signaling server; the peer ID is `chudmoba-<code>`. The code alphabet has no 0/O or 1/I/L, since codes get read out loud.
+  - Friends join with the code. They're seated on alternating teams, can switch while there's room, and pick champions. The host (★) picks "bots fill empty slots" or "no bots", then starts once everyone has picked.
+  - Solo play uses the same flow with a lobby of one.
+- **Connections:**
+  - Friends connect over WebRTC data channels, or through PeerJS's relay servers when a network blocks direct connections.
+  - Data channels can't live inside a worker in most browsers, so the host tab's main thread relays those messages to and from it (`src/client/net/`).
+  - Remote connections get `peer:`-prefixed IDs, so nobody can pose as the host's own `local` connection.
+- **Leaving:**
+  - Both ends ping every second and treat 6 seconds of silence as a disconnect, because WebRTC doesn't reliably report a closed tab. Closing a tab normally also says goodbye immediately; in testing, a closed tab was noticed within about 3 seconds.
+  - If a friend leaves mid-match, a bot takes over their champion ("Name (bot)").
+  - If the host leaves, everyone else gets a "Disconnected" screen with a way back to the menu.
 - The host enforces fog of war: non-host players only receive what their team can see.
   - The host has zero ping and could in principle read the full game state. That's accepted among friends.
-- If the host leaves, the game ends.
+- Everything a client sends is validated: message shapes, names (trimmed, 16 characters max), team numbers, and champion IDs (own keys only, so `__proto__` isn't a champion).
 - **Bandwidth is the M2 problem.** The host uploads snapshots to five players, so snapshots need to shrink: rounded numbers, only what changed, and a lower rate for distant units. Today the full state is sent every tick, which is fine for a host in the same tab.
 
 **The client:**
@@ -201,7 +212,7 @@ src/
 |---|---|---|
 | M0 | Project, host-in-worker, map blockout, nav grid + A*, click-to-move, basic attacks, full Marksman kit, training dummies, HUD | ✅ done |
 | M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | ✅ done (plus Recall, fountain, champion select, growing death timers and Chuds) |
-| M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression | |
+| M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | In progress: ✅ online lobbies |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | |
 | M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |
 | M5 | Balance tools, playtests | |

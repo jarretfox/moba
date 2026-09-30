@@ -48,7 +48,7 @@ export class Hud {
       <div class="clock"><span class="time">0:00</span><span class="wave"></span></div>
       <div class="help"><div class="help-title"></div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
-      <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Play again</button></div>
+      <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Back to menu</button></div>
       <div class="bar" hidden>
         <div class="portrait"><span class="initial"></span><span class="stacks"></span></div>
         <div class="center">
@@ -123,13 +123,20 @@ export class Hud {
   }
 
   showGameOver(victory: boolean): void {
+    this.showOverlay(victory ? 'VICTORY' : 'DEFEAT', victory ? 'Their Da Base has fallen.' : 'Your Da Base has fallen.', victory);
+  }
+
+  /** A full-screen message with a way back to the menu, e.g. when the host leaves. */
+  showNotice(title: string, detail: string): void {
+    this.showOverlay(title, detail, false);
+  }
+
+  private showOverlay(title: string, detail: string, victory: boolean): void {
     if (!this.gameOver.hidden) return;
     this.gameOver.hidden = false;
     this.gameOver.classList.toggle('victory', victory);
-    (this.gameOver.querySelector('.gameover-title') as HTMLElement).textContent = victory ? 'VICTORY' : 'DEFEAT';
-    (this.gameOver.querySelector('.gameover-sub') as HTMLElement).textContent = victory
-      ? 'Their Da Base has fallen.'
-      : 'Your Da Base has fallen.';
+    (this.gameOver.querySelector('.gameover-title') as HTMLElement).textContent = title;
+    (this.gameOver.querySelector('.gameover-sub') as HTMLElement).textContent = detail;
   }
 
   /** Match clock, plus a countdown while the next Chud wave is close. */

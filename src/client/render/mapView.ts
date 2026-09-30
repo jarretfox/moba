@@ -1,4 +1,5 @@
 import { Container, Graphics, Text } from 'pixi.js';
+import { TEAM, type Team } from '../../shared/constants';
 import type { GroundStyle, MapData } from '../../shared/map/mapData';
 import type { NavGrid } from '../../shared/map/navGrid';
 import type { Shape } from '../../shared/map/shapes';
@@ -7,8 +8,8 @@ const COLORS = {
   void: 0x121811,
   wall: 0x1a2317,
   wallEdge: 0x0c110b,
-  blueBase: 0x323d57,
-  redBase: 0x573536,
+  allyBase: 0x323d57,
+  enemyBase: 0x573536,
   lane: 0x6b5a42,
   jungle: 0x2c4327,
   river: 0x285468,
@@ -17,7 +18,8 @@ const COLORS = {
 /** Draw order: later styles paint over earlier ones where they overlap. */
 const STYLE_ORDER: GroundStyle[] = ['jungle', 'base', 'lane', 'river'];
 
-export function buildMap(map: MapData): Container {
+/** The static map. Bases are tinted from the viewer's side: yours blue, theirs red, like every unit color. */
+export function buildMap(map: MapData, myTeam: Team = TEAM.blue): Container {
   const root = new Container();
   const g = new Graphics();
   root.addChild(g);
@@ -27,7 +29,7 @@ export function buildMap(map: MapData): Container {
   for (const style of STYLE_ORDER) {
     for (const piece of map.ground) {
       if (piece.style !== style) continue;
-      drawShape(g, piece.shape, groundColor(style, piece.shape, map));
+      drawShape(g, piece.shape, groundColor(style, piece.shape, map, myTeam));
     }
   }
   // Outlines first, fills on top: overlapping wall pieces then read as one solid mass without seams.
@@ -65,10 +67,11 @@ export function buildNavOverlay(grid: NavGrid): Graphics {
   return g;
 }
 
-function groundColor(style: GroundStyle, shape: Shape, map: MapData): number {
+function groundColor(style: GroundStyle, shape: Shape, map: MapData, myTeam: Team): number {
   if (style !== 'base') return COLORS[style];
   const x = shape.type === 'capsule' ? shape.ax : shape.x;
-  return x < map.width / 2 ? COLORS.blueBase : COLORS.redBase;
+  const blueSide = x < map.width / 2;
+  return blueSide === (myTeam === TEAM.blue) ? COLORS.allyBase : COLORS.enemyBase;
 }
 
 function drawShape(g: Graphics, s: Shape, color: number): void {

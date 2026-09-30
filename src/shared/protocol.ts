@@ -1,8 +1,12 @@
-// Messages between a player's client and the host. Today the host is a Web Worker in the same
-// browser; in M2 the same messages travel over WebRTC to whichever friend is hosting.
+// Messages between a player's client and the host. The host runs in a Web Worker in the hosting
+// player's tab; their own client talks to it directly, and friends' messages arrive over WebRTC
+// (PeerJS) and are relayed to it by that tab. Nothing from a client is trusted.
 import type { ChampionId } from './champions/types';
-import type { Slot, Team } from './constants';
+import type { PlayerTeam, Slot, Team } from './constants';
 import type { StructureRole } from './map/mapData';
+
+/** Connection id of the hosting player's own client. Remote players get `peer:`-prefixed ids, so nobody else can claim it. */
+export const LOCAL_CONN = 'local';
 
 export type Command =
   | { k: 'move'; x: number; y: number }
@@ -12,15 +16,41 @@ export type Command =
   | { k: 'recall' };
 
 export type ClientMessage =
-  | { t: 'join'; name: string; champion: ChampionId; mode?: MatchMode }
-  | { t: 'cmd'; cmd: Command };
+  /** Enter the lobby. */
+  | { t: 'hello'; name: string }
+  /** Change team and/or champion while in the lobby. */
+  | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId }
+  /** Host only: start the match once everyone has picked. */
+  | { t: 'start'; mode: MatchMode }
+  | { t: 'cmd'; cmd: Command }
+  /** Keep-alive, handled by the network layer; never reaches the game. */
+  | { t: 'ping' };
 
-/** 'bots': a 3v3 with bots filling every other slot. 'practice': just you, the Chud waves and training dummies. */
+/** 'bots': 3v3, with bots in every slot no human takes. 'practice': no bots — the Chud waves and training dummies. */
 export type MatchMode = 'bots' | 'practice';
 
+export interface LobbyPlayer {
+  id: string;
+  name: string;
+  team: PlayerTeam;
+  champion: ChampionId | null;
+  host: boolean;
+}
+
+export interface LobbyState {
+  players: LobbyPlayer[];
+  phase: 'lobby' | 'playing';
+}
+
 export type HostMessage =
+  /** The lobby changed. `you` is the recipient's own player id. */
+  | { t: 'lobby'; lobby: LobbyState; you: string }
+  /** The match started; this is your champion. */
   | { t: 'welcome'; unitId: number; team: Team }
-  | { t: 'snap'; snap: Snapshot };
+  | { t: 'snap'; snap: Snapshot }
+  | { t: 'refused'; reason: string }
+  /** Keep-alive, handled by the network layer. */
+  | { t: 'ping' };
 
 export type DamageType = 'physical' | 'magic' | 'true';
 /** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk, recall (channeling home). */

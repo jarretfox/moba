@@ -7,7 +7,7 @@ import { NavGrid } from '../shared/map/navGrid';
 import { dist, type Vec2 } from '../shared/math';
 import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/protocol';
 import { Camera } from './camera';
-import type { Connection } from './connection';
+import type { Connection } from './net/connection';
 import { Hud } from './hud';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
@@ -15,8 +15,6 @@ import { buildMap, buildNavOverlay } from './render/mapView';
 import { PALETTE, ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotBuffer } from './snapshotBuffer';
 
-/** How far behind the host we render. Two ticks is plenty for a host in this tab; remote hosts (M2) will want ~100ms. */
-const INTERP_DELAY = 0.067;
 /** While right mouse is held, re-send the move target this often. */
 const HOLD_MOVE_INTERVAL = 0.12;
 /** Extra pixels of forgiveness when right-clicking an enemy. */
@@ -36,7 +34,7 @@ export class GameClient {
   private navOverlay: Graphics | null = null;
 
   private readonly camera = new Camera(MAP);
-  private readonly buffer = new SnapshotBuffer(INTERP_DELAY);
+  private readonly buffer: SnapshotBuffer;
   private readonly views = new Map<number, EntityView>();
   private readonly hud: Hud;
 
@@ -58,21 +56,31 @@ export class GameClient {
     hudRoot: HTMLElement,
   ) {
     this.hud = new Hud(hudRoot);
+    this.buffer = new SnapshotBuffer(conn.interpDelay);
     this.groundLayer.addChild(buildMap(MAP));
     this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
     app.stage.addChild(this.worldLayer);
-    conn.listen((msg) => this.onMessage(msg));
     this.bindInput();
     app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
   }
 
-  private onMessage(msg: HostMessage): void {
+  /** Match messages from the host (the lobby screen handles the rest). */
+  handle(msg: HostMessage): void {
     if (msg.t === 'welcome') {
       this.myId = msg.unitId;
-      this.myTeam = msg.team;
-      return;
+      if (msg.team !== this.myTeam) {
+        this.myTeam = msg.team;
+        // Repaint the ground so your own base is the blue one.
+        this.groundLayer.removeChildAt(0).destroy({ children: true });
+        this.groundLayer.addChildAt(buildMap(MAP, msg.team), 0);
+      }
+    } else if (msg.t === 'snap') {
+      this.buffer.push(msg.snap, performance.now() / 1000);
     }
-    this.buffer.push(msg.snap, performance.now() / 1000);
+  }
+
+  showNotice(title: string, detail: string): void {
+    this.hud.showNotice(title, detail);
   }
 
   // ─── Per frame ────────────────────────────────────────────────────────────
