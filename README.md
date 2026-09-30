@@ -17,6 +17,16 @@ Then open http://localhost:5173:
 
 Friends can only reach your lobby once the game is hosted online (see DESIGN.md); on `localhost`, two browser tabs on your own machine work for testing.
 
+## Put it online (GitHub Pages)
+
+`.github/workflows/deploy.yml` tests, builds and publishes the game on every push to `main`. One-time setup:
+
+1. Create an empty repository on GitHub (no README or license). It needs to be public for free GitHub Pages.
+2. In the repository: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. Push this project to it. The game appears at `https://<your-username>.github.io/<repo-name>/` a minute or two later.
+
+Friends just open that link. Whoever clicks **Host a Lobby** runs the match in their browser; everyone else joins with the code.
+
 ## Controls
 
 | Input | Action |
