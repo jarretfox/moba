@@ -8,24 +8,28 @@ export type Command =
   | { k: 'move'; x: number; y: number }
   | { k: 'attack'; target: number }
   | { k: 'stop' }
-  | { k: 'cast'; slot: Slot; x: number; y: number };
+  | { k: 'cast'; slot: Slot; x: number; y: number }
+  | { k: 'recall' };
 
 export type ClientMessage =
-  | { t: 'join'; name: string; champion: ChampionId }
+  | { t: 'join'; name: string; champion: ChampionId; mode?: MatchMode }
   | { t: 'cmd'; cmd: Command };
+
+/** 'bots': a 3v3 with bots filling every other slot. 'practice': just you, the Chud waves and training dummies. */
+export type MatchMode = 'bots' | 'practice';
 
 export type HostMessage =
   | { t: 'welcome'; unitId: number; team: Team }
   | { t: 'snap'; snap: Snapshot };
 
 export type DamageType = 'physical' | 'magic' | 'true';
-/** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk. */
-export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk';
+/** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk, recall (channeling home). */
+export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk' | 'recall';
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
 export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'projectile' | 'trap';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
-export type FxKind = 'aimLine' | 'trapSnap' | 'roll' | 'cleave' | 'warCry' | 'slam' | 'berserk';
+export type FxKind = 'aimLine' | 'trapSnap' | 'roll' | 'cleave' | 'warCry' | 'slam' | 'berserk' | 'recall';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

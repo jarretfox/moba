@@ -1,12 +1,32 @@
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import type { ChampionId } from '../shared/champions/types';
 import { SLOT_KEYS } from '../shared/constants';
+import type { MatchMode } from '../shared/protocol';
 
-/** Pre-game champion pick. Resolves with the chosen champion; the match doesn't start until then. */
-export function pickChampion(root: HTMLElement): Promise<ChampionId> {
+const MODES: { mode: MatchMode; label: string; hint: string }[] = [
+  { mode: 'bots', label: 'Match vs Bots', hint: 'You and 2 bots against 3 bots' },
+  { mode: 'practice', label: 'Practice Range', hint: 'Just you, the Chud waves and training dummies' },
+];
+
+/** Pre-game screen: pick a mode and a champion. The match doesn't start until you do. */
+export function pickChampion(root: HTMLElement): Promise<{ champion: ChampionId; mode: MatchMode }> {
   return new Promise((resolve) => {
+    let mode: MatchMode = 'bots';
     const screen = el('div', 'select');
-    screen.append(el('div', 'select-title', 'Choose your champion'));
+
+    const modes = el('div', 'select-modes');
+    const modeButtons = MODES.map((m) => {
+      const b = el('button', 'select-mode');
+      b.append(el('div', 'select-mode-label', m.label), el('div', 'select-mode-hint', m.hint));
+      b.addEventListener('click', () => {
+        mode = m.mode;
+        modeButtons.forEach((other, i) => other.classList.toggle('active', MODES[i].mode === mode));
+      });
+      modes.append(b);
+      return b;
+    });
+    modeButtons[0].classList.add('active');
+
     const cards = el('div', 'select-cards');
     for (const info of Object.values(CHAMPION_INFO)) {
       const card = el('button', `select-card ${info.resource}`);
@@ -24,11 +44,12 @@ export function pickChampion(root: HTMLElement): Promise<ChampionId> {
       card.append(list);
       card.addEventListener('click', () => {
         screen.remove();
-        resolve(info.id);
+        resolve({ champion: info.id, mode });
       });
       cards.append(card);
     }
-    screen.append(cards);
+
+    screen.append(modes, el('div', 'select-title', 'Choose your champion'), cards);
     root.append(screen);
   });
 }

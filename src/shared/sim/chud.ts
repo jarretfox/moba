@@ -28,6 +28,8 @@ const LEASH = 250;
 const WAYPOINT_REACHED = 150;
 /** Seconds a dead Chud lingers, so the client can still place its death effects, before it's removed. */
 const CORPSE_TIME = 1;
+/** Chuds get tougher as the match goes on, so late waves hit structures harder and stalemates break. */
+const GROWTH_PER_MINUTE = { hp: 0.04, ad: 0.04 };
 /** Lower tiers are preferred: other Chuds first, then structures, then champions. */
 const TARGET_TIER: Record<Unit['kind'], number> = { chud: 0, dummy: 0, structure: 1, champion: 2 };
 
@@ -48,7 +50,9 @@ export class Chud extends Unit {
     private readonly route: Vec2[],
   ) {
     const def = CHUD_DEFS[chudType];
-    super(world.newId(), team, route[0], def.radius, def.stats, def.name);
+    const minutes = world.time / 60;
+    const stats = { ...def.stats, maxHp: def.stats.maxHp * (1 + GROWTH_PER_MINUTE.hp * minutes), ad: def.stats.ad * (1 + GROWTH_PER_MINUTE.ad * minutes) };
+    super(world.newId(), team, route[0], def.radius, stats, def.name);
   }
 
   protected think(world: World): void {

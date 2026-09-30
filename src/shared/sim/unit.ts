@@ -338,11 +338,11 @@ export abstract class Unit implements Entity {
     this.dash = null;
     this.statuses = [];
     this.championHits.clear();
-    this.respawnAt = world.time + this.respawnDelay();
+    this.respawnAt = world.time + this.respawnDelay(world);
     world.emit({ e: 'death', id: this.id });
   }
 
-  protected respawnDelay(): number {
+  protected respawnDelay(_world: World): number {
     return 6;
   }
 

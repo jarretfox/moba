@@ -10,6 +10,14 @@ interface AbilityState {
   readyAt: number;
 }
 
+/** Seconds of standing still to teleport home. Taking damage, a stun, or any other order breaks it. */
+const RECALL_TIME = 4;
+/**
+ * Death timers grow with the match clock, like League's: early deaths cost little, late ones give the
+ * enemy long enough to push and finish. (Levels will feed into this in M3.)
+ */
+const RESPAWN = { base: 6, perMinute: 1.5, max: 45 };
+
 /**
  * Plumbing every champion shares: the cast pipeline (checks, mana, cooldown, cast time).
  * Each champion subclass hand-codes what its abilities actually do in onCast.
@@ -19,9 +27,44 @@ export abstract class Champion extends Unit {
   abstract readonly info: ChampionInfo;
   // M0: every ability starts at rank 1. Leveling arrives with XP in M3.
   readonly abilities: AbilityState[] = [0, 1, 2, 3].map(() => ({ rank: 1, readyAt: 0 }));
+  private recallStartedAt: number | null = null;
 
   constructor(world: World, team: PlayerTeam, radius: number, base: Stats, name: string) {
     super(world.newId(), team, world.map.spawns[team], radius, base, name);
+  }
+
+  update(world: World): void {
+    super.update(world);
+    if (this.recallStartedAt === null) return;
+    if (this.dead || this.has('stun') || this.lastDamagedAt >= this.recallStartedAt) {
+      this.recallStartedAt = null;
+    } else if (world.time - this.recallStartedAt >= RECALL_TIME) {
+      this.recallStartedAt = null;
+      const from = { ...this.pos };
+      this.pos = { ...this.spawnPos };
+      this.commandStop();
+      world.emit({ e: 'fx', fx: 'recall', x: from.x, y: from.y, x2: this.pos.x, y2: this.pos.y, team: this.team });
+    }
+  }
+
+  // ─── Recall ───────────────────────────────────────────────────────────────
+
+  get recalling(): boolean {
+    return this.recallStartedAt !== null;
+  }
+
+  startRecall(world: World): void {
+    if (this.dead || this.recalling || !this.canAct(world)) return;
+    this.commandStop();
+    this.recallStartedAt = world.time;
+  }
+
+  cancelRecall(): void {
+    this.recallStartedAt = null;
+  }
+
+  protected respawnDelay(world: World): number {
+    return Math.min(RESPAWN.max, RESPAWN.base + (world.time / 60) * RESPAWN.perMinute);
   }
 
   tryCast(world: World, slot: Slot, aim: Vec2): boolean {
@@ -65,7 +108,9 @@ export abstract class Champion extends Unit {
   protected abstract onCast(world: World, slot: Slot, aim: Vec2): void;
 
   snapshot(world: World): EntitySnap {
-    return { ...super.snapshot(world), champ: this.info.id, mp: Math.floor(this.mana), mmp: Math.round(this.stats.maxMana) };
+    const s: EntitySnap = { ...super.snapshot(world), champ: this.info.id, mp: Math.floor(this.mana), mmp: Math.round(this.stats.maxMana) };
+    if (this.recalling) s.st = [...(s.st ?? []), 'recall'];
+    return s;
   }
 
   meSnapshot(world: World): MeSnap {

@@ -18,6 +18,7 @@ const HELP = [
   ['Right-click', 'move / attack (hold to keep steering)'],
   ['Q W E R', 'hold to aim, release to cast'],
   ['S', 'stop'],
+  ['B', 'recall home (4s, breaks if hit)'],
   ['Space', 'center camera (hold)'],
   ['Y', 'lock / unlock camera'],
   ['Wheel', 'zoom'],
@@ -45,7 +46,7 @@ export class Hud {
     root.innerHTML = `
       <div class="debug"></div>
       <div class="clock"><span class="time">0:00</span><span class="wave"></span></div>
-      <div class="help"><div class="help-title">Practice Range</div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
+      <div class="help"><div class="help-title"></div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
       <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Play again</button></div>
       <div class="bar" hidden>
@@ -112,7 +113,13 @@ export class Hud {
       this.set(el.root, 'class', `slot${a.cd > 0 ? ' cooling' : ''}${noMana ? ' nomana' : ''}`);
     });
 
-    this.set(this.respawn, 'text', me.respawnIn > 0 ? `Respawning in ${Math.ceil(me.respawnIn)}` : '');
+    const recalling = self.st?.includes('recall');
+    this.set(this.respawn, 'text', me.respawnIn > 0 ? `Respawning in ${Math.ceil(me.respawnIn)}` : recalling ? 'Recalling…' : '');
+  }
+
+  setTitle(title: string): void {
+    const el = this.debug.parentElement?.querySelector('.help-title') as HTMLElement | null;
+    if (el) el.textContent = title;
   }
 
   showGameOver(victory: boolean): void {

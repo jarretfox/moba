@@ -136,6 +136,7 @@ export class UnitView implements EntityView {
     if (st.includes('slow')) g.circle(0, 0, r + 5).stroke({ width: 3, color: 0x9bd4ff, alpha: 0.8 });
     if (st.includes('weaken')) g.circle(0, 0, r + 18).stroke({ width: 2, color: 0xb57bff, alpha: 0.7 });
     if (st.includes('berserk')) g.circle(0, 0, r + 8).fill({ color: 0xff3b30, alpha: 0.18 }).stroke({ width: 5, color: 0xff3b30, alpha: 0.75 });
+    if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }
 }
 

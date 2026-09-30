@@ -33,6 +33,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Targeting:** an enemy champion who hurts one of their champions nearby comes first. Otherwise they go after enemy Chuds, then structures, then champions, nearest first. Within a category they finish the fight they're in, but a Chud hitting a Shootie turns on enemy Chuds that show up.
   - **Shooties vs Chuds:** each shot takes a fixed share of a Chud's max health (melee 45%, ranged 70%, siege 14%). That's 3 shots for a melee Chud and 2 for a ranged one, so last-hitting under a Shootie is about timing your hit between its shots.
   - Damage numbers only appear for damage you deal or take, as in League. A lane full of Chuds would be unreadable otherwise.
+  - **They grow:** each Chud spawns with +4% health and damage per minute of match time. Shootie shots still take a fixed share of their health, so late waves hit structures much harder. This is what breaks evenly matched lanes open.
 - **Structures per lane, per team:** 2 Shooties and 1 Oakner. Da Base is guarded by one more Shootie. Numbers live in `src/shared/sim/structure.ts`.
   - **They fall in order:** outer Shootie → inner Shootie → Oakner in the same lane. The base Shootie can be hit while either Oakner is down, and Da Base only once the base Shootie is gone. Until then a structure is shielded: grey health bar, and it can't be attacked.
   - While an enemy Oakner is down, every one of your waves in that lane is led by a **Chud Brute**: 1500 HP, tough, and it takes 15 Shootie shots to kill.
@@ -44,6 +45,10 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Once locked on, they stay on that target until it dies or leaves range.
   - Each consecutive shot at the same champion hits 40% harder, up to +120%. Standing under an enemy Shootie gets deadly fast.
 - **Winning:** destroy the enemy Da Base. The match freezes on the spot and everyone gets a Victory or Defeat screen with Play again.
+- **Death and going home:**
+  - Death timers grow with the match clock: 6s at the start, +1.5s per minute, up to 45s. That's about 21s at 10:00 and 36s at 20:00, so late deaths let the enemy push.
+  - **Recall (B):** channel for 4s to teleport home. Taking damage, a stun, or any other order breaks it.
+  - **Fountain:** standing within 500 of your spawn restores 12% of max health and mana per second. Rage isn't refilled; it's earned.
 - **Call for help:** if an enemy champion hurts your champion nearby, your Chuds and Shooties switch to that enemy. This rule is what makes trading and tower dives work.
 - **Vision:**
   - Every unit sees in a radius. Walls block sight, and brush hides whoever is inside it.
@@ -55,6 +60,15 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Kill-streak bounties help losing teams catch up.
 - **Shop:** about 15 items, 4 inventory slots, and you can only buy at Da Base.
   - No Flash-style summoner spells in v1. Everyone gets Recall and one shared blink on a long cooldown.
+- **Bots** ("decent new player"; numbers at the top of `src/shared/bots/bot.ts`, each champion's habits in `profiles.ts`):
+  - They play through the same commands a human sends, rethinking about 5 times a second.
+  - Lineup per team: solo top Barbarian, duo bot lane of Marksman and Barbarian. A human takes a slot and bots fill the rest.
+  - **Laning:** stand behind their own wave (melee close in, ranged further back), last-hit first, and step out of position for a last hit. They help the wave, and hit structures when their Chuds are soaking the Shootie and no enemy champion is near.
+  - **Safety:** they won't walk under an enemy Shootie unless at least 2 of their Chuds are tanking it, and they leave immediately if it targets them.
+  - **Fighting:** they engage enemy champions within 700 when they're at least as healthy, or the enemy is below 35%. They avoid trading into a crowd of enemy Chuds, never dive towers, and give ground when hit by someone they won't fight. Each champion uses its kit in fights: for example the Marksman rolls away from melee champions and fires Longshot at low targets, and the Barbarian leaps in and uses Berserk when things get close.
+  - **Going home:** below 25% health (35% with an enemy near), they recall if it's safe, or run home using escape abilities. They come back at 90%.
+  - **What they don't do:** dodge skillshots, plan ganks, or coordinate as a team.
+  - A bots-only match currently ends in roughly 28–30 minutes. Human pressure ends games sooner, and gold and levels (M3) will tighten it further.
 
 ## Lore
 
@@ -186,14 +200,17 @@ src/
 | # | Scope | Status |
 |---|---|---|
 | M0 | Project, host-in-worker, map blockout, nav grid + A*, click-to-move, basic attacks, full Marksman kit, training dummies, HUD | ✅ done |
-| M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | In progress: ✅ collision, ✅ structures, ✅ Chud waves, ✅ Brutes + winning, ✅ Barbarian + champion select |
+| M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | ✅ done (plus Recall, fountain, champion select, growing death timers and Chuds) |
 | M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression | |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | |
 | M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |
 | M5 | Balance tools, playtests | |
 
-### Known gaps after M0
-- ~~Units overlap freely~~ Fixed in M1: soft unit collision (`src/shared/sim/collision.ts`). Walkers slide around units standing still, and dashes pass through.
-- Every ability is at rank 1 with no leveling, so Longshot is available from the start.
-- Traps are visible to everyone until fog of war exists.
-- Only practice dummies; there's no enemy AI yet.
+### Known gaps after M1
+- **No gold, experience or levels yet (M3).** Every ability is at rank 1, so ultimates are available from the start.
+  - Structure health is tuned down for level-1 champions (outer Shootie 1800). M3 will raise it again.
+  - Games are decided by Chud growth and death timers rather than by getting ahead. Bots-only matches take about 28–30 minutes.
+- **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster).
+- **No fog of war (M2):** traps are visible to everyone, and bots see the whole map.
+- **No jungle camps or Warden yet (M3),** so all three bots per side lane.
+- Bots don't dodge skillshots or coordinate as a team.

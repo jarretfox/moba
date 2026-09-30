@@ -175,6 +175,37 @@ kbd {
   pointer-events: auto;
 }
 
+.select-modes {
+  display: flex;
+  gap: 12px;
+}
+
+.select-mode {
+  padding: 10px 18px;
+  border: 2px solid var(--panel-edge);
+  border-radius: 10px;
+  background: #151c25;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.select-mode.active {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.select-mode-label {
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.select-mode-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .select-title {
   font-size: 30px;
   font-weight: 800;

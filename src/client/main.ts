@@ -21,8 +21,9 @@ async function boot(): Promise<void> {
   const game = new GameClient(app, conn, hudRoot);
   if (import.meta.env.DEV) Object.assign(window, { game }); // poke at it from devtools
 
-  const champion = await pickChampion(hudRoot);
-  conn.send({ t: 'join', name: 'You', champion });
+  const { champion, mode } = await pickChampion(hudRoot);
+  game.setTitle(mode === 'practice' ? 'Practice Range' : 'Match vs Bots');
+  conn.send({ t: 'join', name: 'You', champion, mode });
 }
 
 void boot();

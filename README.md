@@ -9,7 +9,10 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. You spawn in Da Base as the Marksman; the practice dummies are through the back door into the jungle, to the right.
+Then open http://localhost:5173, pick a mode and a champion:
+
+- **Match vs Bots:** you and 2 bots against 3 bots. Destroy their Da Base.
+- **Practice Range:** just you, the Chud waves, and training dummies through the back door into the jungle.
 
 ## Controls
 
@@ -18,6 +21,7 @@ Then open http://localhost:5173. You spawn in Da Base as the Marksman; the pract
 | Right-click | Move / attack (hold to keep steering) |
 | Q W E R | Hold to aim, release to cast (or left-click while aiming) |
 | S | Stop |
+| B | Recall home (4s channel, breaks if you take damage) |
 | Space | Center camera (hold) |
 | Y | Lock / unlock camera (unlocked: pan at screen edges) |
 | Wheel | Zoom |

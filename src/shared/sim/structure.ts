@@ -9,6 +9,7 @@ import { Unit, type Stats } from './unit';
 import type { World } from './world';
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
+// Health is tuned for level-1 champions (M1). Once gold and levels exist (M3), structures get tougher again.
 
 const NO_ATTACK = { ad: 0, attackSpeed: 0, attackRange: 0 };
 const SHOOTIE_ATTACK = { ad: 150, attackSpeed: 0.8, attackRange: 650 };
@@ -27,11 +28,11 @@ function structureStats(maxHp: number, armor: number, attack = NO_ATTACK): Stats
 }
 
 export const STRUCTURE_DEFS: Record<StructureRole, { name: string; radius: number; stats: Stats; regrow: number }> = {
-  outerShootie: { name: 'Outer Shootie', radius: 70, stats: structureStats(2500, 40, SHOOTIE_ATTACK), regrow: Infinity },
-  innerShootie: { name: 'Inner Shootie', radius: 70, stats: structureStats(3000, 40, SHOOTIE_ATTACK), regrow: Infinity },
-  baseShootie: { name: 'Base Shootie', radius: 70, stats: structureStats(3000, 40, SHOOTIE_ATTACK), regrow: Infinity },
-  oakner: { name: 'Oakner', radius: 85, stats: structureStats(2200, 20), regrow: 240 },
-  daBase: { name: 'Da Base', radius: 140, stats: structureStats(4000, 20), regrow: Infinity },
+  outerShootie: { name: 'Outer Shootie', radius: 70, stats: structureStats(1800, 25, SHOOTIE_ATTACK), regrow: Infinity },
+  innerShootie: { name: 'Inner Shootie', radius: 70, stats: structureStats(2100, 25, SHOOTIE_ATTACK), regrow: Infinity },
+  baseShootie: { name: 'Base Shootie', radius: 70, stats: structureStats(2100, 25, SHOOTIE_ATTACK), regrow: Infinity },
+  oakner: { name: 'Oakner', radius: 85, stats: structureStats(1500, 15), regrow: 240 },
+  daBase: { name: 'Da Base', radius: 140, stats: structureStats(3000, 15), regrow: Infinity },
 };
 
 export const isShootie = (role: StructureRole): boolean =>

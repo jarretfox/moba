@@ -1,9 +1,12 @@
+import type { Bot } from '../shared/bots/bot';
+import { TEAM_SIZE, addBots } from '../shared/bots/lineup';
 import { Champion } from '../shared/champions/champion';
 import { createChampion } from '../shared/champions/registry';
 import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
-import { clamp, type Vec2 } from '../shared/math';
-import type { ClientMessage, Command, HostMessage } from '../shared/protocol';
+import type { ClientMessage, Command, HostMessage, MatchMode } from '../shared/protocol';
+import { applyCommand } from '../shared/sim/commands';
+import { Fountain } from '../shared/sim/fountain';
 import { spawnStructures } from '../shared/sim/structure';
 import { WaveSpawner } from '../shared/sim/waves';
 import { World } from '../shared/sim/world';
@@ -24,13 +27,14 @@ const MAX_QUEUED = 32;
  */
 export class HostCore {
   readonly world = new World(MAP);
+  readonly bots: Bot[] = [];
   private readonly players = new Map<string, Player>();
-
   private readonly waves = this.world.addSystem(new WaveSpawner());
+  private mode: MatchMode | null = null;
 
   constructor(private readonly send: (connId: string, msg: HostMessage) => void) {
     spawnStructures(this.world);
-    setupPracticeRange(this.world);
+    this.world.addSystem(new Fountain());
   }
 
   receive(connId: string, msg: ClientMessage): void {
@@ -43,6 +47,7 @@ export class HostCore {
         this.world.add(champ);
         this.players.set(connId, { unitId: champ.id, team, queue: [] });
         this.send(connId, { t: 'welcome', unitId: champ.id, team });
+        if (!this.mode) this.setUp(msg.mode === 'practice' ? 'practice' : 'bots');
         return;
       }
       case 'cmd': {
@@ -53,14 +58,26 @@ export class HostCore {
     }
   }
 
+  /** The first player to join picks the mode. M2's lobby will fill slots with friends before bots. */
+  private setUp(mode: MatchMode): void {
+    this.mode = mode;
+    if (mode === 'practice') {
+      setupPracticeRange(this.world);
+      return;
+    }
+    const humansOn = (team: PlayerTeam) => [...this.players.values()].filter((p) => p.team === team).length;
+    for (const team of [TEAM.blue, TEAM.red] as const) this.bots.push(...addBots(this.world, team, TEAM_SIZE - humansOn(team)));
+  }
+
   step(): void {
     // The match clock starts when the first player is in, and freezes on the final snapshot once a Da Base falls.
     if (this.players.size === 0 || this.world.winner) return;
     for (const p of this.players.values()) {
       const unit = this.world.getUnit(p.unitId);
-      if (unit instanceof Champion) for (const cmd of p.queue) this.apply(unit, cmd);
+      if (unit instanceof Champion) for (const cmd of p.queue) applyCommand(this.world, unit, cmd);
       p.queue.length = 0;
     }
+    for (const bot of this.bots) for (const cmd of bot.think(this.world)) applyCommand(this.world, bot.champion, cmd);
 
     this.world.step();
 
@@ -81,35 +98,4 @@ export class HostCore {
       });
     }
   }
-
-  /** From M2 on, commands arrive from other people's browsers, so nothing in them is trusted. */
-  private apply(unit: Champion, cmd: Command): void {
-    if (unit.dead) return;
-    const world = this.world;
-    switch (cmd.k) {
-      case 'move': {
-        const p = toPoint(cmd.x, cmd.y);
-        if (p) unit.commandMove(world, p);
-        return;
-      }
-      case 'attack': {
-        const target = world.getUnit(cmd.target);
-        if (target && target.team !== unit.team && target.isTargetable()) unit.commandAttack(target);
-        return;
-      }
-      case 'stop':
-        unit.commandStop();
-        return;
-      case 'cast': {
-        const p = toPoint(cmd.x, cmd.y);
-        if (p && (cmd.slot === 0 || cmd.slot === 1 || cmd.slot === 2 || cmd.slot === 3)) unit.tryCast(world, cmd.slot, p);
-        return;
-      }
-    }
-  }
-}
-
-function toPoint(x: unknown, y: unknown): Vec2 | null {
-  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) return null;
-  return { x: clamp(x, 0, MAP.width), y: clamp(y, 0, MAP.height) };
 }

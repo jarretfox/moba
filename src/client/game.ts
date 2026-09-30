@@ -203,6 +203,9 @@ export class GameClient {
         return this.fx.shockwave(ev.x, ev.y, ev.r ?? 180, 0xc9a86a, 0.35);
       case 'berserk':
         return this.fx.shockwave(ev.x, ev.y, (ev.r ?? 45) * 3, 0xff3b30, 0.45);
+      case 'recall':
+        this.fx.shockwave(ev.x, ev.y, 120, 0x7cc4ff, 0.5);
+        return this.fx.shockwave(x2, y2, 120, 0x7cc4ff, 0.5);
     }
   }
 
@@ -270,6 +273,10 @@ export class GameClient {
       case 'KeyS':
         this.send({ k: 'stop' });
         break;
+      case 'KeyB':
+        this.aiming = null;
+        this.send({ k: 'recall' });
+        break;
       case 'KeyY':
         this.camera.locked = !this.camera.locked;
         break;
@@ -334,6 +341,10 @@ export class GameClient {
     if (c === this.cursor) return;
     this.cursor = c;
     this.app.canvas.style.cursor = c;
+  }
+
+  setTitle(title: string): void {
+    this.hud.setTitle(title);
   }
 
   private toggleNavOverlay(): void {
