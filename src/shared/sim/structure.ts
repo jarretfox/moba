@@ -79,7 +79,7 @@ export class Structure extends Unit {
 
   private pickTarget(world: World): void {
     const current = this.order.kind === 'attack' ? world.getUnit(this.order.targetId) : undefined;
-    const target = this.answerCallForHelp(world) ?? (current && this.canShoot(current) ? current : this.nearestTarget(world));
+    const target = this.answerCallForHelp(world) ?? (current && this.canShoot(world, current) ? current : this.nearestTarget(world));
     if (target) this.commandAttack(target);
     else this.commandStop();
   }
@@ -89,7 +89,7 @@ export class Structure extends Unit {
     const calls = world.recentHelpCalls();
     for (let i = calls.length - 1; i >= 0; i--) {
       const { attacker, victim } = calls[i];
-      if (victim.team === this.team && !victim.dead && this.inReach(victim) && this.canShoot(attacker)) return attacker;
+      if (victim.team === this.team && !victim.dead && this.inReach(victim) && this.canShoot(world, attacker)) return attacker;
     }
     return undefined;
   }
@@ -99,7 +99,7 @@ export class Structure extends Unit {
     let best: Unit | undefined;
     let bestScore = Infinity;
     for (const u of world.units()) {
-      if (!this.canShoot(u)) continue;
+      if (!this.canShoot(world, u)) continue;
       const score = dist(u.pos, this.pos) + (u.kind === 'champion' ? 1e6 : 0);
       if (score < bestScore) {
         best = u;
@@ -109,8 +109,8 @@ export class Structure extends Unit {
     return best;
   }
 
-  private canShoot(u: Unit): boolean {
-    return u.team !== this.team && u.kind !== 'structure' && u.isTargetable() && this.inReach(u);
+  private canShoot(world: World, u: Unit): boolean {
+    return u.team !== this.team && u.kind !== 'structure' && u.isTargetable() && this.inReach(u) && world.vision.canSee(this.team, u);
   }
 
   private inReach(u: Unit): boolean {

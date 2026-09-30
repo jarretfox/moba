@@ -36,6 +36,8 @@ interface Status {
 
 /** Share of each attack's timer spent winding up before the hit lands or the shot leaves. Moving during it cancels the attack. */
 const WINDUP_FRACTION = 0.2;
+/** Seconds an attack or cast gives away your position, even from brush. */
+export const REVEAL_TIME = 1;
 /** How often a unit chasing an attack target recomputes its path. */
 const REPATH_INTERVAL = 0.25;
 /** A walker that gains less than this on its destination per tick is being blocked. */
@@ -59,6 +61,8 @@ export abstract class Unit implements Entity {
   order: Order = { kind: 'idle' };
   path: Vec2[] = [];
   lastDamagedAt = -Infinity;
+  /** Attacking or casting reveals you (even in brush) until this time. */
+  revealedUntil = -Infinity;
   /** Can't be shoved by other units (training dummies now; structures later). */
   readonly immovable: boolean = false;
   /** Direction walked this tick, or null if the unit stood still. Collision uses it to decide who gives way. */
@@ -215,7 +219,8 @@ export abstract class Unit implements Entity {
   private updateAttack(world: World): void {
     if (this.order.kind !== 'attack') return;
     const target = world.getUnit(this.order.targetId);
-    if (!target || !target.isTargetable()) {
+    // A target that slips into fog or brush is lost, like in League.
+    if (!target || !target.isTargetable() || !world.vision.canSee(this.team, target)) {
       this.cancelWindup();
       this.order = { kind: 'idle' };
       this.path = [];
@@ -230,6 +235,7 @@ export abstract class Unit implements Entity {
       this.facing = angleOf(sub(target.pos, this.pos));
       if (world.time >= this.windup.fireAt) {
         this.windup = null;
+        this.revealedUntil = world.time + REVEAL_TIME;
         this.launchAttack(world, target);
       }
       return;

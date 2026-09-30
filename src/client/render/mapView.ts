@@ -2,7 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { TEAM, type Team } from '../../shared/constants';
 import type { GroundStyle, MapData } from '../../shared/map/mapData';
 import type { NavGrid } from '../../shared/map/navGrid';
-import type { Shape } from '../../shared/map/shapes';
+import { shapeContains, type Shape } from '../../shared/map/shapes';
 
 const COLORS = {
   void: 0x121811,
@@ -13,6 +13,9 @@ const COLORS = {
   lane: 0x6b5a42,
   jungle: 0x2c4327,
   river: 0x285468,
+  brush: 0x1f4a1b,
+  brushEdge: 0x2f6a28,
+  brushTuft: 0x3f8a35,
 } as const;
 
 /** Draw order: later styles paint over earlier ones where they overlap. */
@@ -35,6 +38,7 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): Container {
   // Outlines first, fills on top: overlapping wall pieces then read as one solid mass without seams.
   for (const b of map.blockers) strokeShape(g, b, COLORS.wallEdge);
   for (const b of map.blockers) drawShape(g, b, COLORS.wall);
+  for (const b of map.brush) drawBrush(g, b);
 
   const label = (text: string, x: number, y: number) => {
     const t = new Text({
@@ -98,4 +102,19 @@ function strokeShape(g: Graphics, s: Shape, color: number): void {
   const style = { width: 14, color };
   if (s.type === 'circle') g.circle(s.x, s.y, s.r).stroke(style);
   else if (s.type === 'rect') g.rect(s.x, s.y, s.w, s.h).stroke(style);
+}
+
+/** Tall grass: a dark patch with grass tufts, so it reads as somewhere to hide. */
+function drawBrush(g: Graphics, s: Shape): void {
+  strokeShape(g, s, COLORS.brushEdge);
+  drawShape(g, s, COLORS.brush);
+  const step = 45;
+  for (let y = -600; y <= 600; y += step) {
+    for (let x = -600; x <= 600; x += step) {
+      const cx = (s.type === 'capsule' ? s.ax : s.x) + x + ((y / step) % 2 ? step / 2 : 0);
+      const cy = (s.type === 'capsule' ? s.ay : s.y) + y;
+      if (!shapeContains(s, cx, cy)) continue;
+      g.moveTo(cx - 8, cy + 6).lineTo(cx, cy - 10).lineTo(cx + 8, cy + 6).stroke({ width: 3, color: COLORS.brushTuft });
+    }
+  }
 }

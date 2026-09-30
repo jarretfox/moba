@@ -5,6 +5,7 @@ import { Pathfinder } from '../map/pathfind';
 import type { Vec2 } from '../math';
 import type { DamageType, EntitySnap, GameEvent } from '../protocol';
 import { resolveUnitCollisions } from './collision';
+import { Vision } from './vision';
 import type { Entity } from './entity';
 import { Unit } from './unit';
 
@@ -36,6 +37,7 @@ export class World {
   /** Set once a Da Base falls. The host stops the match there. */
   winner: PlayerTeam | null = null;
   readonly grid: NavGrid;
+  readonly vision: Vision;
   private readonly pathfinder: Pathfinder;
   private readonly entities = new Map<number, Entity>();
   private events: GameEvent[] = [];
@@ -47,6 +49,7 @@ export class World {
   constructor(readonly map: MapData) {
     this.grid = new NavGrid(map);
     this.pathfinder = new Pathfinder(this.grid);
+    this.vision = new Vision(this);
   }
 
   declareWinner(team: PlayerTeam): void {
@@ -140,15 +143,16 @@ export class World {
     }
 
     for (const s of this.systems) s.update(this);
+    this.vision.update();
     for (const e of this.entities.values()) e.update(this);
     resolveUnitCollisions(this);
     for (const [id, e] of this.entities) if (e.removed) this.entities.delete(id);
   }
 
-  /** What one team is allowed to see. Fog of war filters here in M2; for now it's everything. */
-  visibleTo(_team: Team): EntitySnap[] {
+  /** What one team is allowed to know about: its own side, plus whatever its fog of war reveals. */
+  visibleTo(team: Team): EntitySnap[] {
     const out: EntitySnap[] = [];
-    for (const e of this.entities.values()) out.push(e.snapshot(this));
+    for (const e of this.entities.values()) if (this.vision.canSee(team, e)) out.push(e.snapshot(this));
     return out;
   }
 }

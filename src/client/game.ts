@@ -4,11 +4,13 @@ import type { ChampionInfo } from '../shared/champions/types';
 import { TEAM, type Slot, type Team } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { NavGrid } from '../shared/map/navGrid';
+import { VisionGrid } from '../shared/sim/vision';
 import { dist, type Vec2 } from '../shared/math';
 import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/protocol';
 import { Camera } from './camera';
 import type { Connection } from './net/connection';
 import { Hud } from './hud';
+import { FogLayer } from './render/fog';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
 import { buildMap, buildNavOverlay } from './render/mapView';
@@ -32,6 +34,9 @@ export class GameClient {
   private readonly indicator = new Graphics();
   private readonly fx = new FxLayer();
   private navOverlay: Graphics | null = null;
+  private readonly nav = new NavGrid(MAP);
+  private readonly visionGrid = new VisionGrid(MAP, this.nav);
+  private readonly fog = new FogLayer(this.visionGrid);
 
   private readonly camera = new Camera(MAP);
   private readonly buffer: SnapshotBuffer;
@@ -58,7 +63,7 @@ export class GameClient {
     this.hud = new Hud(hudRoot);
     this.buffer = new SnapshotBuffer(conn.interpDelay);
     this.groundLayer.addChild(buildMap(MAP));
-    this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
+    this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.fog.sprite, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
     app.stage.addChild(this.worldLayer);
     this.bindInput();
     app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
@@ -91,6 +96,7 @@ export class GameClient {
     this.syncViews(dt);
     for (const ev of events) this.playEvent(ev);
     this.fx.update(dt);
+    this.fog.update(this.ents.values(), this.myTeam, performance.now() / 1000);
 
     const me = this.ents.get(this.myId);
     if (me?.champ && !this.myInfo) {
@@ -121,7 +127,7 @@ export class GameClient {
       this.views.delete(id);
     }
     const me = this.ents.get(this.myId);
-    const ctx: ViewContext = { me: me && !me.dead ? me : undefined };
+    const ctx: ViewContext = { me: me && !me.dead ? me : undefined, inBrush: (x, y) => this.visionGrid.brushAt({ x, y }) > 0 };
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);
       if (!view) {
@@ -360,7 +366,7 @@ export class GameClient {
       this.navOverlay.visible = !this.navOverlay.visible;
       return;
     }
-    this.navOverlay = buildNavOverlay(new NavGrid(MAP));
+    this.navOverlay = buildNavOverlay(this.nav);
     this.groundLayer.addChild(this.navOverlay);
   }
 

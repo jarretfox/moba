@@ -154,7 +154,7 @@ export class HostCore {
           tick: this.world.tick,
           time: this.world.time,
           ents: this.world.visibleTo(p.team),
-          ev,
+          ev: ev.filter((e) => this.world.vision.canSeeEvent(p.team, e)),
           me: me instanceof Champion ? me.meSnapshot(this.world) : undefined,
           nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
           winner: this.world.winner ?? undefined,

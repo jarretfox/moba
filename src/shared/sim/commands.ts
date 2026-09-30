@@ -18,7 +18,7 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
     }
     case 'attack': {
       const target = world.getUnit(cmd.target);
-      if (target && target.team !== unit.team && target.isTargetable()) unit.commandAttack(target);
+      if (target && target.team !== unit.team && target.isTargetable() && world.vision.canSee(unit.team, target)) unit.commandAttack(target);
       return;
     }
     case 'stop':

@@ -26,6 +26,7 @@ export const PALETTE = {
 export interface ViewContext {
   /** The viewer's champion, if alive. */
   me: EntitySnap | undefined;
+  inBrush(x: number, y: number): boolean;
 }
 
 export interface EntityView {
@@ -79,8 +80,9 @@ export class UnitView implements EntityView {
     this.container.addChild(this.statusRing, this.body, this.facing, this.bars, this.label);
   }
 
-  update(s: EntitySnap, dt: number): void {
+  update(s: EntitySnap, dt: number, ctx: ViewContext): void {
     this.container.visible = !s.dead;
+    this.container.alpha = ctx.inBrush(s.x, s.y) ? 0.55 : 1; // hidden in brush, like League
     this.container.position.set(s.x, s.y);
     this.facing.rotation = s.f;
 

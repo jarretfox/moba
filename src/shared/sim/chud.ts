@@ -66,7 +66,7 @@ export class Chud extends Unit {
     const calls = world.recentHelpCalls();
     for (let i = calls.length - 1; i >= 0; i--) {
       const { attacker, victim } = calls[i];
-      if (victim.team === this.team && this.near(victim, ACQUIRE_RANGE) && this.canFight(attacker, ACQUIRE_RANGE)) return attacker;
+      if (victim.team === this.team && this.near(victim, ACQUIRE_RANGE) && this.canFight(world, attacker, ACQUIRE_RANGE)) return attacker;
     }
 
     // Otherwise the best tier wins, nearest first — but within a tier we finish the fight we're in.
@@ -75,7 +75,7 @@ export class Chud extends Unit {
     let bestScore = Infinity;
     for (const u of world.units()) {
       const isCurrent = u.id === currentId;
-      if (!this.canFight(u, isCurrent ? ACQUIRE_RANGE + LEASH : ACQUIRE_RANGE)) continue;
+      if (!this.canFight(world, u, isCurrent ? ACQUIRE_RANGE + LEASH : ACQUIRE_RANGE)) continue;
       const score = TARGET_TIER[u.kind] * 1e6 + dist(u.pos, this.pos) - (isCurrent ? 1e5 : 0);
       if (score < bestScore) {
         best = u;
@@ -85,8 +85,8 @@ export class Chud extends Unit {
     return best;
   }
 
-  private canFight(u: Unit, range: number): boolean {
-    return u.team !== this.team && u.isTargetable() && this.near(u, range);
+  private canFight(world: World, u: Unit, range: number): boolean {
+    return u.team !== this.team && u.isTargetable() && this.near(u, range) && world.vision.canSee(this.team, u);
   }
 
   private near(u: Unit, range: number): boolean {

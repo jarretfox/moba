@@ -1,7 +1,7 @@
 import type { PlayerTeam, Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
 import type { EntitySnap, MeSnap } from '../protocol';
-import { Unit, type Stats } from '../sim/unit';
+import { REVEAL_TIME, Unit, type Stats } from '../sim/unit';
 import type { World } from '../sim/world';
 import type { ChampionInfo, Targeting } from './types';
 
@@ -77,6 +77,7 @@ export abstract class Champion extends Unit {
     this.mana -= info.cost;
     state.readyAt = world.time + info.cooldown;
     this.cancelWindup();
+    this.revealedUntil = world.time + REVEAL_TIME;
     if (dist(target, this.pos) > 1) this.facing = angleOf(sub(target, this.pos));
     world.emit({ e: 'cast', src: this.id, slot, x: Math.round(target.x), y: Math.round(target.y) });
     this.onCastStart(world, slot, target);

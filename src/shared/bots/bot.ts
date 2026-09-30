@@ -41,7 +41,7 @@ const MOVE_RESEND = 60;
 /**
  * Plays one champion through the same commands a human sends. It farms its lane from behind its own
  * wave, last-hits, won't walk under an enemy Shootie without Chuds to tank it, trades when it's ahead,
- * and goes home to heal when it's low. It doesn't dodge skillshots or plan ganks.
+ * and goes home to heal when it's low. It only knows what its team can see. It doesn't dodge skillshots or plan ganks.
  */
 export class Bot {
   private state: 'lane' | 'retreat' = 'lane';
@@ -80,7 +80,7 @@ export class Bot {
     const hp = me.hp / me.stats.maxHp;
     const foes = world
       .units()
-      .filter((u) => u.kind === 'champion' && u.team !== me.team && u.isTargetable() && dist(u.pos, me.pos) < THREAT_RANGE)
+      .filter((u) => u.kind === 'champion' && u.team !== me.team && u.isTargetable() && dist(u.pos, me.pos) < THREAT_RANGE && world.vision.canSee(me.team, u))
       .sort((a, b) => dist(a.pos, me.pos) - dist(b.pos, me.pos));
     const nearest = foes[0];
 
@@ -160,7 +160,7 @@ export class Bot {
     if (spell) out.push(spell);
 
     // Hit a structure whenever our Chuds are soaking its shots and no enemy champion is around to punish it.
-    const noFoes = !world.units().some((u) => u.kind === 'champion' && u.team !== me.team && u.isTargetable() && dist(u.pos, me.pos) < 1000);
+    const noFoes = !world.units().some((u) => u.kind === 'champion' && u.team !== me.team && u.isTargetable() && dist(u.pos, me.pos) < 1000 && world.vision.canSee(me.team, u));
     const structure = world
       .units()
       .find(
@@ -245,7 +245,7 @@ export class Bot {
   }
 
   private enemyChuds(world: World): Chud[] {
-    return world.units().filter((u): u is Chud => u instanceof Chud && u.team !== this.champion.team && u.isTargetable());
+    return world.units().filter((u): u is Chud => u instanceof Chud && u.team !== this.champion.team && u.isTargetable() && world.vision.canSee(this.champion.team, u));
   }
 
   private allyChuds(world: World): Chud[] {

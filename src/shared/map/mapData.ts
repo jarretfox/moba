@@ -29,6 +29,8 @@ export interface MapData {
   ground: GroundPiece[];
   /** Solid terrain carved back out of the ground. */
   blockers: Shape[];
+  /** Tall grass: hides whoever stands in it from anyone outside that patch. */
+  brush: Shape[];
   structures: StructureSpot[];
   /** Chud routes, written from blue's side (blue Da Base → red Da Base). Use lanePath for either team. */
   lanes: Record<Lane, Vec2[]>;
@@ -67,6 +69,15 @@ const quadrantGround: GroundPiece[] = [
   // River: mouth into the lane and the band down the middle of the map.
   { style: 'river', shape: { type: 'capsule', ax: 6000, ay: 1100, bx: 6000, by: 2100, r: 300 } },
   { style: 'river', shape: { type: 'rect', x: 5700, y: 1900, w: 300, h: 1600 } },
+];
+
+// Brush for ambushes: two lane-edge patches, two in the jungle, one by the river mouth.
+const quadrantBrush: Shape[] = [
+  { type: 'rect', x: 3100, y: 1340, w: 400, h: 130 }, // top lane, jungle side, by the side path
+  { type: 'rect', x: 5100, y: 730, w: 400, h: 130 }, // top lane, outer edge, near the river
+  { type: 'circle', x: 3150, y: 2150, r: 140 }, // jungle corner by the lane wall
+  { type: 'circle', x: 4700, y: 3000, r: 150 }, // between the wall chunk and the pillar, on the way to the pit
+  { type: 'circle', x: 5780, y: 2250, r: 120 }, // river, just below the mouth
 ];
 
 const quadrantBlockers: Shape[] = [
@@ -119,6 +130,7 @@ export const MAP: MapData = {
   cellSize: 50,
   ground: mirror4(quadrantGround, (g, mx, my) => ({ ...g, shape: mirrorShape(g.shape, W, H, mx, my) })),
   blockers: mirror4(quadrantBlockers, (s, mx, my) => mirrorShape(s, W, H, mx, my)),
+  brush: mirror4(quadrantBrush, (s, mx, my) => mirrorShape(s, W, H, mx, my)),
   structures: [
     ...mirror4(quadrantStructures, mirrorStructure),
     ...baseStructures.flatMap((s) => [s, mirrorStructure(s, true, false)]),

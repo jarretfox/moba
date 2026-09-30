@@ -50,9 +50,13 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Recall (B):** channel for 4s to teleport home. Taking damage, a stun, or any other order breaks it.
   - **Fountain:** standing within 500 of your spawn restores 12% of max health and mana per second. Rage isn't refilled; it's earned.
 - **Call for help:** if an enemy champion hurts your champion nearby, your Chuds and Shooties switch to that enemy. This rule is what makes trading and tower dives work.
-- **Vision:**
-  - Every unit sees in a radius. Walls block sight, and brush hides whoever is inside it.
-  - The host only sends each team what that team can see.
+- **Vision (fog of war)** — `src/shared/sim/vision.ts`, sight ranges in `sight.ts`:
+  - **What each team can see:** champions see 1100 units, Chuds 800, Shooties 1100, Da Base 900 and Oakners 700. This is worked out on a 100-unit grid, 10 times a second, and walls block line of sight.
+  - **Brush:** 5 patches per quadrant: along lane edges, in the jungle, and by the river mouth. You can't see into a patch unless someone on your side is standing in it; from inside, you see out normally. Units in brush are drawn semi-transparent.
+  - **Revealing:** attacking or casting reveals you for 1 second, even from brush.
+  - **Always and never visible:** structures are always visible to both sides. Enemy traps never are.
+  - **The host enforces it:** each team is only sent the enemies it can see, and only the damage, effects and casts it could see. Chuds, Shooties and bots can't target or react to what their team can't see, and an attack on a unit that disappears into fog or brush is dropped.
+  - **Drawing it:** each client computes its own team's fog from its own units, with the same code, so fog costs no bandwidth.
 - **Progression:**
   - Level cap around 13, with ultimates unlocking at level 5.
   - Experience is shared among nearby allies.
@@ -212,7 +216,7 @@ src/
 |---|---|---|
 | M0 | Project, host-in-worker, map blockout, nav grid + A*, click-to-move, basic attacks, full Marksman kit, training dummies, HUD | ✅ done |
 | M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | ✅ done (plus Recall, fountain, champion select, growing death timers and Chuds) |
-| M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | In progress: ✅ online lobbies |
+| M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | In progress: ✅ online lobbies, ✅ fog of war + brush |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | |
 | M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |
 | M5 | Balance tools, playtests | |
@@ -222,6 +226,5 @@ src/
   - Structure health is tuned down for level-1 champions (outer Shootie 1800). M3 will raise it again.
   - Games are decided by Chud growth and death timers rather than by getting ahead. Bots-only matches take about 28–30 minutes.
 - **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster).
-- **No fog of war (M2):** traps are visible to everyone, and bots see the whole map.
 - **No jungle camps or Warden yet (M3),** so all three bots per side lane.
 - Bots don't dodge skillshots or coordinate as a team.
