@@ -496,6 +496,8 @@ export class GameClient {
       inBrush: (x, y) => this.visionGrid.brushAt({ x, y }) > 0,
       inWater: (x, y) => MAP.ground.some((p) => p.style === 'river' && shapeContains(p.shape, x, y)),
       wind: this.wind,
+      light: (x, y) => this.lighting.lightAt(x, y, nightAt(this.buffer.latest?.time ?? 0)),
+      night: nightAt(this.buffer.latest?.time ?? 0),
     };
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);

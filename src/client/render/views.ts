@@ -1,4 +1,6 @@
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import type { FigureLight } from './lighting';
+import { mix } from './organic';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { EntitySnap, StatusKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
@@ -56,6 +58,28 @@ export interface ViewContext {
   inWater?(x: number, y: number): boolean;
   /** The wind, for grass round the legs and banners. */
   wind?: Wind;
+  /** The light falling on a spot (for a glow on that side, a tint, and a shadow cast away from it). */
+  light?(x: number, y: number): FigureLight;
+  /** How far into the night it is (0–1): shadows lengthen. */
+  night?: number;
+}
+
+/** A soft round glow, shared by every figure's back light. */
+let glowTexture: Texture | null = null;
+function softGlow(): Texture {
+  if (glowTexture) return glowTexture;
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const c = canvas.getContext('2d')!;
+  const grad = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = grad;
+  c.fillRect(0, 0, size, size);
+  glowTexture = Texture.from(canvas);
+  return glowTexture;
 }
 
 export interface EntityView {
@@ -146,6 +170,10 @@ export class UnitView implements EntityView {
   private readonly ripple = new Graphics();
   /** In the brush: tall grass in front of their legs, swaying. */
   private readonly grass = new Graphics();
+  /** A long soft shadow cast away from the light, longer as night falls. */
+  private readonly cast = new Graphics();
+  /** Light catching the figure from the side the light is on (champions). */
+  private backlight: Sprite | null = null;
   private readonly resourceColor: number;
 
   constructor(s: EntitySnap, private readonly relation: Relation) {
@@ -224,7 +252,15 @@ export class UnitView implements EntityView {
       }
       this.grass.visible = false;
     }
-    this.container.addChild(this.statusRing, this.recallUnder, this.body, this.facing, ...(this.rig ? [this.rig.root, this.wade, this.grass] : []), this.recallOver, this.bars, this.label);
+    if (this.rig) {
+      this.cast.ellipse(0, 0, r, r * 0.38).fill({ color: 0x000000, alpha: 0.26 });
+      if (s.k === 'champion') {
+        this.backlight = new Sprite(softGlow());
+        this.backlight.anchor.set(0.5);
+        this.backlight.blendMode = 'add';
+      }
+    }
+    this.container.addChild(this.cast, this.statusRing, this.recallUnder, this.body, this.facing, ...(this.backlight ? [this.backlight] : []), ...(this.rig ? [this.rig.root, this.wade, this.grass] : []), this.recallOver, this.bars, this.label);
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -395,7 +431,10 @@ export class UnitView implements EntityView {
     // In the Dark Dabber's smoke, his own side sees him faintly.
     this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') || s.st?.includes('vanished') ? 0.4 : s.st?.includes('untargetable') ? 0.55 : 1;
     if (this.rig) this.rig.root.alpha = under ? 0.12 : this.body.alpha;
-    if (this.rig) this.surroundings(s, ctx, moved);
+    if (this.rig) {
+      this.surroundings(s, ctx, moved);
+      this.lightUp(s, ctx);
+    }
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
 
     const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
@@ -407,6 +446,32 @@ export class UnitView implements EntityView {
     if (statusKey !== this.statusKey) {
       this.statusKey = statusKey;
       this.drawStatus(s);
+    }
+  }
+
+  /** The light on the figure: tinted by it, glowing on the side it's on, its shadow thrown the other way. */
+  private lightUp(s: EntitySnap, ctx: ViewContext): void {
+    const rig = this.rig!;
+    const night = ctx.night ?? 0;
+    const light = ctx.light?.(s.x, s.y) ?? { dx: -0.6, dy: -0.8, color: 0xffffff, k: 0 };
+    const k = light.k;
+    // The shadow falls away from the light, and stretches as the light gets lower (the moon at night,
+    // or a lantern close by).
+    const stretch = 0.25 + k * 1.2 + night * 0.6;
+    this.cast.visible = !s.dead && !this.air;
+    this.cast.rotation = Math.atan2(-light.dy, -light.dx);
+    this.cast.scale.set(stretch, 1);
+    this.cast.position.set(-light.dx * s.r * stretch * 0.8, -light.dy * s.r * stretch * 0.5);
+    this.cast.alpha = 0.6 + 0.4 * Math.min(1, k + night);
+    if (this.flash <= 0) rig.root.tint = mix(0xffffff, light.color, Math.min(0.35, k * 0.3));
+    if (this.backlight) {
+      const h = rig.height;
+      this.backlight.visible = !s.dead && k > 0.05;
+      this.backlight.position.set(light.dx * s.r * 0.55, -h * 0.5 + light.dy * h * 0.15);
+      this.backlight.width = s.r * 2.2;
+      this.backlight.height = h * 1.15;
+      this.backlight.tint = light.color;
+      this.backlight.alpha = Math.min(0.45, k * 0.5);
     }
   }
 

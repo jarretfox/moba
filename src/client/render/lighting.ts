@@ -40,6 +40,31 @@ export function skyAt(time: number): number {
   return SKY[SKY.length - 1][1];
 }
 
+/** The light falling on a figure: which way it comes from (a unit vector toward it), its color, how strong. */
+export interface FigureLight {
+  dx: number;
+  dy: number;
+  color: number;
+  k: number;
+}
+
+const MOON = 0xb8ccff;
+
+/** The strongest of these lights on a spot, or the moon if none is close (see Lighting.lightAt). */
+export function lightAmong(groups: readonly (readonly Light[])[], x: number, y: number, night: number): FigureLight {
+  let best: FigureLight = { dx: -0.6, dy: -0.8, color: MOON, k: night * 0.7 };
+  for (const lights of groups) {
+    for (const l of lights) {
+      const d = Math.hypot(l.x - x, l.y - y);
+      if (d >= l.r) continue;
+      const k = l.alpha * (1 - d / l.r) ** 2 * 1.6;
+      if (k <= best.k) continue;
+      best = { dx: d > 1 ? (l.x - x) / d : -0.6, dy: d > 1 ? (l.y - y) / d : -0.8, color: l.color, k: Math.min(1, k) };
+    }
+  }
+  return best;
+}
+
 /** How far into the night it is, 0 (evening) to 1 (full night). */
 export function nightAt(time: number): number {
   return Math.max(0, Math.min(1, (time - SKY[1][0]) / (SKY[2][0] - SKY[1][0])));
@@ -135,6 +160,14 @@ export class Lighting {
       ...map.ground.flatMap((p) => (p.style === 'base' && p.shape.type === 'circle' ? [{ x: p.shape.x, y: p.shape.y, r: p.shape.r * 1.6, color: WARM, alpha: 0.55 }] : [])),
       { x: map.width / 2, y: map.height / 2, r: 700, color: 0x8fd14f, alpha: 0.3 },
     ];
+  }
+
+  /**
+   * The strongest light on a spot: a lantern, a brazier, a glowing mushroom or a base's glow if one's
+   * close, otherwise the moon (from the upper left, brighter as the night deepens).
+   */
+  lightAt(x: number, y: number, night: number): FigureLight {
+    return lightAmong([this.fixed, this.flickering], x, y, night);
   }
 
   /** Another wavering light that stays put (Old Wick's lantern). */

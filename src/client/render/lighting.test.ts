@@ -21,3 +21,26 @@ describe('the sky over a match', () => {
     expect(nightAt(5000)).toBe(1);
   });
 });
+
+describe('the light on a figure', () => {
+  it('comes from a lantern when close to one, and from the moon (stronger at night) when not', async () => {
+    const { lightAmong } = await import('./lighting');
+    const { MAP } = await import('../../shared/map/mapData');
+    const { propLights, propSpots } = await import('./props');
+    const lights = [propLights(propSpots(MAP))];
+    const lighting = { lightAt: (x: number, y: number, night: number) => lightAmong(lights, x, y, night) };
+    const lantern = propSpots(MAP).lanterns[0];
+    // Just to the left of a lantern: lit warm, from the right.
+    const near = lighting.lightAt(lantern.x - 60, lantern.y, 0);
+    expect(near.k).toBeGreaterThan(0.3);
+    expect(near.dx).toBeGreaterThan(0.9);
+    expect(near.color).toBe(0xffc070);
+    // Far out in the middle of nowhere: the moon, from the upper left.
+    const dusk = lighting.lightAt(MAP.width / 2, 300, 0);
+    const night = lighting.lightAt(MAP.width / 2, 300, 1);
+    expect(night.dx).toBeLessThan(0);
+    expect(night.dy).toBeLessThan(0);
+    expect(night.k).toBeGreaterThan(dusk.k);
+    expect(dusk.k).toBe(0);
+  });
+});
