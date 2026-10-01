@@ -11,7 +11,7 @@ import type { Command, EntitySnap, GameEvent, HostMessage, MeSnap, ScoreRow } fr
 import { getSound } from './audio';
 import { onSettings, settings } from './settings';
 import { Camera } from './camera';
-import { MELEE, cueFor, type SoundCue } from './sfx';
+import { MELEE, announceSound, cueFor, spatialize, type SoundCue } from './sfx';
 import { EMOTE_ANIM, wardenWindup } from './render/animation';
 import { Bubbles } from './render/bubbles';
 import { typing } from './ui/chat';
@@ -209,6 +209,8 @@ export class GameClient {
   /** What hurt you lately, for the death recap. */
   private readonly damageLog = new DamageLog();
   private nextPlaceCheck = 0;
+  /** When each Sewer Crab next scuttles audibly. */
+  private readonly skitters = new Map<number, number>();
   /** When the match ends: where Da Base fell, and when, so the camera can go and watch before the scores. */
   private finale: { x: number; y: number; at: number } | null = null;
 
@@ -232,7 +234,7 @@ export class GameClient {
   ) {
     this.hud = new Hud(hudRoot);
     this.hud.onLevelUp = (slot) => {
-      this.sound.play('click', 0.6);
+      this.sound.play('rankUp', 0.6);
       this.send({ k: 'levelUp', slot });
     };
     // The sounds and Wick's reaction wait for the host to say it went through (see shopLanded).
@@ -363,8 +365,7 @@ export class GameClient {
       this.camera.shake(4);
       setTimeout(() => this.sound.play('thunder', 0.8), 300 + Math.random() * 1200);
     };
-    this.sound.setRain(w.wetness);
-    this.sound.setWind(this.wind.strength / 0.55, w.snowy);
+    this.sound.setWeather(w.kind, this.wind.strength / 0.55);
   }
 
   /** Throws away every unit and structure view so they're drawn again (after the enemy color changes). */
@@ -410,7 +411,11 @@ export class GameClient {
       mvp: pickMvp(rows, winner)?.id === mine.id,
     });
     saveProfile(profile);
-    if (unlocked.length) this.hud.titlesUnlocked(unlocked.map((t) => t.name));
+    if (unlocked.length) {
+      this.hud.titlesUnlocked(unlocked.map((t) => t.name));
+      // After the stinger has had its say.
+      setTimeout(() => this.sound.play('titleUnlock', 0.7), 2600);
+    }
   }
 
   /** The hour for the look of things: the match clock, plus the head start if the match began at night. */
@@ -487,6 +492,7 @@ export class GameClient {
     const sky = this.weather ? this.weather.sky(skyAt(matchTime)) : skyAt(matchTime);
     this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, sky, duskAt(matchTime));
     this.ambience.setNight(nightAt(matchTime));
+    this.sound.setNight(nightAt(matchTime));
     this.nightLife.update(dt, matchTime, nightAt(matchTime), { x: this.camera.x, y: this.camera.y, w: w / this.camera.zoom, h: h / this.camera.zoom });
     this.critters.setNight(nightAt(matchTime));
     this.critters.update(dt, this.ents.values(), { x: this.camera.x, y: this.camera.y, w: w / this.camera.zoom, h: h / this.camera.zoom });
@@ -556,7 +562,7 @@ export class GameClient {
         awards.forEach((_, i) => setTimeout(() => this.sound.play('chime', 0.4), 900 + i * 250));
       }
       this.hud.showGameOver(latest.winner === this.myTeam, latest.scores, latest.winner, this.myTeam);
-      if (!this.gameOverPlayed) this.sound.play(latest.winner === this.myTeam ? 'victory' : 'defeat', 0.8);
+      if (!this.gameOverPlayed) this.sound.endMatch(latest.winner === this.myTeam);
       if (!this.gameOverPlayed && !this.replay) this.recordMatch(latest.scores ?? [], latest.winner);
       this.gameOverPlayed = true;
     }
@@ -1021,6 +1027,7 @@ export class GameClient {
     (this.views.get(s.id) as UnitView | undefined)?.land?.();
     this.fx.particles.burst(10, { shape: 'smoke', glow: false, x: s.x, y: s.y + s.r * 0.3, life: 0.6, size: s.r * 0.5, size2: s.r * 1.2, color: 0xb9a27c, alpha: 0.45, drag: 0.08 }, [s.r * 1.5, s.r * 3]);
     this.fx.burst(s.x, s.y, 0xd8cfc0, s.r * 2.2);
+    this.playCue({ name: 'land', at: s, gain: s.k === 'champion' ? 0.55 : 0.3 });
     if (s.id === this.myId) this.camera.shake(5);
   }
 
@@ -1114,7 +1121,7 @@ export class GameClient {
         this.fx.pillar(s.x, s.y, 70, 0x8fd14f, 1.4);
         this.fx.sigil(s.x, s.y, s.r * 2.2, 0x8fd14f, 1.4, 1.5);
         this.fx.particles.burst(30, { shape: 'leaf', glow: false, x: s.x, y: s.y, life: 1.2, size: 16, size2: 10, color: 0x6fae2e, color2: 0x3d6a14, drag: 0.15, ay: 60, spin: 6 }, [150, 420]);
-        this.playCue({ name: 'magic', at: s, gain: 0.6 });
+        this.playCue({ name: 'regrow', at: s, gain: 0.7 });
       }
       // Your own Da Base, badly hurt: its heartbeat, in time with the glow.
       if (s.role === 'daBase' && s.tm === this.myTeam && !s.dead) {
@@ -1178,10 +1185,19 @@ export class GameClient {
     this.bubbles.container.visible = true;
   }
 
-  /** Feeds the music how much of a fight you're in, and the soundscape what's around the camera. */
+  /**
+   * Feeds the music how much of a fight you're in, and the soundscape what's around the camera: jungle,
+   * river, the Warden's pit and the nearest standing structure. The Sewer Crabs scuttle audibly too.
+   */
   private updateSoundscape(): void {
     const now = performance.now() / 1000;
     this.sound.setIntensity(now - this.lastFight < 6 ? 1 : 0);
+    for (const e of this.ents.values()) {
+      if (e.k !== 'monster' || e.mon !== 'crab' || e.dead) continue;
+      if (now < (this.skitters.get(e.id) ?? 0)) continue;
+      this.skitters.set(e.id, now + 1.1 + Math.random() * 0.9);
+      this.playCue({ name: 'crabSkitter', at: e, gain: 0.5 });
+    }
     if (now < this.nextPlaceCheck) return;
     this.nextPlaceCheck = now + 0.4;
     let jungle = 0;
@@ -1194,7 +1210,14 @@ export class GameClient {
       if (style === 'river') river++;
       else if (style !== 'lane' && style !== 'base') jungle++; // jungle paths and the woods off them
     }
-    this.sound.setPlace(jungle / spots.length, river / spots.length);
+    // The pit drones within a screen or so of the map's center; the crystals hum near a standing structure.
+    const pit = Math.max(0, 1 - Math.hypot(this.camera.x - MAP.width / 2, this.camera.y - MAP.height / 2) / 1300);
+    let hum = 0;
+    for (const s of this.ents.values()) {
+      if (s.k !== 'structure' || s.dead) continue;
+      hum = Math.max(hum, 1 - Math.hypot(this.camera.x - s.x, this.camera.y - s.y) / 900);
+    }
+    this.sound.setPlace(jungle / spots.length, river / spots.length, pit, hum);
   }
 
   /** The minimap, a few times a second is plenty. */
@@ -1231,7 +1254,7 @@ export class GameClient {
     const good = tone === 'ours';
     const say = (title: string, detail: string, big: boolean) => {
       this.hud.announce(title, detail, tone);
-      this.sound.play(big ? (good ? 'fanfare' : 'toll') : 'kill', big ? 0.7 : 0.5);
+      this.sound.play(announceSound(ev, big, good), big ? 0.7 : 0.5);
     };
     switch (ev.what) {
       case 'warden':
@@ -1321,19 +1344,16 @@ export class GameClient {
     if (!always && t - (this.spokeAt.get(u.id) ?? -Infinity) < 3) return;
     this.spokeAt.set(u.id, t);
     const halfView = this.app.screen.width / 2 / this.camera.zoom;
-    const d = Math.hypot(u.x - this.camera.x, u.y - this.camera.y);
-    const falloff = Math.max(0, Math.min(1, 1 - (d - halfView * 0.6) / (halfView * 1.4)));
-    const pan = Math.max(-1, Math.min(1, (u.x - this.camera.x) / halfView)) * 0.6;
-    this.sound.speak(utterance(u.champ, moment, n), (u.id === this.myId ? 0.75 : 0.6) * falloff, pan);
+    const where = spatialize(u.x - this.camera.x, u.y - this.camera.y, halfView);
+    this.sound.speak(utterance(u.champ, moment, n), (u.id === this.myId ? 0.75 : 0.6) * where.gain, where.pan, where.far);
   }
 
+  /** Plays a cue where it happened: quieter, duller and wetter the further it is from the middle of the screen, panned left or right. */
   private playCue(cue: SoundCue): void {
     if (!cue.at) return this.sound.play(cue.name, cue.gain);
     const halfView = this.app.screen.width / 2 / this.camera.zoom;
-    const d = Math.hypot(cue.at.x - this.camera.x, cue.at.y - this.camera.y);
-    const falloff = Math.max(0, Math.min(1, 1 - (d - halfView * 0.6) / (halfView * 1.4)));
-    const pan = Math.max(-1, Math.min(1, (cue.at.x - this.camera.x) / halfView)) * 0.6;
-    this.sound.play(cue.name, cue.gain * falloff, pan);
+    const where = spatialize(cue.at.x - this.camera.x, cue.at.y - this.camera.y, halfView);
+    this.sound.play(cue.name, cue.gain * where.gain, where.pan, where.far);
   }
 
   /**
@@ -1477,8 +1497,8 @@ export class GameClient {
     this.app.stage.removeChild(this.view, this.ripple.sprite);
     this.view.destroy({ children: true });
     this.hud.destroy();
-    this.sound.setRain(0);
-    this.sound.setWind(1, false);
+    this.sound.setWeather(null, 1);
+    this.sound.setPlace(0, 0, 0, 0);
     this.app.canvas.classList.remove('attack', 'shop');
   }
 
@@ -1563,12 +1583,15 @@ export class GameClient {
         break;
       case 'KeyP':
         this.hud.shop.toggle();
+        this.sound.play(this.hud.shop.open ? 'shopOpen' : 'shopClose', 0.5);
         break;
       case 'Escape':
         // Esc backs out of whatever's open: aiming, then the shop, then the menu.
         if (this.aiming !== null) this.aiming = null;
-        else if (this.hud.shop.open) this.hud.shop.toggle(false);
-        else this.hud.toggleMenu();
+        else if (this.hud.shop.open) {
+          this.hud.shop.toggle(false);
+          this.sound.play('shopClose', 0.5);
+        } else this.hud.toggleMenu();
         break;
     }
   }

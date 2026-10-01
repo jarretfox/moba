@@ -11,6 +11,7 @@ import type { GameEvent } from '../shared/protocol';
 import { iconEl } from './render/icons';
 import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
 import { ShopPanel, suggest } from './shop';
+import { getSound } from './audio';
 import { PROFILES } from '../shared/bots/profiles';
 import type { RecapEntry } from './recap';
 import type { Award } from './awards';
@@ -253,9 +254,15 @@ export class Hud {
       el.addEventListener('mouseenter', () => this.showItemTooltip(el, i));
       el.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
     });
-    q('.purse').addEventListener('click', () => this.shop.toggle());
+    q('.purse').addEventListener('click', () => {
+      this.shop.toggle();
+      getSound().play(this.shop.open ? 'shopOpen' : 'shopClose', 0.5);
+    });
     this.nextBuy = { root: q('.next-buy'), icon: q('.nb-icon'), text: q('.nb-text') };
-    this.nextBuy.root.addEventListener('click', () => this.shop.toggle(true));
+    this.nextBuy.root.addEventListener('click', () => {
+      if (!this.shop.open) getSound().play('shopOpen', 0.5);
+      this.shop.toggle(true);
+    });
     this.shop = new ShopPanel(
       root,
       (id) => this.onBuy?.(id),
@@ -805,6 +812,7 @@ export class Hud {
 
   /** The in-match menu (Esc): settings, and a way out. */
   toggleMenu(open = this.escMenu.hidden): void {
+    if (open === this.escMenu.hidden) getSound().play('click', 0.4);
     this.escMenu.hidden = !open;
   }
 

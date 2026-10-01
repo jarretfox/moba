@@ -1,8 +1,16 @@
 // Music and the sounds of the place, made on the fly with Web Audio like the sound effects: no files.
 //
-// The score is a slow dusk loop in D minor (pads, a soft bass, plucked notes wandering a pentatonic scale
-// through an echo and a hall), with a fight layer of drums that swells in when you're trading blows with
-// champions. Under it: wind everywhere, crickets and the odd owl in the jungle, water near the river.
+// The score is a slow dusk loop in D minor (pads with a shimmer over them, a soft bass, plucked notes
+// wandering a pentatonic scale through an echo and a hall, and now and then a little flute phrase), with a
+// fight layer of drums and a pulsing bass that swells in when you're trading blows with champions. It
+// settles as night comes on, and steps back for the victory or defeat stinger.
+//
+// Under it, the soundscape: wind everywhere (gusting in a storm or an autumn blow, hushed in the snow,
+// damp and muffled in the mist), rain pattering, water rushing and burbling by the river, crickets and the
+// odd owl in the jungle once dusk falls, the Warden's pit droning, and the faint hum of the crystals on
+// the structures.
+
+import type { Weather } from '../shared/weather';
 
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
@@ -15,6 +23,13 @@ const CHORDS: { pad: number[]; bass: number }[] = [
   { pad: [57, 62, 64, 69], bass: 45 }, // Asus
 ];
 const SCALE = [62, 65, 67, 69, 72, 74, 77, 79];
+/** Little flute phrases for the calm stretches: [degree of SCALE, step it starts on, steps it lasts]. */
+const MOTIFS: readonly (readonly [number, number, number])[][] = [
+  [[4, 0, 3], [3, 3, 3], [2, 6, 6], [4, 12, 4]],
+  [[2, 0, 2], [3, 2, 2], [4, 4, 4], [6, 8, 8]],
+  [[6, 0, 3], [4, 3, 3], [3, 6, 2], [2, 8, 8]],
+  [[4, 0, 2], [6, 2, 2], [7, 4, 6], [6, 10, 6]],
+];
 /** How far ahead notes are scheduled; generous so a busy or backgrounded tab doesn't leave gaps. */
 const AHEAD = 1.2;
 
@@ -37,6 +52,7 @@ export class Music {
   private nextAt = 0;
   private intensity = 0;
   private targetIntensity = 0;
+  private night = 0;
   private on: boolean;
   /** The music volume setting, 0–1. */
   private level = 1;
@@ -86,20 +102,27 @@ export class Music {
     this.applyVolume();
   }
 
-  /** A quick dip, then back up over half a second or so. */
-  duck(depth: number): void {
+  /** Steps back for a stinger (the victory or defeat jingle), and comes back up `seconds` later. */
+  hush(seconds: number): void {
     if (!this.on) return;
     const g = this.bus.gain;
     const now = this.ctx.currentTime;
     const full = 0.7 * this.level;
     g.cancelScheduledValues(now);
     g.setValueAtTime(g.value, now);
-    g.linearRampToValueAtTime(full * (1 - depth), now + 0.04);
-    g.setTargetAtTime(full, now + 0.25, 0.5);
+    g.setTargetAtTime(full * 0.12, now, 0.25);
+    g.setTargetAtTime(full, now + seconds, 1.5);
+  }
+
+  /** How far into the night it is, 0–1: the pads darken, the shimmer rises and the plucks thin out. */
+  setNight(k: number): void {
+    this.night = Math.max(0, Math.min(1, k));
   }
 
   private applyVolume(): void {
-    this.bus.gain.setTargetAtTime(this.on ? 0.7 * this.level : 0, this.ctx.currentTime, 0.2);
+    const g = this.bus.gain;
+    g.cancelScheduledValues(this.ctx.currentTime);
+    g.setTargetAtTime(this.on ? 0.7 * this.level : 0, this.ctx.currentTime, 0.2);
   }
 
   /** 0 when calm, 1 in a fight; the drums follow it. */
@@ -126,30 +149,36 @@ export class Music {
     const chord = CHORDS[Math.floor(step / 16) % CHORDS.length];
     if (inBar === 0) {
       for (const n of chord.pad) this.pad(midi(n), at, STEP * 16 + 0.6);
+      this.shimmer(chord.pad.slice(2).map((n) => midi(n + 12)), at, STEP * 16 + 0.6);
       this.bass(midi(chord.bass), at, STEP * 16);
+      // Every few chords, when it's calm, a little phrase on the flute.
+      if (step % 64 === 0 && this.intensity < 0.25 && Math.random() < 0.45) this.phrase(at);
     }
-    // Plucks: sparse and wandering when calm, a running arpeggio in a fight.
+    // Plucks: sparse and wandering when calm (sparser still at night), a running arpeggio in a fight.
     const fight = this.intensity;
     if (fight > 0.45 && step % 2 === 0) {
       const arp = [...chord.pad, ...chord.pad.map((n) => n + 12)];
       this.pluck(midi(arp[(step / 2) % arp.length] + 12), at, 0.05 * fight);
-    } else if (step % 2 === 0 && Math.random() < 0.28) {
+    } else if (step % 2 === 0 && Math.random() < 0.28 * (1 - 0.4 * this.night)) {
       this.pluck(midi(SCALE[Math.floor(Math.random() * SCALE.length)]), at, 0.07);
     }
-    // Drums for the fight.
+    // Drums and a pulsing bass for the fight.
     if (fight > 0.05) {
       if (inBar % 4 === 0) this.kick(at, 0.5 * fight);
       if (inBar % 4 === 2 && fight > 0.5) this.kick(at, 0.25 * fight);
       if (step % 2 === 1) this.hat(at, 0.05 * fight);
       if ((inBar === 12 || inBar === 14) && fight > 0.7) this.tom(at, 0.3 * fight);
+      if (fight > 0.35 && step % 2 === 0) this.pulse(midi(chord.bass + 12), at, 0.06 * fight);
+      if (fight > 0.6 && (inBar === 4 || inBar === 12)) this.ride(at, 0.035 * fight);
     }
   }
 
   private pad(f: number, at: number, dur: number): void {
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
+    // The pad opens up through each chord; less so at night.
     filter.frequency.setValueAtTime(380, at);
-    filter.frequency.linearRampToValueAtTime(950, at + dur * 0.5);
+    filter.frequency.linearRampToValueAtTime(950 - 350 * this.night, at + dur * 0.5);
     filter.frequency.linearRampToValueAtTime(420, at + dur);
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, at);
@@ -170,6 +199,35 @@ export class Music {
     }
   }
 
+  /** A faint, slowly trembling sheen an octave over the pad; it comes forward at night. */
+  private shimmer(freqs: number[], at: number, dur: number): void {
+    const g = this.ctx.createGain();
+    const vol = 0.007 + 0.009 * this.night;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(vol, at + 2);
+    g.gain.setValueAtTime(vol, at + dur - 1.5);
+    g.gain.linearRampToValueAtTime(0.0001, at + dur);
+    g.connect(this.wet);
+    const trem = this.ctx.createGain();
+    trem.gain.value = 0.7;
+    const lfo = this.ctx.createOscillator();
+    lfo.frequency.value = 0.9 + Math.random() * 0.4;
+    const depth = this.ctx.createGain();
+    depth.gain.value = 0.3;
+    lfo.connect(depth).connect(trem.gain);
+    trem.connect(g);
+    lfo.start(at);
+    lfo.stop(at + dur + 0.05);
+    for (const f of freqs) {
+      const o = this.ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      o.connect(trem);
+      o.start(at);
+      o.stop(at + dur + 0.05);
+    }
+  }
+
   private bass(f: number, at: number, dur: number): void {
     const o = this.ctx.createOscillator();
     o.type = 'sine';
@@ -182,6 +240,20 @@ export class Music {
     o.connect(g).connect(this.dry);
     o.start(at);
     o.stop(at + dur + 0.05);
+  }
+
+  /** A short bass note on the beat, under the drums. */
+  private pulse(f: number, at: number, vol: number): void {
+    const o = this.ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = f;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.2);
+    o.connect(g).connect(this.dry);
+    o.start(at);
+    o.stop(at + 0.22);
   }
 
   private pluck(f: number, at: number, vol: number): void {
@@ -202,6 +274,53 @@ export class Music {
       o.start(at);
       o.stop(at + 1.15);
     }
+  }
+
+  /** One of the little phrases, on the flute. */
+  private phrase(at: number): void {
+    const motif = MOTIFS[Math.floor(Math.random() * MOTIFS.length)];
+    for (const [degree, start, len] of motif) this.flute(midi(SCALE[degree] + 12), at + start * STEP, len * STEP, 0.03);
+  }
+
+  /** A breathy flute: a sine with a touch of its harmonics, vibrato, and a whisper of air. */
+  private flute(f: number, at: number, dur: number, vol: number): void {
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.08);
+    g.gain.setValueAtTime(vol, at + Math.max(0.1, dur - 0.15));
+    g.gain.linearRampToValueAtTime(0.0001, at + dur);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    g.connect(this.echo);
+    const vib = this.ctx.createOscillator();
+    vib.frequency.value = 5.5;
+    const depth = this.ctx.createGain();
+    depth.gain.value = 7; // cents
+    vib.connect(depth);
+    for (const [mult, level] of [[1, 1], [2, 0.25], [3, 0.08]] as const) {
+      const o = this.ctx.createOscillator();
+      o.frequency.value = f * mult;
+      depth.connect(o.detune);
+      const lv = this.ctx.createGain();
+      lv.gain.value = level;
+      o.connect(lv).connect(g);
+      o.start(at);
+      o.stop(at + dur + 0.05);
+    }
+    vib.start(at);
+    vib.stop(at + dur + 0.05);
+    const air = this.ctx.createBufferSource();
+    air.buffer = this.noise;
+    air.loop = true;
+    const band = this.ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = f;
+    band.Q.value = 12;
+    const lv = this.ctx.createGain();
+    lv.gain.value = 0.25;
+    air.connect(band).connect(lv).connect(g);
+    air.start(at, Math.random() * 0.5);
+    air.stop(at + dur + 0.05);
   }
 
   private kick(at: number, vol: number): void {
@@ -231,113 +350,213 @@ export class Music {
   }
 
   private hat(at: number, vol: number): void {
+    this.cymbal(at, vol, 7000, 0.05);
+  }
+
+  /** A longer, lower splash than the hat. */
+  private ride(at: number, vol: number): void {
+    this.cymbal(at, vol, 5000, 0.3);
+  }
+
+  private cymbal(at: number, vol: number, hz: number, dur: number): void {
     const src = this.ctx.createBufferSource();
     src.buffer = this.noise;
     const f = this.ctx.createBiquadFilter();
     f.type = 'highpass';
-    f.frequency.value = 7000;
+    f.frequency.value = hz;
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(vol, at);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
     src.connect(f).connect(g).connect(this.dry);
     src.start(at, Math.random() * 0.5);
-    src.stop(at + 0.06);
+    src.stop(at + dur + 0.01);
   }
 }
 
-/** Wind, crickets and owls in the jungle, water by the river: louder where the camera is. */
+/** The wind's level on an ordinary evening. */
+const WIND = 0.05;
+
+/**
+ * Wind, rain, water, crickets and owls, the pit and the crystals: louder where the camera is, and
+ * changing with the weather and the hour. `out` is the ambience bus; `wet` a send into the shared hall.
+ */
 export class Soundscape {
+  /** Everything passes through this: wide open normally, closed in by mist and snow. */
+  private readonly muffle: BiquadFilterNode;
+  private readonly windBand: BiquadFilterNode;
   private readonly windGain: GainNode;
+  private readonly leafGain: GainNode;
   private readonly riverGain: GainNode;
+  private readonly burbleGain: GainNode;
   private readonly rainGain: GainNode;
+  private readonly rumbleGain: GainNode;
+  private readonly pitGain: GainNode;
+  private readonly humGain: GainNode;
+  /** Its own long stretch of noise, so the wind and water never audibly loop. */
+  private readonly noise: AudioBuffer;
+  private weather: Weather | null = null;
+  private windK = 1;
   private rain = 0;
-  private cold = false;
-  private readonly bus: GainNode;
+  private night = 0;
   private jungle = 0;
   private river = 0;
+  private pit = 0;
+  private hum = 0;
+  /** The gust blowing now, and the one it's building to. */
+  private gust = 0;
+  private gustTarget = 0;
+  private rustleAt = 0;
+  private rumbleAt = 0;
 
   constructor(
     private readonly ctx: AudioContext,
     out: AudioNode,
+    private readonly wet: AudioNode,
   ) {
-    // Its own long stretch of noise, so the wind and water never audibly loop.
-    const noise = ctx.createBuffer(1, ctx.sampleRate * 5, ctx.sampleRate);
+    const noise = (this.noise = ctx.createBuffer(1, ctx.sampleRate * 5, ctx.sampleRate));
     const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    this.bus = ctx.createGain();
-    this.bus.gain.value = 1;
-    this.bus.connect(out);
-    // Wind: noise through a band that slowly wanders, rising and falling.
-    const wind = this.loop(noise);
-    const band = ctx.createBiquadFilter();
-    band.type = 'bandpass';
-    band.frequency.value = 420;
-    band.Q.value = 0.6;
-    this.windGain = ctx.createGain();
-    this.windGain.gain.value = 0.05;
-    wind.connect(band).connect(this.windGain).connect(this.bus);
-    this.lfo(0.06, 180, band.frequency);
-    this.lfo(0.09, 0.025, this.windGain.gain);
-    // River: low rushing water.
-    const water = this.loop(noise);
-    const low = ctx.createBiquadFilter();
-    low.type = 'lowpass';
-    low.frequency.value = 900;
-    const high = ctx.createBiquadFilter();
-    high.type = 'highpass';
-    high.frequency.value = 220;
-    this.riverGain = ctx.createGain();
-    this.riverGain.gain.value = 0;
-    water.connect(low).connect(high).connect(this.riverGain).connect(this.bus);
-    // Rain: a soft hiss.
-    const hiss = this.loop(noise);
-    const hissBand = ctx.createBiquadFilter();
-    hissBand.type = 'bandpass';
-    hissBand.frequency.value = 3200;
-    hissBand.Q.value = 0.4;
-    this.rainGain = ctx.createGain();
-    this.rainGain.gain.value = 0;
-    hiss.connect(hissBand).connect(this.rainGain).connect(this.bus);
+    this.muffle = ctx.createBiquadFilter();
+    this.muffle.type = 'lowpass';
+    this.muffle.frequency.value = 18000;
+    this.muffle.Q.value = 0.4;
+    this.muffle.connect(out);
+    const level = (v: number, from: AudioNode) => {
+      const g = ctx.createGain();
+      g.gain.value = v;
+      from.connect(g).connect(this.muffle);
+      return g;
+    };
+    const filter = (type: BiquadFilterType, hz: number, q: number, from: AudioNode) => {
+      const f = ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = hz;
+      f.Q.value = q;
+      from.connect(f);
+      return f;
+    };
+    // Wind: noise through a band that slowly wanders; its level gusts (see tick).
+    this.windBand = filter('bandpass', 420, 0.6, this.loop(noise));
+    this.windGain = level(WIND, this.windBand);
+    this.lfo(0.06, 180, this.windBand.frequency);
+    // Leaves: a higher rustle that the autumn gusts tear through.
+    this.leafGain = level(0, filter('bandpass', 2600, 0.8, this.loop(noise)));
+    // River: low rushing water, and a burble over it whose pitch wobbles.
+    this.riverGain = level(0, filter('highpass', 220, 1, filter('lowpass', 900, 1, this.loop(noise))));
+    const burble = filter('bandpass', 700, 2.5, this.loop(noise));
+    this.lfo(0.8, 220, burble.frequency);
+    this.burbleGain = level(0, burble);
+    // Rain: a soft hiss (the pattering is added drop by drop in tick).
+    this.rainGain = level(0, filter('bandpass', 3200, 0.4, this.loop(noise)));
+    // A storm's low, uneasy rumble under everything, swelling and sinking (the tremolo is its own stage, so
+    // it stays silent when the level is 0).
+    const rumbleTrem = ctx.createGain();
+    rumbleTrem.gain.value = 0.65;
+    this.lfo(0.11, 0.35, rumbleTrem.gain);
+    filter('lowpass', 120, 0.7, this.loop(noise)).connect(rumbleTrem);
+    this.rumbleGain = level(0, rumbleTrem);
+    // The Warden's pit: two low tones beating against each other, and a growl under them.
+    const drone = ctx.createGain();
+    for (const [hz, type, v] of [[52, 'sine', 1], [55.3, 'sine', 0.8], [104, 'sawtooth', 0.3]] as const) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = hz;
+      const g = ctx.createGain();
+      g.gain.value = v;
+      o.connect(g).connect(drone);
+      o.start();
+    }
+    this.pitGain = level(0, filter('lowpass', 160, 1, drone));
+    // The crystals on the structures: a faint hum, trembling slowly.
+    const crystal = ctx.createGain();
+    for (const [hz, v] of [[196, 1], [294, 0.5], [392.5, 0.3]] as const) {
+      const o = ctx.createOscillator();
+      o.frequency.value = hz;
+      const g = ctx.createGain();
+      g.gain.value = v;
+      o.connect(g).connect(crystal);
+      o.start();
+    }
+    const trem = ctx.createGain();
+    trem.gain.value = 0.75;
+    this.lfo(0.4, 0.25, trem.gain);
+    crystal.connect(trem);
+    this.humGain = level(0, trem);
     setInterval(() => this.tick(), 120);
   }
 
-  /** The sound effects volume setting: the soundscape follows it. */
-  setLevel(v: number): void {
-    this.bus.gain.setTargetAtTime(v, this.ctx.currentTime, 0.2);
+  /** The weather (null for clear) and how hard its wind blows (1 = an ordinary evening). */
+  setWeather(kind: Weather | null, windK: number): void {
+    this.weather = kind;
+    this.windK = windK;
+    this.rain = kind === 'storm' ? 1 : kind === 'rain' ? 0.6 : 0;
+    const now = this.ctx.currentTime;
+    this.rainGain.gain.setTargetAtTime(this.rain * 0.05, now, 1);
+    this.rumbleGain.gain.setTargetAtTime(kind === 'storm' ? 0.06 : 0, now, 2);
+    // Mist muffles everything; snow takes the edge off.
+    this.muffle.frequency.setTargetAtTime(kind === 'mist' ? 1400 : kind === 'snow' ? 3500 : 18000, now, 1.5);
+    // The wind sits lower in the snow, higher in an autumn blow.
+    this.windBand.frequency.setTargetAtTime(kind === 'snow' ? 260 : kind === 'autumn' ? 520 : 420, now, 1.5);
   }
 
-  setRain(v: number): void {
-    if (v === this.rain) return;
-    this.rain = v;
-    this.rainGain.gain.setTargetAtTime(v * 0.05, this.ctx.currentTime, 1);
+  /** How far into the night it is, 0–1: the crickets and owls come up, the wind drops. */
+  setNight(k: number): void {
+    this.night = Math.max(0, Math.min(1, k));
   }
 
-  /** A stronger or weaker wind than usual (1 = ordinary), and in the cold, no crickets. */
-  setWind(k: number, cold: boolean): void {
-    this.windGain.gain.setTargetAtTime(0.05 * k, this.ctx.currentTime, 1);
-    this.cold = cold;
-  }
-
-  /** How much of the view is jungle and river (0–1 each). */
-  setPlace(jungle: number, river: number): void {
+  /** How much of the view is jungle, river, the Warden's pit and structures (0–1 each). */
+  setPlace(jungle: number, river: number, pit: number, hum: number): void {
     this.jungle += (jungle - this.jungle) * 0.3;
     this.river += (river - this.river) * 0.3;
+    this.pit += (pit - this.pit) * 0.3;
+    this.hum += (hum - this.hum) * 0.3;
   }
 
   private tick(): void {
     if (this.ctx.state !== 'running') return;
     const now = this.ctx.currentTime;
-    // The river burbles: its level jitters.
-    this.riverGain.gain.setTargetAtTime(this.river * (0.07 + Math.random() * 0.05), now, 0.08);
-    if (!this.cold && Math.random() < this.jungle * 0.3) this.cricket(now + Math.random() * 0.1);
-    if (Math.random() < this.jungle * 0.004) this.owl(now);
+    const w = this.weather;
+    const storm = w === 'storm';
+    const autumn = w === 'autumn';
+    const cold = w === 'snow';
+    // The wind comes in gusts: now and then it picks a new strength to build to, harder and more often
+    // in a storm or an autumn blow. It drops a little at night, and in the snow and the mist.
+    if (Math.random() < 0.06) this.gustTarget = Math.random() < (storm ? 0.5 : autumn ? 0.4 : 0.15) ? 0.6 + Math.random() * 0.4 : 0;
+    this.gust += (this.gustTarget - this.gust) * 0.12;
+    const still = cold || w === 'mist' ? 0.7 : 1;
+    const wind = WIND * this.windK * (1 + this.gust * (storm ? 1 : 0.6)) * (1 - 0.25 * this.night) * still;
+    this.windGain.gain.setTargetAtTime(Math.min(0.3, wind), now, 0.3);
+    // Autumn: the gusts tear through the leaves.
+    this.leafGain.gain.setTargetAtTime(autumn ? 0.03 * this.gust * this.windK : 0, now, 0.25);
+    if (autumn && this.gust > 0.45 && now > this.rustleAt) {
+      this.rustle(now);
+      this.rustleAt = now + 0.35 + Math.random() * 0.5;
+    }
+    // The river rushes and burbles, its levels never quite steady, with the odd plip.
+    const riverK = w === 'mist' ? 0.7 : 1;
+    this.riverGain.gain.setTargetAtTime(this.river * riverK * (0.07 + Math.random() * 0.04), now, 0.08);
+    this.burbleGain.gain.setTargetAtTime(this.river * riverK * (0.03 + Math.random() * 0.03), now, 0.1);
+    if (Math.random() < this.river * 0.25) this.plip(now + Math.random() * 0.1);
+    // Rain pattering nearby; a storm rumbles in the distance between the bolts; mist drips.
+    if (this.rain > 0 && Math.random() < this.rain * 0.8) this.patter(now + Math.random() * 0.12);
+    if (storm && Math.random() < 0.006 && now > this.rumbleAt) {
+      this.rumble(now);
+      this.rumbleAt = now + 8;
+    }
+    if (w === 'mist' && Math.random() < 0.04) this.drip(now);
+    // Life in the jungle: crickets from dusk, owls in the dark. Not in the cold, and hardly in the rain.
+    const life = this.jungle * (cold ? 0 : 1) * (1 - this.rain * 0.7);
+    if (Math.random() < life * (0.1 + 0.35 * this.night)) this.cricket(now + Math.random() * 0.1);
+    if (Math.random() < life * 0.003 * (0.2 + this.night)) this.owl(now);
+    // The pit: the drone, and its chains stirring.
+    this.pitGain.gain.setTargetAtTime(this.pit * 0.09, now, 0.4);
+    if (Math.random() < this.pit * 0.03) this.clink(now);
+    this.humGain.gain.setTargetAtTime(this.hum * 0.022, now, 0.5);
   }
 
   private cricket(at: number): void {
     const f = 4100 + Math.random() * 500;
-    const pan = this.ctx.createStereoPanner();
-    pan.pan.value = Math.random() * 1.6 - 0.8;
-    pan.connect(this.bus);
+    const spot = this.spot(Math.random() * 1.6 - 0.8, 0.1);
     for (let i = 0; i < 3; i++) {
       const t = at + i * 0.045;
       const o = this.ctx.createOscillator();
@@ -346,16 +565,14 @@ export class Soundscape {
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(0.012, t + 0.005);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-      o.connect(g).connect(pan);
+      o.connect(g).connect(spot);
       o.start(t);
       o.stop(t + 0.04);
     }
   }
 
   private owl(at: number): void {
-    const pan = this.ctx.createStereoPanner();
-    pan.pan.value = Math.random() * 1.4 - 0.7;
-    pan.connect(this.bus);
+    const spot = this.spot(Math.random() * 1.4 - 0.7, 0.5);
     for (const [dt, f0, f1, dur] of [[0, 400, 370, 0.35], [0.5, 390, 340, 0.6]] as const) {
       const o = this.ctx.createOscillator();
       o.frequency.setValueAtTime(f0, at + dt);
@@ -364,10 +581,101 @@ export class Soundscape {
       g.gain.setValueAtTime(0.0001, at + dt);
       g.gain.linearRampToValueAtTime(0.03, at + dt + 0.08);
       g.gain.linearRampToValueAtTime(0.0001, at + dt + dur);
-      o.connect(g).connect(pan);
+      o.connect(g).connect(spot);
       o.start(at + dt);
       o.stop(at + dt + dur + 0.05);
     }
+  }
+
+  /** A drop into the river. */
+  private plip(at: number): void {
+    const o = this.ctx.createOscillator();
+    o.frequency.setValueAtTime(600 + Math.random() * 500, at);
+    o.frequency.exponentialRampToValueAtTime(1400 + Math.random() * 800, at + 0.05);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.012 * this.river, at + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.06);
+    o.connect(g).connect(this.spot(Math.random() * 1.2 - 0.6, 0.2));
+    o.start(at);
+    o.stop(at + 0.07);
+  }
+
+  /** A raindrop landing near you: a soft pat. */
+  private patter(at: number): void {
+    this.burst(at, 'lowpass', 1800 + Math.random() * 2500, 0.03 + Math.random() * 0.03, 0.012 + Math.random() * 0.012, 1, Math.random() * 1.6 - 0.8, 0);
+  }
+
+  /** Water dripping off the leaves in the mist, with the room on it. */
+  private drip(at: number): void {
+    const o = this.ctx.createOscillator();
+    o.frequency.setValueAtTime(1800 + Math.random() * 1200, at);
+    o.frequency.exponentialRampToValueAtTime(900, at + 0.08);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.02, at + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.09);
+    o.connect(g).connect(this.spot(Math.random() * 1.4 - 0.7, 0.8));
+    o.start(at);
+    o.stop(at + 0.1);
+  }
+
+  /** A gust through dry leaves. */
+  private rustle(at: number): void {
+    this.burst(at, 'bandpass', 2000 + Math.random() * 2500, 0.4 + Math.random() * 0.5, 0.03 * this.windK, 1.2, Math.random() * 1.4 - 0.7, 0.15, 0.12);
+  }
+
+  /** Thunder a long way off. */
+  private rumble(at: number): void {
+    this.burst(at, 'lowpass', 150 + Math.random() * 100, 2.5 + Math.random() * 1.5, 0.08, 0.8, Math.random() * 1.2 - 0.6, 0.3, 0.6);
+  }
+
+  /** A chain shifting in the pit. */
+  private clink(at: number): void {
+    const spot = this.spot(Math.random() * 0.8 - 0.4, 0.5);
+    for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) {
+      const t = at + i * (0.05 + Math.random() * 0.04);
+      const o = this.ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = 2400 + Math.random() * 1800;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.01 * this.pit, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+      o.connect(g).connect(spot);
+      o.start(t);
+      o.stop(t + 0.07);
+    }
+  }
+
+  /** A puff of filtered noise somewhere in the stereo field. */
+  private burst(at: number, type: BiquadFilterType, hz: number, dur: number, vol: number, q: number, pan: number, wet: number, attack = 0.003): void {
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = hz;
+    f.Q.value = q;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    src.connect(f).connect(g).connect(this.spot(pan, wet));
+    src.start(at, Math.random() * 3);
+    src.stop(at + dur + 0.02);
+  }
+
+  /** A panner into the ambience, with `wet` of it into the hall. */
+  private spot(pan: number, wet: number): AudioNode {
+    const p = this.ctx.createStereoPanner();
+    p.pan.value = Math.max(-1, Math.min(1, pan));
+    p.connect(this.muffle);
+    if (wet > 0) {
+      const s = this.ctx.createGain();
+      s.gain.value = wet;
+      p.connect(s).connect(this.wet);
+    }
+    return p;
   }
 
   private loop(noise: AudioBuffer): AudioBufferSourceNode {

@@ -3,6 +3,7 @@ import type { ChampionId } from '../shared/champions/types';
 import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, RECIPES, buildsInto, priceFor, sellPrice, statLines, whyNot, type ItemId, type ItemTier } from '../shared/items';
 import type { MeSnap } from '../shared/protocol';
 import { CHAMPION_INFO } from '../shared/champions/registry';
+import { getSound } from './audio';
 import { iconEl } from './render/icons';
 import { el } from './ui/dom';
 import { WICK_NAME } from './wick';
@@ -147,7 +148,10 @@ export class ShopPanel {
     this.note = this.root.querySelector('.shop-note') as HTMLElement;
     this.goldEl = this.root.querySelector('.shop-gold') as HTMLElement;
     this.wickLine = this.root.querySelector('.wick-line') as HTMLElement;
-    (this.root.querySelector('.shop-close') as HTMLElement).addEventListener('click', () => this.toggle(false));
+    (this.root.querySelector('.shop-close') as HTMLElement).addEventListener('click', () => {
+      this.toggle(false);
+      getSound().play('shopClose', 0.5);
+    });
     this.advice = this.root.querySelector('.shop-advice') as HTMLElement;
     this.undoButton = this.root.querySelector('.shop-undo') as HTMLButtonElement;
     this.undoButton.addEventListener('click', () => this.onUndo());

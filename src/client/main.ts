@@ -94,7 +94,10 @@ async function boot(): Promise<void> {
     const g = new GameClient(app, conn, hudRoot);
     if (import.meta.env.DEV) Object.assign(window, { game: g }); // poke at it from devtools
     g.setTitle(title);
-    g.onRematch = (swap) => conn.send({ t: 'rematch', swap });
+    g.onRematch = (swap) => {
+      getSound().play('rematch', 0.6);
+      conn.send({ t: 'rematch', swap });
+    };
     return g;
   };
   const newLobby = () =>
@@ -112,7 +115,7 @@ async function boot(): Promise<void> {
 
   // Team and all chat, for the whole session (over the HUD, so it outlasts the match screens).
   const chat = new ChatBox(document.body, (text, all) => conn.send({ t: 'chat', text, all }));
-  chat.onLine = () => getSound().playIfReady('click', 0.35);
+  chat.onLine = () => getSound().playIfReady('chat', 0.5);
 
   conn.listen((msg) => {
     if (msg.t === 'chat') {

@@ -3,6 +3,8 @@ import type { Vec2 } from '../shared/math';
 import type { EntitySnap, FxKind, GameEvent } from '../shared/protocol';
 import type { SoundName } from './audio';
 
+export { spatialize } from './mix';
+
 /** What to play for an event: the sound, where it happened (none = right in your ear), and how loud. */
 export interface SoundCue {
   name: SoundName;
@@ -22,7 +24,10 @@ export const CAST_SOUND: Record<ChampionId, SoundName> = {
 
 export const MELEE: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan', 'dongmaster', 'paris', 'daltonomo']);
 
-const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
+/** A hit this big (as a share of the target's max health) gets the heavy sound. */
+export const HEAVY_HIT = 0.08;
+
+export const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   aimLine: ['warn', 0.6],
   trapSnap: ['snap', 0.8],
   roll: ['whoosh', 0.6],
@@ -34,7 +39,7 @@ const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   berserk: ['roar', 0.9],
   recall: ['recall', 0.5],
   wardenMark: ['warn', 0.9],
-  wardenSlam: ['boom', 1],
+  wardenSlam: ['wardenSlam', 1],
   burrow: ['dig', 0.7],
   surface: ['boom', 0.7],
   hookPull: ['whoosh', 0.6],
@@ -76,6 +81,10 @@ const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   mewing: ['magic', 0.4],
   sigmaStare: ['warn', 0.6],
   ascension: ['roar', 1],
+  // Item actives.
+  lanternLight: ['lantern', 0.7],
+  aegisWard: ['aegis', 0.8],
+  drumBeat: ['warDrum', 0.8],
 };
 
 /**
@@ -92,7 +101,7 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
         case 'champion':
           return { name: src.champ ? ATTACK_SOUND[src.champ] : 'swing', at, gain: src.id === myId ? 0.7 : 0.5 };
         case 'structure':
-          return { name: 'tower', at, gain: 0.6 };
+          return { name: 'tower', at, gain: 0.7 };
         case 'chud':
           return { name: src.chud === 'ranged' || src.chud === 'siege' ? 'shoot' : 'swing', at, gain: 0.18 };
         default:
@@ -103,15 +112,19 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       if (ev.target !== myId && ev.src !== myId) return null;
       const t = ents.get(ev.target);
       if (!t || (t.k !== 'champion' && ev.target !== myId)) return null;
-      return { name: 'hit', at: { x: t.x, y: t.y }, gain: ev.target === myId ? 0.6 : 0.4 };
+      // Heavy hits land with more weight; magic stings rather than thumps.
+      const heavy = ev.amount >= (t.mhp ?? 1000) * HEAVY_HIT;
+      const name: SoundName = heavy ? 'hitHeavy' : ev.type === 'magic' ? 'hitMagic' : 'hit';
+      return { name, at: { x: t.x, y: t.y }, gain: ev.target === myId ? 0.6 : 0.4 };
     }
     case 'death': {
       const t = ents.get(ev.id);
       if (!t) return null;
       const at = { x: t.x, y: t.y };
       if (t.k === 'champion') return { name: 'death', at, gain: 0.9 };
-      if (t.k === 'structure') return { name: 'boom', at, gain: 1 };
-      if (t.k === 'monster' && t.mon === 'warden') return { name: 'boom', at, gain: 1 };
+      if (t.k === 'structure') return { name: t.role === 'daBase' ? 'baseFall' : 'collapse', at, gain: 1 };
+      if (t.k === 'monster' && t.mon === 'warden') return { name: 'wardenFall', at, gain: 1 };
+      if (t.k === 'monster' && t.mon === 'crab') return { name: 'crabSqueak', at, gain: 0.7 };
       return { name: 'smallDeath', at, gain: 0.25 };
     }
     case 'cast': {
@@ -135,4 +148,13 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
     case 'ping':
       return { name: ev.kind === 'danger' ? 'pingDanger' : ev.kind === 'missing' ? 'pingMissing' : 'ping', gain: 0.6 };
   }
+}
+
+/**
+ * The announcer's sound for a kill-feed line: the till when your side collects a bounty, a fanfare or a
+ * toll for the big ones, the kill chime otherwise.
+ */
+export function announceSound(ev: Extract<GameEvent, { e: 'kill' }>, big: boolean, ours: boolean): SoundName {
+  if (ev.what === 'champion' && ev.shutdown && ours) return 'kaching';
+  return big ? (ours ? 'fanfare' : 'toll') : 'kill';
 }

@@ -418,6 +418,26 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
 - **Sound is synthesized** with Web Audio (`src/client/audio.ts`): every effect is a few oscillators, filtered noise and envelopes, so there are no audio files either.
   - Which event makes which sound is in `src/client/sfx.ts`: attacks (swings, shots, Shootie zaps), hits on you or by you, deaths, casts, the big moments (slams, roars, digging, telegraph warnings), level-ups, gold, the kill feed, and a victory or defeat jingle.
   - Sounds play where they happen: quieter the further from the middle of your screen, and panned left or right. Chuds are much quieter than champions, and repeats are rate-limited so a big fight stays readable.
+  - **The mix** (`src/client/mix.ts` holds the arithmetic):
+    - Five buses: effects, interface, voices, ambience and music.
+    - One shared reverb (a generated 2.2s hall), with a send per sound: clicks dry, tolls and collapses wet.
+    - A glue compressor and a brickwall limiter on the master.
+    - Big moments (ultimates, slams, collapses, heavy hits on you) dip the music and ambience for a moment.
+    - Distant sounds are duller and wetter as well as quieter.
+    - Every effect gets a little random pitch and timing, so repeats don't sound robotic. Jingles and chimes stay in tune.
+    - Interface and announcer sounds are never crowded out by a fight.
+  - **Effects:**
+    - Hits are layered (edge, body, tail). Heavy hits and magic hits sound different.
+    - Each champion's attack and cast signature is in character: the Oak's axe splitting wood, Willmore's chain and bin lid, King Rix's royal ting, Dongmaster's knuckles, and so on.
+    - Shootie shots charge and crack. Structures collapse with rubble; Da Base's crystal shatters over a deep rumble.
+    - The Warden's slam clangs with rattling chains.
+    - There are sounds for the shop, ranking up, landing, the item actives (Lantern, Aegis, Drum) and the Sewer Crab (skittering, then squeaking when taken). A till rings when your side claims a bounty. Titles, rematch and chat have their own.
+    - Victory and defeat have their own stingers, with the music stepping back under them.
+  - **Ambience** follows the world:
+    - Night brings up the crickets and owls and settles the wind.
+    - Each weather has its own sound: rain patters, storms rumble between bolts, snow muffles and hushes, autumn gusts rustle leaves, and mist dampens everything.
+    - The river burbles near the water. The Warden's pit drones with clinking chains. Da Base and the Shooties hum faintly close up.
+  - **Music:** the generated loop has a shimmer over the pad, a flute phrase now and then when it's calm, and a pulsing bass with drums in fights. It darkens at night.
   - **M** (or the speaker by the clock) mutes; the setting is remembered.
 
 ## Architecture
