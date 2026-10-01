@@ -130,6 +130,49 @@ export const EMOTE_ANIM: Record<'taunt' | 'laugh' | 'cheer' | 'line' | 'kill', A
   kill: { dur: 0.6, grow: [[0, 0], [0.25, 0.15], [1, 0]], turn: [[0, 0], [0.25, -1], [1, 0]] },
 };
 
+/**
+ * What champions do with themselves when they stand still a while: little bits of character, played one
+ * after another every several seconds.
+ */
+export const FIDGETS: Record<ChampionId, readonly Anim[]> = {
+  marksman: [
+    // Draws the string back gently, checks it, and lets it down.
+    { dur: 1.6, reach: [[0, 0], [0.3, -0.18], [0.6, -0.18], [0.7, 0.02], [1, 0]], grow: [[0, 0], [0.3, 0.03], [1, 0]] },
+    // A look over each shoulder.
+    { dur: 1.8, twist: [[0, 0], [0.25, -0.6], [0.45, -0.6], [0.7, 0.55], [0.85, 0.55], [1, 0]] },
+  ],
+  barbarian: [
+    // Hefts the axe up onto his shoulder, then back down.
+    { dur: 1.7, turn: [[0, 0], [0.25, -1.9], [0.75, -1.9], [1, 0]], grow: [[0, 0], [0.25, 0.08], [0.75, 0.06], [1, 0]] },
+    // Cracks his neck: a snap one way, a snap the other.
+    { dur: 1.0, twist: [[0, 0], [0.2, 0.3], [0.3, 0], [0.55, -0.3], [0.65, 0], [1, 0]] },
+  ],
+  willmore: [
+    // Turns round to rummage in his sack.
+    { dur: 2.0, twist: [[0, 0], [0.25, 2.6], [0.4, 2.4], [0.5, 2.7], [0.6, 2.45], [0.75, 2.6], [1, 0]] },
+    // Twirls the hook on its rope.
+    { dur: 1.2, turn: [[0, 0], [1, TAU * 2]] },
+  ],
+  hunnag: [
+    // Puffs up and lets out a cloud of spores, twice.
+    { dur: 1.4, grow: [[0, 0], [0.2, 0.12], [0.4, 0], [0.6, 0.1], [0.8, 0], [1, 0]] },
+    // Taps the staff on the ground.
+    { dur: 1.2, reach: [[0, 0], [0.2, 0.15], [0.3, 0], [0.5, 0.15], [0.6, 0], [1, 0]], turn: [[0, 0], [0.2, 0.2], [0.6, 0.2], [1, 0]] },
+  ],
+  logan: [
+    // Licks a paw: draws it in, a few quick licks, puts it down.
+    { dur: 1.8, reach: [[0, 0], [0.25, -0.3], [0.8, -0.3], [1, 0]], twist: [[0, 0], [0.25, 0.25], [0.35, 0.18], [0.45, 0.25], [0.55, 0.18], [0.65, 0.25], [0.8, 0.25], [1, 0]] },
+    // A long cat stretch: forward and low, then up.
+    { dur: 2.0, lunge: [[0, 0], [0.35, 0.3], [0.6, 0.3], [1, 0]], reach: [[0, 0], [0.35, 0.5], [0.6, 0.5], [1, 0]], grow: [[0, 0], [0.35, -0.06], [0.75, 0.08], [1, 0]] },
+  ],
+  kingrix: [
+    // Straightens his crown with the scepter hand, fussily.
+    { dur: 1.8, turn: [[0, 0], [0.3, -2.3], [0.45, -2.15], [0.6, -2.35], [0.75, -2.2], [1, 0]], grow: [[0, 0], [0.3, 0.05], [1, 0]] },
+    // Holds the scepter out to admire it.
+    { dur: 1.6, reach: [[0, 0], [0.35, 0.3], [0.7, 0.3], [1, 0]], turn: [[0, 0], [0.35, -0.4], [0.5, -0.2], [0.7, -0.4], [1, 0]] },
+  ],
+};
+
 export function castAnim(champ: ChampionId, slot: Slot): Anim {
   return SLOT_MOVES[`${champ}:${slot}`] ?? CAST[champ];
 }

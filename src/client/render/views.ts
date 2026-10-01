@@ -1,10 +1,10 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
-import type { ChudType, EntitySnap, MonsterKind } from '../../shared/protocol';
+import type { ChudType, EntitySnap, MonsterKind, StatusKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
-import { ATTACK, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
+import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
 import { championWeapon, drawChampionBase, drawChampionFigure, type Weapon } from './champions';
 import { arc } from './draw';
 
@@ -60,6 +60,9 @@ export interface EntityView {
   readonly top?: Container;
 }
 
+/** Busy standing still (channeling, held in place, out of sight): no fidgeting then. */
+const STILL_STATUSES: ReadonlySet<StatusKind> = new Set<StatusKind>(['recall', 'stun', 'root', 'fear', 'airborne', 'burrowed', 'underground']);
+
 /** Seconds a unit takes to slump and fade when it dies. */
 const DEATH_TIME = 0.55;
 
@@ -76,6 +79,10 @@ export class UnitView implements EntityView {
   private readonly champ: ChampionId | null = null;
   /** What this unit does when it attacks. */
   private readonly attackAnim: Anim | null = null;
+  /** Standing still (no walking, no moves): after a while a champion fidgets. */
+  private idle = 0;
+  private nextFidget = 4 + Math.random() * 4;
+  private fidgets = Math.floor(Math.random() * 2);
   /** The move playing right now (attack or cast), t from 0 to 1. */
   private anim: { a: Anim; t: number } | null = null;
   /** Knocked back by a big hit; settles back to 0. */
@@ -250,6 +257,16 @@ export class UnitView implements EntityView {
     this.clock += dt;
     const step = Math.sin(this.walk) * this.stride;
     const breathe = 1 + Math.sin(this.clock * 2.4) * 0.015 * (1 - this.stride);
+    if (this.champ) {
+      const held = s.st?.some((k) => STILL_STATUSES.has(k));
+      this.idle = walking || this.anim || s.dead || held ? 0 : this.idle + dt;
+      if (this.idle > this.nextFidget) {
+        const list = FIDGETS[this.champ];
+        this.anim = { a: list[this.fidgets++ % list.length], t: 0 };
+        this.idle = 0;
+        this.nextFidget = 5 + Math.random() * 5;
+      }
+    }
     this.facing.rotation = s.f + step * 0.08 + twist;
     if (this.weapon && this.weaponSpec) {
       // At rest it sways a little with the walk and the breath (a rat's tail rather more).
