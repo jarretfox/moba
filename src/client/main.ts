@@ -12,6 +12,7 @@ import type { Connection } from './net/connection';
 import { HostWorker } from './net/hostWorker';
 import { PeerHost, PeerLink, normalizeCode } from './net/peer';
 import { ChatBox } from './ui/chat';
+import { loadProfile } from './profile';
 import { LobbyScreen } from './ui/lobby';
 import { showMenu, type MenuChoice } from './ui/menu';
 import './style.css';
@@ -151,7 +152,7 @@ async function boot(): Promise<void> {
     lobby.close();
     game.showNotice('Disconnected', reason);
   });
-  conn.send({ t: 'hello', name });
+  conn.send({ t: 'hello', name, title: loadProfile().title });
 }
 
 void boot();

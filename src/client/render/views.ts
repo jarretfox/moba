@@ -1,6 +1,7 @@
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import type { FigureLight } from './lighting';
 import { mix } from './organic';
+import { titleName } from '../../shared/titles';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { EntitySnap, StatusKind } from '../../shared/protocol';
 import type { ItemId } from '../../shared/items';
@@ -149,6 +150,8 @@ export class UnitView implements EntityView {
   private readonly levelText: Text | null = null;
   /** An icon everyone can see over the head (Willmore's next junk). Made the first time one shows up. */
   private badge: Text | null = null;
+  /** The player's title, small and gold over their name. */
+  private titleText: Text | null = null;
   /** A WANTED poster over a champion on a spree, with the gold on their head. */
   private poster: Container | null = null;
   private posterGold: Text | null = null;
@@ -500,6 +503,13 @@ export class UnitView implements EntityView {
       this.lightUp(s, ctx);
     }
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
+    if (s.ttl && !this.titleText) {
+      this.titleText = new Text({ text: titleName(s.ttl) ?? '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 11, fill: 0xe8c46a, stroke: { color: 0x000000, width: 3 }, letterSpacing: 0.5 } });
+      this.titleText.anchor.set(0.5, 1);
+      this.titleText.position.set(0, -this.headroom - 40);
+      this.container.addChild(this.titleText);
+    }
+    if (this.titleText) this.titleText.visible = this.label.visible;
     if (s.bty || this.poster) this.wanted(s);
 
     const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
@@ -679,7 +689,7 @@ export class UnitView implements EntityView {
     if (!s.bty) return;
     const text = `${s.bty}g`;
     if (this.posterGold!.text !== text) this.posterGold!.text = text;
-    this.poster.position.set(0, -this.headroom - 46);
+    this.poster.position.set(0, -this.headroom - (this.titleText ? 58 : 46));
     this.poster.rotation = 0.08 + Math.sin(this.clock * 1.6) * 0.05;
   }
 

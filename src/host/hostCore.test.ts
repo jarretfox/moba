@@ -354,3 +354,19 @@ describe('the end of a match', () => {
     expect(core.world.tick).toBe(tick);
   });
 });
+
+describe('titles', () => {
+  it("are worn into the lobby and onto your champion, if they're real titles", () => {
+    const { core, lastLobby } = host();
+    core.receive(LOCAL_CONN, { t: 'hello', name: 'Jo', title: 'legend' });
+    core.receive('peer:a', { t: 'hello', name: 'Al', title: 'Supreme Overlord' });
+    const lobby = lastLobby(LOCAL_CONN)!;
+    expect(lobby.players.map((p) => p.title)).toEqual(['legend', undefined]);
+    core.receive(LOCAL_CONN, { t: 'pick', champion: 'logan' });
+    core.receive('peer:a', { t: 'pick', champion: 'kingrix' });
+    core.receive(LOCAL_CONN, { t: 'start', mode: 'practice' });
+    const jo = champions(core).find((c) => c.name === 'Jo')!;
+    expect(jo.snapshot(core.world).ttl).toBe('legend');
+    expect(champions(core).find((c) => c.name === 'Al')!.snapshot(core.world).ttl).toBeUndefined();
+  });
+});

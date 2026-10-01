@@ -3,6 +3,7 @@ import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
 import { START_GOLD_OPTIONS, type LobbyState, type MatchMode, type MatchSettings } from '../../shared/protocol';
 import { WEATHER_CHANCES } from '../../shared/weather';
+import { titleName } from '../../shared/titles';
 import { SKINS, portraitOf, swatchColor } from '../render/champions';
 import { CAST_COLORS } from '../render/spells';
 import { getSound } from '../audio';
@@ -89,7 +90,10 @@ export class LobbyScreen {
           const p = members[i];
           const row = el('div', `lobby-slot${p?.id === you ? ' you' : ''}`);
           if (p) {
-            row.append(el('span', 'lobby-slot-name', `${p.name}${p.host ? ' ★' : ''}`), el('span', 'lobby-slot-champ', p.champion ? CHAMPION_INFO[p.champion].name : 'picking…'));
+            const who = el('span', 'lobby-slot-name', `${p.name}${p.host ? ' ★' : ''}`);
+            const title = titleName(p.title);
+            if (title) who.append(el('span', 'lobby-slot-title', title));
+            row.append(who, el('span', 'lobby-slot-champ', p.champion ? CHAMPION_INFO[p.champion].name : 'picking…'));
           } else {
             row.append(el('span', 'lobby-slot-empty', this.mode === 'bots' ? 'Bot' : 'Empty'));
           }

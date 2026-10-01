@@ -40,6 +40,8 @@ export abstract class Champion extends Unit {
   streak = 0;
   /** Which look this champion wears (cosmetic; 0 is the classic one). */
   skin = 0;
+  /** The player's title, worn under their name (players only; see shared/titles.ts). */
+  title?: string;
   /** Match stats for the scoreboard. */
   readonly score: Score = newScore();
   /** Up to INVENTORY_SLOTS items, in the order bought. */
@@ -394,6 +396,7 @@ export abstract class Champion extends Unit {
       ...(this.skin ? { skin: this.skin } : {}),
       lv: this.level,
       ...(this.streak >= WANTED_STREAK ? { bty: killBounty(this.streak) } : {}),
+      ...(this.title ? { ttl: this.title } : {}),
       mp: Math.floor(this.mana),
       mmp: Math.round(this.stats.maxMana),
     };

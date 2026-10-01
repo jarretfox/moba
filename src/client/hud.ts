@@ -492,6 +492,13 @@ export class Hud {
     (this.gameOver.querySelector('.gameover-swap') as HTMLElement).hidden = !host;
   }
 
+  /** New titles earned this match, announced on the end screen (they're in your profile now). */
+  titlesUnlocked(names: string[]): void {
+    const line = el('div', 'gameover-titles');
+    line.append(el('span', 'gameover-titles-label', names.length > 1 ? 'New titles unlocked:' : 'New title unlocked:'), ...names.map((n) => el('span', 'gameover-title-chip', n)));
+    this.gameOver.querySelector('.gameover-sub')?.after(line);
+  }
+
   /** Who's asked for a rematch so far. */
   rematchVotes(votes: string[], of: number): void {
     const box = this.gameOver.querySelector('.gameover-votes') as HTMLElement;

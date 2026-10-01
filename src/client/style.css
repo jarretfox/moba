@@ -1230,6 +1230,128 @@ html.colorblind .gold-peak.theirs {
   gap: 12px;
 }
 
+.gameover-titles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  color: #ffe29a;
+  animation: podium-in 0.7s 0.6s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+
+.gameover-title-chip {
+  padding: 2px 10px;
+  border: 1px solid #ffd166;
+  border-radius: 12px;
+  background: rgba(255, 209, 102, 0.15);
+  font: 14px var(--font-display);
+}
+
+/* The menu's Profile button, and the profile panel: your record and titles. */
+.menu-profile {
+  position: fixed;
+  top: 14px;
+  right: 64px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #5a4a30;
+  border-radius: 6px;
+  background: rgba(20, 16, 12, 0.85);
+  color: #e8dcc0;
+  font: 15px var(--font-display);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.profile-panel {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-stat b {
+  font: 16px var(--font-display);
+  white-space: nowrap;
+  color: #ffe29a;
+}
+
+.profile-stat span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.profile-fav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #e8dcc0;
+}
+
+.profile-face {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #1b2440;
+}
+
+.profile-sub {
+  margin: 6px 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.profile-titles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.profile-title {
+  padding: 4px 10px;
+  border: 1px solid #5a4a30;
+  border-radius: 12px;
+  background: #1a1510;
+  color: #e8dcc0;
+  font: 800 13px Nunito, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.profile-title.on {
+  border-color: #ffd166;
+  background: #3a2c12;
+  color: #ffe29a;
+}
+
+.profile-title.locked {
+  opacity: 0.4;
+  cursor: help;
+}
+
+.lobby-slot-title {
+  margin-left: 6px;
+  font-size: 11px;
+  color: #e8c46a;
+}
+
 .gameover-votes {
   min-height: 1.2em;
   font-size: 14px;

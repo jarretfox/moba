@@ -15,6 +15,8 @@ import { MELEE, cueFor, type SoundCue } from './sfx';
 import { EMOTE_ANIM, wardenWindup } from './render/animation';
 import { Bubbles } from './render/bubbles';
 import { typing } from './ui/chat';
+import { loadProfile, recordMatch, saveProfile } from './profile';
+import { pickMvp } from './scoreboard';
 import { BICKER, CHEERS } from './render/chudLife';
 import { emoteLine } from './emotes';
 import type { Connection } from './net/connection';
@@ -391,6 +393,26 @@ export class GameClient {
     for (const s of this.standing) this.unitLayer.addChild(s);
   }
 
+  /**
+   * Adds the match to your profile (real matches only: someone on the other side), and shows any titles it
+   * unlocked on the end screen.
+   */
+  private recordMatch(rows: readonly ScoreRow[], winner: Team): void {
+    const mine = rows.find((r) => r.id === this.myId);
+    if (!mine || !rows.some((r) => r.team !== mine.team)) return;
+    const { profile, unlocked } = recordMatch(loadProfile(), {
+      champ: mine.champ,
+      won: winner === mine.team,
+      k: mine.k,
+      d: mine.d,
+      a: mine.a,
+      cs: mine.cs,
+      mvp: pickMvp(rows, winner)?.id === mine.id,
+    });
+    saveProfile(profile);
+    if (unlocked.length) this.hud.titlesUnlocked(unlocked.map((t) => t.name));
+  }
+
   /** The hour for the look of things: the match clock, plus the head start if the match began at night. */
   private lookTime(): number {
     return (this.replay?.time ?? this.buffer.latest?.time ?? 0) + this.clockOffset;
@@ -535,6 +557,7 @@ export class GameClient {
       }
       this.hud.showGameOver(latest.winner === this.myTeam, latest.scores, latest.winner, this.myTeam);
       if (!this.gameOverPlayed) this.sound.play(latest.winner === this.myTeam ? 'victory' : 'defeat', 0.8);
+      if (!this.gameOverPlayed && !this.replay) this.recordMatch(latest.scores ?? [], latest.winner);
       this.gameOverPlayed = true;
     }
   }

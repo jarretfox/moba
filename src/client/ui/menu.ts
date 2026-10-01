@@ -2,6 +2,7 @@ import type { MatchMode } from '../../shared/protocol';
 import { el } from './dom';
 import { settingsPanel } from '../settings';
 import { logo } from './logo';
+import { showProfile } from './profileScreen';
 
 export type MenuChoice = { kind: 'solo'; mode: MatchMode } | { kind: 'host' } | { kind: 'join'; code: string };
 
@@ -44,6 +45,10 @@ export function showMenu(root: HTMLElement, error?: string): Promise<{ choice: M
       root.append(box);
     });
     screen.append(gear);
+    const profile = el('button', 'menu-profile', 'Profile');
+    profile.title = 'Your record and titles';
+    profile.addEventListener('click', () => showProfile(root));
+    screen.append(profile);
     const nameInput = el('input', 'menu-name');
     nameInput.placeholder = 'Your name';
     nameInput.maxLength = 16;

@@ -40,8 +40,8 @@ export type Command =
   | { k: 'emote'; kind: EmoteKind };
 
 export type ClientMessage =
-  /** Enter the lobby. */
-  | { t: 'hello'; name: string }
+  /** Enter the lobby (wearing a title you've earned, if you like: see shared/titles.ts). */
+  | { t: 'hello'; name: string; title?: string }
   /** Change team and/or champion while in the lobby. */
   | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId; skin?: number }
   /** Host only: start the match once everyone has picked. */
@@ -89,6 +89,8 @@ export interface LobbyPlayer {
   /** Which of the champion's looks (0 is the classic one). */
   skin: number;
   host: boolean;
+  /** The title they wear (an id from shared/titles.ts). */
+  title?: string;
 }
 
 export interface LobbyState {
@@ -334,6 +336,8 @@ export interface EntitySnap {
   regrow?: number;
   /** A champion on a killing spree: the gold on their head (a WANTED poster over them). */
   bty?: number;
+  /** The title a player's champion wears under their name (an id from shared/titles.ts). */
+  ttl?: string;
 }
 
 export interface AbilitySnap {
