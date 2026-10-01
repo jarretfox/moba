@@ -1,3 +1,6 @@
+/** How many looks each champion has (the classic one and two skins). Purely cosmetic. */
+export const SKIN_COUNT = 3;
+
 export type ChampionId = 'marksman' | 'barbarian' | 'willmore' | 'hunnag' | 'logan' | 'kingrix';
 
 /** What a champion's second bar holds. Rage starts empty and is earned in combat; mana starts full and regenerates. Some have none. */

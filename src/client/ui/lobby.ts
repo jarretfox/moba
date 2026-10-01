@@ -1,8 +1,8 @@
 import { CHAMPION_INFO } from '../../shared/champions/registry';
-import type { ChampionId } from '../../shared/champions/types';
+import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
 import type { LobbyState, MatchMode } from '../../shared/protocol';
-import { PORTRAITS } from '../render/champions';
+import { SKINS, portraitOf, swatchColor } from '../render/champions';
 import { iconEl } from '../render/icons';
 import { el } from './dom';
 
@@ -13,7 +13,7 @@ export interface LobbyOptions {
   solo?: MatchMode;
   /** Shown to the host so they can share it. */
   code?: string;
-  onPick(pick: { team?: PlayerTeam; champion?: ChampionId }): void;
+  onPick(pick: { team?: PlayerTeam; champion?: ChampionId; skin?: number }): void;
   onStart(mode: MatchMode): void;
 }
 
@@ -24,6 +24,9 @@ export class LobbyScreen {
   private readonly cards = new Map<ChampionId, HTMLButtonElement>();
   private readonly footer = el('div', 'lobby-footer');
   private mode: MatchMode = 'bots';
+  /** The look chosen on each card (0 is the classic one). */
+  private readonly skins = new Map<ChampionId, number>();
+  private picked: ChampionId | null = null;
 
   constructor(
     root: HTMLElement,
@@ -46,6 +49,7 @@ export class LobbyScreen {
 
   update(lobby: LobbyState, you: string): void {
     const me = lobby.players.find((p) => p.id === you);
+    this.picked = me?.champion ?? null;
     for (const [id, card] of this.cards) {
       card.classList.toggle('picked', me?.champion === id);
       // One of each champion per team: a teammate's pick is off the table.
@@ -111,17 +115,35 @@ export class LobbyScreen {
     const cards = el('div', 'select-cards');
     for (const info of Object.values(CHAMPION_INFO)) {
       const card = el('button', `select-card ${info.resource}`);
-      const face = PORTRAITS[info.id];
-      if (face) {
-        const img = el('img', 'select-face');
-        img.src = face;
-        img.alt = '';
-        card.append(img);
-      }
+      const img = el('img', 'select-face');
+      img.src = portraitOf(info.id) ?? '';
+      img.alt = '';
+      card.append(img);
       card.append(
         el('div', 'select-name', info.name),
         el('div', 'select-sub', `${info.title} · ${{ rage: 'Rage', mana: 'Mana', none: 'No resource' }[info.resource]}`),
       );
+      // Looks: a dot per skin; picking one changes the portrait (and your champion, if it's your pick).
+      const looks = el('div', 'select-skins');
+      const lookName = el('span', 'skin-name', SKINS[info.id][0].name);
+      const dots: HTMLElement[] = [];
+      for (let skin = 0; skin < SKIN_COUNT; skin++) {
+        const dot = el('span', `skin-dot${skin === 0 ? ' on' : ''}`);
+        dot.style.background = `#${swatchColor(info.id, skin).toString(16).padStart(6, '0')}`;
+        dot.title = SKINS[info.id][skin].name;
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.skins.set(info.id, skin);
+          img.src = portraitOf(info.id, skin) ?? '';
+          lookName.textContent = SKINS[info.id][skin].name;
+          dots.forEach((d, i) => d.classList.toggle('on', i === skin));
+          if (this.picked === info.id) this.opts.onPick({ skin });
+        });
+        dots.push(dot);
+        looks.append(dot);
+      }
+      looks.append(lookName);
+      card.append(looks);
       const passive = el('div', 'select-passive');
       passive.append(iconEl(info.passive.icon, 'select-icon'), info.passive.name);
       card.append(passive);
@@ -133,7 +155,7 @@ export class LobbyScreen {
       });
       card.append(list);
       card.addEventListener('click', () => {
-        this.opts.onPick({ champion: info.id });
+        this.opts.onPick({ champion: info.id, skin: this.skins.get(info.id) ?? 0 });
         if (this.opts.solo) this.opts.onStart(this.opts.solo);
       });
       this.cards.set(info.id, card);

@@ -2,7 +2,7 @@ import { CHAMPION_INFO } from '../shared/champions/registry';
 import { TEAM, type Team } from '../shared/constants';
 import { ITEMS } from '../shared/items';
 import type { ScoreRow } from '../shared/protocol';
-import { PORTRAITS } from './render/champions';
+import { portraitOf } from './render/champions';
 import { iconEl } from './render/icons';
 import { el } from './ui/dom';
 
@@ -23,7 +23,7 @@ export function pickMvp(rows: readonly ScoreRow[], winner: Team | undefined): Sc
 export function mvpCard(r: ScoreRow): HTMLElement {
   const card = el('div', 'mvp');
   const face = el('img', 'mvp-face');
-  face.src = PORTRAITS[r.champ] ?? '';
+  face.src = portraitOf(r.champ, r.skin ?? 0) ?? '';
   face.alt = '';
   const who = el('div', 'mvp-who');
   who.append(el('div', 'mvp-badge', 'MVP'), el('div', 'mvp-name', r.name), el('div', 'mvp-line', `${CHAMPION_INFO[r.champ].name} · ${r.k} / ${r.d} / ${r.a} · ${k(r.dmg)} damage`));
@@ -43,7 +43,7 @@ export function scoreTables(rows: readonly ScoreRow[], myTeam: Team, meId: numbe
     for (const r of mine) {
       const row = el('div', `score-row${r.id === meId ? ' you' : ''}`);
       const face = el('img', 'score-face');
-      face.src = PORTRAITS[r.champ] ?? '';
+      face.src = portraitOf(r.champ, r.skin ?? 0) ?? '';
       face.alt = '';
       const who = el('div', 'score-who');
       who.append(el('b', '', r.name), el('span', '', `${CHAMPION_INFO[r.champ].name} · Lv ${r.lv}`));

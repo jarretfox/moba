@@ -130,9 +130,9 @@ export class UnitView implements EntityView {
     } else if (s.k === 'champion' && s.champ) {
       this.body.clear();
       drawChampionBase(this.body, r, color, relation === 'self');
-      drawChampionFigure(this.figure, s.champ, r);
+      drawChampionFigure(this.figure, s.champ, r, s.skin ?? 0);
       this.champ = s.champ;
-      this.weaponSpec = championWeapon(s.champ);
+      this.weaponSpec = championWeapon(s.champ, s.skin ?? 0);
       this.attackAnim = ATTACK[s.champ];
     } else {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: relation === 'self' ? 0xffffff : PALETTE.outline });

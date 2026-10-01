@@ -49,6 +49,29 @@ describe('solo matches', () => {
   });
 });
 
+describe('skins', () => {
+  it('are remembered from the pick and worn by your champion for everyone to see', () => {
+    const { core } = host();
+    core.receive(LOCAL_CONN, { t: 'hello', name: 'Jo' });
+    core.receive(LOCAL_CONN, { t: 'pick', champion: 'logan', skin: 2 });
+    core.receive(LOCAL_CONN, { t: 'start', mode: 'practice' });
+    const [jo] = champions(core);
+    expect(jo.skin).toBe(2);
+    expect(jo.snapshot(core.world).skin).toBe(2);
+  });
+
+  it('ignore looks that don’t exist, and leave the classic look out of snapshots', () => {
+    const { core } = host();
+    core.receive(LOCAL_CONN, { t: 'hello', name: 'Jo' });
+    core.receive(LOCAL_CONN, { t: 'pick', champion: 'kingrix', skin: 7 });
+    core.receive(LOCAL_CONN, { t: 'pick', skin: 1.5 });
+    core.receive(LOCAL_CONN, { t: 'start', mode: 'practice' });
+    const [jo] = champions(core);
+    expect(jo.skin).toBe(0);
+    expect('skin' in jo.snapshot(core.world)).toBe(false);
+  });
+});
+
 describe('the lobby', () => {
   it('seats friends on alternating teams and tells everyone', () => {
     const { core, lastLobby } = host();

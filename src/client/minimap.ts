@@ -4,7 +4,7 @@ import type { Shape } from '../shared/map/shapes';
 import type { Vec2 } from '../shared/math';
 import type { EntitySnap, PingKind } from '../shared/protocol';
 import { PINGS } from './pings';
-import { PORTRAITS } from './render/champions';
+import { portraitOf } from './render/champions';
 
 // The whole map in the corner: terrain, your fog of war, structures, camps, Chuds, champion portraits,
 // pings and the box your camera sees. Click it to look somewhere, right-click to walk there.
@@ -173,11 +173,13 @@ export class Minimap {
   /** A champion's portrait in a ring of their side's color. */
   private face(g: CanvasRenderingContext2D, e: EntitySnap, x: number, y: number, ring: string): void {
     const r = 8;
-    let img = e.champ ? this.faces.get(e.champ) : undefined;
-    if (!img && e.champ && PORTRAITS[e.champ]) {
+    const key = `${e.champ}:${e.skin ?? 0}`;
+    let img = this.faces.get(key);
+    const url = e.champ ? portraitOf(e.champ, e.skin ?? 0) : undefined;
+    if (!img && url) {
       img = new Image();
-      img.src = PORTRAITS[e.champ]!;
-      this.faces.set(e.champ, img);
+      img.src = url;
+      this.faces.set(key, img);
     }
     g.save();
     g.beginPath();

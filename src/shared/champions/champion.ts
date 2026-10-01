@@ -36,6 +36,8 @@ export abstract class Champion extends Unit {
   gold = STARTING_GOLD;
   /** Kills without dying; raises the bounty on your head. */
   streak = 0;
+  /** Which look this champion wears (cosmetic; 0 is the classic one). */
+  skin = 0;
   /** Match stats for the scoreboard. */
   readonly score: Score = newScore();
   /** Up to INVENTORY_SLOTS items, in the order bought. */
@@ -315,6 +317,7 @@ export abstract class Champion extends Unit {
     const s: EntitySnap = {
       ...super.snapshot(world),
       champ: this.info.id,
+      ...(this.skin ? { skin: this.skin } : {}),
       lv: this.level,
       mp: Math.floor(this.mana),
       mmp: Math.round(this.stats.maxMana),

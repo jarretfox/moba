@@ -39,6 +39,7 @@ export function scoreRows(world: World): ScoreRow[] {
       id: c.id,
       name: c.name,
       champ: c.info.id,
+      ...(c.skin ? { skin: c.skin } : {}),
       team: c.team as ScoreRow['team'],
       lv: c.level,
       k: c.score.kills,

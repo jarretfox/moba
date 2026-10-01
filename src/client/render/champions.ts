@@ -1,14 +1,72 @@
 import { Container, Graphics, Rectangle, type Renderer } from 'pixi.js';
-import type { ChampionId } from '../../shared/champions/types';
+import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { arc } from './draw';
 
 // Champion art, drawn in code like the rest of the game. Every figure is seen from above, facing right
 // (+x), sized to the champion's radius `r`, and lives on the layer that turns to face where they're going.
 // The team shows as a colored ring underneath (drawChampionBase), so the figures keep their own colors.
+// Every color comes from the champion's palette, so a skin is just a different palette.
 
 const OUTLINE = { width: 2, color: 0x0b0f14 };
 const SKIN = 0xd6a274;
 const CHUD_SKIN = 0x87916c;
+
+type Palette = Record<string, number>;
+
+/** The classic look of each champion. */
+const CLASSIC: Record<ChampionId, Palette> = {
+  marksman: { cloak: 0x2f5d3a, hood: 0x3d7a4a, quiver: 0x6b4a2b, fletch: 0xe8d7b0, face: 0x1d2a20, hand: SKIN, bow: 0x8a5a2b, string: 0xf2efe6, arrow: 0xe8d7b0, tip: 0xb8bec6 },
+  barbarian: { skin: SKIN, fur: 0x6b4a2b, furDot: 0x8a6a44, helmet: 0x8a9099, horns: 0xefe3c8, chain: 0x8a9099, haft: 0x6b4a2b, blade: 0xb8bec6 },
+  willmore: { sack: 0x7a6a4a, patch: 0x4a3f2a, body: CHUD_SKIN, lid: 0x9aa1ab, lidKnob: 0x5d636d, strap: 0x6b5a22, goggles: 0x9fe6ff, rim: 0xb8a46a, rope: 0x8a6a44, hook: 0x5d636d },
+  hunnag: { body: CHUD_SKIN, cap: 0x7a3fb0, spots: 0xe8d7ff, eyes: 0xb8f07a, staff: 0x6b4a2b, orb: 0xb8f07a, orbGlow: 0x8fd14f, orbEdge: 0x3d6a14 },
+  logan: { mane: 0xd98a2b, maneEdge: 0x8a4f12, face: 0xe8a33d, muzzle: 0xf2c27a, collar: 0x8a9099, eyes: 0x2e1a08, nose: 0x5a2e12, paw: 0xe8a33d },
+  kingrix: { cape: 0xa8232e, ermine: 0xf2f2f2, spots: 0x111111, skin: SKIN, crown: 0xffd166, jewelA: 0xc0182b, jewelB: 0x3d8bfd, scepter: 0xd9a52b, orb: 0xffd166, gem: 0xc0182b },
+};
+
+/** Each champion's looks: the classic one first, then two skins (just different palettes). */
+export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette }[]> = {
+  marksman: [
+    { name: 'Greenwood', colors: {} },
+    { name: 'Frost Ranger', colors: { cloak: 0x34506e, hood: 0x6fa8d6, quiver: 0x4a5a6a, bow: 0xb8d8f0, face: 0x1a2533, fletch: 0xdff7ff } },
+    { name: 'Ember Hunter', colors: { cloak: 0x6b2a1a, hood: 0xc0502a, quiver: 0x3a2a1a, bow: 0x2a1a10, fletch: 0xffb347, face: 0x2a1410 } },
+  ],
+  barbarian: [
+    { name: 'Unchained', colors: {} },
+    { name: 'Frostborn', colors: { skin: 0xb8c8d8, fur: 0xe8eef4, furDot: 0xc8d4e0, helmet: 0x6a8aa8, horns: 0xffffff, blade: 0x9fe6ff } },
+    { name: 'Blood Rage', colors: { skin: 0xc06050, fur: 0x2a1a14, furDot: 0x4a2a20, helmet: 0x3a3a40, horns: 0xc0182b, blade: 0xe5484d, haft: 0x2a1a14 } },
+  ],
+  willmore: [
+    { name: 'Gutter King', colors: {} },
+    { name: 'Rust Baron', colors: { lid: 0xb0602a, lidKnob: 0x6a3416, sack: 0x5a3a2a, hook: 0x8a4a2a, goggles: 0xffb070, rim: 0x6a3416 } },
+    { name: 'Sewer Royal', colors: { lid: 0xffd166, lidKnob: 0xc0182b, sack: 0x5a2a6a, goggles: 0xb98be0, rim: 0xffd166, hook: 0xd9a52b } },
+  ],
+  hunnag: [
+    { name: 'Rot of the Deep', colors: {} },
+    { name: 'Glowcap', colors: { cap: 0x2f7fb8, spots: 0xdff7ff, eyes: 0x9fe6ff, orb: 0x9fe6ff, orbGlow: 0x6fd6ff, orbEdge: 0x1a4a6a } },
+    { name: 'Bloodcap', colors: { cap: 0xb3202a, spots: 0xffe0e0, eyes: 0xffb347, orb: 0xffb347, orbGlow: 0xff7a2f, orbEdge: 0x6a1a10 } },
+  ],
+  logan: [
+    { name: 'Lionheart', colors: {} },
+    { name: 'White Lion', colors: { mane: 0xf2efe6, maneEdge: 0x9a9488, face: 0xe8e2d4, muzzle: 0xffffff, collar: 0xffd166, paw: 0xe8e2d4, eyes: 0x3d6a8a } },
+    { name: 'Shadow Lion', colors: { mane: 0x2a2430, maneEdge: 0x0e0c12, face: 0x5a4a3a, muzzle: 0x8a7a6a, collar: 0xb98be0, paw: 0x5a4a3a, eyes: 0xffd166, nose: 0x1a1410 } },
+  ],
+  kingrix: [
+    { name: 'The Crown', colors: {} },
+    { name: 'Midnight King', colors: { cape: 0x2a2a6a, ermine: 0xd8dce8, crown: 0xc9d1dc, scepter: 0xa8b0bc, orb: 0xc9d1dc, gem: 0x3d8bfd, jewelA: 0x3d8bfd, jewelB: 0xb98be0 } },
+    { name: 'Golden Tyrant', colors: { cape: 0xd9a52b, ermine: 0xfff1c1, crown: 0xffd166, gem: 0x8fd14f, jewelA: 0x8fd14f, jewelB: 0xc0182b, scepter: 0xffd166 } },
+  ],
+};
+
+/** The color that sums up each look, for the swatches in champion select. */
+const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape' };
+
+export function palette(id: ChampionId, skin = 0): Palette {
+  return { ...CLASSIC[id], ...(SKINS[id][skin]?.colors ?? {}) };
+}
+
+export function swatchColor(id: ChampionId, skin: number): number {
+  return palette(id, skin)[SWATCH[id]];
+}
 
 /** The disc under a champion: shadow, a ring in their team's color, and a white edge for yourself. */
 export function drawChampionBase(g: Graphics, r: number, teamColor: number, self: boolean): void {
@@ -18,16 +76,16 @@ export function drawChampionBase(g: Graphics, r: number, teamColor: number, self
 }
 
 /** The champion without their weapon (see drawChampionWeapon, which animates on its own). */
-export function drawChampionFigure(g: Graphics, id: ChampionId, r: number): void {
-  FIGURES[id](g, r);
+export function drawChampionFigure(g: Graphics, id: ChampionId, r: number, skin = 0): void {
+  FIGURES[id](g, r, palette(id, skin));
 }
 
 /**
  * Draws the champion's weapon around its pivot (their hand) and says where that pivot sits on the figure,
  * so the weapon can swing, draw back or whirl while the body stays put.
  */
-export function drawChampionWeapon(g: Graphics, id: ChampionId, r: number): { x: number; y: number } {
-  const w = WEAPONS[id];
+export function drawChampionWeapon(g: Graphics, id: ChampionId, r: number, skin = 0): { x: number; y: number } {
+  const w = championWeapon(id, skin);
   w.draw(g, r);
   return { x: w.pivot[0] * r, y: w.pivot[1] * r };
 }
@@ -46,166 +104,177 @@ export interface Weapon {
   rest?: number;
 }
 
-export function championWeapon(id: ChampionId): Weapon {
-  return WEAPONS[id];
+export function championWeapon(id: ChampionId, skin = 0): Weapon {
+  return WEAPONS[id](palette(id, skin));
 }
 
-const WEAPONS: Record<ChampionId, Weapon> = {
-  marksman: {
+const WEAPONS: Record<ChampionId, (p: Palette) => Weapon> = {
+  marksman: (p) => ({
     pivot: [0.35, 0],
     draw(g, r) {
-      arc(g, 0, 0, 0.95 * r, -1.15, 1.15).stroke({ width: 4, color: 0x8a5a2b }); // bow
+      arc(g, 0, 0, 0.95 * r, -1.15, 1.15).stroke({ width: 4, color: p.bow }); // bow
       const tip = { x: Math.cos(1.15) * 0.95 * r, y: Math.sin(1.15) * 0.95 * r };
-      g.moveTo(tip.x, -tip.y).lineTo(0, 0).lineTo(tip.x, tip.y).stroke({ width: 1.5, color: 0xf2efe6 }); // string
-      g.moveTo(0, 0).lineTo(1.05 * r, 0).stroke({ width: 2, color: 0xe8d7b0 }); // arrow
-      g.poly([1.05 * r, -5, 1.25 * r, 0, 1.05 * r, 5]).fill(0xb8bec6);
+      g.moveTo(tip.x, -tip.y).lineTo(0, 0).lineTo(tip.x, tip.y).stroke({ width: 1.5, color: p.string }); // string
+      g.moveTo(0, 0).lineTo(1.05 * r, 0).stroke({ width: 2, color: p.arrow }); // arrow
+      g.poly([1.05 * r, -5, 1.25 * r, 0, 1.05 * r, 5]).fill(p.tip);
     },
-  },
-  barbarian: {
+  }),
+  barbarian: (p) => ({
     pivot: [0.3, 0.75],
     draw(g, r) {
-      g.moveTo(0, 0).lineTo(1.05 * r, -0.2 * r).stroke({ width: 5, color: 0x6b4a2b }); // haft
-      g.poly([0.85 * r, -0.6 * r, 1.2 * r, -0.45 * r, 1.25 * r, 0, 0.85 * r, 0.2 * r, 0.95 * r, -0.2 * r]).fill(0xb8bec6).stroke(OUTLINE); // blade
+      g.moveTo(0, 0).lineTo(1.05 * r, -0.2 * r).stroke({ width: 5, color: p.haft }); // haft
+      g.poly([0.85 * r, -0.6 * r, 1.2 * r, -0.45 * r, 1.25 * r, 0, 0.85 * r, 0.2 * r, 0.95 * r, -0.2 * r]).fill(p.blade).stroke(OUTLINE); // blade
       g.moveTo(1.18 * r, -0.42 * r).lineTo(1.22 * r, -0.02 * r).stroke({ width: 2, color: 0xffffff, alpha: 0.6 });
     },
-  },
-  willmore: {
+  }),
+  willmore: (p) => ({
     pivot: [0.3, 0.6],
     draw(g, r) {
-      g.moveTo(0, 0).lineTo(0.55 * r, 0.15 * r).stroke({ width: 2, color: 0x8a6a44 }); // rope
-      arc(g, 0.7 * r, 0, 0.22 * r, -0.5, 3.4).stroke({ width: 4, color: 0x5d636d }); // hook
+      g.moveTo(0, 0).lineTo(0.55 * r, 0.15 * r).stroke({ width: 2, color: p.rope }); // rope
+      arc(g, 0.7 * r, 0, 0.22 * r, -0.5, 3.4).stroke({ width: 4, color: p.hook }); // hook
     },
-  },
-  hunnag: {
+  }),
+  hunnag: (p) => ({
     pivot: [0.2, 0.65],
     draw(g, r) {
-      g.moveTo(0, 0).lineTo(1.05 * r, -0.15 * r).stroke({ width: 3, color: 0x6b4a2b }); // staff
-      g.circle(1.1 * r, -0.15 * r, 0.36 * r).fill({ color: 0x8fd14f, alpha: 0.25 });
-      g.circle(1.1 * r, -0.15 * r, 0.18 * r).fill(0xb8f07a).stroke({ width: 1.5, color: 0x3d6a14 });
+      g.moveTo(0, 0).lineTo(1.05 * r, -0.15 * r).stroke({ width: 3, color: p.staff }); // staff
+      g.circle(1.1 * r, -0.15 * r, 0.36 * r).fill({ color: p.orbGlow, alpha: 0.25 });
+      g.circle(1.1 * r, -0.15 * r, 0.18 * r).fill(p.orb).stroke({ width: 1.5, color: p.orbEdge });
     },
-  },
-  logan: {
+  }),
+  logan: (p) => ({
     // Two front paws, reaching out from under the mane.
     pivot: [0.45, 0],
     behind: true,
     draw(g, r) {
       for (const side of [-1, 1]) {
-        g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(0xe8a33d).stroke({ width: 1.5, color: 0x8a4f12 });
-        for (let i = -1; i <= 1; i++) g.circle(0.28 * r, side * 0.46 * r + i * 0.08 * r, 0.045 * r).fill(0x8a4f12);
+        g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(p.paw).stroke({ width: 1.5, color: p.maneEdge });
+        for (let i = -1; i <= 1; i++) g.circle(0.28 * r, side * 0.46 * r + i * 0.08 * r, 0.045 * r).fill(p.maneEdge);
       }
     },
-  },
-  kingrix: {
+  }),
+  kingrix: (p) => ({
     pivot: [0.3, 0.6],
     draw(g, r) {
-      g.moveTo(0, 0).lineTo(0.9 * r, -0.15 * r).stroke({ width: 3, color: 0xd9a52b }); // scepter
-      g.circle(0.95 * r, -0.16 * r, 0.15 * r).fill(0xffd166).stroke({ width: 1.5, color: 0x8a6a1e });
-      g.circle(0.95 * r, -0.16 * r, 0.06 * r).fill(0xc0182b);
+      g.moveTo(0, 0).lineTo(0.9 * r, -0.15 * r).stroke({ width: 3, color: p.scepter }); // scepter
+      g.circle(0.95 * r, -0.16 * r, 0.15 * r).fill(p.orb).stroke({ width: 1.5, color: 0x8a6a1e });
+      g.circle(0.95 * r, -0.16 * r, 0.06 * r).fill(p.gem);
     },
-  },
+  }),
 };
 
-const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
-  /** A hooded archer in a green cloak, an arrow on the string and a quiver on her back. */
-  marksman(g, r) {
-    g.ellipse(-0.15 * r, 0, 0.95 * r, 0.85 * r).fill(0x2f5d3a).stroke(OUTLINE); // cloak
-    g.roundRect(-1.05 * r, 0.1 * r, 0.6 * r, 0.3 * r, 4).fill(0x6b4a2b).stroke(OUTLINE); // quiver
-    for (const y of [0.13, 0.25, 0.37]) g.poly([-1.2 * r, y * r - 4, -1.05 * r, y * r, -1.2 * r, y * r + 4]).fill(0xe8d7b0);
-    g.circle(0.1 * r, 0, 0.48 * r).fill(0x3d7a4a).stroke(OUTLINE); // hood
-    g.circle(0.3 * r, 0, 0.22 * r).fill(0x1d2a20); // face in shadow
-    g.circle(0.55 * r, 0.35 * r, 0.14 * r).fill(SKIN); // drawing hand
+const FIGURES: Record<ChampionId, (g: Graphics, r: number, p: Palette) => void> = {
+  /** A hooded archer in a cloak, a quiver on her back. */
+  marksman(g, r, p) {
+    g.ellipse(-0.15 * r, 0, 0.95 * r, 0.85 * r).fill(p.cloak).stroke(OUTLINE); // cloak
+    g.roundRect(-1.05 * r, 0.1 * r, 0.6 * r, 0.3 * r, 4).fill(p.quiver).stroke(OUTLINE); // quiver
+    for (const y of [0.13, 0.25, 0.37]) g.poly([-1.2 * r, y * r - 4, -1.05 * r, y * r, -1.2 * r, y * r + 4]).fill(p.fletch);
+    g.circle(0.1 * r, 0, 0.48 * r).fill(p.hood).stroke(OUTLINE); // hood
+    g.circle(0.3 * r, 0, 0.22 * r).fill(p.face); // face in shadow
+    g.circle(0.55 * r, 0.35 * r, 0.14 * r).fill(p.hand); // drawing hand
   },
 
-  /** Broad shoulders, fur pauldrons, a horned helmet, a great axe, and a broken shackle on one wrist. */
-  barbarian(g, r) {
-    g.ellipse(0, 0, 0.75 * r, 1.0 * r).fill(SKIN).stroke(OUTLINE); // shoulders
+  /** Broad shoulders, fur pauldrons, a horned helmet, and a broken shackle on one wrist. */
+  barbarian(g, r, p) {
+    g.ellipse(0, 0, 0.75 * r, 1.0 * r).fill(p.skin).stroke(OUTLINE); // shoulders
     for (const side of [-1, 1]) {
-      g.circle(-0.05 * r, side * 0.68 * r, 0.38 * r).fill(0x6b4a2b).stroke(OUTLINE); // fur
-      for (const [x, y] of [[-0.2, 0.55], [0.1, 0.6], [-0.05, 0.85]]) g.circle(x * r, side * y * r, 0.1 * r).fill(0x8a6a44);
+      g.circle(-0.05 * r, side * 0.68 * r, 0.38 * r).fill(p.fur).stroke(OUTLINE); // fur
+      for (const [x, y] of [[-0.2, 0.55], [0.1, 0.6], [-0.05, 0.85]]) g.circle(x * r, side * y * r, 0.1 * r).fill(p.furDot);
     }
-    g.circle(0.15 * r, 0, 0.42 * r).fill(SKIN).stroke(OUTLINE); // head
-    g.circle(0.1 * r, 0, 0.36 * r).fill(0x8a9099).stroke(OUTLINE); // helmet
-    for (const side of [-1, 1]) g.poly([0.05 * r, side * 0.3 * r, 0.6 * r, side * 0.8 * r, 0.32 * r, side * 0.24 * r]).fill(0xefe3c8).stroke(OUTLINE); // horns
-    for (let i = 0; i < 3; i++) g.ellipse(0.35 * r + i * 7, -0.85 * r - i * 3, 4, 2.5).stroke({ width: 2, color: 0x8a9099 }); // broken chain
+    g.circle(0.15 * r, 0, 0.42 * r).fill(p.skin).stroke(OUTLINE); // head
+    g.circle(0.1 * r, 0, 0.36 * r).fill(p.helmet).stroke(OUTLINE); // helmet
+    for (const side of [-1, 1]) g.poly([0.05 * r, side * 0.3 * r, 0.6 * r, side * 0.8 * r, 0.32 * r, side * 0.24 * r]).fill(p.horns).stroke(OUTLINE); // horns
+    for (let i = 0; i < 3; i++) g.ellipse(0.35 * r + i * 7, -0.85 * r - i * 3, 4, 2.5).stroke({ width: 2, color: p.chain }); // broken chain
   },
 
-  /** A Chud in goggles and a trash-can-lid crown, a sack of junk on his back and a hook in his fist. */
-  willmore(g, r) {
-    g.circle(-0.65 * r, 0.1 * r, 0.5 * r).fill(0x7a6a4a).stroke(OUTLINE); // junk sack
-    g.moveTo(-0.9 * r, -0.05 * r).lineTo(-0.45 * r, 0.3 * r).stroke({ width: 2, color: 0x4a3f2a }); // a patch
-    g.circle(0, 0, 0.8 * r).fill(CHUD_SKIN).stroke(OUTLINE); // body
-    g.circle(0.05 * r, 0, 0.36 * r).fill(0x9aa1ab).stroke(OUTLINE); // the lid
-    g.roundRect(-0.03 * r, -0.08 * r, 0.16 * r, 0.16 * r, 2).fill(0x5d636d);
-    g.moveTo(0.5 * r, -0.28 * r).lineTo(0.5 * r, 0.28 * r).stroke({ width: 3, color: 0x6b5a22 }); // goggle strap
-    for (const side of [-1, 1]) g.circle(0.55 * r, side * 0.28 * r, 0.2 * r).fill(0x9fe6ff).stroke({ width: 3, color: 0xb8a46a }); // goggles
+  /** A Chud in goggles and a trash-can-lid crown, a sack of junk on his back. */
+  willmore(g, r, p) {
+    g.circle(-0.65 * r, 0.1 * r, 0.5 * r).fill(p.sack).stroke(OUTLINE); // junk sack
+    g.moveTo(-0.9 * r, -0.05 * r).lineTo(-0.45 * r, 0.3 * r).stroke({ width: 2, color: p.patch }); // a patch
+    g.circle(0, 0, 0.8 * r).fill(p.body).stroke(OUTLINE); // body
+    g.circle(0.05 * r, 0, 0.36 * r).fill(p.lid).stroke(OUTLINE); // the lid
+    g.roundRect(-0.03 * r, -0.08 * r, 0.16 * r, 0.16 * r, 2).fill(p.lidKnob);
+    g.moveTo(0.5 * r, -0.28 * r).lineTo(0.5 * r, 0.28 * r).stroke({ width: 3, color: p.strap }); // goggle strap
+    for (const side of [-1, 1]) g.circle(0.55 * r, side * 0.28 * r, 0.2 * r).fill(p.goggles).stroke({ width: 3, color: p.rim }); // goggles
   },
 
-  /** A Chud under a spotted mushroom cap, eyes glowing green, with a staff topped by a glowing spore. */
-  hunnag(g, r) {
-    g.circle(0, 0, 0.8 * r).fill(CHUD_SKIN).stroke(OUTLINE); // body
-    g.ellipse(-0.1 * r, 0, 0.9 * r, 0.85 * r).fill(0x7a3fb0).stroke(OUTLINE); // the cap
-    for (const [x, y, rr] of [[-0.45, -0.35, 0.16], [-0.1, 0.4, 0.13], [-0.55, 0.25, 0.1], [0.15, -0.3, 0.12], [-0.25, -0.05, 0.09]]) g.circle(x * r, y * r, rr * r).fill(0xe8d7ff);
-    for (const side of [-1, 1]) g.circle(0.62 * r, side * 0.2 * r, 0.09 * r).fill(0xb8f07a); // eyes under the brim
-    for (const [x, y] of [[0.9, -0.5], [0.4, -0.85], [-0.8, 0.75]]) g.circle(x * r, y * r, 2.5).fill({ color: 0xb8f07a, alpha: 0.8 }); // spores
+  /** A Chud under a spotted mushroom cap, eyes glowing. */
+  hunnag(g, r, p) {
+    g.circle(0, 0, 0.8 * r).fill(p.body).stroke(OUTLINE); // body
+    g.ellipse(-0.1 * r, 0, 0.9 * r, 0.85 * r).fill(p.cap).stroke(OUTLINE); // the cap
+    for (const [x, y, rr] of [[-0.45, -0.35, 0.16], [-0.1, 0.4, 0.13], [-0.55, 0.25, 0.1], [0.15, -0.3, 0.12], [-0.25, -0.05, 0.09]]) g.circle(x * r, y * r, rr * r).fill(p.spots);
+    for (const side of [-1, 1]) g.circle(0.62 * r, side * 0.2 * r, 0.09 * r).fill(p.eyes); // eyes under the brim
+    for (const [x, y] of [[0.9, -0.5], [0.4, -0.85], [-0.8, 0.75]]) g.circle(x * r, y * r, 2.5).fill({ color: p.eyes, alpha: 0.8 }); // spores
   },
 
   /** A lion from above: a great mane, muzzle forward, and a broken collar from the royal cage. */
-  logan(g, r) {
+  logan(g, r, p) {
     const mane: number[] = [];
     for (let i = 0; i < 24; i++) {
       const a = (i / 24) * Math.PI * 2;
       const rr = i % 2 === 0 ? 1.05 * r : 0.82 * r;
       mane.push(Math.cos(a) * rr - 0.05 * r, Math.sin(a) * rr);
     }
-    g.poly(mane).fill(0xd98a2b).stroke({ width: 2, color: 0x8a4f12 });
-    g.circle(0, 0, 0.7 * r).fill(0xe8a33d);
-    arc(g, -0.05 * r, 0, 0.62 * r, 2.2, 4.1).stroke({ width: 4, color: 0x8a9099 }); // the broken collar
-    g.ellipse(-0.75 * r, -0.62 * r, 4, 2.5).stroke({ width: 2, color: 0x8a9099 });
-    for (const side of [-1, 1]) g.circle(-0.02 * r, side * 0.48 * r, 0.14 * r).fill(0xd98a2b).stroke({ width: 1.5, color: 0x8a4f12 }); // ears
-    g.ellipse(0.35 * r, 0, 0.42 * r, 0.32 * r).fill(0xf2c27a).stroke({ width: 1.5, color: 0x8a4f12 }); // muzzle
-    for (const side of [-1, 1]) g.circle(0.2 * r, side * 0.2 * r, 0.06 * r).fill(0x2e1a08); // eyes
-    g.poly([0.62 * r, -0.1 * r, 0.75 * r, 0, 0.62 * r, 0.1 * r]).fill(0x5a2e12); // nose
+    g.poly(mane).fill(p.mane).stroke({ width: 2, color: p.maneEdge });
+    g.circle(0, 0, 0.7 * r).fill(p.face);
+    arc(g, -0.05 * r, 0, 0.62 * r, 2.2, 4.1).stroke({ width: 4, color: p.collar }); // the broken collar
+    g.ellipse(-0.75 * r, -0.62 * r, 4, 2.5).stroke({ width: 2, color: p.collar });
+    for (const side of [-1, 1]) g.circle(-0.02 * r, side * 0.48 * r, 0.14 * r).fill(p.mane).stroke({ width: 1.5, color: p.maneEdge }); // ears
+    g.ellipse(0.35 * r, 0, 0.42 * r, 0.32 * r).fill(p.muzzle).stroke({ width: 1.5, color: p.maneEdge }); // muzzle
+    for (const side of [-1, 1]) g.circle(0.2 * r, side * 0.2 * r, 0.06 * r).fill(p.eyes); // eyes
+    g.poly([0.62 * r, -0.1 * r, 0.75 * r, 0, 0.62 * r, 0.1 * r]).fill(p.nose); // nose
   },
 
-  /** The king from above: a red cape, an ermine collar, a jeweled crown, and a gold scepter. */
-  kingrix(g, r) {
-    g.ellipse(-0.35 * r, 0, 0.85 * r, 0.95 * r).fill(0xa8232e).stroke(OUTLINE); // cape
-    g.ellipse(0, 0, 0.5 * r, 0.72 * r).fill(0xf2f2f2).stroke(OUTLINE); // ermine
-    for (const [x, y] of [[-0.25, -0.45], [-0.3, 0.4], [0.2, -0.55], [0.15, 0.55], [-0.4, 0]]) g.ellipse(x * r, y * r, 2, 3).fill(0x111111);
-    g.circle(0.1 * r, 0, 0.33 * r).fill(SKIN).stroke(OUTLINE); // head
-    g.circle(0.1 * r, 0, 0.28 * r).stroke({ width: 5, color: 0xffd166 }); // crown band
+  /** The king from above: a cape, an ermine collar, and a jeweled crown. */
+  kingrix(g, r, p) {
+    g.ellipse(-0.35 * r, 0, 0.85 * r, 0.95 * r).fill(p.cape).stroke(OUTLINE); // cape
+    g.ellipse(0, 0, 0.5 * r, 0.72 * r).fill(p.ermine).stroke(OUTLINE); // ermine
+    for (const [x, y] of [[-0.25, -0.45], [-0.3, 0.4], [0.2, -0.55], [0.15, 0.55], [-0.4, 0]]) g.ellipse(x * r, y * r, 2, 3).fill(p.spots);
+    g.circle(0.1 * r, 0, 0.33 * r).fill(p.skin).stroke(OUTLINE); // head
+    g.circle(0.1 * r, 0, 0.28 * r).stroke({ width: 5, color: p.crown }); // crown band
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      g.circle(0.1 * r + Math.cos(a) * 0.28 * r, Math.sin(a) * 0.28 * r, 0.07 * r).fill(i % 2 ? 0xc0182b : 0x3d8bfd).stroke({ width: 1, color: 0x8a6a1e });
+      g.circle(0.1 * r + Math.cos(a) * 0.28 * r, Math.sin(a) * 0.28 * r, 0.07 * r).fill(i % 2 ? p.jewelA : p.jewelB).stroke({ width: 1, color: 0x8a6a1e });
     }
   },
 };
 
-/** Portraits, filled in once at startup by renderPortraits. */
+/** Portraits in the classic look, filled in once at startup by renderPortraits. */
 export const PORTRAITS: Partial<Record<ChampionId, string>> = {};
+/** Every look's portrait, keyed "champion:skin". */
+const SKIN_PORTRAITS: Record<string, string> = {};
+
+/** A champion's portrait in a given look (the classic one if that look's isn't ready). */
+export function portraitOf(id: ChampionId, skin = 0): string | undefined {
+  return SKIN_PORTRAITS[`${id}:${skin}`] ?? PORTRAITS[id];
+}
 
 /**
- * One small picture per champion, for the HUD and the champion select: the figure facing up on a dark
- * disc. Rendered once with the game's own renderer, so the art only lives in one place.
+ * One small picture per champion and look, for the HUD and the champion select: the figure facing up on
+ * a dark disc. Rendered once with the game's own renderer, so the art only lives in one place.
  */
 export function renderPortraits(renderer: Renderer, ids: readonly ChampionId[]): Record<ChampionId, string> {
   const out = {} as Record<ChampionId, string>;
   const R = 40;
   for (const id of ids) {
-    const root = new Container();
-    const bg = new Graphics().circle(0, 0, R * 1.7).fill(0x10161f);
-    const fig = new Container();
-    const body = new Graphics();
-    drawChampionFigure(body, id, R);
-    const weapon = new Graphics();
-    weapon.position.copyFrom(drawChampionWeapon(weapon, id, R));
-    fig.addChild(id === 'logan' ? weapon : body, id === 'logan' ? body : weapon);
-    fig.rotation = -Math.PI / 2; // facing up, at the viewer
-    fig.scale.set(1.15);
-    root.addChild(bg, fig);
-    const canvas = renderer.extract.canvas({ target: root, frame: new Rectangle(-R * 1.7, -R * 1.7, R * 3.4, R * 3.4), resolution: 2 });
-    out[id] = (canvas as HTMLCanvasElement).toDataURL('image/png');
-    root.destroy({ children: true });
+    for (let skin = 0; skin < SKIN_COUNT; skin++) {
+      const root = new Container();
+      const bg = new Graphics().circle(0, 0, R * 1.7).fill(0x10161f);
+      const fig = new Container();
+      const body = new Graphics();
+      drawChampionFigure(body, id, R, skin);
+      const weapon = new Graphics();
+      weapon.position.copyFrom(drawChampionWeapon(weapon, id, R, skin));
+      fig.addChild(id === 'logan' ? weapon : body, id === 'logan' ? body : weapon);
+      fig.rotation = -Math.PI / 2; // facing up, at the viewer
+      fig.scale.set(1.15);
+      root.addChild(bg, fig);
+      const canvas = renderer.extract.canvas({ target: root, frame: new Rectangle(-R * 1.7, -R * 1.7, R * 3.4, R * 3.4), resolution: 2 });
+      const url = (canvas as HTMLCanvasElement).toDataURL('image/png');
+      SKIN_PORTRAITS[`${id}:${skin}`] = url;
+      if (skin === 0) out[id] = url;
+      root.destroy({ children: true });
+    }
   }
   return out;
 }

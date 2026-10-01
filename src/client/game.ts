@@ -243,7 +243,7 @@ export class GameClient {
     const me = this.ents.get(this.myId);
     if (me?.champ && !this.myInfo) {
       this.myInfo = CHAMPION_INFO[me.champ];
-      this.hud.setChampion(this.myInfo);
+      this.hud.setChampion(this.myInfo, me.skin ?? 0);
     }
 
     const { width: w, height: h } = this.app.screen;

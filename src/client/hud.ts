@@ -4,7 +4,7 @@ import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type Ite
 import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
-import { PORTRAITS } from './render/champions';
+import { portraitOf } from './render/champions';
 import { iconEl } from './render/icons';
 import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
@@ -189,10 +189,10 @@ export class Hud {
     this.portrait.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
   }
 
-  setChampion(info: ChampionInfo): void {
+  setChampion(info: ChampionInfo, skin = 0): void {
     this.info = info;
     this.bar.hidden = false;
-    const face = PORTRAITS[info.id];
+    const face = portraitOf(info.id, skin);
     (this.portrait.querySelector('.initial') as HTMLElement).textContent = face ? '' : info.name.slice(0, 2).toUpperCase();
     if (face) (this.portrait.querySelector('.face') as HTMLImageElement).src = face;
     this.bar.classList.toggle('rage', info.resource === 'rage');

@@ -2,7 +2,7 @@ import { Bot, runBots } from '../shared/bots/bot';
 import { TEAM_SIZE, addBots, laneForNewBot } from '../shared/bots/lineup';
 import { Champion } from '../shared/champions/champion';
 import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
-import type { ChampionId } from '../shared/champions/types';
+import { SKIN_COUNT, type ChampionId } from '../shared/champions/types';
 import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { LOCAL_CONN, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
@@ -66,7 +66,7 @@ export class HostCore {
       case 'hello':
         return this.hello(connId, msg.name);
       case 'pick':
-        return this.pick(connId, msg.team, msg.champion);
+        return this.pick(connId, msg.team, msg.champion, msg.skin);
       case 'start':
         return this.start(connId, msg.mode);
       case 'cmd': {
@@ -101,12 +101,12 @@ export class HostCore {
     const team = this.humansOn(TEAM.blue) <= this.humansOn(TEAM.red) ? TEAM.blue : TEAM.red;
     if (this.humansOn(team) >= TEAM_SIZE) return this.send(connId, { t: 'refused', reason: 'That lobby is full.' });
     const clean = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME) : '';
-    this.lobby.set(connId, { id: connId, name: clean || 'Player', team, champion: null, host: connId === LOCAL_CONN });
+    this.lobby.set(connId, { id: connId, name: clean || 'Player', team, champion: null, skin: 0, host: connId === LOCAL_CONN });
     this.broadcastLobby();
   }
 
   /** One of each champion per team: a pick a teammate already has is refused, and switching to a team that has yours clears it. */
-  private pick(connId: string, team: unknown, champion: unknown): void {
+  private pick(connId: string, team: unknown, champion: unknown, skin?: unknown): void {
     const me = this.lobby.get(connId);
     if (!me || this.phase !== 'lobby') return;
     if ((team === TEAM.blue || team === TEAM.red) && team !== me.team && this.humansOn(team) < TEAM_SIZE) {
@@ -116,6 +116,7 @@ export class HostCore {
     if (typeof champion === 'string' && Object.hasOwn(CHAMPION_INFO, champion) && !this.takenBy(me.team, champion as ChampionId, connId)) {
       me.champion = champion as ChampionId;
     }
+    if (typeof skin === 'number' && Number.isInteger(skin) && skin >= 0 && skin < SKIN_COUNT) me.skin = skin;
     this.broadcastLobby();
   }
 
@@ -134,6 +135,7 @@ export class HostCore {
     for (const p of everyone) {
       const champ = this.world.add(createChampion(p.champion!, this.world, p.team));
       champ.name = p.name;
+      champ.skin = p.skin;
       this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
       this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather });
     }
@@ -142,7 +144,9 @@ export class HostCore {
     } else {
       for (const team of [TEAM.blue, TEAM.red] as const) {
         const taken = everyone.filter((p) => p.team === team).map((p) => p.champion!);
-        this.bots.push(...addBots(this.world, team, TEAM_SIZE - this.humansOn(team), taken, Math.random));
+        const bots = addBots(this.world, team, TEAM_SIZE - this.humansOn(team), taken, Math.random);
+        for (const b of bots) b.champion.skin = Math.floor(Math.random() * SKIN_COUNT); // bots dress up too
+        this.bots.push(...bots);
       }
     }
     this.broadcastLobby();

@@ -39,7 +39,7 @@ export type ClientMessage =
   /** Enter the lobby. */
   | { t: 'hello'; name: string }
   /** Change team and/or champion while in the lobby. */
-  | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId }
+  | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId; skin?: number }
   /** Host only: start the match once everyone has picked. */
   | { t: 'start'; mode: MatchMode }
   | { t: 'cmd'; cmd: Command }
@@ -54,6 +54,8 @@ export interface LobbyPlayer {
   name: string;
   team: PlayerTeam;
   champion: ChampionId | null;
+  /** Which of the champion's looks (0 is the classic one). */
+  skin: number;
   host: boolean;
 }
 
@@ -120,6 +122,8 @@ export interface ScoreRow {
   taken: number;
   gold: number;
   items: ItemId[];
+  /** The look they're wearing (left out for the classic one). */
+  skin?: number;
 }
 
 /** Everyone's view of the Warden: when it wakes, and which team is Unchained (Uprising if Willmore or HunnaG took it). */
@@ -206,6 +210,8 @@ export interface EntitySnap {
   champ?: ChampionId;
   /** Champion level. */
   lv?: number;
+  /** Which look the champion wears (left out for the classic one). */
+  skin?: number;
   st?: StatusKind[];
   /** Projectile look. */
   vis?: string;
