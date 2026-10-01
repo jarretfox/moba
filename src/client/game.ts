@@ -13,6 +13,7 @@ import { cueFor, type SoundCue } from './sfx';
 import type { Connection } from './net/connection';
 import { Hud } from './hud';
 import { FogLayer } from './render/fog';
+import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
 import { buildMap, buildNavOverlay } from './render/mapView';
@@ -36,6 +37,7 @@ export class GameClient {
   private readonly projectileLayer = new Container();
   private readonly indicator = new Graphics();
   private readonly fx = new FxLayer();
+  private readonly ambience = new Ambience(MAP);
   private navOverlay: Graphics | null = null;
   private readonly nav = new NavGrid(MAP);
   private readonly visionGrid = new VisionGrid(MAP, this.nav);
@@ -84,7 +86,7 @@ export class GameClient {
     this.hud.setMuted(this.sound.muted);
     this.buffer = new SnapshotBuffer(conn.interpDelay);
     this.groundLayer.addChild(buildMap(MAP));
-    this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.fog.sprite, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
+    this.worldLayer.addChild(this.groundLayer, this.ambience.container, this.underLayer, this.structureLayer, this.fog.sprite, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
     app.stage.addChild(this.worldLayer);
     this.bindInput();
     app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
@@ -121,6 +123,7 @@ export class GameClient {
       if (cue) this.playCue(cue);
     }
     this.fx.update(dt);
+    this.ambience.update(dt);
     this.fog.update(this.ents.values(), this.myTeam, performance.now() / 1000);
 
     const me = this.ents.get(this.myId);
@@ -210,6 +213,7 @@ export class GameClient {
     switch (ev.e) {
       case 'dmg': {
         // Like League, only damage you deal or take gets a number; a lane full of Chuds would be unreadable otherwise.
+        if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.();
         if (ev.src !== this.myId && ev.target !== this.myId) return;
         const t = this.ents.get(ev.target);
         if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);

@@ -234,6 +234,19 @@ The numbers live at the top of `src/shared/champions/kingrix.ts`. Mid-range (400
 ## Art and sound
 
 - **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.
+  - **The map** (`src/client/render/mapView.ts`) is painted once at load from MapData, with decoration placed by a seeded random generator so it looks the same for everyone:
+    - Forest canopies fill everything off the paths.
+    - The jungle is mottled grass with tufts, flowers, mushrooms and pebbles.
+    - Lanes are worn dirt with pebbles and cracks, with soft edges.
+    - Bases are paved plazas in the team tint.
+    - The river has a deeper channel and ripples.
+    - Walls are rocky outcrops with shadows and moss.
+    - Brush is dense tall grass.
+    - Camps are trampled nests with bones.
+    - The Warden's pit is a cracked, glowing seal over the Deep.
+  - **Atmosphere** (`ambience.ts`): fireflies over the jungle, glints on the river, rot spores rising from the seal, and a soft vignette.
+  - **Animation:** units that walk step their feet in turn and sway a little; everyone breathes when idle, lunges forward on an attack, and flashes red when hit. Light comes from the top-left of the screen and stays put as figures turn.
+  - **Structures:** Shooties are stone watchtowers with a glowing crystal, Oakners are great oaks with a team ribbon, and Da Base is a walled fort over the Chud burrow with banners and a big crystal.
   - Champions are top-down figures facing where they move, standing on a ring in their team's color (white edge for you): a hooded archer, a horned barbarian, a goggled Chud with a junk sack, a mushroom-capped Chud with a spore staff, a maned lion with a broken collar, a crowned king in a red cape. The art is in `src/client/render/champions.ts`.
   - The same drawings become the HUD portrait and the champion-select pictures: they're rendered to images once at startup.
   - Abilities, passives and items use emoji icons. Only emoji up to version 12 are used, so they show on Windows 10 too.
@@ -306,4 +319,4 @@ src/
 - **Bots don't jungle or fight the Warden.** All three per side lane; the camps and the Warden are there for humans.
 - Bots don't dodge skillshots or defend as a group. Late in the game both teams often push different lanes and race each other's bases.
 - No minimap, scoreboard, or camp respawn timers yet.
-- **Art is a first pass:** figures don't animate beyond turning, a pulse when attacking, and swelling when airborne. No music.
+- **No music,** and figures animate with simple procedural motion rather than drawn frames.

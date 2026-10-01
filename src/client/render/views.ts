@@ -36,6 +36,8 @@ export interface EntityView {
   readonly container: Container;
   update(s: EntitySnap, dt: number, ctx: ViewContext): void;
   onAttack?(): void;
+  /** Took a hit: a quick flash. */
+  onHit?(): void;
 }
 
 export class UnitView implements EntityView {
@@ -53,6 +55,15 @@ export class UnitView implements EntityView {
   private statusKey = '';
   private pulse = 0;
   private air = 0;
+  /** Feet under walking figures, stepping in turn as they move. */
+  private readonly feet: Graphics[] = [];
+  /** Light from the top-left of the screen: stays put while the figure turns. */
+  private readonly shade = new Graphics();
+  private walk = 0;
+  private stride = 0;
+  private clock = Math.random() * 10;
+  private flash = 0;
+  private last: { x: number; y: number } | null = null;
   /** The radius the body was drawn at; Berserk grows the real one. */
   private readonly baseR: number;
   private readonly resourceColor: number;
@@ -103,7 +114,16 @@ export class UnitView implements EntityView {
     this.label.anchor.set(0.5, 1);
     this.label.position.set(0, -r - 24);
 
-    this.container.addChild(this.statusRing, this.body, this.facing, this.bars, this.label);
+    const walker = (s.k === 'champion' || s.k === 'chud' || s.k === 'guard' || (s.k === 'monster' && s.mon !== 'warden' && s.mon !== 'glowcap')) && s.chud !== 'siege';
+    if (walker) {
+      const footColor = s.k === 'chud' ? 0x4f5a3c : s.champ === 'logan' ? 0xb8701f : s.k === 'monster' ? 0x3a3530 : 0x2b2118;
+      for (let i = 0; i < 2; i++) this.feet.push(new Graphics().ellipse(0, 0, r * 0.24, r * 0.16).fill(footColor).stroke({ width: 1.5, color: PALETTE.outline }));
+    }
+    if (s.k === 'champion' || s.k === 'guard') {
+      this.shade.circle(-r * 0.3, -r * 0.35, r * 0.5).fill({ color: 0xffffff, alpha: 0.1 });
+      this.shade.circle(r * 0.22, r * 0.28, r * 0.75).fill({ color: 0x000000, alpha: 0.1 });
+    }
+    this.container.addChild(this.statusRing, this.body, ...this.feet, this.facing, this.shade, this.bars, this.label);
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: 'system-ui, sans-serif', fontSize: 11, fontWeight: '800', fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -115,18 +135,47 @@ export class UnitView implements EntityView {
     this.container.visible = !s.dead;
     this.container.alpha = ctx.inBrush(s.x, s.y) ? 0.55 : 1; // hidden in brush, like League
     this.container.position.set(s.x, s.y);
-    this.facing.rotation = s.f;
+
+    // Walking: how far it moved since last frame drives the step cycle.
+    const moved = this.last && dt > 0 ? Math.hypot(s.x - this.last.x, s.y - this.last.y) / dt : 0;
+    this.last = { x: s.x, y: s.y };
+    const walking = moved > 40 && !s.dead;
+    this.stride = walking ? Math.min(1, this.stride + dt * 6) : Math.max(0, this.stride - dt * 6);
+    if (walking) this.walk += dt * Math.min(16, 5 + moved / 40);
+    this.clock += dt;
+    const step = Math.sin(this.walk) * this.stride;
+    const breathe = 1 + Math.sin(this.clock * 2.4) * 0.015 * (1 - this.stride);
+    this.facing.rotation = s.f + step * 0.08;
 
     this.pulse = Math.max(0, this.pulse - dt * 6);
+    this.flash = Math.max(0, this.flash - dt * 8);
     // Leaping units swell toward the camera and settle back as they land.
     const airborne = s.st?.includes('airborne') ?? false;
     this.air = airborne ? Math.min(1, this.air + dt * 8) : Math.max(0, this.air - dt * 8);
-    const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3);
+    const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3) * breathe;
     this.body.scale.set(size);
     this.facing.scale.set(size);
+    this.shade.scale.set(size);
+    // A swing lunges the figure forward a little.
+    const lunge = this.pulse * 7;
+    this.facing.position.set(Math.cos(s.f) * lunge, Math.sin(s.f) * lunge);
+    this.facing.tint = this.flash > 0 ? 0xff9a9a : 0xffffff;
+    // Feet sit under the figure and step in turn while it walks.
+    const cos = Math.cos(s.f);
+    const sin = Math.sin(s.f);
+    this.feet.forEach((foot, i) => {
+      const side = i === 0 ? -1 : 1;
+      const along = s.r * 0.15 + side * step * s.r * 0.35;
+      const across = side * s.r * 0.42;
+      foot.position.set(cos * along - sin * across, sin * along + cos * across);
+      foot.rotation = s.f;
+      foot.visible = !this.air;
+    });
     // Under the ground you only show as a mound of dirt (to whoever can see you at all).
     const under = s.st?.includes('burrowed') || s.st?.includes('underground');
     this.body.alpha = this.facing.alpha = under ? 0.22 : 1;
+    this.shade.visible = !under;
+    for (const foot of this.feet) foot.visible &&= !under;
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
 
     const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
@@ -143,6 +192,10 @@ export class UnitView implements EntityView {
 
   onAttack(): void {
     this.pulse = 1;
+  }
+
+  onHit(): void {
+    this.flash = 1;
   }
 
   private setBadge(text: string, r: number): void {
@@ -571,23 +624,47 @@ function drawShadow(g: Graphics, r: number): void {
   g.circle(6, 9, r).fill({ color: 0x000000, alpha: 0.35 });
 }
 
+/** A stone watchtower from above: battlements round a wooden deck, and a glowing crystal in the team's color. */
 function drawShootie(g: Graphics, r: number, team: number): void {
   drawShadow(g, r);
-  g.poly(regularPolygon(8, r, Math.PI / 8)).fill(PALETTE.stone).stroke({ width: 4, color: PALETTE.stoneDark });
-  g.poly(regularPolygon(8, r * 0.7, Math.PI / 8)).fill(PALETTE.stoneDark);
-  g.circle(0, 0, r * 0.45).fill(team).stroke({ width: 3, color: PALETTE.outline });
-  g.circle(0, 0, r * 0.17).fill({ color: 0xffffff, alpha: 0.85 });
+  g.circle(0, 0, r).fill(PALETTE.stone).stroke({ width: 4, color: PALETTE.outline });
+  // Stone blocks around the wall.
+  for (let i = 0; i < 16; i++) {
+    const a0 = (i / 16) * Math.PI * 2;
+    const a1 = ((i + 1) / 16) * Math.PI * 2;
+    g.moveTo(Math.cos(a0) * r * 0.72, Math.sin(a0) * r * 0.72).lineTo(Math.cos(a0) * r, Math.sin(a0) * r).stroke({ width: 2, color: PALETTE.stoneDark });
+    if (i % 2 === 0) g.arc(0, 0, r * 0.86, a0, a1).stroke({ width: r * 0.28, color: 0x6a717d, alpha: 0.5 });
+  }
+  // Battlements.
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.roundRect(Math.cos(a) * r * 0.86 - 7, Math.sin(a) * r * 0.86 - 7, 14, 14, 2).fill(0x7a818c).stroke({ width: 2, color: PALETTE.stoneDark });
+  }
+  g.circle(0, 0, r * 0.68).fill(0x6b4a2b).stroke({ width: 3, color: PALETTE.stoneDark }); // deck
+  for (let i = -2; i <= 2; i++) g.moveTo(i * r * 0.22, -r * 0.62).lineTo(i * r * 0.22, r * 0.62).stroke({ width: 1.5, color: 0x4a321c, alpha: 0.8 });
+  g.circle(0, 0, r * 0.55).fill({ color: team, alpha: 0.18 }); // glow
+  g.poly([0, -r * 0.42, r * 0.28, 0, 0, r * 0.42, -r * 0.28, 0]).fill(team).stroke({ width: 3, color: PALETTE.outline });
+  g.poly([0, -r * 0.42, r * 0.1, -r * 0.05, -r * 0.14, 0]).fill({ color: 0xffffff, alpha: 0.55 });
 }
 
+/** A great oak from above: layered foliage lit from the top-left, ringed in the team's color, a ribbon on top. */
 function drawOakner(g: Graphics, r: number, team: number): void {
   drawShadow(g, r);
-  g.circle(0, 0, r + 6).stroke({ width: 5, color: team });
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    g.circle(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5, r * 0.5).fill(i % 2 ? PALETTE.leaf : PALETTE.leafDark);
+  g.circle(0, 0, r + 8).fill({ color: team, alpha: 0.15 }).stroke({ width: 5, color: team });
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.circle(Math.cos(a) * r * 0.55, Math.sin(a) * r * 0.55, r * 0.48).fill(i % 2 ? PALETTE.leaf : PALETTE.leafDark).stroke({ width: 2, color: 0x1d3a1a, alpha: 0.6 });
   }
-  g.circle(0, 0, r * 0.45).fill(PALETTE.leaf);
-  g.circle(0, 0, r * 0.16).fill(team);
+  g.circle(0, 0, r * 0.62).fill(PALETTE.leaf);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.4;
+    g.circle(Math.cos(a) * r * 0.32 - r * 0.12, Math.sin(a) * r * 0.32 - r * 0.12, r * 0.22).fill({ color: 0x6aa84f, alpha: 0.55 });
+  }
+  g.circle(r * 0.25, r * 0.3, r * 0.5).fill({ color: 0x000000, alpha: 0.12 });
+  // A team ribbon tied round the crown.
+  g.circle(0, 0, r * 0.18).fill(team).stroke({ width: 2, color: PALETTE.outline });
+  g.poly([0, 0, r * 0.4, r * 0.15, r * 0.32, r * 0.3]).fill(team);
+  g.poly([0, 0, r * 0.15, r * 0.42, r * 0.02, r * 0.4]).fill(team);
 }
 
 function drawStump(g: Graphics, r: number): void {
@@ -597,12 +674,32 @@ function drawStump(g: Graphics, r: number): void {
   g.circle(0, 0, r * 0.15).stroke(ring);
 }
 
+/** Da Base: a walled fort over the Chud burrow, banners at the corners and a huge crystal in the middle. */
 function drawDaBase(g: Graphics, r: number, team: number): void {
   drawShadow(g, r);
-  g.poly(regularPolygon(6, r)).fill(PALETTE.stoneDark).stroke({ width: 6, color: PALETTE.outline });
-  g.poly(regularPolygon(6, r * 0.78)).fill(team).stroke({ width: 4, color: PALETTE.outline, alpha: 0.6 });
-  g.poly(regularPolygon(6, r * 0.45, Math.PI / 6)).fill(PALETTE.stone);
-  g.circle(0, 0, r * 0.2).fill({ color: 0xffffff, alpha: 0.9 });
+  g.poly(regularPolygon(6, r)).fill(PALETTE.stone).stroke({ width: 6, color: PALETTE.outline });
+  g.poly(regularPolygon(6, r * 0.82)).fill(PALETTE.stoneDark);
+  // Battlements along the walls.
+  const corners = regularPolygon(6, r * 0.91);
+  for (let i = 0; i < 6; i++) {
+    const [x0, y0, x1, y1] = [corners[i * 2], corners[i * 2 + 1], corners[((i + 1) % 6) * 2], corners[((i + 1) % 6) * 2 + 1]];
+    for (let k = 1; k < 5; k++) g.circle(x0 + ((x1 - x0) * k) / 5, y0 + ((y1 - y0) * k) / 5, 7).fill(0x7a818c).stroke({ width: 2, color: PALETTE.stoneDark });
+    // A banner on each corner tower.
+    g.circle(x0, y0, 14).fill(0x7a818c).stroke({ width: 3, color: PALETTE.outline });
+    g.poly([x0, y0, x0 + 26, y0 + 6, x0, y0 + 14]).fill(team).stroke({ width: 1.5, color: PALETTE.outline });
+  }
+  // The burrow: dark tunnels where the Chuds crawl out.
+  g.circle(0, 0, r * 0.66).fill(0x2a2117);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.5;
+    g.ellipse(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5, r * 0.13, r * 0.1).fill(0x0c0906);
+  }
+  // The crystal.
+  g.circle(0, 0, r * 0.48).fill({ color: team, alpha: 0.22 });
+  g.poly(regularPolygon(6, r * 0.36, Math.PI / 6)).fill(team).stroke({ width: 4, color: PALETTE.outline });
+  g.poly([0, 0, 0, -r * 0.36, r * 0.31, -r * 0.18]).fill({ color: 0xffffff, alpha: 0.35 });
+  g.poly([0, 0, -r * 0.31, r * 0.18, 0, r * 0.36]).fill({ color: 0x000000, alpha: 0.25 });
+  g.circle(0, 0, r * 0.1).fill({ color: 0xffffff, alpha: 0.9 });
 }
 
 /** Fixed pattern so a fallen structure's rubble doesn't reshuffle every redraw. */

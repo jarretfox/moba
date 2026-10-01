@@ -84,6 +84,7 @@ export class Hud {
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
+      <div class="vignette"></div>
       <div class="debug"></div>
       <div class="feed"></div>
       <div class="clock"><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
