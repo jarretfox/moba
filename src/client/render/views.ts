@@ -3,6 +3,7 @@ import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChudType, EntitySnap, MonsterKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import { drawChampionBase, drawChampionFigure } from './champions';
+import { arc } from './draw';
 
 export type Relation = 'self' | 'ally' | 'enemy' | 'neutral';
 
@@ -687,7 +688,7 @@ function drawShootie(g: Graphics, r: number, team: number): void {
     const a0 = (i / 16) * Math.PI * 2;
     const a1 = ((i + 1) / 16) * Math.PI * 2;
     g.moveTo(Math.cos(a0) * r * 0.72, Math.sin(a0) * r * 0.72).lineTo(Math.cos(a0) * r, Math.sin(a0) * r).stroke({ width: 2, color: PALETTE.stoneDark });
-    if (i % 2 === 0) g.arc(0, 0, r * 0.86, a0, a1).stroke({ width: r * 0.28, color: 0x6a717d, alpha: 0.5 });
+    if (i % 2 === 0) arc(g, 0, 0, r * 0.86, a0, a1).stroke({ width: r * 0.28, color: 0x6a717d, alpha: 0.5 });
   }
   // Battlements.
   for (let i = 0; i < 8; i++) {

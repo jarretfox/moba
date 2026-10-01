@@ -17,6 +17,8 @@ const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   trapSnap: ['snap', 0.8],
   roll: ['whoosh', 0.6],
   cleave: ['swing', 0.9],
+  pounce: ['whoosh', 0.7],
+  maul: ['swing', 0.9],
   warCry: ['roar', 0.8],
   slam: ['boom', 0.6],
   berserk: ['roar', 0.9],

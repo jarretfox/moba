@@ -165,7 +165,7 @@ export class Logan extends Champion {
     this.pounce = { until: world.time + p.empowerWindow, bonus: this.byRank(0, p.bonus) };
     this.attackReadyAt = Math.min(this.attackReadyAt, world.time);
     this.commandAttack(target);
-    world.emit({ e: 'fx', fx: 'roll', x: this.pos.x, y: this.pos.y, x2: to.x, y2: to.y });
+    world.emit({ e: 'fx', fx: 'pounce', x: this.pos.x, y: this.pos.y, x2: to.x, y2: to.y });
   }
 
   private thickMane(world: World): void {
@@ -194,7 +194,7 @@ export class Logan extends Champion {
       }
     }
     const tip = add(this.pos, scale(dir, m.range));
-    world.emit({ e: 'fx', fx: 'cleave', x: this.pos.x, y: this.pos.y, x2: tip.x, y2: tip.y, r: m.angle, team: this.team });
+    world.emit({ e: 'fx', fx: 'maul', x: this.pos.x, y: this.pos.y, x2: tip.x, y2: tip.y, r: m.angle, team: this.team });
   }
 
   private roar(world: World, aim: Vec2): void {

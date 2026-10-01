@@ -1,8 +1,10 @@
-import { Container, Graphics, Rectangle, type Renderer } from 'pixi.js';
+import { Container, Graphics, Rectangle, Texture, type Renderer } from 'pixi.js';
 import { ICON_ART, iconKey } from './iconArt';
 
 /** Icon pictures as image URLs, keyed by iconKey(emoji); filled in once at startup by renderIcons. */
 const URLS = new Map<string, string>();
+/** The same pictures as textures, for spell effects on the canvas. */
+const TEXTURES = new Map<string, Texture>();
 
 /** Draws every icon once with the game's renderer (with a soft drop shadow) and keeps the pictures. */
 export function renderIcons(renderer: Renderer): void {
@@ -18,6 +20,7 @@ export function renderIcons(renderer: Renderer): void {
     root.addChild(shadow, art);
     const canvas = renderer.extract.canvas({ target: root, frame: new Rectangle(-H, -H, H * 2, H * 2), resolution: 2 });
     URLS.set(key, (canvas as HTMLCanvasElement).toDataURL('image/png'));
+    TEXTURES.set(key, Texture.from(canvas as HTMLCanvasElement));
     root.destroy({ children: true });
   }
 }
@@ -25,6 +28,11 @@ export function renderIcons(renderer: Renderer): void {
 /** The picture for an icon, or undefined before renderIcons has run (or for an emoji with no art). */
 export function iconUrl(emoji: string): string | undefined {
   return URLS.get(iconKey(emoji));
+}
+
+/** The picture for an icon as a texture (undefined before renderIcons has run). */
+export function iconTexture(emoji: string): Texture | undefined {
+  return TEXTURES.get(iconKey(emoji));
 }
 
 /** An element showing an icon: the drawn picture when there is one, else the emoji itself. */

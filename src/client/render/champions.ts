@@ -1,5 +1,6 @@
 import { Container, Graphics, Rectangle, type Renderer } from 'pixi.js';
 import type { ChampionId } from '../../shared/champions/types';
+import { arc } from './draw';
 
 // Champion art, drawn in code like the rest of the game. Every figure is seen from above, facing right
 // (+x), sized to the champion's radius `r`, and lives on the layer that turns to face where they're going.
@@ -29,7 +30,7 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
     g.circle(0.1 * r, 0, 0.48 * r).fill(0x3d7a4a).stroke(OUTLINE); // hood
     g.circle(0.3 * r, 0, 0.22 * r).fill(0x1d2a20); // face in shadow
     g.circle(0.55 * r, 0.35 * r, 0.14 * r).fill(SKIN); // drawing hand
-    g.arc(0.35 * r, 0, 0.95 * r, -1.15, 1.15).stroke({ width: 4, color: 0x8a5a2b }); // bow
+    arc(g, 0.35 * r, 0, 0.95 * r, -1.15, 1.15).stroke({ width: 4, color: 0x8a5a2b }); // bow
     const tip = { x: 0.35 * r + Math.cos(1.15) * 0.95 * r, y: Math.sin(1.15) * 0.95 * r };
     g.moveTo(tip.x, -tip.y).lineTo(0.35 * r, 0).lineTo(tip.x, tip.y).stroke({ width: 1.5, color: 0xf2efe6 }); // string
     g.moveTo(0.35 * r, 0).lineTo(1.4 * r, 0).stroke({ width: 2, color: 0xe8d7b0 }); // arrow
@@ -61,7 +62,7 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
     g.moveTo(0.5 * r, -0.28 * r).lineTo(0.5 * r, 0.28 * r).stroke({ width: 3, color: 0x6b5a22 }); // goggle strap
     for (const side of [-1, 1]) g.circle(0.55 * r, side * 0.28 * r, 0.2 * r).fill(0x9fe6ff).stroke({ width: 3, color: 0xb8a46a }); // goggles
     g.moveTo(0.3 * r, 0.6 * r).lineTo(0.85 * r, 0.75 * r).stroke({ width: 2, color: 0x8a6a44 }); // rope
-    g.arc(1.0 * r, 0.6 * r, 0.22 * r, -0.5, 3.4).stroke({ width: 4, color: 0x5d636d }); // hook
+    arc(g, 1.0 * r, 0.6 * r, 0.22 * r, -0.5, 3.4).stroke({ width: 4, color: 0x5d636d }); // hook
   },
 
   /** A Chud under a spotted mushroom cap, eyes glowing green, with a staff topped by a glowing spore. */
@@ -86,7 +87,7 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
     }
     g.poly(mane).fill(0xd98a2b).stroke({ width: 2, color: 0x8a4f12 });
     g.circle(0, 0, 0.7 * r).fill(0xe8a33d);
-    g.arc(-0.05 * r, 0, 0.62 * r, 2.2, 4.1).stroke({ width: 4, color: 0x8a9099 }); // the broken collar
+    arc(g, -0.05 * r, 0, 0.62 * r, 2.2, 4.1).stroke({ width: 4, color: 0x8a9099 }); // the broken collar
     g.ellipse(-0.75 * r, -0.62 * r, 4, 2.5).stroke({ width: 2, color: 0x8a9099 });
     for (const side of [-1, 1]) g.circle(-0.02 * r, side * 0.48 * r, 0.14 * r).fill(0xd98a2b).stroke({ width: 1.5, color: 0x8a4f12 }); // ears
     g.ellipse(0.35 * r, 0, 0.42 * r, 0.32 * r).fill(0xf2c27a).stroke({ width: 1.5, color: 0x8a4f12 }); // muzzle

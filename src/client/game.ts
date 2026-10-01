@@ -15,9 +15,10 @@ import { Hud } from './hud';
 import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
+import { castFlash, playSpell, projectileTrail, statusAura } from './render/spells';
 import { drawIndicator } from './render/indicator';
 import { HEIGHT, buildMap, buildNavOverlay, elevate } from './render/mapView';
-import { PALETTE, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
+import { PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
 
@@ -94,6 +95,7 @@ export class GameClient {
       this.groundLayer,
       this.ambience.container,
       this.underLayer,
+      this.fx.under,
       this.structureLayer,
       this.wallTops,
       this.structureTops,
@@ -145,6 +147,7 @@ export class GameClient {
     const { ents, events } = this.buffer.sample(performance.now() / 1000);
     this.ents = new Map(ents.map((e) => [e.id, e]));
     this.syncViews(dt);
+    this.emitTrails();
     for (const ev of events) {
       this.playEvent(ev);
       const cue = cueFor(ev, this.ents, this.myId);
@@ -201,6 +204,19 @@ export class GameClient {
         this.views.set(s.id, view);
       }
       view.update(s, dt, ctx);
+    }
+  }
+
+  /** Particles behind projectiles and around units with statuses, for whatever's on screen. */
+  private emitTrails(): void {
+    const { width, height } = this.app.screen;
+    const halfW = width / 2 / this.camera.zoom + 250;
+    const halfH = height / 2 / this.camera.zoom + 250;
+    const time = performance.now() / 1000;
+    for (const s of this.ents.values()) {
+      if (Math.abs(s.x - this.camera.x) > halfW || Math.abs(s.y - this.camera.y) > halfH) continue;
+      if (s.k === 'projectile') projectileTrail(this.fx, s, s.tm === this.myTeam);
+      else if (s.st || s.sh) statusAura(this.fx, s, time);
     }
   }
 
@@ -266,7 +282,7 @@ export class GameClient {
       case 'death': {
         const t = this.ents.get(ev.id);
         if (!t) return;
-        this.fx.death(t.x, t.y, t.r);
+        this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
         if (ev.id === this.myId) this.camera.shake(16);
         else if (t.k === 'structure' || (t.k === 'monster' && t.mon === 'warden')) this.shakeNear(t, 20);
         return;
@@ -293,8 +309,11 @@ export class GameClient {
       case 'fx':
         this.playFx(ev);
         return;
-      case 'cast':
+      case 'cast': {
+        const caster = this.ents.get(ev.src);
+        if (caster) castFlash(this.fx, caster);
         return;
+      }
     }
   }
 
@@ -317,70 +336,10 @@ export class GameClient {
   }
 
   private playFx(ev: Extract<GameEvent, { e: 'fx' }>): void {
-    const x2 = ev.x2 ?? ev.x;
-    const y2 = ev.y2 ?? ev.y;
-    const SHAKES: Partial<Record<typeof ev.fx, number>> = { wardenSlam: 18, slam: 8, surface: 10, deepHands: 12, roar: 6, kneel: 5, berserk: 5 };
+    const SHAKES: Partial<Record<typeof ev.fx, number>> = { wardenSlam: 18, slam: 8, surface: 10, deepHands: 12, roar: 6, kneel: 7, berserk: 5, pounce: 4 };
     const kick = SHAKES[ev.fx];
     if (kick) this.shakeNear(ev, kick);
-    const teamColor = ev.team === this.myTeam ? PALETTE.ally : PALETTE.enemy;
-    switch (ev.fx) {
-      case 'aimLine':
-        return this.fx.aimLine(ev.x, ev.y, x2, y2, ev.dur ?? 1, ev.team === this.myTeam);
-      case 'trapSnap':
-        return this.fx.burst(ev.x, ev.y, 0xffd166);
-      case 'roll':
-        return this.fx.streak(ev.x, ev.y, x2, y2);
-      case 'cleave':
-        return this.fx.wedge(ev.x, ev.y, x2, y2, ev.r ?? 90, 0xffb36b);
-      case 'warCry':
-        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 300, teamColor, 0.5);
-      case 'slam':
-        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 180, 0xc9a86a, 0.35);
-      case 'berserk':
-        return this.fx.shockwave(ev.x, ev.y, (ev.r ?? 45) * 3, 0xff3b30, 0.45);
-      case 'recall':
-        this.fx.shockwave(ev.x, ev.y, 120, 0x7cc4ff, 0.5);
-        return this.fx.shockwave(x2, y2, 120, 0x7cc4ff, 0.5);
-      case 'wardenMark':
-        return this.fx.telegraph(ev.x, ev.y, ev.r ?? 200, ev.dur ?? 1);
-      case 'wardenSlam':
-        return this.fx.chainSlam(ev.x, ev.y, ev.r ?? 200, x2, y2);
-      case 'burrow':
-        return this.fx.dirt(ev.x, ev.y, 90);
-      case 'surface':
-        return this.fx.dirt(ev.x, ev.y, ev.r ?? 200);
-      case 'hookPull':
-        return this.fx.chain(ev.x, ev.y, x2, y2, ev.dur ?? 0.3);
-      case 'tunnel':
-        return this.fx.tunnel(ev.x, ev.y, x2, y2, ev.dur ?? 1.5);
-      case 'lob':
-        return this.fx.lob(ev.x, ev.y, x2, y2, ev.dur ?? 0.5);
-      case 'rotBurst':
-        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 80, 0x8fd14f, 0.4);
-      case 'pulse':
-        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 400, 0xb98be0, 0.6);
-      case 'hop':
-        this.fx.dirt(ev.x, ev.y, 70);
-        return this.fx.dirt(x2, y2, 70);
-      case 'deepMark':
-        return this.fx.deepMark(ev.x, ev.y, ev.r ?? 350, ev.dur ?? 0.75);
-      case 'deepHands':
-        return this.fx.hands(ev.x, ev.y, ev.r ?? 350);
-      case 'lionheart':
-        return this.fx.lionheart(ev.x, ev.y, x2, y2);
-      case 'mane':
-        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 60, 0xffd166, 0.5);
-      case 'roar':
-        this.fx.wedge(ev.x, ev.y, x2, y2, ev.r ?? 100, 0xff9f43);
-        return this.fx.shockwave(ev.x, ev.y, 120, 0xff9f43, 0.4);
-      case 'summon':
-        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 110, 0xffd166, 0.5);
-      case 'kneel':
-        return this.fx.wedge(ev.x, ev.y, x2, y2, ev.r ?? 70, 0xffd166);
-      case 'decree':
-        this.fx.shockwave(ev.x, ev.y, ev.r ?? 90, 0xffd166, 0.7);
-        return this.fx.burst(ev.x, ev.y, 0xffd166);
-    }
+    playSpell(this.fx, ev, ev.team === this.myTeam);
   }
 
   // ─── Input ────────────────────────────────────────────────────────────────

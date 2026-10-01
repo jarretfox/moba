@@ -126,6 +126,9 @@ export type FxKind =
   | 'trapSnap'
   | 'roll'
   | 'cleave'
+  /** Logan's Pounce and Maul: their own looks, not the Marksman's roll or the Barbarian's cleave. */
+  | 'pounce'
+  | 'maul'
   | 'warCry'
   | 'slam'
   | 'berserk'

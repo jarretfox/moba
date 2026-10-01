@@ -1,4 +1,5 @@
 import type { Graphics } from 'pixi.js';
+import { arc } from './draw';
 
 // Drawn pictures for every ability, passive and item. The game data names each one by an emoji; these
 // replace the emoji on screen (the emoji stays as the fallback and as the key). Each draws into a
@@ -62,7 +63,7 @@ function leaf(g: Graphics, x: number, y: number, dx: number, dy: number, color =
 function coin(g: Graphics, x: number, y: number, r: number): void {
   g.circle(x, y, r).fill(GOLD).stroke(ink());
   g.circle(x, y, r * 0.62).stroke({ width: 2, color: GOLD_DARK });
-  g.arc(x, y, r * 0.75, Math.PI * 1.1, Math.PI * 1.45).stroke(shine);
+  arc(g, x, y, r * 0.75, Math.PI * 1.1, Math.PI * 1.45).stroke(shine);
 }
 
 function shield(g: Graphics, rim: number, field: number): void {
@@ -125,10 +126,10 @@ const ART: Record<string, Draw> = {
     g.poly([-27, -5, -15, -5, 6, -17, 6, 17, -15, 5, -27, 5]).fill(0xc0392b).stroke(ink());
     g.ellipse(6, 0, 5, 17).fill(0x7a1f17).stroke(ink());
     g.moveTo(-20, -2).lineTo(-2, -8).stroke({ ...shine, alpha: 0.4 });
-    g.arc(10, 0, 14, -0.6, 0.6).stroke(ink(4));
-    g.arc(10, 0, 21, -0.75, 0.75).stroke(ink(4));
-    g.arc(10, 0, 14, -0.6, 0.6).stroke({ width: 2, color: GOLD });
-    g.arc(10, 0, 21, -0.75, 0.75).stroke({ width: 2, color: GOLD });
+    arc(g, 10, 0, 14, -0.6, 0.6).stroke(ink(4));
+    arc(g, 10, 0, 21, -0.75, 0.75).stroke(ink(4));
+    arc(g, 10, 0, 14, -0.6, 0.6).stroke({ width: 2, color: GOLD });
+    arc(g, 10, 0, 21, -0.75, 0.75).stroke({ width: 2, color: GOLD });
   },
   '🦘': (g) => {
     for (const [x, y, r] of [[-25, 24, 5], [-17, 26, 4], [-29, 18, 3]] as const) g.circle(x, y, r).fill(0xb9a68a).stroke(ink(2));
@@ -137,7 +138,7 @@ const ART: Record<string, Draw> = {
   },
   '😡': (g) => {
     g.circle(0, 0, 25).fill(RED).stroke(ink());
-    g.arc(0, 0, 20, Math.PI * 1.1, Math.PI * 1.4).stroke({ ...shine, alpha: 0.4 });
+    arc(g, 0, 0, 20, Math.PI * 1.1, Math.PI * 1.4).stroke({ ...shine, alpha: 0.4 });
     g.moveTo(-17, -13).lineTo(-4, -6).stroke(ink(4.5));
     g.moveTo(17, -13).lineTo(4, -6).stroke(ink(4.5));
     g.circle(-9, -1, 3).fill(INK);
@@ -164,12 +165,12 @@ const ART: Record<string, Draw> = {
   },
   '🧪': (g) => {
     g.circle(0, 9, 19).fill(GREEN).stroke(ink());
-    g.arc(0, 9, 19, Math.PI * 1.12, Math.PI * 1.88).closePath().fill(0xcfe8ef);
+    arc(g, 0, 9, 19, Math.PI * 1.12, Math.PI * 1.88).closePath().fill(0xcfe8ef);
     g.circle(0, 9, 19).stroke(ink());
     g.rect(-6, -22, 12, 15).fill(0xcfe8ef).stroke(ink());
     g.roundRect(-9, -27, 18, 6, 2).fill(0xcfe8ef).stroke(ink());
     for (const [x, y, r] of [[-6, 14, 3], [5, 19, 2.5], [8, 9, 2]] as const) g.circle(x, y, r).fill({ color: WHITE, alpha: 0.6 });
-    g.arc(0, 9, 14, Math.PI * 1.2, Math.PI * 1.45).stroke(shine);
+    arc(g, 0, 9, 14, Math.PI * 1.2, Math.PI * 1.45).stroke(shine);
   },
   '🍄': (g) => {
     g.roundRect(-7, 2, 14, 23, 5).fill(PAPER).stroke(ink());
@@ -286,7 +287,7 @@ const ART: Record<string, Draw> = {
   },
   '🏹': (g) => {
     rod(g, (g) => g.moveTo(5.8, -23.2).lineTo(-12, 0).lineTo(5.8, 23.2), 1.5, PAPER);
-    rod(g, (g) => g.arc(-6, 0, 26, -1.1, 1.1), 4, WOOD);
+    rod(g, (g) => arc(g, -6, 0, 26, -1.1, 1.1), 4, WOOD);
     rod(g, (g) => g.moveTo(-18, 0).lineTo(24, 0), 2.5, STEEL);
     g.poly([30, 0, 21, -6, 21, 6]).fill(STEEL).stroke(ink(2.5));
     g.poly([-18, 0, -25, -6, -21, 0, -25, 6]).fill(RED).stroke(ink(2));
@@ -328,7 +329,7 @@ const ART: Record<string, Draw> = {
     g.rect(-14, -8, 28, 16).fill(RED).stroke(ink(2));
     g.ellipse(0, -18, 14, 4).fill(0xdfe6ee).stroke(ink());
     g.moveTo(-8, 13).lineTo(-8, 19).stroke({ ...shine, alpha: 0.5 });
-    g.arc(9, -1, 5, Math.PI * 0.6, Math.PI * 1.4).stroke({ width: 2, color: INK, alpha: 0.5 });
+    arc(g, 9, -1, 5, Math.PI * 0.6, Math.PI * 1.4).stroke({ width: 2, color: INK, alpha: 0.5 });
   },
   '🕳️': (g) => {
     g.ellipse(0, 6, 28, 16).fill(0x7a5230).stroke(ink());
@@ -383,7 +384,7 @@ const ART: Record<string, Draw> = {
   '🔮': (g) => {
     g.poly([-14, 27, 14, 27, 9, 16, -9, 16]).fill(WOOD_DARK).stroke(ink());
     g.circle(0, -3, 20).fill(PURPLE).stroke(ink());
-    g.arc(0, -3, 10, 0, Math.PI * 1.3).stroke({ width: 2.5, color: 0xe4d6ff, alpha: 0.7 });
+    arc(g, 0, -3, 10, 0, Math.PI * 1.3).stroke({ width: 2.5, color: 0xe4d6ff, alpha: 0.7 });
     g.ellipse(-8, -12, 6, 4).fill({ color: WHITE, alpha: 0.7 });
   },
   '🥾': (g) => boot(g, WOOD, 0xc8945a),
@@ -425,7 +426,7 @@ const ART: Record<string, Draw> = {
     g.moveTo(-14, -6).lineTo(-6, -17).stroke(shine);
   },
   '🏮': (g) => {
-    g.arc(0, -27, 5, Math.PI, 0).stroke(ink(2.5));
+    arc(g, 0, -27, 5, Math.PI, 0).stroke(ink(2.5));
     g.circle(0, 2, 14).fill({ color: GOLD, alpha: 0.35 });
     g.ellipse(0, 2, 18, 22).fill(RED).stroke(ink());
     g.ellipse(0, 2, 8, 22).stroke({ width: 2, color: INK, alpha: 0.35 });
