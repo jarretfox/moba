@@ -1,10 +1,11 @@
 import { atRank, perRank, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
 import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
-import type { BuffKind, EntitySnap, MeSnap, WardenStatus } from '../shared/protocol';
+import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
 import { PORTRAITS } from './render/champions';
+import { matchReport, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
 
 interface SlotEls {
@@ -29,6 +30,7 @@ const HELP = [
   ['B', 'recall home (4s, breaks if hit)'],
   ['P', 'shop (at your fountain)'],
   ['M', 'mute sound'],
+  ['Tab', 'scoreboard (hold)'],
   ['Space', 'center camera (hold)'],
   ['Y', 'lock / unlock camera'],
   ['Wheel', 'zoom'],
@@ -74,6 +76,10 @@ export class Hud {
   private info: ChampionInfo | null = null;
   private ranks: number[] = [0, 0, 0, 0];
   private readonly buffBar: HTMLElement;
+  private readonly scoreboard: HTMLElement;
+  private scoreKey = '';
+  /** The final match report, for the Copy button. */
+  private report = '';
   private readonly written = new WeakMap<HTMLElement, Map<string, string>>();
 
   constructor(root: HTMLElement) {
@@ -84,7 +90,8 @@ export class Hud {
       <div class="warden"></div>
       <div class="help"><div class="help-title"></div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
-      <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Back to menu</button></div>
+      <div class="scoreboard" hidden></div>
+      <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-again">Back to menu</button></div></div>
       <div class="buffs"></div>
       <div class="bar" hidden>
         <div class="portrait"><img class="face" alt="" /><span class="initial"></span><span class="stacks"></span><span class="lvl">1</span></div>
@@ -121,6 +128,11 @@ export class Hud {
     this.respawn = q('.respawn');
     this.gameOver = q('.gameover');
     q('.gameover-again').addEventListener('click', () => location.reload());
+    this.scoreboard = q('.scoreboard');
+    const copy = q('.gameover-copy');
+    copy.addEventListener('click', () => {
+      void navigator.clipboard?.writeText(this.report).then(() => (copy.textContent = 'Copied! Paste it to whoever balances the game'));
+    });
     this.hp = { fill: q('.hp .fill'), text: q('.hp span') };
     this.mp = { fill: q('.mp .fill'), text: q('.mp span') };
     this.xp = { fill: q('.xp .fill'), text: q('.xp span') };
@@ -237,6 +249,25 @@ export class Hud {
     this.feed.prepend(line);
     while (this.feed.children.length > 5) this.feed.lastElementChild!.remove();
     setTimeout(() => line.remove(), FEED_TIME * 1000);
+  }
+
+  /** The Tab scoreboard while it's held; on the game-over screen, the final one and the match report. */
+  setScores(rows: ScoreRow[] | undefined, myTeam: Team, meId: number, held: boolean, time: number, winner: Team | undefined): void {
+    const over = winner !== undefined && !this.gameOver.hidden;
+    const show = !!rows && (held || over);
+    if (this.scoreboard.hidden === (show && !over)) this.scoreboard.hidden = !(show && !over);
+    if (!show || !rows) return;
+    const key = JSON.stringify([rows, over]);
+    if (key === this.scoreKey) return;
+    this.scoreKey = key;
+    const tables = scoreTables(rows, myTeam, meId);
+    if (over) {
+      (this.gameOver.querySelector('.gameover-scores') as HTMLElement).replaceChildren(tables);
+      this.report = matchReport(rows, winner, time);
+      (this.gameOver.querySelector('.gameover-copy') as HTMLElement).hidden = false;
+    } else {
+      this.scoreboard.replaceChildren(tables);
+    }
   }
 
   setTitle(title: string): void {

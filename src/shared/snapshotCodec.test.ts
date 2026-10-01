@@ -8,6 +8,7 @@ import type { EntitySnap, Snapshot } from './protocol';
 import { Fountain } from './sim/fountain';
 import { Jungle } from './sim/jungle';
 import { spawnStructures } from './sim/structure';
+import { scoreRows } from './sim/score';
 import { WardenLair } from './sim/warden';
 import { WaveSpawner } from './sim/waves';
 import { World } from './sim/world';
@@ -24,12 +25,13 @@ function* blueSnapshots(minutes: number, every = 1): Generator<Snapshot> {
   const bots = [...addBots(world, TEAM.blue, 3), ...addBots(world, TEAM.red, 3)];
   const me = bots[0].champion as Champion;
   let ev: Snapshot['ev'] = [];
+  let scores = scoreRows(world);
   for (let i = 0; i < minutes * 60 * TICK_RATE; i++) {
     runBots(world, bots);
     world.step();
     ev.push(...world.drainEvents().filter((e) => world.vision.canSeeEvent(TEAM.blue, e)));
     if (world.tick % every) continue;
-    yield { tick: world.tick, time: world.time, ents: world.visibleTo(TEAM.blue), ev, me: me.meSnapshot(world), nextWave: 7, warden: lair.status(world) };
+    yield { tick: world.tick, time: world.time, ents: world.visibleTo(TEAM.blue), ev, me: me.meSnapshot(world), nextWave: 7, warden: lair.status(world), scores: world.tick % 60 === 0 ? (scores = scoreRows(world)) : scores };
     ev = [];
   }
 }
@@ -51,6 +53,7 @@ describe('snapshot deltas', () => {
       expect(out.me).toEqual(snap.me);
       expect(out.nextWave).toBe(snap.nextWave);
       expect(out.warden).toEqual(snap.warden);
+      expect(out.scores).toEqual(snap.scores);
       checked++;
     }
     expect(checked).toBe(3 * 60 * TICK_RATE);

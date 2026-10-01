@@ -6,6 +6,7 @@ import type { Vec2 } from '../math';
 import type { DamageType, EntitySnap, GameEvent } from '../protocol';
 import { resolveUnitCollisions } from './collision';
 import { rewardDeath } from './rewards';
+import { recordDamage } from './score';
 import { Vision } from './vision';
 import type { Entity } from './entity';
 import { Unit } from './unit';
@@ -121,6 +122,7 @@ export class World {
     const dealt = target.absorb(type === 'true' ? amount : mitigate(amount, resist));
     target.hp -= dealt;
     target.lastDamagedAt = this.time;
+    recordDamage(source, target, dealt);
     this.emit({ e: 'dmg', src: source?.id, target: target.id, amount: Math.round(dealt), type });
     if (source?.kind === 'champion') {
       target.championHits.set(source.id, this.time);

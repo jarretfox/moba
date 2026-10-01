@@ -92,6 +92,24 @@ export type StatusKind =
 export type BuffKind = 'ember' | 'glowcap';
 export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'warden';
 
+/** One champion's line on the scoreboard. `dmg` is to champions, `tdmg` to structures; `gold` is everything earned. */
+export interface ScoreRow {
+  id: number;
+  name: string;
+  champ: ChampionId;
+  team: PlayerTeam;
+  lv: number;
+  k: number;
+  d: number;
+  a: number;
+  cs: number;
+  dmg: number;
+  tdmg: number;
+  taken: number;
+  gold: number;
+  items: ItemId[];
+}
+
 /** Everyone's view of the Warden: when it wakes, and which team is Unchained (Uprising if Willmore or HunnaG took it). */
 export interface WardenStatus {
   alive: boolean;
@@ -221,4 +239,6 @@ export interface Snapshot {
   /** Set on the final snapshot, once a Da Base has fallen. */
   winner?: Team;
   warden?: WardenStatus;
+  /** The scoreboard, refreshed every couple of seconds (and on the final snapshot). */
+  scores?: ScoreRow[];
 }

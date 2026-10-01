@@ -59,6 +59,7 @@ export class GameClient {
   private holdTimer = 0;
   private aiming: Slot | null = null;
   private centerHeld = false;
+  private scoresHeld = false;
   private cursor = '';
 
   constructor(
@@ -142,6 +143,7 @@ export class GameClient {
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
     this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
     this.hud.setWarden(latest?.warden, this.myTeam);
+    this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
     if (latest?.winner) {
       this.hud.showGameOver(latest.winner === this.myTeam);
       if (!this.gameOverPlayed) this.sound.play(latest.winner === this.myTeam ? 'victory' : 'defeat', 0.8);
@@ -361,6 +363,7 @@ export class GameClient {
     window.addEventListener('keydown', (e) => this.onKey(e, true));
     window.addEventListener('keyup', (e) => this.onKey(e, false));
     window.addEventListener('blur', () => {
+      this.scoresHeld = false;
       this.rightHeld = false;
       this.aiming = null;
       this.centerHeld = false;
@@ -382,6 +385,11 @@ export class GameClient {
     }
     if (e.code === 'Space') {
       this.centerHeld = down;
+      e.preventDefault();
+      return;
+    }
+    if (e.code === 'Tab') {
+      this.scoresHeld = down;
       e.preventDefault();
       return;
     }

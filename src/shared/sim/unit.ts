@@ -67,6 +67,11 @@ export abstract class Unit implements Entity {
   readonly fearsLions: boolean = false;
   /** Royal Tax: allied Chuds near this unit deal this share more damage. */
   readonly chudAura: number = 0;
+
+  /** Whose match stats this unit's damage counts toward (King Rix's guards count for him). */
+  get creditTo(): Unit {
+    return this;
+  }
   /** Can't be shoved by other units (training dummies now; structures later). */
   readonly immovable: boolean = false;
   /** Direction walked this tick, or null if the unit stood still. Collision uses it to decide who gives way. */

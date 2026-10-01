@@ -5,12 +5,13 @@ import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
 import type { ChampionId } from '../shared/champions/types';
 import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
-import { LOCAL_CONN, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode } from '../shared/protocol';
+import { LOCAL_CONN, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
 import { Jungle } from '../shared/sim/jungle';
 import { WardenLair } from '../shared/sim/warden';
+import { scoreRows } from '../shared/sim/score';
 import { spawnStructures } from '../shared/sim/structure';
 import { WaveSpawner } from '../shared/sim/waves';
 import { World } from '../shared/sim/world';
@@ -29,6 +30,8 @@ interface Player {
 
 /** Remote players get an update every this many ticks (15 a second); events in between are batched, never dropped. */
 const REMOTE_SEND_EVERY = 2;
+/** Refresh the scoreboard this often (ticks). */
+const SCORES_EVERY = 60;
 
 /** Cap on commands buffered per player per tick, so one client can't flood the host. */
 const MAX_QUEUED = 32;
@@ -46,6 +49,7 @@ export class HostCore {
   private readonly players = new Map<string, Player>();
   private readonly waves = this.world.addSystem(new WaveSpawner());
   private readonly lair = this.world.addSystem(new WardenLair());
+  private scores: ScoreRow[] | null = null;
   private phase: LobbyState['phase'] = 'lobby';
 
   constructor(private readonly send: (connId: string, msg: HostMessage) => void) {
@@ -176,6 +180,8 @@ export class HostCore {
     const sendRemote = this.world.tick % REMOTE_SEND_EVERY === 0 || this.world.winner !== null;
     const views = new Map<PlayerTeam, EntitySnap[]>();
     const warden = this.lair.status(this.world);
+    // The scoreboard only needs to move every couple of seconds; the codec sends it only when it changes.
+    if (this.world.tick % SCORES_EVERY === 0 || this.world.winner !== null || !this.scores) this.scores = scoreRows(this.world);
     for (const [connId, p] of this.players) {
       for (const e of ev) if (this.world.vision.canSeeEvent(p.team, e)) p.pendingEv.push(e);
       if (p.remote && !sendRemote) continue;
@@ -190,6 +196,7 @@ export class HostCore {
         nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
         winner: this.world.winner ?? undefined,
         warden,
+        scores: this.scores,
       });
       p.pendingEv = [];
       this.send(connId, { t: 'snap', snap });

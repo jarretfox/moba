@@ -36,6 +36,7 @@ function rewardChud(world: World, chud: Chud, source: Unit | null): void {
   const reward = CHUD_REWARD[chud.chudType];
   if (source instanceof Champion && source.team !== chud.team) {
     source.gainGold(world, reward.gold);
+    source.score.cs++;
     for (const u of world.units()) if (u instanceof Champion && u !== source && u.team === source.team && !u.dead) u.onAllyLastHit(world, chud);
   }
   const nearby = world
@@ -50,6 +51,7 @@ function rewardMonster(world: World, m: Monster, source: Unit | null, helpers: U
   const killer = source instanceof Champion ? source : helpers.find((h): h is Champion => h instanceof Champion);
   if (!killer) return;
   const def = MONSTERS[m.monster];
+  killer.score.cs++;
   killer.gainGold(world, def.gold);
   killer.gainXp(world, def.xp);
   const buff = CAMPS[m.camp.kind].buff;
@@ -103,7 +105,12 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
     if (rivals) killer.takeTrophy(world);
     killer.streak++;
   }
-  for (const a of assisters) a.gainGold(world, ASSIST_GOLD / assisters.length);
+  for (const a of assisters) {
+    a.gainGold(world, ASSIST_GOLD / assisters.length);
+    a.score.assists++;
+  }
+  victim.score.deaths++;
+  if (killer) killer.score.kills++;
   // Jungle buffs change hands with the kill.
   if (killer) for (const b of victim.lostBuffs) killer.gainBuff(world, b.kind, b.left);
   const xpTakers = killer ? [killer, ...assisters] : assisters;

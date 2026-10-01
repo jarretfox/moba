@@ -233,6 +233,10 @@ export class RoyalGuard extends Unit {
   readonly kind = 'guard';
   /** The Royal Menagerie: they remember the lion. */
   readonly fearsLions = true;
+
+  get creditTo(): Unit {
+    return this.king;
+  }
   private readonly expiresAt: number;
 
   constructor(

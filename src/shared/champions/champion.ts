@@ -5,6 +5,7 @@ import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { BUFFS, EMBER, GLOWCAP } from '../sim/jungle';
 import { MAX_LEVEL, PASSIVE_GOLD, STARTING_GOLD, canRankUp, xpToNext } from '../sim/progression';
+import { newScore, type Score } from '../sim/score';
 import { REVEAL_TIME, Unit, type Stats } from '../sim/unit';
 import type { World } from '../sim/world';
 import type { ChampionInfo, StatGrowth, Targeting } from './types';
@@ -35,6 +36,8 @@ export abstract class Champion extends Unit {
   gold = STARTING_GOLD;
   /** Kills without dying; raises the bounty on your head. */
   streak = 0;
+  /** Match stats for the scoreboard. */
+  readonly score: Score = newScore();
   /** Up to INVENTORY_SLOTS items, in the order bought. */
   readonly items: ItemId[] = [];
   private itemStats = sumItemStats([]);
@@ -55,7 +58,10 @@ export abstract class Champion extends Unit {
 
   update(world: World): void {
     super.update(world);
-    if (!this.dead && world.time >= PASSIVE_GOLD.from) this.gold += PASSIVE_GOLD.perSecond * DT;
+    if (!this.dead && world.time >= PASSIVE_GOLD.from) {
+      this.gold += PASSIVE_GOLD.perSecond * DT;
+      this.score.goldEarned += PASSIVE_GOLD.perSecond * DT;
+    }
     if (this.recallStartedAt === null) return;
     if (this.dead || this.has('stun') || this.lastDamagedAt >= this.recallStartedAt) {
       this.recallStartedAt = null;
@@ -121,6 +127,7 @@ export abstract class Champion extends Unit {
   gainGold(world: World, amount: number): void {
     if (amount <= 0) return;
     this.gold += amount;
+    this.score.goldEarned += amount;
     world.emit({ e: 'gold', id: this.id, amount: Math.round(amount) });
   }
 
