@@ -20,6 +20,7 @@ export const CAST_COLORS: Record<ChampionId, number> = {
   logan: 0xffc04d,
   kingrix: 0xffd166,
   dongmaster: 0xffb070,
+  dabber: 0x9be15d,
 };
 
 const GOLD = 0xffd166;
@@ -313,6 +314,57 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     }
 
     // ── Logan
+    // ── Dark Dabber
+    case 'hotbox': {
+      // A billowing cloud of smoke.
+      const r = ev.r ?? 100;
+      for (let i = 0; i < 22; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = r * Math.sqrt(Math.random());
+        p.emit({ shape: 'smoke', x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: Math.cos(a) * rand(10, 40), vy: Math.sin(a) * rand(10, 40) - 15, drag: 0.4, life: rand(1.4, 2.4), size: rand(30, 45), size2: rand(70, 110), color: 0xc8d6b0, color2: 0x5a6a4a, alpha: 0.55, fadeIn: 0.25 });
+      }
+      return;
+    }
+    case 'stickyIcky': {
+      // A glob of amber resin, arcing over and splatting.
+      const dur = ev.dur ?? 0.35;
+      const height = Math.min(200, dist * 0.3);
+      fx.custom(dur, (g, t) => {
+        const px = x + (x2 - x) * t;
+        const py = y + (y2 - y) * t - Math.sin(t * Math.PI) * height;
+        g.circle(x2, y2, 30 + 40 * t).fill({ color: 0x000000, alpha: 0.12 + 0.12 * t });
+        g.circle(px, py, 16).fill(0xd98a1e).stroke({ width: 2, color: 0x6a3a0a });
+        g.circle(px - 5, py - 5, 5).fill({ color: 0xffe2a0, alpha: 0.85 });
+      });
+      fx.later(dur, () => {
+        const r = ev.r ?? 200;
+        fx.flash(x2, y2, r * 0.35, 0xd98a1e, 0.25, 0.35);
+        p.burst(18, { shape: 'mote', glow: false, x: x2, y: y2, life: 0.6, size: 12, size2: 5, color: 0xd98a1e, drag: 0.1, ay: 220 }, [120, 320]);
+        for (let i = 0; i < 6; i++) p.emit({ shape: 'smoke', x: x2 + rand(-r / 2, r / 2), y: y2 + rand(-r / 2, r / 2), vy: -20, life: 1.2, size: 26, size2: 60, color: 0xc8d6b0, color2: 0x7a8a5a, alpha: 0.4, fadeIn: 0.2 });
+        fx.scar(x2, y2, r * 0.7, 'goo', 0x8a5a14);
+      });
+      return;
+    }
+    case 'lightItUp': {
+      // The resin on them catches: flames up, sparks out, more the more there was.
+      const stacks = ev.r ?? 1;
+      fx.flash(x, y, 50 + stacks * 10, 0xffb347, 0.35);
+      fx.shockwave(x, y, 60 + stacks * 14, 0xff7a2f, 0.35);
+      for (let i = 0; i < 6 + stacks * 4; i++) p.emit({ shape: 'glow', x: x + rand(-25, 25), y: y + rand(-20, 20), vx: rand(-40, 40), vy: rand(-220, -90), drag: 0.3, life: rand(0.4, 0.8), size: rand(18, 30), size2: 4, color: 0xffe0a0, color2: 0xff3a10, alpha: 0.9 });
+      p.burst(6 + stacks * 2, { shape: 'spark', x, y, life: 0.35, size: 10, size2: 2, stretch: 0.05, color: 0xfff1b8, color2: 0xff7a2f }, [200, 450]);
+      return;
+    }
+    case 'cloudNine': {
+      // A great swirl of smoke rolls out around him, glittering.
+      const r = ev.r ?? 160;
+      for (let i = 0; i < 28; i++) {
+        const a = (i / 28) * Math.PI * 2;
+        p.emit({ shape: 'smoke', x: x + Math.cos(a) * r * 0.4, y: y + Math.sin(a) * r * 0.4, vx: Math.cos(a + 1.2) * 120, vy: Math.sin(a + 1.2) * 120, drag: 0.6, life: rand(1.2, 2), size: 34, size2: 90, color: 0xd8f0c0, color2: 0x6a8a4a, alpha: 0.5, fadeIn: 0.2 });
+      }
+      p.burst(16, { shape: 'star', x, y, life: 0.9, size: 12, size2: 2, color: 0xffffff, color2: 0xb8f07a, drag: 0.3, spin: 4 }, [80, 240]);
+      fx.shockwave(x, y, r * 1.4, 0xb8f07a, 0.6);
+      return;
+    }
     // ── Dongmaster
     case 'chinCheck': {
       // A charge: a hot streak with speed lines, and a star-burst where the uppercut lands.
@@ -544,6 +596,8 @@ const HEADS: Record<string, [number, number]> = {
   levy: [GOLD, 60],
   spore: [TOXIC, 55],
   junk_sludge: [TOXIC, 45],
+  resinBolt: [0xffb347, 45],
+  smokeBolt: [0xb8f07a, 90],
 };
 
 /** A glow on the projectile's head, and sparkles and smoke streaming out behind it, by what it is. */
@@ -696,6 +750,23 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
         break;
       case 'weaken':
         for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'mote', ...around(0.8), vy: rand(20, 50), life: 0.6, size: 7, size2: 3, color: 0xd8b4ff, color2: 0x7a4ac0 });
+        break;
+      case 'hazed':
+        // Allies see him wreathed in smoke (enemies don't see him at all).
+        for (let i = 0; i < fx.rate(8); i++) p.emit({ shape: 'smoke', ...around(0.8), vy: rand(-30, -10), life: 1, size: 18, size2: 40, color: 0xc8d6b0, color2: 0x5a6a4a, alpha: 0.35, fadeIn: 0.3 });
+        break;
+      case 'blazed':
+        for (let i = 0; i < fx.rate(10); i++) p.emit({ shape: 'mote', ...around(0.8), vy: rand(-90, -40), life: 0.6, size: 6, size2: 2, color: 0xffd9a8, color2: 0xff7a2f });
+        break;
+      case 'resin':
+        for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'mote', glow: false, ...around(0.8), vy: rand(10, 30), ay: 200, life: 0.6, size: 7, size2: 4, color: 0xd98a1e });
+        for (let i = 0; i < fx.rate(4); i++) p.emit({ shape: 'smoke', ...around(0.6), vy: rand(-40, -20), life: 0.9, size: 10, size2: 24, color: 0xc8d6b0, color2: 0x7a8a5a, alpha: 0.35 });
+        break;
+      case 'cloudNine':
+        for (let i = 0; i < fx.rate(16); i++) {
+          const a = time * 2 + Math.random() * Math.PI * 2;
+          p.emit({ shape: 'smoke', x: s.x + Math.cos(a) * r * 1.6, y: s.y + Math.sin(a) * r * 1.6, vx: Math.cos(a + 1.5) * 60, vy: Math.sin(a + 1.5) * 60, life: 0.9, size: 18, size2: 44, color: 0xd8f0c0, color2: 0x6a8a4a, alpha: 0.4 });
+        }
         break;
       case 'mewing':
         if (Math.random() < fx.dt * 4) p.emit({ shape: 'star', x: s.x + Math.cos(s.f) * r * 0.5, y: s.y + Math.sin(s.f) * r * 0.5, life: 0.4, size: 14, size2: 2, color: 0xffffff, color2: GOLD, spin: 5 });

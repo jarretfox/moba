@@ -9,6 +9,9 @@ import { sightOf } from './sight';
 import { Unit } from './unit';
 import type { World } from './world';
 
+/** How close an enemy has to get to spot the Dark Dabber in his Hotbox smoke. */
+export const HAZE_REVEAL = 300;
+
 export interface VisionSource {
   x: number;
   y: number;
@@ -142,10 +145,17 @@ export class Vision {
     if (e.kind === 'trap') return false; // hidden from the other side
     if (e instanceof Unit && e.has('decreed')) return true; // Royal Decree: revealed to everyone, wherever they are
     if (e instanceof Unit && e.isConcealed()) return false;
+    // Dark Dabber's Hotbox: in the smoke he's only spotted up close, by champions and structures.
+    if (e instanceof Unit && e.has('hazed') && !e.has('bleed') && !this.spotsUpClose(team, e)) return false;
     if (this.computedTick === -Infinity) this.update(true);
     if (this.visible[team][this.grid.cellOf(e.pos)]) return true;
     // Attacking or casting from brush gives your position away for a moment.
     return e instanceof Unit && e.revealedUntil > this.world.time && this.inSightIgnoringBrush(team, e.pos);
+  }
+
+  /** A champion or structure of `team` close enough to make out someone hiding in smoke. */
+  private spotsUpClose(team: Team, e: Unit): boolean {
+    return this.world.units().some((u) => u.team === team && !u.dead && (u.kind === 'champion' || u.kind === 'structure') && dist(u.pos, e.pos) <= HAZE_REVEAL + u.radius + e.radius);
   }
 
   /** Whether an event concerns something `team` can see, so it may be told about it. */

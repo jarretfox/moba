@@ -9,6 +9,7 @@ import { KING_RIX_INFO, KingRix } from './kingrix';
 import { LOGAN_INFO, Logan } from './logan';
 import { WILLMORE_INFO, Willmore } from './willmore';
 import { DONGMASTER_INFO, Dongmaster } from './dongmaster';
+import { DABBER_INFO, Dabber } from './dabber';
 
 export const CHAMPION_INFO: Record<ChampionId, ChampionInfo> = {
   marksman: MARKSMAN_INFO,
@@ -18,6 +19,7 @@ export const CHAMPION_INFO: Record<ChampionId, ChampionInfo> = {
   logan: LOGAN_INFO,
   kingrix: KING_RIX_INFO,
   dongmaster: DONGMASTER_INFO,
+  dabber: DABBER_INFO,
 };
 
 const CONSTRUCTORS: Record<ChampionId, new (world: World, team: PlayerTeam) => Champion> = {
@@ -28,6 +30,7 @@ const CONSTRUCTORS: Record<ChampionId, new (world: World, team: PlayerTeam) => C
   logan: Logan,
   kingrix: KingRix,
   dongmaster: Dongmaster,
+  dabber: Dabber,
 };
 
 export function createChampion(id: ChampionId, world: World, team: PlayerTeam): Champion {

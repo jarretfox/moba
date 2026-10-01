@@ -49,6 +49,13 @@ const LINES: Record<ChampionId, Record<Said, readonly string[]>> = {
     line: ['The jawline is a lifestyle.', 'Mewing in progress.', 'Never skipped a day. Not once.'],
     kill: ['Mogged.', 'Should’ve stayed in the gym.', 'Another rep.'],
   },
+  dabber: {
+    taunt: ['Smells like fear, man.', 'Come get a whiff.'],
+    laugh: ['Hehehe... hehehe...', 'Heh. Heh. Whoa.'],
+    cheer: ['Light ’em up!', 'Squeak squeak, baby!'],
+    line: ['It’s all just smoke, man.', 'The Deep provides.', 'Did anyone else see that?'],
+    kill: ['You got smoked.', 'Pass it on.', 'Hehehe... gone.'],
+  },
   kingrix: {
     taunt: ['Kneel.', 'Know your place, peasant.'],
     laugh: ['Hohoho! Delightful.', 'Ha! The crown wins again.'],

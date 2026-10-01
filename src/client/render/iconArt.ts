@@ -100,6 +100,51 @@ const SKIN_TONE = 0xe2b48a;
 const SKIN_SHADE = 0xb98a62;
 
 const ART: Record<string, Draw> = {
+  // ── Dark Dabber
+  '🍯': (g) => {
+    // Sticky Resin: a jar of amber resin, overflowing.
+    g.roundRect(-18, -14, 36, 38, 8).fill(0xd98a1e).stroke(ink());
+    g.roundRect(-20, -22, 40, 10, 4).fill(WOOD).stroke(ink());
+    g.moveTo(-10, -12).quadraticCurveTo(-12, 0, -8, 6).lineTo(-6, -12).closePath().fill(0xffb347);
+    g.moveTo(-12, -6).lineTo(-12, 16).stroke({ ...shine, alpha: 0.45 });
+    g.moveTo(12, -12).quadraticCurveTo(14, -2, 12, 4).stroke({ width: 5, color: 0xd98a1e, cap: 'round' });
+    g.circle(12, 7, 4).fill(0xd98a1e).stroke(ink(2));
+  },
+  '🌫': (g) => {
+    // Hotbox: a cloud of smoke with two red eyes in it.
+    blob(g, [[-14, 6, 14], [4, -4, 16], [18, 8, 12], [0, 14, 12]], 0xb8c6a0);
+    g.circle(-2, 4, 3.5).fill(0xff4a4a);
+    g.circle(10, 4, 3.5).fill(0xff4a4a);
+    g.circle(-26, -18, 5).fill({ color: 0xb8c6a0, alpha: 0.7 });
+    g.circle(24, -20, 4).fill({ color: 0xb8c6a0, alpha: 0.6 });
+  },
+  '💧': (g) => {
+    // Sticky Icky: a fat drop of resin.
+    g.moveTo(0, -28).bezierCurveTo(10, -10, 22, 2, 22, 12).bezierCurveTo(22, 24, 12, 28, 0, 28).bezierCurveTo(-12, 28, -22, 24, -22, 12).bezierCurveTo(-22, 2, -10, -10, 0, -28).closePath().fill(0xd98a1e).stroke(ink());
+    g.moveTo(-10, 6).quadraticCurveTo(-12, 16, -4, 20).stroke({ ...shine, alpha: 0.6 });
+    g.circle(8, 12, 4).fill({ color: GREEN, alpha: 0.8 });
+  },
+  '💥': (g) => {
+    // Light It Up: a lighter's flame bursting.
+    const pts: number[] = [];
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const rr = i % 2 ? 13 : 28;
+      pts.push(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    g.poly(pts).fill(0xff7a2f).stroke(ink());
+    g.circle(0, 0, 10).fill(GOLD);
+    g.circle(0, 0, 4).fill(WHITE);
+  },
+  '☁': (g) => {
+    // Cloud Nine: a big soft cloud, glittering.
+    blob(g, [[-16, 6, 13], [0, -4, 17], [16, 6, 13], [0, 12, 12]], 0xe8f4d8);
+    g.moveTo(-14, 12).lineTo(14, 12).stroke({ width: 2, color: 0xb8c6a0 });
+    // A smoke bolt shot clean through it.
+    rod(g, (g) => g.moveTo(-30, 20).lineTo(26, -14), 3, 0xb8f07a);
+    g.poly([26, -14, 18, -16, 22, -8]).fill(0xb8f07a).stroke(ink(2));
+    for (const [sx, sy] of [[-24, -18], [22, -20], [4, -26]] as const) g.poly([sx, sy - 5, sx + 1.5, sy - 1.5, sx + 5, sy, sx + 1.5, sy + 1.5, sx, sy + 5, sx - 1.5, sy + 1.5, sx - 5, sy, sx - 1.5, sy - 1.5]).fill(GREEN);
+  },
   // ── Dongmaster
   '😎': (g) => {
     // Mog: a cool face behind dark shades, smirking.

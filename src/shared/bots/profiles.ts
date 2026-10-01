@@ -200,4 +200,22 @@ const dongmaster: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster };
+const dabber: BotProfile = {
+  skillOrder: [2, 0, 1],
+  build: ['shiv', 'treads', 'fang', 'striders', 'longbow', 'reaver', 'link'],
+  fight(ctx, foe) {
+    const { me, world } = ctx;
+    const d = dist(me.pos, foe.pos);
+    const stacks = foe.strongest('resin');
+    const crowd = enemiesInRadius(world, me.team, foe.pos, 400).filter((u) => u.kind === 'champion').length;
+    if (ready(ctx, 3) && d < 850 && (hpPct(foe) < 0.6 || crowd >= 2)) return cast(3, me.pos);
+    if (ready(ctx, 2) && d < 1050 && (stacks >= 5 || (stacks >= 3 && hpPct(foe) < 0.3))) return cast(2, me.pos);
+    if (ready(ctx, 1) && d < 850) return cast(1, lead(foe, 0.35));
+    return null;
+  },
+  escape(ctx) {
+    return ready(ctx, 0) && !ctx.me.has('hazed') ? cast(0, ctx.me.pos) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber };

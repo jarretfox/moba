@@ -305,7 +305,8 @@ export class UnitView implements EntityView {
     });
     // Under the ground you only show as a mound of dirt (to whoever can see you at all).
     const under = s.st?.includes('burrowed') || s.st?.includes('underground');
-    this.body.alpha = this.facing.alpha = under ? 0.22 : 1;
+    // In the Dark Dabber's smoke, his own side sees him faintly.
+    this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') ? 0.45 : 1;
     this.shade.visible = !under;
     for (const foot of this.feet) foot.visible &&= !under;
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
@@ -428,6 +429,12 @@ export class UnitView implements EntityView {
     }
     if (st.includes('royal')) g.circle(0, 0, r + 4).stroke({ width: 2, color: 0xffd166, alpha: 0.7 });
     if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
+    if (st.includes('resin')) {
+      g.circle(0, 0, r + 5).stroke({ width: 3, color: 0xd98a1e, alpha: 0.85 });
+      for (let i = 0; i < 6; i++) g.circle(Math.cos(i * 1.05) * (r + 5), Math.sin(i * 1.05) * (r + 5) + 3, 3).fill(0xd98a1e);
+    }
+    if (st.includes('cloudNine')) g.circle(0, 0, r + 9).stroke({ width: 4, color: 0xb8f07a, alpha: 0.7 });
+    if (st.includes('blazed')) g.circle(0, 0, r + 3).stroke({ width: 2, color: 0xff7a2f, alpha: 0.8 });
     if (st.includes('mewing')) g.circle(0, 0, r + 6).stroke({ width: 3, color: 0xffffff, alpha: 0.8 });
     if (st.includes('ascended')) g.circle(0, 0, r + 8).fill({ color: 0xffd166, alpha: 0.15 }).stroke({ width: 5, color: 0xffd166, alpha: 0.8 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
@@ -495,6 +502,16 @@ export class ProjectileView implements EntityView {
         g.moveTo(0, 0).arc(6, 0, 10, Math.PI, Math.PI * 2.4).stroke({ width: 4, color: 0x5d636d });
         g.poly([14, 8, 20, 2, 10, 4]).fill(0x5d636d);
         break;
+      case 'resinBolt':
+        g.circle(0, 0, 8).fill(0xd98a1e).stroke({ width: 1.5, color: 0x6a3a0a });
+        g.circle(-3, -3, 2.5).fill({ color: 0xffe2a0, alpha: 0.85 });
+        g.circle(-11, 2, 3).fill({ color: 0xd98a1e, alpha: 0.6 });
+        break;
+      case 'smokeBolt':
+        g.ellipse(-14, 0, 34, 12).fill({ color: 0xd8f0c0, alpha: 0.35 });
+        g.ellipse(-4, 0, 18, 7).fill({ color: 0xeaffd8, alpha: 0.8 });
+        g.circle(6, 0, 6).fill(0xb8f07a);
+        break;
       case 'longshot':
         g.ellipse(-20, 0, 110, s.r).fill({ color: 0xff8a3d, alpha: 0.3 });
         g.ellipse(0, 0, 70, s.r * 0.45).fill({ color: 0xffb070, alpha: 0.8 });
@@ -521,6 +538,8 @@ const TAIL_COLORS: Record<string, number> = {
   scepter: 0xffd166,
   levy: 0xffd166,
   junk_sludge: 0x8fd14f,
+  resinBolt: 0xffb347,
+  smokeBolt: 0xb8f07a,
 };
 
 /** A soft streak behind a projectile (it points along +x, so the tail runs back along -x). */
@@ -547,6 +566,16 @@ export class ZoneView implements EntityView {
   private draw(t: number): void {
     const g = this.container.clear();
     const r = this.s.r;
+    if (this.s.vis === 'resinPuddle') {
+      // A sticky amber puddle, glossy, a curl of smoke rising off it.
+      g.circle(0, 0, r).fill({ color: 0x8a5a14, alpha: 0.45 }).stroke({ width: 3, color: 0xd98a1e, alpha: 0.7 });
+      for (let i = 0; i < 5; i++) {
+        const a = i * 1.26 + t * 0.4;
+        g.ellipse(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.45, 14, 8).fill({ color: 0xffb347, alpha: 0.35 + 0.15 * Math.sin(t * 2 + i) });
+      }
+      g.circle(-r * 0.25, -r * 0.25, 8).fill({ color: 0xffe2a0, alpha: 0.5 });
+      return;
+    }
     if (this.s.vis === 'molehole') {
       g.circle(0, 0, r * 1.25).fill({ color: 0x6b4f2e, alpha: 0.9 });
       g.circle(0, 0, r * 0.85).fill(0x120c06);

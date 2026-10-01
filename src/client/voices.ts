@@ -48,6 +48,7 @@ const VOICES: Record<ChampionId, VoiceSpec> = {
   willmore: { pitch: 175, size: 1.05, growl: 0.1, breath: 0.2, pace: 9, laugh: 'e', talk: ['e', 'i', 'a'], nasal: 2600 },
   hunnag: { pitch: 290, size: 1.18, growl: 0, breath: 0.45, pace: 8, laugh: 'i', talk: ['i', 'e', 'u'] },
   logan: { pitch: 80, size: 0.76, growl: 0.75, breath: 0.2, pace: 5, laugh: 'a', talk: ['a', 'o'] },
+  dabber: { pitch: 240, size: 1.15, growl: 0, breath: 0.6, pace: 9, laugh: 'i', talk: ['e', 'i', 'u'], nasal: 2400 },
   dongmaster: { pitch: 88, size: 0.78, growl: 0.15, breath: 0.3, pace: 5, laugh: 'a', talk: ['a', 'o', 'u'] },
   kingrix: { pitch: 135, size: 0.95, growl: 0.05, breath: 0.1, pace: 6, laugh: 'o', talk: ['o', 'a', 'e', 'u'] },
 };

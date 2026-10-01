@@ -104,6 +104,11 @@ export type StatusKind =
   /** Dongmaster's Mewing (a shield, and tenacity) and Ascension (his giga form). */
   | 'mewing'
   | 'ascended'
+  /** Dark Dabber: hiding in smoke (Hotbox), fast hands after it, resin on his victims (amount = stacks), Cloud Nine. */
+  | 'hazed'
+  | 'blazed'
+  | 'resin'
+  | 'cloudNine'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -174,7 +179,12 @@ export type FxKind =
   | 'chinCheck'
   | 'mewing'
   | 'sigmaStare'
-  | 'ascension';
+  | 'ascension'
+  /** Dark Dabber. */
+  | 'hotbox'
+  | 'stickyIcky'
+  | 'lightItUp'
+  | 'cloudNine';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

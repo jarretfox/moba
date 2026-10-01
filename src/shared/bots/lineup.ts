@@ -11,7 +11,7 @@ import { Bot } from './bot';
  */
 const SLOTS: { lane: Lane; picks: ChampionId[] }[] = [
   { lane: 'top', picks: ['barbarian', 'willmore', 'logan', 'dongmaster'] },
-  { lane: 'bot', picks: ['marksman', 'kingrix', 'hunnag'] },
+  { lane: 'bot', picks: ['marksman', 'kingrix', 'hunnag', 'dabber'] },
   { lane: 'bot', picks: ['hunnag', 'logan', 'kingrix', 'willmore'] },
 ];
 
