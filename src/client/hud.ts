@@ -16,6 +16,7 @@ import type { Award } from './awards';
 import type { Highlight } from './highlights';
 import { el } from './ui/dom';
 import { LivePortrait } from './ui/livePortrait';
+import { Podium } from './ui/podium';
 
 interface SlotEls {
   root: HTMLElement;
@@ -81,6 +82,8 @@ export class Hud {
   private readonly portrait: HTMLElement;
   /** Your champion, live in the portrait. */
   private readonly live = new LivePortrait();
+  /** Everyone, live, on the end screen. */
+  private podium: Podium | null = null;
   private readonly stacks: HTMLElement;
   private readonly level: HTMLElement;
   private readonly gold: HTMLElement;
@@ -450,8 +453,14 @@ export class Hud {
     if (el) el.textContent = title;
   }
 
-  showGameOver(victory: boolean): void {
+  /** The end screen, with everyone lined up under the title: the winners celebrating, the losers slumped. */
+  showGameOver(victory: boolean, rows?: readonly ScoreRow[], winner?: Team, myTeam?: Team): void {
+    const first = this.gameOver.hidden;
     this.showOverlay(victory ? 'VICTORY' : 'DEFEAT', victory ? 'Their Da Base has fallen.' : 'Your Da Base has fallen.', victory);
+    if (first && rows?.length && winner !== undefined && myTeam !== undefined) {
+      this.podium = new Podium(rows, winner, myTeam);
+      this.gameOver.querySelector('.gameover-sub')!.after(this.podium.canvas);
+    }
   }
 
   /** Under the respawn ring: who killed you, and with what. Built with textContent, since names come from other players. */

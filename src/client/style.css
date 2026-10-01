@@ -1196,6 +1196,25 @@ html.colorblind .gold-peak.theirs {
   color: var(--muted);
 }
 
+/* Everyone in the match, live: the winners celebrating, the losers slumped (see ui/podium.ts). */
+.gameover-podium {
+  width: min(640px, 100vw - 32px);
+  height: auto;
+  margin: -4px 0 -6px;
+  animation: podium-in 0.7s 0.25s cubic-bezier(0.2, 1.3, 0.4, 1) backwards;
+}
+
+.gameover.compact .gameover-podium {
+  width: min(520px, 100vw - 32px);
+}
+
+@keyframes podium-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
 .gameover-scores:empty {
   display: none;
 }

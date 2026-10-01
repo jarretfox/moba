@@ -491,7 +491,7 @@ export class GameClient {
         this.hud.setMatchExtras(awards, goldGraph(this.goldHistory, 340, 72));
         awards.forEach((_, i) => setTimeout(() => this.sound.play('chime', 0.4), 900 + i * 250));
       }
-      this.hud.showGameOver(latest.winner === this.myTeam);
+      this.hud.showGameOver(latest.winner === this.myTeam, latest.scores, latest.winner, this.myTeam);
       if (!this.gameOverPlayed) this.sound.play(latest.winner === this.myTeam ? 'victory' : 'defeat', 0.8);
       this.gameOverPlayed = true;
     }
