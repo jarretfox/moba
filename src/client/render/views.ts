@@ -44,6 +44,8 @@ export interface EntityView {
   onHit?(from?: { x: number; y: number }, heavy?: boolean): void;
   /** Cast an ability: the champion strikes a pose for it. */
   onCast?(slot: Slot): void;
+  /** Hit-stop: held in place for a split second, shuddering by `shudder` pixels. Purely visual. */
+  freeze?(seconds: number, shudder: number): void;
   /** The tall part of the view, drawn on a raised layer (structures). */
   readonly top?: Container;
 }
@@ -70,6 +72,10 @@ export class UnitView implements EntityView {
   private readonly knock = { x: 0, y: 0 };
   /** Squashed by a hit or a landing, springing back. */
   private squash = 0;
+  /** Hit-stop: seconds left frozen, how hard to shudder, and where it's being held. */
+  private frozen = 0;
+  private shudder = 0;
+  private heldAt: { x: number; y: number } | null = null;
   private readonly statusRing = new Graphics();
   private readonly bars = new Graphics();
   private readonly label: Text;
@@ -178,6 +184,20 @@ export class UnitView implements EntityView {
   }
 
   update(s: EntitySnap, dt: number, ctx: ViewContext): void {
+    // Hit-stop: held where it was for a split second (shuddering if it took the hit)...
+    if (this.frozen > 0 && !s.dead) {
+      this.frozen -= dt;
+      this.heldAt ??= { x: this.container.x, y: this.container.y };
+      const j = this.shudder;
+      this.container.position.set(this.heldAt.x + (Math.random() - 0.5) * 2 * j, this.heldAt.y + (Math.random() - 0.5) * 2 * j);
+      return;
+    }
+    // ...then eased from there to where it really is now (keeping any knockback on top).
+    if (this.heldAt) {
+      this.knock.x += this.heldAt.x - s.x;
+      this.knock.y += this.heldAt.y - s.y;
+      this.heldAt = null;
+    }
     this.dying = s.dead ? this.dying + dt : 0;
     const fall = Math.min(1, this.dying / DEATH_TIME);
     this.container.visible = !s.dead || fall < 1;
@@ -300,6 +320,11 @@ export class UnitView implements EntityView {
     const push = heavy ? 22 : 4;
     this.knock.x = (dx / d) * push;
     this.knock.y = (dy / d) * push;
+  }
+
+  freeze(seconds: number, shudder: number): void {
+    this.frozen = Math.max(this.frozen, seconds);
+    this.shudder = shudder;
   }
 
   /** Coming back down from a knock-up or a leap: a squash as they hit the ground. */

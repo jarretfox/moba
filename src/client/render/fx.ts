@@ -48,12 +48,23 @@ export class FxLayer {
   dt = 0;
   /** How many of those to spray (thinned out on low graphics). */
   density = 1;
+  /** Hit-stop: effects crawl for this many more seconds. */
+  private slowFor = 0;
 
   constructor() {
     this.container.addChild(this.mid, this.particles.container, this.top);
   }
 
+  /** Slow every effect to a crawl for a split second, so a big hit lands. */
+  hitstop(seconds: number): void {
+    this.slowFor = Math.max(this.slowFor, seconds);
+  }
+
   update(dt: number): void {
+    if (this.slowFor > 0) {
+      this.slowFor -= dt;
+      dt *= 0.12;
+    }
     this.dt = dt;
     this.clock += dt;
     if (this.timers.length) {

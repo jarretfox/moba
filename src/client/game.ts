@@ -429,6 +429,15 @@ export class GameClient {
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
           this.fx.impact(hit.x, hit.y, hit.r, ev.type, heavy);
+          // Hit-stop (visual only): the target freezes and shudders, a close attacker holds too, and if
+          // you're in it, the effects crawl for a beat.
+          if (heavy && (hit.k === 'champion' || hit.k === 'monster')) {
+            const big = ev.amount >= (hit.mhp ?? 1000) * 0.2;
+            const hold = big ? 0.12 : 0.075;
+            this.views.get(ev.target)?.freeze?.(hold, big ? 5 : 3);
+            if (from && Math.hypot(from.x - hit.x, from.y - hit.y) < 450) this.views.get(from.id)?.freeze?.(hold * 0.8, 0);
+            if (ev.src === this.myId || ev.target === this.myId) this.fx.hitstop(hold);
+          }
           if (ev.target === this.myId && heavy) {
             this.camera.shake(Math.min(18, 6 + (ev.amount / (hit.mhp ?? 1000)) * 60));
             this.sound.play('impact', 0.55);
