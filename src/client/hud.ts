@@ -11,6 +11,7 @@ import type { GameEvent } from '../shared/protocol';
 import { iconEl } from './render/icons';
 import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
+import type { RecapEntry } from './recap';
 
 interface SlotEls {
   root: HTMLElement;
@@ -124,7 +125,7 @@ export class Hud {
       <div class="clock"><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
       <div class="warden"></div>
       <div class="help"><div class="help-title"></div><div class="help-keys">${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div><div class="help-hint"><kbd>H</kbd> controls</div></div>
-      <div class="respawn" hidden><div class="respawn-ring"><img class="respawn-face" alt="" /><b class="respawn-time"></b></div><div class="respawn-label">Respawning</div></div>
+      <div class="respawn" hidden><div class="respawn-ring"><img class="respawn-face" alt="" /><b class="respawn-time"></b></div><div class="respawn-label">Respawning</div><div class="recap" hidden></div></div>
       <div class="recall" hidden><div class="recall-label">Recalling</div><div class="recall-bar"><div class="recall-fill"></div></div></div>
       <div class="fade"></div>
       <div class="esc-menu" hidden><div class="esc-panel"><div class="esc-title">Menu</div><div class="esc-settings"></div><div class="esc-actions"><button class="esc-resume">Back to the match</button><button class="esc-leave">Leave match</button></div></div></div>
@@ -429,6 +430,48 @@ export class Hud {
   }
 
   /** A full-screen message with a way back to the menu, e.g. when the host leaves. */
+  /** Under the respawn ring: who killed you, and with what. Built with textContent, since names come from other players. */
+  showRecap(entries: RecapEntry[]): void {
+    const box = this.respawn.querySelector('.recap') as HTMLElement;
+    box.replaceChildren();
+    box.hidden = !entries.length;
+    if (!entries.length) return;
+    const all = entries.reduce((sum, e) => sum + e.total, 0);
+    const title = document.createElement('div');
+    title.className = 'recap-title';
+    title.textContent = `Taken down by · ${all} damage`;
+    box.append(title);
+    const glyph = { structure: '🔮', chud: '⚔️', monster: '🐾' } as Record<string, string>;
+    entries.forEach((e, i) => {
+      const row = document.createElement('div');
+      row.className = 'recap-row';
+      row.style.setProperty('--share', `${Math.round((e.total / all) * 100)}%`);
+      row.style.animationDelay = `${0.35 + i * 0.12}s`;
+      const face = e.champ ? portraitOf(e.champ, e.skin ?? 0) : undefined;
+      let pic: HTMLElement;
+      if (face) {
+        const img = document.createElement('img');
+        img.src = face;
+        img.alt = '';
+        pic = img;
+      } else pic = iconEl(glyph[e.kind ?? ''] ?? '💨');
+      pic.classList.add('recap-face');
+      const who = document.createElement('div');
+      who.className = 'recap-who';
+      const name = document.createElement('b');
+      name.textContent = e.name;
+      const parts = document.createElement('span');
+      parts.className = 'recap-parts';
+      parts.textContent = e.parts.map((p) => `${p.label} ${p.amount}`).join(' · ');
+      who.append(name, parts);
+      const total = document.createElement('b');
+      total.className = 'recap-total';
+      total.textContent = String(e.total);
+      row.append(pic, who, total);
+      box.append(row);
+    });
+  }
+
   showNotice(title: string, detail: string): void {
     this.showOverlay(title, detail, false);
   }

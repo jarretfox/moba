@@ -169,6 +169,43 @@ kbd {
   }
 }
 
+/* ─── Accessibility: interface size, and orange enemies for red-blind players ─── */
+
+.bar,
+.minimap,
+.help,
+.clock,
+.feed,
+.buffs,
+.shop,
+.scoreboard,
+.tooltip,
+.announce,
+.respawn,
+.recall,
+.warden {
+  zoom: var(--ui, 1);
+}
+
+html.colorblind .feed-line.theirs,
+html.colorblind .score-team.theirs {
+  border-left-color: #ffa81e;
+}
+
+html.colorblind .feed-line.theirs b:first-child,
+html.colorblind .feed-line.ours b:last-child {
+  color: #ffc46b;
+}
+
+html.colorblind .banner.theirs {
+  --tone: #ffa81e;
+}
+
+html.colorblind .warden-line.theirs {
+  border-color: #ffa81e;
+  color: #ffc46b;
+}
+
 /* ─── Minimap and pings ─────────────────────────────────────────────── */
 
 .minimap {
@@ -430,6 +467,11 @@ kbd {
   animation: banner-in 0.4s ease-out;
 }
 
+/* With the recap under it the card is taller, so it sits higher, clear of the ability bar. */
+.respawn:has(.recap:not([hidden])) {
+  top: 10%;
+}
+
 .respawn[hidden],
 .recall[hidden],
 .esc-menu[hidden] {
@@ -466,6 +508,108 @@ kbd {
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--muted);
+  text-shadow: 0 2px 0 #000;
+}
+
+/* The death recap: who took you down, and with what, under the respawn ring. */
+.recap {
+  width: 340px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(10, 12, 18, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recap[hidden] {
+  display: none;
+}
+
+.recap-title {
+  font: 13px var(--font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.recap-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  overflow: hidden;
+  isolation: isolate;
+  opacity: 0;
+  animation: recap-in 0.35s ease-out forwards;
+}
+
+/* A bar behind each row for that attacker's share of the damage. */
+.recap-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--share);
+  background: linear-gradient(90deg, rgba(229, 72, 77, 0.32), rgba(229, 72, 77, 0.08));
+  z-index: -1;
+}
+
+html.colorblind .recap-row::before {
+  background: linear-gradient(90deg, rgba(255, 168, 30, 0.32), rgba(255, 168, 30, 0.08));
+}
+
+@keyframes recap-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.recap-face {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.recap-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.recap-who b {
+  font-size: 14px;
+}
+
+.recap-parts {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recap-total {
+  font: 18px var(--font-display);
+  color: #ffd2d2;
   text-shadow: 0 2px 0 #000;
 }
 

@@ -5,6 +5,7 @@ import type { Vec2 } from '../shared/math';
 import type { EntitySnap, PingKind } from '../shared/protocol';
 import { PINGS } from './pings';
 import { portraitOf } from './render/champions';
+import { PALETTE } from './render/views';
 
 // The whole map in the corner: terrain, your fog of war, structures, camps, Chuds, champion portraits,
 // pings and the box your camera sees. Click it to look somewhere, right-click to walk there.
@@ -31,7 +32,7 @@ export interface MinimapView {
 /** Width on screen, in CSS pixels; the height follows the map's shape. */
 const WIDTH = 260;
 const ALLY = '#3d8bfd';
-const ENEMY = '#e5484d';
+const enemyCss = () => `#${PALETTE.enemy.toString(16).padStart(6, '0')}`;
 const css = (c: number) => `#${c.toString(16).padStart(6, '0')}`;
 
 export class Minimap {
@@ -117,7 +118,8 @@ export class Minimap {
     v.drawFog(g, this.w, this.h);
 
     const ents = [...v.ents].filter((e) => e.k !== 'projectile' && e.k !== 'trap' && e.k !== 'zone' && e.k !== 'pickup');
-    const side = (e: EntitySnap) => (e.tm === v.myTeam ? ALLY : ENEMY);
+    const enemy = enemyCss();
+    const side = (e: EntitySnap) => (e.tm === v.myTeam ? ALLY : enemy);
     for (const e of ents) {
       if (e.dead || e.k !== 'chud') continue;
       dot(g, e.x * s, e.y * s, 1.8, side(e));

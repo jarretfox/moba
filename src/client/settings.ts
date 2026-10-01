@@ -9,9 +9,13 @@ export interface Settings {
   /** Low turns off the glow pass and thins out particles and rain, for slower machines. */
   quality: 'high' | 'low';
   showFps: boolean;
+  /** Enemies in orange-yellow instead of red, for red-blind players. */
+  colorblind: boolean;
+  /** Interface size, 0.8–1.3. */
+  uiScale: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1 };
 
 const KEY = 'moba.settings';
 
@@ -27,6 +31,8 @@ export function parseSettings(raw: string | null): Settings {
     }
     if (v.quality === 'high' || v.quality === 'low') s.quality = v.quality;
     if (typeof v.showFps === 'boolean') s.showFps = v.showFps;
+    if (typeof v.colorblind === 'boolean') s.colorblind = v.colorblind;
+    if (typeof v.uiScale === 'number' && Number.isFinite(v.uiScale)) s.uiScale = Math.max(0.8, Math.min(1.3, v.uiScale));
   } catch {
     // a broken save just means the defaults
   }
@@ -59,6 +65,28 @@ export function updateSettings(patch: Partial<Settings>): void {
 export function onSettings(fn: (s: Settings) => void): void {
   listeners.push(fn);
   fn(settings);
+}
+
+/** Interface size, 80–130%. */
+function scaleSlider(): HTMLElement {
+  const row = document.createElement('label');
+  row.className = 'settings-row';
+  const name = document.createElement('span');
+  name.textContent = 'Interface size';
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = '80';
+  input.max = '130';
+  input.step = '5';
+  input.value = String(Math.round(settings.uiScale * 100));
+  const value = document.createElement('b');
+  value.textContent = `${input.value}%`;
+  input.addEventListener('input', () => {
+    value.textContent = `${input.value}%`;
+    updateSettings({ uiScale: Number(input.value) / 100 });
+  });
+  row.append(name, input, value);
+  return row;
 }
 
 /** The settings panel: sliders and toggles, for the in-game menu and the main menu's gear. */
@@ -117,6 +145,11 @@ export function settingsPanel(): HTMLElement {
       ['Off', () => !settings.showFps, () => updateSettings({ showFps: false })],
       ['On', () => settings.showFps, () => updateSettings({ showFps: true })],
     ]),
+    toggle('Enemy color', [
+      ['Red', () => !settings.colorblind, () => updateSettings({ colorblind: false })],
+      ['Orange (colorblind)', () => settings.colorblind, () => updateSettings({ colorblind: true })],
+    ]),
+    scaleSlider(),
   );
   return panel;
 }

@@ -24,6 +24,7 @@ import { brazierFire, footstep, castFlash, monsterAura, playSpell, projectileTra
 import { paintLampGlows, propSpots } from './render/props';
 import { Lighting, nightAt, skyAt } from './render/lighting';
 import { WeatherView } from './render/weather';
+import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
 import { CAST_COLORS } from './render/spells';
 import type { FxKind } from '../shared/protocol';
@@ -36,9 +37,11 @@ import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
 import { HEIGHT, buildMap, buildNavOverlay, elevate } from './render/mapView';
 import { lanePath } from '../shared/map/mapData';
-import { PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
+import { PALETTE, enemyLight, setColorblind, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
+import { DamageLog } from './recap';
+import { CHUD_DEFS } from '../shared/sim/chud';
 
 /** While right mouse is held, re-send the move target this often. */
 const HOLD_MOVE_INTERVAL = 0.12;
@@ -62,6 +65,8 @@ export class GameClient {
   private readonly fx = new FxLayer();
   private readonly ambience = new Ambience(MAP);
   private readonly water = new Water(MAP);
+  /** Birds, bats and frogs. */
+  private readonly critters = new Critters(MAP);
   private navOverlay: Graphics | null = null;
   private readonly nav = new NavGrid(MAP);
   private readonly visionGrid = new VisionGrid(MAP, this.nav);
@@ -119,6 +124,8 @@ export class GameClient {
   private readonly steps = new Map<number, { x: number; y: number; next: number }>();
   /** When you last traded hits with a champion, for the music. */
   private lastFight = -Infinity;
+  /** What hurt you lately, for the death recap. */
+  private readonly damageLog = new DamageLog();
   private nextPlaceCheck = 0;
   /** When the match ends: where Da Base fell, and when, so the camera can go and watch before the scores. */
   private finale: { x: number; y: number; at: number } | null = null;
@@ -177,6 +184,7 @@ export class GameClient {
       this.wallTops,
       this.structureTops,
       this.canopy,
+      this.critters.container,
       this.fog.sprite,
       this.indicator,
       this.unitLayer,
@@ -191,6 +199,9 @@ export class GameClient {
     this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive, this.bloom);
     // Low graphics: no glow pass, fewer particles and raindrops, and a plain-resolution canvas.
     onSettings((s) => {
+      const enemy = PALETTE.enemy;
+      setColorblind(s.colorblind);
+      if (PALETTE.enemy !== enemy) this.redrawViews();
       const high = s.quality === 'high';
       this.bloom.visible = high;
       this.fx.density = high ? 1 : 0.45;
@@ -233,6 +244,15 @@ export class GameClient {
       setTimeout(() => this.sound.play('thunder', 0.8), 300 + Math.random() * 1200);
     };
     this.sound.setRain(w.wetness);
+  }
+
+  /** Throws away every unit and structure view so they're drawn again (after the enemy color changes). */
+  private redrawViews(): void {
+    for (const view of this.views.values()) {
+      view.container.destroy({ children: true });
+      view.top?.destroy({ children: true });
+    }
+    this.views.clear();
   }
 
   /** (Re)paints the map, tinted for the viewer's team. */
@@ -305,6 +325,8 @@ export class GameClient {
     const sky = this.weather ? this.weather.sky(skyAt(matchTime)) : skyAt(matchTime);
     this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, sky);
     this.ambience.setNight(nightAt(matchTime));
+    this.critters.setNight(nightAt(matchTime));
+    this.critters.update(dt, this.ents.values(), { x: this.camera.x, y: this.camera.y, w: w / this.camera.zoom, h: h / this.camera.zoom });
     // The world drains of color while you wait to respawn.
     this.deadFade = Math.max(0, Math.min(1, this.deadFade + (me?.dead && !this.finale ? dt * 2 : -dt * 3)));
     this.deathFilter.alpha = this.deadFade * 0.85;
@@ -423,8 +445,8 @@ export class GameClient {
           const at = lanePath(MAP, s.tm as 1 | 2, lane)[0];
           return Math.hypot(at.x - s.x, at.y - s.y) < 500;
         })) {
-          this.fx.burst(s.x, s.y, s.tm === this.myTeam ? 0x7cc4ff : 0xff7a7a, 70);
-          this.fx.particles.burst(6, { shape: 'mote', x: s.x, y: s.y, life: 0.5, size: 8, size2: 2, color: 0xffffff, color2: s.tm === this.myTeam ? 0x3d8bfd : 0xe5484d, drag: 0.2 }, [60, 140]);
+          this.fx.burst(s.x, s.y, s.tm === this.myTeam ? 0x7cc4ff : enemyLight(), 70);
+          this.fx.particles.burst(6, { shape: 'mote', x: s.x, y: s.y, life: 0.5, size: 8, size2: 2, color: 0xffffff, color2: s.tm === this.myTeam ? PALETTE.ally : PALETTE.enemy, drag: 0.2 }, [60, 140]);
         }
     }
     layer.addChild(view.container);
@@ -441,6 +463,8 @@ export class GameClient {
         // Like League, only damage you deal or take gets a number; a lane full of Chuds would be unreadable otherwise.
         const hit = this.ents.get(ev.target);
         const from = ev.src !== undefined ? this.ents.get(ev.src) : undefined;
+        // Fights scare the birds off.
+        if (hit && hit.k === 'champion') this.critters.alarm(hit.x, hit.y);
         if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.(from, !!hit && ev.amount >= (hit.mhp ?? 1000) * 0.08);
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
@@ -464,6 +488,7 @@ export class GameClient {
           }
         }
         if (ev.src !== this.myId && ev.target !== this.myId) return;
+        if (ev.target === this.myId && ev.src !== this.myId && ev.amount >= 1) this.recordHit(ev, from);
         const other = this.ents.get(ev.src === this.myId ? ev.target : (ev.src ?? -1));
         if (other?.k === 'champion' && ev.amount >= 1) this.lastFight = performance.now() / 1000;
         const t = this.ents.get(ev.target);
@@ -472,6 +497,7 @@ export class GameClient {
       }
       case 'attack': {
         this.views.get(ev.src)?.onAttack?.();
+        this.damageLog.noteAttack(ev.src, performance.now() / 1000);
         const shooter = this.ents.get(ev.src);
         if (shooter?.k === 'structure' && this.ents.get(ev.target)?.k === 'champion') this.towerShots.set(ev.src, { target: ev.target, until: performance.now() / 1000 + 1.4 });
         if (shooter?.k === 'structure') this.shootieFires(shooter, this.ents.get(ev.target));
@@ -491,7 +517,10 @@ export class GameClient {
         if (!t) return;
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
         else this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
-        if (ev.id === this.myId) this.camera.shake(16);
+        if (ev.id === this.myId) {
+          this.camera.shake(16);
+          this.hud.showRecap(this.damageLog.recap(performance.now() / 1000));
+        }
         else if (t.k === 'structure' && t.role === 'daBase') this.camera.shake(24);
         else if (t.k === 'structure' || (t.k === 'monster' && t.mon === 'warden')) this.shakeNear(t, 20);
         return;
@@ -520,7 +549,7 @@ export class GameClient {
       case 'emote': {
         const u = this.ents.get(ev.id);
         if (!u?.champ) return;
-        const color = u.id === this.myId ? 0xe8c46a : u.tm === this.myTeam ? 0x3d8bfd : 0xe5484d;
+        const color = u.id === this.myId ? 0xe8c46a : u.tm === this.myTeam ? PALETTE.ally : PALETTE.enemy;
         this.bubbles.say(u.id, emoteLine(u.champ, ev.kind, ev.n, ev.vs), color);
         (this.views.get(u.id) as UnitView | undefined)?.play?.(EMOTE_ANIM[ev.kind]);
         return;
@@ -542,6 +571,7 @@ export class GameClient {
         const caster = this.ents.get(ev.src);
         this.views.get(ev.src)?.onCast?.(ev.slot);
         if (caster) castFlash(this.fx, caster);
+        if (caster?.champ) this.damageLog.noteCast(ev.src, CHAMPION_INFO[caster.champ].abilities[ev.slot].name, performance.now() / 1000);
         if (caster?.champ && ev.slot === 3) {
           const name = CHAMPION_INFO[caster.champ].abilities[3].name.toUpperCase();
           this.fx.callout(caster.x, caster.y - caster.r - 70, name.endsWith('!') ? name : `${name}!`, CAST_COLORS[caster.champ]);
@@ -555,6 +585,22 @@ export class GameClient {
         return;
       }
     }
+  }
+
+  /** Notes a hit on you for the death recap: who, and with what. */
+  private recordHit(ev: Extract<GameEvent, { e: 'dmg' }>, from: EntitySnap | undefined): void {
+    const t = performance.now() / 1000;
+    const key = ev.src === undefined ? 'unknown' : String(ev.src);
+    let name = from?.name;
+    let label = ev.src === undefined ? 'Lingering effects' : this.damageLog.labelFor(ev.src, t);
+    if (from?.k === 'structure') {
+      name = from.role === 'daBase' ? 'Da Base' : 'Shootie';
+      label = 'Shootie shots';
+    } else if (from?.k === 'chud') {
+      name = CHUD_DEFS[from.chud ?? 'melee'].name;
+      label = 'Chud hits';
+    } else if (from?.k === 'monster' && label === 'Basic attacks') label = 'Mauling';
+    this.damageLog.add({ t, key, name, champ: from?.champ, skin: from?.skin, kind: from?.k, label, amount: ev.amount });
   }
 
   /** Coming down from a knock-up or a leap: a squash, a ring of dust and a thud. */
@@ -588,7 +634,7 @@ export class GameClient {
   private shootieFires(s: EntitySnap, target: EntitySnap | undefined): void {
     const x = s.x + HEIGHT.structure * (s.x - this.camera.x);
     const y = s.y + HEIGHT.structure * (s.y - this.camera.y);
-    const color = s.tm === this.myTeam ? 0x7cc4ff : 0xff7a7a;
+    const color = s.tm === this.myTeam ? 0x7cc4ff : enemyLight();
     this.fx.flash(x, y, 34, color, 0.2, 0.9);
     const a = target ? Math.atan2(target.y - y, target.x - x) : 0;
     this.fx.particles.burst(8, { shape: 'spark', x, y, life: 0.25, size: 14, size2: 3, stretch: 0.05, color: 0xffffff, color2: color, drag: 0.05 }, [250, 500], a, 0.9);
@@ -630,7 +676,7 @@ export class GameClient {
     const halfW = this.app.screen.width / 2 / this.camera.zoom + 300;
     const halfH = this.app.screen.height / 2 / this.camera.zoom + 300;
     for (const team of [TEAM.blue, TEAM.red] as const) {
-      const color = team === this.myTeam ? 0x3d8bfd : 0xe5484d;
+      const color = team === this.myTeam ? PALETTE.ally : PALETTE.enemy;
       for (const lane of ['top', 'bot'] as const) {
         const at = lanePath(MAP, team, lane)[0];
         if (Math.abs(at.x - this.camera.x) > halfW || Math.abs(at.y - this.camera.y) > halfH) continue;

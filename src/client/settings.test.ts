@@ -15,5 +15,7 @@ describe('saved settings', () => {
     expect(s.quality).toBe(DEFAULT_SETTINGS.quality);
     expect(s.showFps).toBe(DEFAULT_SETTINGS.showFps);
     expect(parseSettings(JSON.stringify({ quality: 'low', showFps: true }))).toMatchObject({ quality: 'low', showFps: true });
+    expect(parseSettings(JSON.stringify({ colorblind: true, uiScale: 3 }))).toMatchObject({ colorblind: true, uiScale: 1.3 });
+    expect(parseSettings(JSON.stringify({ colorblind: 'yes', uiScale: 0.1 }))).toMatchObject({ colorblind: false, uiScale: 0.8 });
   });
 });

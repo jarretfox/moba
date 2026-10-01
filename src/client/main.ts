@@ -36,6 +36,8 @@ async function boot(): Promise<void> {
   await fonts;
   onSettings((s) => {
     if (s.quality === 'low' && app.renderer.resolution !== 1) app.renderer.resize(app.screen.width, app.screen.height, 1);
+    document.documentElement.style.setProperty('--ui', String(s.uiScale));
+    document.documentElement.classList.toggle('colorblind', s.colorblind);
   });
   // Soft ticks as the pointer moves over things you can click, and a click when you do.
   const clickable = (t: EventTarget | null) => (t instanceof Element ? t.closest('button, .select-card, .skin-dot, .menu-gear') : null);

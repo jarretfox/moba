@@ -27,7 +27,17 @@ export const PALETTE = {
   bark: 0x6b4a2b,
   leaf: 0x3f7a35,
   leafDark: 0x2c5a26,
-} as const;
+};
+
+/** Red-blind friendly: enemies in orange-yellow instead of red (for everything drawn from now on). */
+export function setColorblind(on: boolean): void {
+  PALETTE.enemy = on ? 0xffa81e : 0xe5484d;
+}
+
+/** A lighter tint of the enemy color, for flashes and sparks. */
+export function enemyLight(): number {
+  return PALETTE.enemy === 0xe5484d ? 0xff7a7a : 0xffc46b;
+}
 
 /** What a view might need to know beyond its own entity. */
 export interface ViewContext {

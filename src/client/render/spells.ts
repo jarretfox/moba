@@ -3,6 +3,7 @@ import type { ChampionId } from '../../shared/champions/types';
 import type { FxLayer } from './fx';
 import { iconTexture } from './icons';
 import type { Emit } from './particles';
+import { PALETTE } from './views';
 import { arc } from './draw';
 
 // What every spell looks like: the building blocks in fx.ts put together per ability, plus the trails
@@ -498,7 +499,7 @@ export function projectileTrail(fx: FxLayer, s: EntitySnap, friendly: boolean): 
       p.emit({ ...e, x: s.x + rand(-jitter, jitter), y: s.y + rand(-jitter, jitter), vx: (e.vx ?? 0) + bx * speed + rand(-25, 25), vy: (e.vy ?? 0) + by * speed + rand(-25, 25) });
     }
   };
-  const head = s.vis === 'shootie' ? ([friendly ? 0x3d8bfd : 0xe5484d, 80] as [number, number]) : HEADS[s.vis ?? ''];
+  const head = s.vis === 'shootie' ? ([friendly ? PALETTE.ally : PALETTE.enemy, 80] as [number, number]) : HEADS[s.vis ?? ''];
   // Lives about a frame, so there's always one glowing on the projectile as it moves.
   if (head) p.emit({ shape: 'glow', x: s.x, y: s.y, life: 0.05, size: head[1], color: head[0], alpha: 0.75, fadeIn: 0.01 });
   switch (s.vis) {
