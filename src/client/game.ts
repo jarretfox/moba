@@ -279,6 +279,13 @@ export class GameClient {
       case 'roar':
         this.fx.wedge(ev.x, ev.y, x2, y2, ev.r ?? 100, 0xff9f43);
         return this.fx.shockwave(ev.x, ev.y, 120, 0xff9f43, 0.4);
+      case 'summon':
+        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 110, 0xffd166, 0.5);
+      case 'kneel':
+        return this.fx.wedge(ev.x, ev.y, x2, y2, ev.r ?? 70, 0xffd166);
+      case 'decree':
+        this.fx.shockwave(ev.x, ev.y, ev.r ?? 90, 0xffd166, 0.7);
+        return this.fx.burst(ev.x, ev.y, 0xffd166);
     }
   }
 
@@ -404,7 +411,7 @@ export class GameClient {
     let best: EntitySnap | null = null;
     let bestD = Infinity;
     for (const e of this.ents.values()) {
-      const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || e.k === 'monster' || e.k === 'totem' || (e.k === 'structure' && !e.inv);
+      const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || e.k === 'monster' || e.k === 'totem' || e.k === 'guard' || (e.k === 'structure' && !e.inv);
       if (!attackable || e.dead || e.tm === this.myTeam) continue;
       const d = dist(p, e);
       if (d <= e.r + CLICK_SLOP && d < bestD) {

@@ -7,6 +7,8 @@ export const SIGHT = {
   chud: 800,
   /** HunnaG's Mushroom Totem. */
   totem: 700,
+  /** King Rix's royal guards. */
+  guard: 500,
   structure: { outerShootie: 1100, innerShootie: 1100, baseShootie: 1100, oakner: 700, daBase: 900 } satisfies Record<StructureRole, number>,
 } as const;
 
@@ -19,6 +21,8 @@ export function sightOf(kind: EntityKind, role?: StructureRole): number {
       return SIGHT.chud;
     case 'totem':
       return SIGHT.totem;
+    case 'guard':
+      return SIGHT.guard;
     case 'structure':
       return role ? SIGHT.structure[role] : 0;
     default:

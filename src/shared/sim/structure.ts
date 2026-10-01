@@ -48,6 +48,8 @@ export class Structure extends Unit {
   readonly immovable = true;
   readonly role: StructureRole;
   readonly lane: Lane | null;
+  /** Two Crowns: a banner King Rix hangs over his Da Base after killing Logan. */
+  banner: string | undefined;
   /** Wired up by spawnStructures: true once the structures guarding this one are down. */
   vulnerableWhen: () => boolean = () => true;
   private invulnerable = false;
@@ -163,6 +165,7 @@ export class Structure extends Unit {
       role: this.role,
       inv: (!this.dead && this.invulnerable) || undefined,
       regrow: this.dead && Number.isFinite(this.respawnAt) ? Math.ceil(this.respawnAt - world.time) : undefined,
+      badge: this.banner,
     };
   }
 }

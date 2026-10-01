@@ -160,4 +160,23 @@ const logan: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan };
+const kingrix: BotProfile = {
+  skillOrder: [0, 2, 1],
+  build: ['sagestone', 'treads', 'lantern', 'staff', 'aegis', 'drum'],
+  fight(ctx, foe) {
+    const { me } = ctx;
+    const d = dist(me.pos, foe.pos);
+    if (ready(ctx, 3) && foe.kind === 'champion' && hpPct(foe) < 0.7) return cast(3, foe.pos);
+    if (ready(ctx, 2) && d < 330) return cast(2, foe.pos);
+    if (ready(ctx, 1) && d < 600) return cast(1, me.pos);
+    if (ready(ctx, 0) && d < 900) return cast(0, lead(foe, 0.3));
+    return null;
+  },
+  escape(ctx, threat) {
+    const { me } = ctx;
+    if (ready(ctx, 2) && dist(me.pos, threat.pos) < 330) return cast(2, threat.pos);
+    return ready(ctx, 1) ? cast(1, me.pos) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix };

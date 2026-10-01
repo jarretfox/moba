@@ -1,6 +1,6 @@
 import type { PlayerTeam, Slot } from '../constants';
 import { add, dirTo, dist, scale, sub, type Vec2 } from '../math';
-import type { MeSnap } from '../protocol';
+import type { EntitySnap, MeSnap } from '../protocol';
 import { enemiesInCone } from '../sim/query';
 import type { Stats, Unit } from '../sim/unit';
 import type { World } from '../sim/world';
@@ -95,6 +95,8 @@ export class Logan extends Champion {
   private readonly allyHealth = new Map<number, number>();
   private pounce = { until: 0, bonus: 0 };
   private mane: { amount: number; until: number } | null = null;
+  /** Two Crowns: he's taken the king's crown. */
+  private crowned = false;
 
   constructor(world: World, team: PlayerTeam) {
     super(world, team, RADIUS, BASE_STATS, GROWTH, 'Logan Lionheart');
@@ -115,7 +117,7 @@ export class Logan extends Champion {
       const before = this.allyHealth.get(u.id) ?? 1;
       this.allyHealth.set(u.id, share);
       // Uneasy Alliance: he'll go to King Rix's aid, but only when things get really bad.
-      const line = u instanceof Champion && (u.info.id as string) === 'kingrix' ? l.rixThreshold : l.threshold;
+      const line = u instanceof Champion && u.info.id === 'kingrix' ? l.rixThreshold : l.threshold;
       if (before >= line && share < line && world.time >= this.lionheartReadyAt && dist(u.pos, this.pos) <= l.range) {
         this.lionheartReadyAt = world.time + l.cooldown;
         this.addShield(world, l.shield(this.level), l.shieldFor);
@@ -223,6 +225,16 @@ export class Logan extends Champion {
     if (target.dead) return;
     if (pounced) target.addStatus(world, 'stun', POUNCE.stun);
     if (this.maneUp) target.addStatus(world, 'slow', THICK_MANE.slowFor, THICK_MANE.slow);
+  }
+
+  takeTrophy(): void {
+    this.crowned = true;
+  }
+
+  snapshot(world: World): EntitySnap {
+    const s = super.snapshot(world);
+    if (this.crowned) s.badge = '👑';
+    return s;
   }
 
   meSnapshot(world: World): MeSnap {

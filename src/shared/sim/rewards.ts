@@ -2,6 +2,7 @@ import type { PlayerTeam } from '../constants';
 import { Champion } from '../champions/champion';
 import { dist } from '../math';
 import { MushroomTotem, TOTEM_BOUNTY } from '../champions/hunnag';
+import { GUARD_BOUNTY, RoyalGuard } from '../champions/kingrix';
 import { Chud } from './chud';
 import { CAMPS, MONSTERS, Monster } from './jungle';
 import { UNCHAINED, WARDEN, Warden, holdsGrudge } from './warden';
@@ -18,6 +19,10 @@ export function rewardDeath(world: World, victim: Unit, source: Unit | null, hel
   if (victim instanceof Chud) return rewardChud(world, victim, source);
   if (victim instanceof Monster) return rewardMonster(world, victim, source, helpers);
   if (victim instanceof Warden) return rewardWarden(world, source, helpers);
+  if (victim instanceof RoyalGuard) {
+    if (source instanceof Champion && source.team !== victim.team) source.gainGold(world, GUARD_BOUNTY);
+    return;
+  }
   if (victim instanceof MushroomTotem) {
     if (source instanceof Champion && source.team !== victim.team) source.gainGold(world, TOTEM_BOUNTY);
     return;
@@ -29,7 +34,10 @@ export function rewardDeath(world: World, victim: Unit, source: Unit | null, hel
 /** Gold only for the last hit; experience for every enemy champion nearby, whoever got the kill. */
 function rewardChud(world: World, chud: Chud, source: Unit | null): void {
   const reward = CHUD_REWARD[chud.chudType];
-  if (source instanceof Champion && source.team !== chud.team) source.gainGold(world, reward.gold);
+  if (source instanceof Champion && source.team !== chud.team) {
+    source.gainGold(world, reward.gold);
+    for (const u of world.units()) if (u instanceof Champion && u !== source && u.team === source.team && !u.dead) u.onAllyLastHit(world, chud);
+  }
   const nearby = world
     .units()
     .filter((u): u is Champion => u instanceof Champion && !u.dead && u.team !== chud.team && dist(u.pos, chud.pos) <= XP_SHARE_RANGE);
@@ -66,6 +74,11 @@ function rewardWarden(world: World, source: Unit | null, helpers: Unit[]): void 
   world.emit({ e: 'kill', killer: killer.name, victim: uprising ? 'The Warden (Uprising!)' : 'The Warden', team });
 }
 
+function isRivalry(a: Champion, b: Champion): boolean {
+  const ids = new Set([a.info.id, b.info.id]);
+  return a.team !== b.team && ids.has('logan') && ids.has('kingrix');
+}
+
 /** The whole destroying team gets paid. */
 function rewardStructure(world: World, s: Structure, source: Unit | null): void {
   const team = s.team === 1 ? 2 : 1;
@@ -83,8 +96,11 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
   // A champion who hurt them in the last few seconds gets the kill even if a Shootie or Chud finished them.
   const killer = source instanceof Champion && source.team !== victim.team ? source : enemies[0];
   const assisters = enemies.filter((h) => h !== killer);
+  // Two Crowns: Logan and King Rix on opposite sides pay double for each other, and the winner keeps a trophy.
+  const rivals = killer !== undefined && isRivalry(killer, victim);
   if (killer) {
-    killer.gainGold(world, killBounty(victim.streak));
+    killer.gainGold(world, killBounty(victim.streak) * (rivals ? 2 : 1));
+    if (rivals) killer.takeTrophy(world);
     killer.streak++;
   }
   for (const a of assisters) a.gainGold(world, ASSIST_GOLD / assisters.length);

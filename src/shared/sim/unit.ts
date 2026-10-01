@@ -49,7 +49,7 @@ const STUCK_NEAR = 120;
 
 /** Anything with health that moves, attacks, and gets crowd-controlled: champions, dummies, later chuds and jungle mobs. */
 export abstract class Unit implements Entity {
-  abstract readonly kind: 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem';
+  abstract readonly kind: 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem' | 'guard';
   removed = false;
   pos: Vec2;
   facing = 0;
@@ -65,6 +65,8 @@ export abstract class Unit implements Entity {
   revealedUntil = -Infinity;
   /** King Rix's royal guards: Logan's roar scares them twice as long (the Royal Menagerie). */
   readonly fearsLions: boolean = false;
+  /** Royal Tax: allied Chuds near this unit deal this share more damage. */
+  readonly chudAura: number = 0;
   /** Can't be shoved by other units (training dummies now; structures later). */
   readonly immovable: boolean = false;
   /** Direction walked this tick, or null if the unit stood still. Collision uses it to decide who gives way. */

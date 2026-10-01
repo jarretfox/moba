@@ -116,6 +116,7 @@ export class World {
   damage(source: Unit | null, target: Unit, amount: number, type: DamageType, opts: { basic?: boolean } = {}): number {
     if (!target.isTargetable() || amount <= 0) return 0;
     if (source) amount *= 1 - source.strongest('weaken');
+    amount *= 1 + target.strongest('decreed'); // Royal Decree
     const resist = type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0;
     const dealt = target.absorb(type === 'true' ? amount : mitigate(amount, resist));
     target.hp -= dealt;

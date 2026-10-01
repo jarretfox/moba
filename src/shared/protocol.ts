@@ -83,6 +83,10 @@ export type StatusKind =
   | 'speed'
   /** Running away in terror, can't act. */
   | 'fear'
+  /** King Rix's Royal Decree: revealed to everyone, takes more damage (amount = extra share). */
+  | 'decreed'
+  /** A Chud under King Rix's Royal Tax. */
+  | 'royal'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -96,7 +100,7 @@ export interface WardenStatus {
   unchained?: { team: PlayerTeam; left: number; uprising: boolean }[];
 }
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
-export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem' | 'projectile' | 'trap' | 'pickup' | 'zone';
+export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem' | 'guard' | 'projectile' | 'trap' | 'pickup' | 'zone';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind =
@@ -122,7 +126,10 @@ export type FxKind =
   | 'deepHands'
   | 'lionheart'
   | 'mane'
-  | 'roar';
+  | 'roar'
+  | 'summon'
+  | 'kneel'
+  | 'decree';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

@@ -31,8 +31,18 @@ const WAYPOINT_REACHED = 150;
 const CORPSE_TIME = 1;
 /** Chuds get tougher as the match goes on, so late waves hit structures harder and stalemates break. */
 const GROWTH_PER_MINUTE = { hp: 0.04, ad: 0.04 };
+/** Royal Tax reaches allied Chuds this close to King Rix. */
+export const CHUD_AURA_RANGE = 700;
+/** Units with a Chud aura, found once per tick rather than once per Chud. */
+const auraCache = new WeakMap<World, { tick: number; units: Unit[] }>();
+function auraSources(world: World): Unit[] {
+  let c = auraCache.get(world);
+  if (!c || c.tick !== world.tick) auraCache.set(world, (c = { tick: world.tick, units: world.units().filter((u) => u.chudAura > 0) }));
+  return c.units;
+}
+
 /** Lower tiers are preferred: other Chuds first, then structures, then champions. */
-const TARGET_TIER: Record<Unit['kind'], number> = { chud: 0, dummy: 0, structure: 1, champion: 2, monster: 9, totem: 9 };
+const TARGET_TIER: Record<Unit['kind'], number> = { chud: 0, dummy: 0, guard: 0, structure: 1, champion: 2, monster: 9, totem: 9 };
 
 /**
  * Lane minions. They march their lane's waypoints and fight whatever they meet, preferring other
@@ -147,7 +157,25 @@ export class Chud extends Unit {
     return Infinity;
   }
 
+  protected computeStats(world: World): Stats {
+    const s = super.computeStats(world);
+    const aura = this.royalAura(world);
+    if (aura) s.ad *= 1 + aura;
+    return s;
+  }
+
+  /** The strongest Royal Tax from an allied King Rix nearby, if any. */
+  private royalAura(world: World): number {
+    let best = 0;
+    for (const u of auraSources(world)) {
+      if (u.chudAura > best && u.team === this.team && !u.dead && dist(u.pos, this.pos) <= CHUD_AURA_RANGE) best = u.chudAura;
+    }
+    return best;
+  }
+
   snapshot(world: World): EntitySnap {
-    return { ...super.snapshot(world), name: undefined, chud: this.chudType };
+    const s: EntitySnap = { ...super.snapshot(world), name: undefined, chud: this.chudType };
+    if (!this.dead && this.royalAura(world)) s.st = [...(s.st ?? []), 'royal'];
+    return s;
   }
 }

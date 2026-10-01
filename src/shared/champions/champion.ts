@@ -277,6 +277,12 @@ export abstract class Champion extends Unit {
     return { x: aim.x, y: aim.y };
   }
 
+  /** An ally on the same team just last-hit a Chud (King Rix's Royal Tax listens for this). */
+  onAllyLastHit(_world: World, _victim: Unit): void {}
+
+  /** Two Crowns: this champion just killed their rival. */
+  takeTrophy(_world: World): void {}
+
   /** A second press of an ability that's still active (e.g. surfacing from Burrow). True if it was handled. */
   protected recast(_world: World, _slot: Slot, _aim: Vec2): boolean {
     return false;

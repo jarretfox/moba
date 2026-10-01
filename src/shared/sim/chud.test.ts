@@ -180,5 +180,5 @@ describe('a full match of Chud waves', () => {
     expect(deaths).toBeGreaterThan(50);
     expect(maxChuds).toBeLessThan(120);
     expect(avgMs).toBeLessThan(10); // a tick is 33 ms; the host has to leave room for everything else
-  });
+  }, 30_000); // five minutes of match
 });

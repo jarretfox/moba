@@ -68,6 +68,13 @@ export class UnitView implements EntityView {
       drawChud(this.facing, s.chud ?? 'melee', r, color);
     } else if (s.k === 'monster') {
       drawMonster(this.facing, s.mon ?? 'rat', r);
+    } else if (s.k === 'guard') {
+      // A royal guard from above: team-colored tabard, a steel helmet, a round shield and a spear.
+      this.facing.circle(0, 0, r).fill(color).stroke({ width: 2, color: PALETTE.outline });
+      this.facing.circle(0, 0, r * 0.55).fill(0xb8bec6).stroke({ width: 2, color: 0x4a4f58 });
+      this.facing.circle(-r * 0.2, r * 0.85, r * 0.45).fill(0xd9c27a).stroke({ width: 2, color: 0x6b5a22 });
+      this.facing.rect(r * 0.2, -r * 0.95, r * 1.6, r * 0.18).fill(0x8a6a44);
+      this.facing.poly([r * 1.8, -r * 1.05, r * 2.2, -r * 0.86, r * 1.8, -r * 0.67]).fill(0xb8bec6);
     } else if (s.k === 'totem') {
       // A squat glowing mushroom with a team-colored ring around its stalk.
       this.body.circle(0, 0, r).fill({ color: 0x6fd6ff, alpha: 0.12 });
@@ -196,6 +203,11 @@ export class UnitView implements EntityView {
     }
     if (st.includes('fear')) g.circle(0, 0, r + 10).stroke({ width: 4, color: 0x9b59d0, alpha: 0.9 });
     if (st.includes('speed')) g.circle(0, 0, r + 3).stroke({ width: 2, color: 0xfff3b0, alpha: 0.7 });
+    if (st.includes('decreed')) {
+      g.circle(0, 0, r + 16).stroke({ width: 3, color: 0xffd166, alpha: 0.95 });
+      g.poly([-12, -r - 26, -12, -r - 36, -6, -r - 30, 0, -r - 38, 6, -r - 30, 12, -r - 36, 12, -r - 26]).fill(0xffd166).stroke({ width: 1.5, color: 0x6b5a22 });
+    }
+    if (st.includes('royal')) g.circle(0, 0, r + 4).stroke({ width: 2, color: 0xffd166, alpha: 0.7 });
     if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }
@@ -229,6 +241,15 @@ export class ProjectileView implements EntityView {
       case 'bolt':
         g.rect(-52, -9, 72, 18).fill({ color: 0x7fe3ff, alpha: 0.28 });
         g.rect(-44, -4, 60, 8).fill(0xe8fbff);
+        break;
+      case 'scepter':
+        g.circle(0, 0, 8).fill({ color: 0xffd166, alpha: 0.35 });
+        g.circle(0, 0, 4.5).fill(0xfff1c1);
+        break;
+      case 'levy':
+        g.rect(-34, -8, 40, 16).fill({ color: 0xffd166, alpha: 0.25 });
+        g.circle(0, 0, 10).fill(0xffd166).stroke({ width: 2, color: 0x8a6a1e });
+        g.circle(0, 0, 4).stroke({ width: 1.5, color: 0x8a6a1e });
         break;
       case 'spore':
         g.circle(0, 0, 9).fill({ color: 0x8fd14f, alpha: 0.35 });
@@ -378,7 +399,7 @@ export class StructureView implements EntityView {
       this.barKey = barKey;
       this.drawBars(s);
     }
-    const note = s.regrow ? `Regrows in ${clock(s.regrow)}` : s.role === 'daBase' && !s.dead ? 'DA BASE' : '';
+    const note = s.regrow ? `Regrows in ${clock(s.regrow)}` : s.role === 'daBase' && !s.dead ? (s.badge ? `${s.badge} DA BASE ${s.badge}` : 'DA BASE') : '';
     if (this.note.text !== note) this.note.text = note;
     this.updateRange(s, ctx.me);
   }
