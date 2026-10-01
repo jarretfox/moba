@@ -157,6 +157,15 @@ Mechanics that come from this:
 - **Uneasy Alliance** (same team): Logan's *Lionheart* passive triggers for allies at 30% health, but for King Rix only at 15%.
 - **Two Crowns** (opposite teams): a kill on the rival pays double bounty and leaves a cosmetic trophy. Logan takes the crown; Rix hangs a lion banner over his Da Base.
 
+### Newcomers
+
+- **Dongmaster** turned up one morning doing pull-ups on the Warden's chains, and nobody has seen him skip a day since. The Barbarian calls him a show-off; they trade words whenever they meet.
+- **The Dark Dabber** is the Rat King's runaway son. He found HunnaG's rot garden in the Deep, ate everything in it, and came back up giggling, red-eyed and wrapped in smoke. He has been trying to get a bite of Havarti for years.
+- **Master Paris** taught King Rix's guard to fence and the king himself to lose gracefully (it didn't take). When Rix caged a lion for the court's amusement, Paris flicked his gloves onto the throne and walked out. Rix has never forgiven the fencing teacher.
+- **Havarti** was a wheel of cheese left in the deepest royal cellar six hundred years ago. Around year four hundred it began to glow; by six hundred it had wings. She guards the jungle against her oldest enemies: mold, rot and rats (HunnaG and the Dark Dabber know who she means).
+
+These rivalries are flavor for now (the match intro and kill quips), not mechanics: Dongmaster vs the Barbarian, Paris vs King Rix, Havarti vs the Dark Dabber and HunnaG.
+
 ## Champions
 
 | Champion | Role | Range | Damage | Resource |
@@ -167,6 +176,12 @@ Mechanics that come from this:
 | HunnaG | Control mage | Ranged | Magic | Mana |
 | Logan Lionheart | Starts fights, protects allies | Melee | Physical | None |
 | King Rix | Commander | Mid-range | Magic | Mana |
+| Dongmaster | Brawler | Melee | Physical | None |
+| Dark Dabber | Ranged carry (stealth, stacking poison) | Ranged | Physical and true | Mana |
+| Master Paris | Melee carry (resets) | Melee | Physical and true | Mana |
+| Havarti | Grows into a ranged carry, protects allies | Melee, then ranged | Mixed | Mana |
+
+Marksman and Barbarian still have placeholder names and kits; the user will send names and kit preferences for them.
 
 King Rix deals magic damage on purpose. Without him, HunnaG would be the only source of magic damage and magic-resist items would be pointless.
 
@@ -231,6 +246,42 @@ The numbers live at the top of `src/shared/champions/kingrix.ts`. Mid-range (400
 - **Uneasy Alliance:** Logan's Lionheart triggers for Rix only below 15% health.
 - **Two Crowns:** on opposite teams, killing the rival pays double the bounty. Logan then wears the crown (👑 over his head); Rix hangs a lion banner over his own Da Base (🦁 DA BASE 🦁).
 
+### Dongmaster ✅ implemented
+
+The numbers live at the top of `src/shared/champions/dongmaster.ts`. No resource: cooldowns only.
+- **Passive, Mog:** enemy champions within 400 of him deal 8% less damage (16% while Ascended). Every champion he Chin Checks gives a stack of Gains: +6 max health for good, up to 30.
+- **Q, Chin Check:** charges forward; the first enemy in the way takes damage and is knocked back 250.
+- **W, Mewing:** a 3s shield (scales with max health) and 20% tenacity; whatever shield is left when it ends heals him for a quarter of it.
+- **E, Sigma Stare:** a cone that damages and fears.
+- **R, Ascension:** a knock-up shockwave, then 8–10s bigger, with bonus max health, +25% attack speed and attacks that splash half damage.
+
+### Dark Dabber ✅ implemented
+
+The numbers live at the top of `src/shared/champions/dabber.ts`. Twitch-style.
+- **Passive, Sticky Resin:** basic attacks stack resin (up to 6, 6s) that deals true damage every second per stack.
+- **Q, Hotbox:** after 0.75s he vanishes into smoke for 5–8s and moves 10% faster. Enemy champions and structures within 300 still spot him (a new rule in vision). Attacking or casting ends it and gives a burst of attack speed.
+- **W, Sticky Icky:** a lobbed glob: 2 stacks and a slow, plus a puddle that adds a stack every second for 3s.
+- **E, Light It Up:** sets fire to every resin stack within 1100 for damage per stack, and clears them. Needs someone to burn.
+- **R, Cloud Nine:** for 6s, +300 range and bonus attack damage; his attacks become smoke bolts that pierce the whole line (falling off 10% per enemy, down to 60%) and stack resin on everyone.
+
+### Master Paris ✅ implemented
+
+The numbers live at the top of `src/shared/champions/paris.ts`. Master Yi-style. Untargetable and damage reduction are new engine features (an `untargetable` status, and `Unit.incomingDamageScale`).
+- **Passive, Riposte:** every 4th basic attack in a row strikes a second time for half damage.
+- **Q, Flèche:** lunges at an enemy and flashes between up to 3–4 nearby enemies, striking each; he can't be hit while he does it. Each basic attack takes 1s off its cooldown.
+- **W, Café Break:** a channel of up to 3s: heals every second and takes 50–65% less damage. Any other order ends it.
+- **E, Touché:** for 5s his basic attacks add true damage.
+- **R, Encore:** 7s of bonus attack and move speed, immune to slows. Champion takedowns add 4s and cut his other cooldowns by 70%.
+
+### Havarti ✅ implemented
+
+The numbers live at the top of `src/shared/champions/havarti.ts`. Kayle-style. Invulnerability (`blessed`) and armor/magic-resist shred (`curdled`) are new engine features in `World.damage`.
+- **Passive, Aged to Perfection:** each attack ripens her (+6% attack speed for 5s, up to 5; fully ripe she's 8% faster). Fresh until level 5 (melee), Aged at 5 (attacks reach 525), Vintage at 9 (attacks send a wave of molten cheese through the enemies behind the target), Legendary at 13 (always fully ripe). Each tier is marked by a burst of light and feathers.
+- **Q, Holy Wheel:** a wheel of cheese that hits the first enemy: magic damage, a 25% slow, and armor and magic resist curdled by 15% for 4s.
+- **W, Fondue Blessing:** heals her and the most hurt allied champion within 900, and both move faster for 2s.
+- **E, Rind Blade:** her attacks add magic damage. Cast: the next attack within 4s reaches 200 further and bites for a share of the target's missing health (capped against non-champions).
+- **R, Divine Fondue:** an allied champion (or herself, if nobody's where she aimed) can't be hurt for 2–3s, then molten cheese erupts around them.
+
 ## Art and sound
 
 - **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.
@@ -250,6 +301,9 @@ The numbers live at the top of `src/shared/champions/kingrix.ts`. Mid-range (400
   - Champions are top-down figures facing where they move, standing on a ring in their team's color (white edge for you): a hooded archer, a horned barbarian, a goggled Chud with a junk sack, a mushroom-capped Chud with a spore staff, a maned lion with a broken collar, a crowned king in a red cape. The art is in `src/client/render/champions.ts`.
   - The same drawings become the HUD portrait and the champion-select pictures: they're rendered to images once at startup.
   - Abilities, passives and items use emoji icons. Only emoji up to version 12 are used, so they show on Windows 10 too.
+  - **Character:** champions fidget when they stand still (`FIDGETS` in `render/animation.ts`) and talk in synthesized gibberish voices on emotes, ultimates, big hits and deaths (`src/client/voices.ts`).
+  - **Story landmarks** (`render/landmarks.ts`): Logan's broken Royal Cage, the Fallen King statue, the Warden's chains in the pit, Willmore's sewer (the Deep) and HunnaG's Rot; and round the pit, Master Paris's Le Petit Café, Dongmaster's Iron Paradise, Havarti's Royal Cellar and the Dark Dabber's Hotbox. They're decoration only (no collision), kept clear of brush.
+  - **Play of the Game** (`src/client/highlights.ts`): the client keeps the last few seconds of snapshots, scores each play, and replays the best one before the scores.
 - **Sound is synthesized** with Web Audio (`src/client/audio.ts`): every effect is a few oscillators, filtered noise and envelopes, so there are no audio files either.
   - Which event makes which sound is in `src/client/sfx.ts`: attacks (swings, shots, Shootie zaps), hits on you or by you, deaths, casts, the big moments (slams, roars, digging, telegraph warnings), level-ups, gold, the kill feed, and a victory or defeat jingle.
   - Sounds play where they happen: quieter the further from the middle of your screen, and panned left or right. Chuds are much quieter than champions, and repeats are rate-limited so a big fight stays readable.

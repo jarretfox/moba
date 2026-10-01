@@ -18,6 +18,7 @@ const GOLD = 0xc9a23a;
 const STONE = 0x8a857a;
 const STONE_DARK = 0x5e5a52;
 const MOSS = 0x4f6b34;
+const WHITE_CUP = 0xffffff;
 
 export interface Landmarks {
   /** On the ground, above the water. */
@@ -29,7 +30,7 @@ export interface Landmarks {
 }
 
 /** Where each landmark sits, mirrored to the map's size (the layout is authored for 12000 by 7000). */
-export function landmarkSpots(map: MapData): Record<'cage' | 'statue' | 'sewer' | 'rot' | 'pit', { x: number; y: number }> {
+export function landmarkSpots(map: MapData): Record<'cage' | 'statue' | 'sewer' | 'rot' | 'pit' | 'cafe' | 'gym' | 'cellar' | 'den', { x: number; y: number }> {
   const cx = map.width / 2;
   const cy = map.height / 2;
   return {
@@ -38,6 +39,11 @@ export function landmarkSpots(map: MapData): Record<'cage' | 'statue' | 'sewer' 
     sewer: { x: cx, y: cy - 1250 },
     rot: { x: cx, y: cy + 1250 },
     pit: { x: cx, y: cy },
+    // Out from the Warden's pit, one in each quarter of the jungle (clear of brush).
+    cafe: { x: cx - 1400, y: cy - 800 },
+    gym: { x: cx + 1400, y: cy - 800 },
+    cellar: { x: cx - 1400, y: cy + 800 },
+    den: { x: cx + 1400, y: cy + 800 },
   };
 }
 
@@ -64,6 +70,14 @@ export function buildLandmarks(map: MapData): Landmarks {
   label('THE DEEP', at.sewer.x, at.sewer.y - 160);
   rotBloom(ground, tall, at.rot.x, at.rot.y);
   label('THE ROT', at.rot.x, at.rot.y + 160);
+  petitCafe(ground, tall, at.cafe.x, at.cafe.y);
+  label('LE PETIT CAFÉ', at.cafe.x, at.cafe.y + 140);
+  ironParadise(ground, tall, at.gym.x, at.gym.y);
+  label('IRON PARADISE', at.gym.x, at.gym.y + 140);
+  royalCellar(ground, tall, at.cellar.x, at.cellar.y);
+  label('THE ROYAL CELLAR', at.cellar.x, at.cellar.y + 140);
+  ratDen(ground, tall, at.den.x, at.den.y);
+  label('THE HOTBOX', at.den.x, at.den.y + 140);
 
   const lights: FlickerLight[] = [
     { x: at.sewer.x, y: at.sewer.y, r: 300, color: 0x6fd6a0, alpha: 0.35, base: 0.35, flicker: 0.3, phase: 1, speed: 2 },
@@ -72,6 +86,10 @@ export function buildLandmarks(map: MapData): Landmarks {
     // A shaft of pale light on the cage and the fallen king, so they show at dusk.
     { x: at.cage.x, y: at.cage.y, r: 330, color: 0xffe2a8, alpha: 0.4, base: 0.4, flicker: 0.05, phase: 4, speed: 0.5 },
     { x: at.statue.x + 40, y: at.statue.y, r: 360, color: 0xcfe0ff, alpha: 0.4, base: 0.4, flicker: 0.05, phase: 5, speed: 0.5 },
+    { x: at.cafe.x, y: at.cafe.y, r: 300, color: 0xffd9a0, alpha: 0.45, base: 0.45, flicker: 0.1, phase: 6, speed: 3 },
+    { x: at.cellar.x, y: at.cellar.y, r: 280, color: 0xffe29a, alpha: 0.5, base: 0.5, flicker: 0.25, phase: 7, speed: 7 },
+    { x: at.den.x, y: at.den.y, r: 300, color: 0xb8f07a, alpha: 0.35, base: 0.35, flicker: 0.3, phase: 8, speed: 1.5 },
+    { x: at.gym.x, y: at.gym.y, r: 280, color: 0xe8f0ff, alpha: 0.3, base: 0.3, flicker: 0.02, phase: 9, speed: 0.5 },
   ];
   return { flat, tall, lights };
 }
@@ -224,6 +242,93 @@ function sewerMouth(g: Graphics, top: Graphics, x: number, y: number): void {
   // A rusted pipe standing up out of the water.
   top.roundRect(x - 165, y - 105, 30, 70, 6).fill(0x6a4a2a).stroke(INK);
   top.ellipse(x - 150, y - 105, 15, 7).fill(0x2a1a10);
+}
+
+/** Master Paris's café: a little round table for two under a striped parasol, and a fencing strip beside it. */
+function petitCafe(g: Graphics, top: Graphics, x: number, y: number): void {
+  // The piste, chalked out on the grass.
+  g.roundRect(x - 150, y + 55, 300, 34, 4).fill({ color: 0xe8e0cc, alpha: 0.55 }).stroke({ width: 2, color: 0x8a8070, alpha: 0.6 });
+  for (const t of [-100, -50, 0, 50, 100]) g.moveTo(x + t, y + 55).lineTo(x + t, y + 89).stroke({ width: 2, color: 0x8a8070, alpha: 0.6 });
+  // Chairs, and the table's shadow.
+  for (const side of [-1, 1]) g.circle(x + side * 62, y - 10, 18).fill(0x2a2a30).stroke(INK);
+  g.ellipse(x + 10, y + 6, 46, 18).fill({ color: 0x000000, alpha: 0.25 });
+  // On the raised layer: the table, two cups, a croissant, and the parasol over it.
+  top.circle(x, y - 10, 36).fill(0xf2efe6).stroke(INK);
+  for (const side of [-1, 1]) {
+    top.circle(x + side * 16, y - 18, 7).fill(WHITE_CUP).stroke({ width: 1.5, color: INK.color });
+    top.circle(x + side * 16, y - 18, 4).fill(0x5a3a1a);
+  }
+  top.moveTo(x - 10, y + 2).quadraticCurveTo(x, y - 6, x + 12, y + 4).stroke({ width: 7, color: 0xd99a4a, cap: 'round' });
+  const stripes = 8;
+  for (let i = 0; i < stripes; i++) {
+    const a0 = (i / stripes) * Math.PI * 2;
+    const a1 = ((i + 1) / stripes) * Math.PI * 2;
+    top.moveTo(x, y - 60).arc(x, y - 60, 70, a0, a1).closePath().fill({ color: i % 2 ? 0xc0182b : 0xf2efe6, alpha: 0.92 });
+  }
+  top.circle(x, y - 60, 70).stroke(INK);
+  top.circle(x, y - 60, 5).fill(0x2a2a30);
+}
+
+/** Dongmaster's outdoor gym: a rubber mat, a bench with a loaded bar, a dumbbell rack, chalk everywhere. */
+function ironParadise(g: Graphics, top: Graphics, x: number, y: number): void {
+  g.roundRect(x - 140, y - 90, 280, 180, 8).fill(0x2a2a30).stroke(INK);
+  for (const [cx, cy, cr] of [[x - 90, y + 50, 26], [x + 70, y - 50, 20], [x + 20, y + 60, 16]]) g.circle(cx, cy, cr).fill({ color: 0xffffff, alpha: 0.12 }); // chalk
+  // The dumbbell rack along one side.
+  g.roundRect(x + 80, y - 70, 40, 140, 4).fill(0x4a4f58).stroke(INK);
+  for (let i = 0; i < 5; i++) {
+    const dy = y - 55 + i * 28;
+    g.moveTo(x + 88, dy).lineTo(x + 112, dy).stroke({ width: 4, color: 0x8a9099 });
+    for (const dx of [86, 114]) g.circle(x + dx, dy, 7 + i).fill(0x1a1a1e).stroke({ width: 1.5, color: INK.color });
+  }
+  // A protein shaker, left out.
+  g.roundRect(x - 125, y - 75, 18, 28, 4).fill(0xe5484d).stroke(INK);
+  // The bench and the bar, up on the raised layer.
+  top.roundRect(x - 90, y - 18, 130, 36, 8).fill(0x8a1a22).stroke(INK);
+  top.moveTo(x - 30, y - 70).lineTo(x - 30, y + 70).stroke({ width: 6, color: 0xb8bec6 });
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 3; i++) top.roundRect(x - 44, y + side * (40 + i * 9) - 4, 28, 8, 3).fill(i === 1 ? 0xffd166 : 0x1a1a1e).stroke({ width: 1.5, color: INK.color });
+  }
+}
+
+/** Havarti's birthplace: the hatch to the royal cellar thrown open, stairs into the dark, wheels of cheese and candles. */
+function royalCellar(g: Graphics, top: Graphics, x: number, y: number): void {
+  // The hatch: one door lying open, the opening dark, stairs going down.
+  g.roundRect(x - 60, y - 45, 120, 90, 6).fill(0x120c08).stroke(INK);
+  for (let i = 0; i < 4; i++) g.rect(x - 52 + i * 6, y - 38 + i * 18, 104 - i * 12, 10).fill({ color: 0x5a4632, alpha: 0.9 - i * 0.2 });
+  g.roundRect(x - 60, y - 115, 120, 66, 6).fill(0x6b4a2b).stroke(INK); // the door, flung back
+  for (const dx of [-30, 0, 30]) g.moveTo(x + dx, y - 112).lineTo(x + dx, y - 52).stroke({ width: 2, color: 0x3d2c1a });
+  g.circle(x, y - 82, 7).stroke({ width: 3, color: IRON_HI });
+  // Wheels of cheese stacked beside it, and candles on them.
+  for (const [cx, cy] of [[x + 95, y + 10], [x + 95, y + 55], [x + 140, y + 30], [x - 100, y + 40]]) {
+    g.circle(cx, cy, 26).fill(0xd9a52b).stroke(INK);
+    g.circle(cx, cy, 20).fill(0xf3dc8a);
+    g.circle(cx - 6, cy - 5, 4).fill(0xd8b860);
+  }
+  for (const [cx, cy] of [[x + 95, y + 10], [x - 100, y + 40], [x - 75, y - 60], [x + 70, y - 60]]) {
+    top.roundRect(cx - 4, cy - 26, 8, 22, 2).fill(0xfff6dc).stroke({ width: 1.5, color: INK.color });
+    top.ellipse(cx, cy - 31, 4, 7).fill(0xffd166);
+  }
+}
+
+/** The Dark Dabber's den: crates and barrels in a ring, an old mattress, a lantern, and a haze that never lifts. */
+function ratDen(g: Graphics, top: Graphics, x: number, y: number): void {
+  g.roundRect(x - 50, y - 30, 100, 60, 10).fill(0x6a5a4a).stroke(INK); // the mattress
+  for (const [sx, sy] of [[x - 30, y - 10], [x + 15, y + 8]]) g.circle(sx, sy, 10).fill({ color: 0x4a3a2a, alpha: 0.8 }); // stains
+  for (let i = 0; i < 18; i++) g.ellipse(x - 90 + ((i * 37) % 180), y + 50 + ((i * 23) % 30), 3, 2).fill(0x3a2a1a); // seed husks
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    const bx = x + Math.cos(a) * 115;
+    const by = y + Math.sin(a) * 85;
+    if (i % 2) top.circle(bx, by, 24).fill(0x5a3a1a).stroke(INK).circle(bx, by, 16).stroke({ width: 3, color: 0x2a1a0a });
+    else {
+      top.roundRect(bx - 24, by - 22, 48, 44, 4).fill(0x8a6a3a).stroke(INK);
+      top.moveTo(bx - 24, by - 22).lineTo(bx + 24, by + 22).stroke({ width: 3, color: 0x5a3a1a });
+    }
+  }
+  // The haze, in soft green puffs.
+  for (const [hx, hy, hr] of [[x - 40, y - 40, 50], [x + 30, y - 20, 60], [x - 10, y + 30, 45], [x + 70, y + 40, 40]]) top.circle(hx, hy, hr).fill({ color: 0xc8e6a0, alpha: 0.14 });
+  top.roundRect(x + 55, y - 75, 18, 24, 4).fill(0x2a2018).stroke(INK);
+  top.roundRect(x + 58, y - 72, 12, 16, 3).fill(0xb8f07a);
 }
 
 /** HunnaG's rot: a purple bloom on the water, rings of mushrooms, bubbles. */
