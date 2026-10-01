@@ -1,4 +1,4 @@
-import { Bot } from '../shared/bots/bot';
+import { Bot, runBots } from '../shared/bots/bot';
 import { TEAM_SIZE, addBots, laneForNewBot } from '../shared/bots/lineup';
 import { Champion } from '../shared/champions/champion';
 import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
@@ -154,7 +154,7 @@ export class HostCore {
       if (unit instanceof Champion) for (const cmd of p.queue) applyCommand(this.world, unit, cmd);
       p.queue.length = 0;
     }
-    for (const bot of this.bots) for (const cmd of bot.think(this.world)) applyCommand(this.world, bot.champion, cmd);
+    runBots(this.world, this.bots);
 
     this.world.step();
 

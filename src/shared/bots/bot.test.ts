@@ -3,7 +3,7 @@ import { Barbarian } from '../champions/barbarian';
 import type { Champion } from '../champions/champion';
 import { Marksman } from '../champions/marksman';
 import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
-import { MAP, lanePath } from '../map/mapData';
+import { MAP, lanePath, type Lane, type StructureRole } from '../map/mapData';
 import { dist } from '../math';
 import { Chud } from '../sim/chud';
 import { applyCommand } from '../sim/commands';
@@ -13,7 +13,7 @@ import { WardenLair } from '../sim/warden';
 import { Structure, spawnStructures } from '../sim/structure';
 import { WaveSpawner } from '../sim/waves';
 import { World } from '../sim/world';
-import { Bot } from './bot';
+import { Bot, GROUP_UP_AT, pushLane, runBots } from './bot';
 import { addBots } from './lineup';
 import { progressAlong } from './lanes';
 
@@ -31,7 +31,7 @@ function match(opts: { waves?: boolean } = {}) {
 
 function run(world: World, bots: Bot[], seconds: number, eachTick?: () => void): void {
   for (let i = 0; i < Math.round(seconds * TICK_RATE); i++) {
-    for (const b of bots) for (const c of b.think(world)) applyCommand(world, b.champion, c);
+    runBots(world, bots);
     world.step();
     world.drainEvents();
     eachTick?.();
@@ -173,6 +173,47 @@ describe('bots and champions', () => {
   });
 });
 
+describe('running bots', () => {
+  it("decide from the same world state, so no bot sees another's orders from the same tick", () => {
+    const { world } = match();
+    const [first, second] = [...addBots(world, TEAM.blue, 1), ...addBots(world, TEAM.red, 1)];
+    let sawFirstMoving: boolean | undefined;
+    first.think = () => [{ k: 'move', x: 2000, y: 3500 }];
+    second.think = () => {
+      sawFirstMoving = first.champion.order.kind === 'move';
+      return [];
+    };
+    runBots(world, [first, second]);
+    expect(sawFirstMoving).toBe(false);
+    expect(first.champion.order.kind).toBe('move');
+  });
+});
+
+describe('late in the game', () => {
+  it('a team pushes the lane where the enemy has the least left, and only switches for a clear gain', () => {
+    const { world, structures } = match();
+    const red = (role: StructureRole, lane: Lane) => structures.find((s) => s.team === TEAM.red && s.role === role && s.lane === lane)!;
+    red('outerShootie', 'top').die(world, null);
+    expect(pushLane(world, TEAM.blue)).toBe('top');
+    red('outerShootie', 'bot').die(world, null);
+    red('innerShootie', 'bot').hp *= 0.6; // bot is now a little better, but not by a whole structure
+    expect(pushLane(world, TEAM.blue)).toBe('top');
+    red('innerShootie', 'bot').die(world, null);
+    expect(pushLane(world, TEAM.blue)).toBe('bot');
+  });
+
+  it('bots leave their own lanes and group up in the push lane', () => {
+    const { world, structures } = match();
+    structures.find((s) => s.team === TEAM.red && s.role === 'outerShootie' && s.lane === 'bot')!.die(world, null);
+    const bots = addBots(world, TEAM.blue, 3);
+    world.time = GROUP_UP_AT - 1; // (the clock only moves forward from here)
+    world.tick = Math.round(world.time * TICK_RATE);
+    run(world, bots, 20);
+    const top = bots.find((b) => b.lane === 'top')!;
+    expect(top.champion.pos.y).toBeGreaterThan(MAP.height / 2); // walked over to the bot lane
+  });
+});
+
 describe('a bots-only match', () => {
   it('plays out to a winner, and stays fast and sane doing it', () => {
     const { world } = match({ waves: true });
@@ -182,7 +223,7 @@ describe('a bots-only match', () => {
     const started = performance.now();
 
     for (let i = 0; i < 40 * 60 * TICK_RATE && !world.winner; i++) {
-      for (const b of bots) for (const c of b.think(world)) applyCommand(world, b.champion, c);
+      runBots(world, bots);
       const t0 = performance.now();
       world.step();
       slowest = Math.max(slowest, performance.now() - t0);

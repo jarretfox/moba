@@ -35,6 +35,10 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Damage numbers only appear for damage you deal or take, as in League. A lane full of Chuds would be unreadable otherwise.
   - **They grow:** each Chud spawns with +4% health and damage per minute of match time. Shootie shots still take a fixed share of their health, so late waves hit structures much harder. This is what breaks evenly matched lanes open.
 - **Structures per lane, per team:** 2 Shooties and 1 Oakner. Da Base is guarded by one more Shootie. Numbers live in `src/shared/sim/structure.ts`.
+  - **Health:**
+    - Outer Shootie 2500, inner and base Shootie 3000, all with 40 armor.
+    - Oakner 2200 and Da Base 4000, with 20 armor.
+    - A late-game champion takes an outer Shootie in about 20s alone; a grouped team takes it in about 7s.
   - **They fall in order:** outer Shootie → inner Shootie → Oakner in the same lane. The base Shootie can be hit while either Oakner is down, and Da Base only once the base Shootie is gone. Until then a structure is shielded: grey health bar, and it can't be attacked.
   - While an enemy Oakner is down, every one of your waves in that lane is led by a **Chud Brute**: 1500 HP, tough, and it takes 15 Shootie shots to kill.
   - Oakners regrow after 4 minutes. If both are standing again, the base Shootie is shielded again.
@@ -115,8 +119,10 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Fighting:** they engage enemy champions within 700 when they're at least as healthy, or the enemy is below 35%. They avoid trading into a crowd of enemy Chuds, never dive towers, and give ground when hit by someone they won't fight. Each champion uses its kit in fights: for example the Marksman rolls away from melee champions and fires Longshot at low targets, and the Barbarian leaps in and uses Berserk when things get close.
   - **Going home:** below 25% health (35% with an enemy near), they recall if it's safe, or run home using escape abilities. They come back at 90%.
   - **Shopping:** each champion has a fixed build (in `profiles.ts`). They buy the next item whenever they're in the shop and can afford it, selling basics to make room. With 900+ gold that buys the next item and no enemy around, they go home to spend it.
-  - **What they don't do:** dodge skillshots, plan ganks, or coordinate as a team.
-  - A bots-only match currently ends in roughly 27 minutes. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items. Human pressure ends games sooner.
+  - **Grouping up:** from 18:00 a team's bots leave their own lanes and push one lane together: the one where the enemy has the least left standing. They switch lanes only once the other one is better by a whole structure.
+  - **Fair ticks:** every bot decides from the same world state before any of their orders go in, and which team's orders go first alternates each tick. Before this, the team whose bots acted first lost every bots-only match, because casts land the moment they're applied and the other team's bots reacted within the same tick.
+  - **What they don't do:** dodge skillshots, plan ganks, defend as a group, or take camps and the Warden.
+  - **Match length:** a bots-only match ends in 19–29 minutes (median about 20), usually in a base race soon after the bots group up. Wins split evenly between the sides. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items.
 
 ## Lore
 
@@ -265,12 +271,13 @@ src/
 | M0 | Project, host-in-worker, map blockout, nav grid + A*, click-to-move, basic attacks, full Marksman kit, training dummies, HUD | ✅ done |
 | M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | ✅ done (plus Recall, fountain, champion select, growing death timers and Chuds) |
 | M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | ✅ done — live at https://jarretfox.github.io/moba/ |
-| M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | |
+| M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | ✅ done (plus kill feed, structure retune, bots that group up late, fair bot ticks) |
 | M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |
 | M5 | Balance tools, playtests | |
 
-### Known gaps after M1
-- **Structure health is still tuned down** for level-1 champions (outer Shootie 1800). M3 will raise it again now that champions level and buy items.
-- **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster).
+### Known gaps after M3
+- **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster). Old Grudge and Uprising are wired up but can't trigger until Willmore and HunnaG exist (M4).
 - **Bots don't jungle or fight the Warden.** All three per side lane; the camps and the Warden are there for humans.
-- Bots don't dodge skillshots or coordinate as a team.
+- Bots don't dodge skillshots or defend as a group. Late in the game both teams often push different lanes and race each other's bases.
+- No minimap, scoreboard, or camp respawn timers yet.
+- No item art: items show as two-letter glyphs, colored by tier.

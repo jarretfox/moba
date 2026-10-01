@@ -1,9 +1,10 @@
 import type { Champion } from '../champions/champion';
-import { DT, type PlayerTeam, type Slot } from '../constants';
+import { DT, TEAM, type PlayerTeam, type Slot } from '../constants';
 import { lanePath, type Lane } from '../map/mapData';
 import { dist, type Vec2 } from '../math';
 import type { Command } from '../protocol';
 import { Chud } from '../sim/chud';
+import { applyCommand } from '../sim/commands';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { canRankUp } from '../sim/progression';
 import { STRUCTURE_DEFS, Structure, isShootie } from '../sim/structure';
@@ -39,8 +40,22 @@ const MIN_TOWER_COVER = 2;
 const CHUD_AGGRO_LIMIT = 4;
 /** Don't reissue a move unless the destination has shifted this far. */
 const MOVE_RESEND = 60;
+/** From here on a team's bots stop holding their own lanes and push one lane together, to close the game out. */
+export const GROUP_UP_AT = 18 * 60;
 /** Head home to shop once there's this much gold to spend (and it buys the next item). */
 const SHOPPING_TRIP = 900;
+
+/**
+ * Runs a tick of bot decisions. Every bot decides from the same world state before any orders go in,
+ * since casts land the moment they're applied. Otherwise bots deciding later in the tick would see the
+ * earlier ones' casts and react to them first. Which team's orders go in first alternates each tick.
+ */
+export function runBots(world: World, bots: readonly Bot[]): void {
+  const orders = bots.map((bot) => ({ bot, cmds: bot.think(world) }));
+  const leader = world.tick % 2 === 0 ? TEAM.blue : TEAM.red;
+  orders.sort((a, b) => Number(b.bot.champion.team === leader) - Number(a.bot.champion.team === leader));
+  for (const { bot, cmds } of orders) for (const cmd of cmds) applyCommand(world, bot.champion, cmd);
+}
 
 /**
  * Plays one champion through the same commands a human sends. It farms its lane from behind its own
@@ -51,7 +66,9 @@ export class Bot {
   private state: 'lane' | 'retreat' = 'lane';
   private nextThinkAt: number;
   private lastMove: Vec2 | null = null;
-  private readonly route: Vec2[];
+  /** The lane being played right now: the assigned one, or the team's push lane late in the game. */
+  private current: Lane;
+  private route: Vec2[];
   private readonly home: Vec2;
 
   constructor(
@@ -60,6 +77,7 @@ export class Bot {
     world: World,
   ) {
     const team = champion.team as PlayerTeam;
+    this.current = lane;
     this.route = lanePath(world.map, team, lane);
     this.home = world.map.spawns[team];
     // Stagger bots so they don't all think on the same tick.
@@ -73,6 +91,7 @@ export class Bot {
     const levelUp = this.pickSkill();
     if (levelUp !== null) out.push({ k: 'levelUp', slot: levelUp });
     this.shop(out);
+    this.followTeam(world);
     if (this.champion.dead) {
       this.state = 'lane';
       this.lastMove = null;
@@ -80,6 +99,15 @@ export class Bot {
     }
     this.decide(world, out);
     return out;
+  }
+
+  private followTeam(world: World): void {
+    const team = this.champion.team as PlayerTeam;
+    const lane = world.time >= GROUP_UP_AT ? pushLane(world, team) : this.lane;
+    if (lane === this.current) return;
+    this.current = lane;
+    this.route = lanePath(world.map, team, lane);
+    this.lastMove = null;
   }
 
   /** Ultimate whenever allowed, otherwise the champion's preferred basic ability order. */
@@ -281,14 +309,36 @@ export class Bot {
   }
 
   private allyChuds(world: World): Chud[] {
-    return world.units().filter((u): u is Chud => u instanceof Chud && u.team === this.champion.team && u.lane === this.lane && !u.dead);
+    return world.units().filter((u): u is Chud => u instanceof Chud && u.team === this.champion.team && u.lane === this.current && !u.dead);
   }
 
   private laneStructures(world: World): Structure[] {
-    return world.units().filter((u): u is Structure => u instanceof Structure && (u.lane === this.lane || u.lane === null));
+    return world.units().filter((u): u is Structure => u instanceof Structure && (u.lane === this.current || u.lane === null));
   }
 
   private enemyShooties(world: World): Structure[] {
     return this.laneStructures(world).filter((s) => s.team !== this.champion.team && !s.dead && isShootie(s.role));
   }
+}
+
+/** Each team's current push lane, per match, so all its bots agree and don't flip back and forth. */
+const pushLanes = new WeakMap<World, Partial<Record<PlayerTeam, Lane>>>();
+
+/**
+ * Where a team's bots push together late in the game: the lane where the enemy has the least left
+ * standing (each structure counts 1, plus its share of health left). They only switch lanes once the
+ * other one is better by a whole structure.
+ */
+export function pushLane(world: World, team: PlayerTeam): Lane {
+  const left = (lane: Lane) =>
+    world
+      .units()
+      .filter((u): u is Structure => u instanceof Structure && u.team !== team && u.lane === lane && !u.dead)
+      .reduce((sum, s) => sum + 1 + s.hp / s.stats.maxHp, 0);
+  let memo = pushLanes.get(world);
+  if (!memo) pushLanes.set(world, (memo = {}));
+  const best: Lane = left('top') < left('bot') ? 'top' : 'bot';
+  const current = memo[team];
+  if (!current || left(best) <= left(current) - 1) memo[team] = best;
+  return memo[team]!;
 }

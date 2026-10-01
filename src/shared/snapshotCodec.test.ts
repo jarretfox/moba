@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { runBots } from './bots/bot';
 import { addBots } from './bots/lineup';
 import { Champion } from './champions/champion';
 import { TEAM, TICK_RATE } from './constants';
 import { MAP } from './map/mapData';
 import type { EntitySnap, Snapshot } from './protocol';
-import { applyCommand } from './sim/commands';
 import { Fountain } from './sim/fountain';
 import { Jungle } from './sim/jungle';
 import { spawnStructures } from './sim/structure';
@@ -25,7 +25,7 @@ function* blueSnapshots(minutes: number, every = 1): Generator<Snapshot> {
   const me = bots[0].champion as Champion;
   let ev: Snapshot['ev'] = [];
   for (let i = 0; i < minutes * 60 * TICK_RATE; i++) {
-    for (const b of bots) for (const c of b.think(world)) applyCommand(world, b.champion, c);
+    runBots(world, bots);
     world.step();
     ev.push(...world.drainEvents().filter((e) => world.vision.canSeeEvent(TEAM.blue, e)));
     if (world.tick % every) continue;
