@@ -1,4 +1,6 @@
-import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, conflicts, sellPrice, statLines, type ItemId, type ItemTier } from '../shared/items';
+import { PROFILES } from '../shared/bots/profiles';
+import type { ChampionId } from '../shared/champions/types';
+import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, RECIPES, buildsInto, priceFor, sellPrice, statLines, whyNot, type ItemId, type ItemTier } from '../shared/items';
 import type { MeSnap } from '../shared/protocol';
 import { iconEl } from './render/icons';
 import { WICK_NAME } from './wick';
@@ -49,11 +51,46 @@ const WICK_FACE = `<svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="
 
 /** Why the shop would refuse `id`, judged from this client's copy of the state (the host checks again). */
 export function cantBuy(me: MeSnap, id: ItemId): string | null {
-  if (!me.inShop) return 'Shop at your fountain';
-  if (me.items.some((owned) => conflicts(owned, id))) return ITEMS[id].tier === 'boots' ? 'Already have boots' : 'Already owned';
-  if (me.items.length >= INVENTORY_SLOTS) return 'Inventory full';
-  if (me.gold < ITEMS[id].cost) return 'Not enough gold';
-  return null;
+  return whyNot(me.items, me.gold, me.inShop, id);
+}
+
+/** Whether `part` goes into `item`, however deep down. */
+function inside(item: ItemId, part: ItemId): boolean {
+  return (RECIPES[item] ?? []).some((p) => p === part || inside(p, part));
+}
+
+export interface Suggestions {
+  /** The build in order, and whether each step is done (owned, or built into something owned). */
+  steps: { id: ItemId; done: boolean }[];
+  /** What to buy next: the next step if you can afford it, otherwise the best part of it you can. */
+  next: ItemId | null;
+  /** The step `next` is working toward (itself, or the item it's a part of). */
+  toward: ItemId | null;
+}
+
+/** Old Wick's advice for a champion: their build, what's done, and what to buy now. */
+export function suggest(build: readonly ItemId[], items: readonly ItemId[], gold: number): Suggestions {
+  const has = (id: ItemId) => items.includes(id) || items.some((owned) => inside(owned, id));
+  const steps = build.map((id) => ({ id, done: has(id) }));
+  const toward = steps.find((s) => !s.done)?.id ?? null;
+  if (!toward) return { steps, next: null, toward: null };
+  if (gold >= priceFor(items, toward)) return { steps, next: toward, toward };
+  // Can't afford it yet: the dearest part of it (or of its parts) that you're missing and can afford.
+  const free = [...items];
+  const missing: ItemId[] = [];
+  const need = (id: ItemId) => {
+    for (const p of RECIPES[id] ?? []) {
+      const at = free.indexOf(p);
+      if (at >= 0) free.splice(at, 1);
+      else {
+        missing.push(p);
+        need(p);
+      }
+    }
+  };
+  need(toward);
+  const next = missing.filter((p) => gold >= priceFor(items, p)).sort((a, b) => ITEMS[b].cost - ITEMS[a].cost)[0] ?? toward;
+  return { steps, next, toward };
 }
 
 /** The item shop, opened with P or the gold button. Buying and selling send commands; the host decides. */
@@ -65,12 +102,17 @@ export class ShopPanel {
   private readonly note: HTMLElement;
   private readonly goldEl: HTMLElement;
   private readonly wickLine: HTMLElement;
+  private readonly costs = new Map<ItemId, HTMLElement>();
+  private readonly advice: HTMLElement;
+  private readonly undoButton: HTMLButtonElement;
+  private champ: ChampionId | null = null;
   private lastKey = '';
 
   constructor(
     parent: HTMLElement,
     private readonly onBuy: (id: ItemId) => void,
     private readonly onSell: (slot: number) => void,
+    private readonly onUndo: () => void = () => undefined,
   ) {
     this.root = document.createElement('div');
     this.root.className = 'shop';
@@ -78,11 +120,13 @@ export class ShopPanel {
     this.root.innerHTML = `
       <div class="shop-head"><span class="wick-face">${WICK_FACE}</span><div class="shop-who"><span class="shop-title">${WICK_NAME}’s Wares</span><span class="wick-line"></span></div><span class="shop-gold"></span><button class="shop-close" title="Close (P)">×</button></div>
       <div class="shop-note"></div>
+      <div class="shop-advice"></div>
       <div class="shop-body">
         <div class="shop-items"></div>
         <div class="shop-side">
           <div class="shop-sub">Inventory</div>
           <div class="shop-inv"></div>
+          <button class="shop-undo" title="Take back your last purchase or sale (while you're still here)">↶ Undo</button>
           <div class="shop-sub">Stats</div>
           <div class="shop-stats"></div>
         </div>
@@ -92,6 +136,9 @@ export class ShopPanel {
     this.goldEl = this.root.querySelector('.shop-gold') as HTMLElement;
     this.wickLine = this.root.querySelector('.wick-line') as HTMLElement;
     (this.root.querySelector('.shop-close') as HTMLElement).addEventListener('click', () => this.toggle(false));
+    this.advice = this.root.querySelector('.shop-advice') as HTMLElement;
+    this.undoButton = this.root.querySelector('.shop-undo') as HTMLButtonElement;
+    this.undoButton.addEventListener('click', () => this.onUndo());
 
     const list = this.root.querySelector('.shop-items') as HTMLElement;
     for (const [tier, label] of TIERS) {
@@ -148,6 +195,12 @@ export class ShopPanel {
     return !this.root.hidden;
   }
 
+  /** Whose build Wick suggests. */
+  setChampion(id: ChampionId): void {
+    this.champ = id;
+    this.lastKey = '';
+  }
+
   toggle(open = !this.open): void {
     this.root.hidden = !open;
     this.lastKey = ''; // redraw on open
@@ -155,7 +208,7 @@ export class ShopPanel {
 
   update(me: MeSnap | undefined): void {
     if (!me || !this.open) return;
-    const key = JSON.stringify([me.gold, me.items, me.inShop, me.stats]);
+    const key = JSON.stringify([me.gold, me.items, me.inShop, me.stats, me.undo]);
     if (key === this.lastKey) return;
     this.lastKey = key;
 
@@ -165,7 +218,19 @@ export class ShopPanel {
       const reason = cantBuy(me, id);
       card.classList.toggle('blocked', reason !== null);
       card.title = reason ?? 'Click to buy';
+      // Cheaper by the parts you already have: the full price struck through beside yours.
+      const price = priceFor(me.items, id);
+      const cost = this.costs.get(id)!;
+      cost.replaceChildren();
+      if (price < ITEMS[id].cost) {
+        const full = document.createElement('s');
+        full.textContent = String(ITEMS[id].cost);
+        cost.append(full, ` ${price}`);
+      } else cost.textContent = String(price);
+      card.classList.toggle('discounted', price < ITEMS[id].cost);
     }
+    this.undoButton.disabled = !me.undo;
+    this.drawAdvice(me);
     this.invSlots.forEach((row, i) => {
       const id = me.items[i];
       row.replaceChildren();
@@ -186,6 +251,36 @@ export class ShopPanel {
     for (const [key, , fmt] of STAT_ROWS) this.stats.get(key)!.textContent = fmt(me.stats[key]);
   }
 
+  /** "Wick suggests": your champion's build, ticked off as you go, with the next thing to buy picked out. */
+  private drawAdvice(me: MeSnap): void {
+    this.advice.replaceChildren();
+    if (!this.champ) return;
+    const { steps, next, toward } = suggest(PROFILES[this.champ].build, me.items, me.gold);
+    const label = document.createElement('span');
+    label.className = 'advice-label';
+    label.textContent = 'Wick suggests';
+    this.advice.append(label);
+    for (const step of steps) {
+      const chip = document.createElement('button');
+      chip.className = `advice-step${step.done ? ' done' : ''}${step.id === toward ? ' toward' : ''}`;
+      chip.title = `${ITEMS[step.id].name}${step.done ? ' (done)' : ` · ${priceFor(me.items, step.id)}g`}`;
+      chip.append(iconEl(ITEMS[step.id].icon));
+      chip.addEventListener('click', () => this.onBuy(step.id));
+      this.advice.append(chip);
+    }
+    if (!next) {
+      this.advice.append(Object.assign(document.createElement('span'), { className: 'advice-done', textContent: 'All done. Lovely.' }));
+      return;
+    }
+    const buy = document.createElement('button');
+    buy.className = 'advice-next';
+    buy.disabled = cantBuy(me, next) !== null;
+    buy.append(iconEl(ITEMS[next].icon), ` ${next === toward ? 'Buy' : 'Start on it:'} ${ITEMS[next].name} · ${priceFor(me.items, next)}g`);
+    buy.title = cantBuy(me, next) ?? (next === toward ? 'Next in your build' : `A part of ${ITEMS[toward!].name}`);
+    buy.addEventListener('click', () => this.onBuy(next));
+    this.advice.append(buy);
+  }
+
   private card(id: ItemId): HTMLElement {
     const it = ITEMS[id];
     const el = document.createElement('button');
@@ -201,6 +296,7 @@ export class ShopPanel {
     const cost = document.createElement('span');
     cost.className = 'card-cost';
     cost.textContent = String(it.cost);
+    this.costs.set(id, cost);
     top.append(glyph, name, cost);
     const stats = document.createElement('div');
     stats.className = 'card-stats';
@@ -208,7 +304,24 @@ export class ShopPanel {
     const flavor = document.createElement('div');
     flavor.className = 'card-flavor';
     flavor.textContent = it.flavor;
-    el.append(top, stats, flavor);
+    el.append(top, stats);
+    // What it's made from, or what it goes into.
+    const from = RECIPES[id];
+    const into = buildsInto(id);
+    if (from || into.length) {
+      const path = document.createElement('div');
+      path.className = 'card-path';
+      path.append(from ? 'From ' : 'Into ');
+      for (const part of from ?? into) {
+        const chip = document.createElement('span');
+        chip.className = 'path-chip';
+        chip.title = ITEMS[part].name;
+        chip.append(iconEl(ITEMS[part].icon));
+        path.append(chip);
+      }
+      el.append(path);
+    }
+    el.append(flavor);
     el.addEventListener('click', () => this.onBuy(id));
     this.cards.set(id, el);
     return el;

@@ -7,7 +7,7 @@ import type { Champion } from '../champions/champion';
 import { Marksman } from '../champions/marksman';
 import { learnAll } from '../champions/testing';
 import { TEAM, TICK_RATE } from '../constants';
-import { ITEMS, sellPrice, type ItemId } from '../items';
+import { ITEMS, afterBuying, partsUsed, priceFor, sellPrice, whyNot, type ItemId } from '../items';
 import { MAP } from '../map/mapData';
 import { dist } from '../math';
 import { applyCommand } from './commands';
@@ -52,13 +52,72 @@ describe('the shop', () => {
 
     const { world, c } = shopper();
     expect(c.buy(world, 'treads')).toBe(true);
-    expect(c.buy(world, 'striders')).toBe(false); // one pair of boots
+    expect(c.buy(world, 'treads')).toBe(false); // one pair of boots
     expect(c.buy(world, 'fang')).toBe(true);
     expect(c.buy(world, 'fang')).toBe(false); // one of each core item
     expect(c.buy(world, 'shiv')).toBe(true);
     expect(c.buy(world, 'shiv')).toBe(true); // basics stack
     expect(c.buy(world, 'loaf')).toBe(false); // four slots
     expect(c.items).toEqual(['treads', 'fang', 'shiv', 'shiv']);
+    // Full, but upgrading the boots uses them up, so there's room.
+    expect(c.buy(world, 'striders')).toBe(true);
+    expect(c.items).toEqual(['fang', 'shiv', 'shiv', 'striders']);
+  });
+
+  it('builds big items from their parts: cheaper by what you own, the parts used up', () => {
+    const { world, c } = shopper();
+    c.buy(world, 'shiv');
+    c.buy(world, 'loaf');
+    const gold = c.gold;
+    // Warden's Link is a War Drum (from a Hearty Loaf) and a Rusty Shiv.
+    expect(priceFor(c.items, 'link')).toBe(ITEMS.link.cost - ITEMS.shiv.cost - ITEMS.loaf.cost);
+    expect(c.buy(world, 'link')).toBe(true);
+    expect(c.items).toEqual(['link']);
+    expect(c.gold).toBe(gold - (ITEMS.link.cost - ITEMS.shiv.cost - ITEMS.loaf.cost));
+    // Parts of parts: two Shivs make most of a Bloodreaver (one into the Fang, one beside it).
+    expect(partsUsed(['shiv', 'shiv'], 'reaver')).toEqual([0, 1]);
+    expect(priceFor(['shiv', 'shiv'], 'reaver')).toBe(ITEMS.reaver.cost - 2 * ITEMS.shiv.cost);
+    expect(afterBuying(['shiv', 'treads', 'shiv'], 'reaver')).toEqual(['treads', 'reaver']);
+    // A Glowworm Lantern takes two Sagestones; one only knocks one off.
+    expect(priceFor(['sagestone'], 'lantern')).toBe(ITEMS.lantern.cost - ITEMS.sagestone.cost);
+    // Nothing to do with it: full price, nothing used.
+    expect(partsUsed(['leather', 'bark'], 'reaver')).toEqual([]);
+    // What you can afford counts the parts.
+    expect(whyNot(['fang', 'shiv'], 1700, true, 'reaver')).toBeNull();
+    expect(whyNot([], 1700, true, 'reaver')).toBe('Not enough gold');
+  });
+
+  it('takes back purchases and sales made this visit, with every coin and part, until you leave', () => {
+    const { world, c } = shopper();
+    c.buy(world, 'shiv');
+    c.buy(world, 'fang');
+    expect(c.items).toEqual(['fang']);
+    expect(c.canUndo).toBe(true);
+    expect(c.undo(world)).toBe(true);
+    expect(c.items).toEqual(['shiv']);
+    expect(c.gold).toBe(10000 - ITEMS.shiv.cost);
+    expect(c.undo(world)).toBe(true);
+    expect(c.items).toEqual([]);
+    expect(c.gold).toBe(10000);
+    expect(c.undo(world)).toBe(false);
+    // A sale comes back too, into its slot.
+    c.buy(world, 'shiv');
+    c.buy(world, 'loaf');
+    c.sell(world, 0);
+    expect(c.undo(world)).toBe(true);
+    expect(c.items).toEqual(['shiv', 'loaf']);
+    expect(c.gold).toBe(10000 - ITEMS.shiv.cost - ITEMS.loaf.cost);
+    // Walk out of the fountain and it's final.
+    c.pos = { x: 3300, y: 3500 };
+    world.step();
+    c.pos = { ...world.map.spawns[TEAM.blue] };
+    expect(c.canUndo).toBe(false);
+    expect(c.undo(world)).toBe(false);
+    // And it comes in over the network.
+    c.buy(world, 'leather');
+    applyCommand(world, c, { k: 'undo' });
+    expect(c.items).toEqual(['shiv', 'loaf']);
+    expect(c.meSnapshot(world).undo).toBeUndefined();
   });
 
   it('buys back part of the price and takes the stats away', () => {
@@ -107,7 +166,7 @@ describe('item stats', () => {
     const hasty = shopper();
     learnAll(hasty.c);
     hasty.c.buy(hasty.world, 'drum'); // 15
-    hasty.c.buy(hasty.world, 'link'); // 20
+    hasty.c.buy(hasty.world, 'lantern'); // 20
     hasty.c.pos = { x: 3300, y: 3500 };
     hasty.c.tryCast(hasty.world, 0, { x: 3600, y: 3500 });
     expect(hasty.c.abilities[0].readyAt - hasty.world.time).toBeCloseTo(plain * (100 / 135));
@@ -141,19 +200,24 @@ describe('bot builds', () => {
       const plan = nextPurchase(build, items);
       if (!plan) break;
       for (const slot of plan.sell) items.splice(slot, 1);
-      items.push(plan.item);
+      items.splice(0, items.length, ...afterBuying(items, plan.item));
     }
     return items;
   };
 
-  it('end with boots and the core items, selling basics first', () => {
+  it('end with boots and the core items, building up from the parts and selling leftover basics', () => {
     expect(walk(PROFILES.marksman.build).sort()).toEqual(['link', 'longbow', 'reaver', 'striders']);
     expect(walk(PROFILES.barbarian.build).sort()).toEqual(['link', 'plate', 'reaver', 'treads']);
   });
 
-  it('swap boots rather than stacking them', () => {
-    const plan = nextPurchase(['treads', 'striders'], ['shiv', 'treads']);
-    expect(plan).toEqual({ item: 'striders', sell: [1], net: ITEMS.striders.cost - sellPrice('treads') });
+  it('upgrade boots rather than stacking them, and never sell a part they need', () => {
+    expect(nextPurchase(['treads', 'striders'], ['shiv', 'treads'])).toEqual({ item: 'striders', sell: [], net: ITEMS.striders.cost - ITEMS.treads.cost });
+    // Full up: the part stays, a spare basic goes.
+    const plan = nextPurchase(['leather', 'loaf', 'shiv', 'plate'], ['leather', 'loaf', 'shiv', 'treads']);
+    expect(plan?.item).toBe('plate');
+    expect(plan?.sell).toEqual([]);
+    expect(plan?.net).toBe(ITEMS.plate.cost - ITEMS.leather.cost - ITEMS.loaf.cost);
+    expect(sellPrice('treads')).toBeGreaterThan(0);
   });
 
   it('buy a starter item at the fountain, and head home to spend a full purse', () => {
@@ -176,6 +240,7 @@ describe('bot builds', () => {
     expect(dist(m.pos, world.map.spawns[TEAM.blue])).toBeGreaterThan(1500);
     m.gold = 2000;
     tick(15); // recall and shop
-    expect(m.items).toEqual(['shiv', 'treads', 'fang']);
+    // The Shiv went into the Fang and the Treads into the Swiftstriders, so the purse went further.
+    expect(m.items).toEqual(['fang', 'striders']);
   });
 });

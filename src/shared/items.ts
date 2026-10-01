@@ -98,6 +98,66 @@ export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
 
 export const isItemId = (v: unknown): v is ItemId => typeof v === 'string' && Object.hasOwn(ITEMS, v);
 
+/**
+ * What the bigger items are built from. Owning the parts makes the item cheaper by what they cost, and
+ * they're used up when you buy it (freeing their slots); the rest of the price pays for the recipe. Parts
+ * can have parts of their own: a Bloodreaver can be built up from two Rusty Shivs.
+ */
+export const RECIPES: Partial<Record<ItemId, readonly ItemId[]>> = {
+  striders: ['treads', 'quickstring'],
+  fang: ['shiv'],
+  drum: ['loaf'],
+  longbow: ['quickstring', 'shiv'],
+  reaver: ['fang', 'shiv'],
+  link: ['drum', 'shiv'],
+  plate: ['leather', 'loaf'],
+  aegis: ['bark', 'loaf'],
+  lantern: ['sagestone', 'sagestone'],
+  staff: ['sagestone', 'loaf'],
+};
+
+/** The items `id` goes into. */
+export function buildsInto(id: ItemId): ItemId[] {
+  return ITEM_IDS.filter((other) => RECIPES[other]?.includes(id));
+}
+
+/** Which inventory slots buying `id` would use up: its parts you own, and the parts of the parts you don't. */
+export function partsUsed(items: readonly ItemId[], id: ItemId): number[] {
+  const free = items.map((_, slot) => slot);
+  const used: number[] = [];
+  const take = (want: ItemId) => {
+    for (const part of RECIPES[want] ?? []) {
+      const at = free.findIndex((slot) => items[slot] === part);
+      if (at >= 0) used.push(...free.splice(at, 1));
+      else take(part);
+    }
+  };
+  take(id);
+  return used;
+}
+
+/** What `id` costs you, given what you own: its price, less the parts you already have. */
+export function priceFor(items: readonly ItemId[], id: ItemId): number {
+  return ITEMS[id].cost - partsUsed(items, id).reduce((sum, slot) => sum + ITEMS[items[slot]].cost, 0);
+}
+
+/** The inventory after buying `id`: its parts gone, the item added. */
+export function afterBuying(items: readonly ItemId[], id: ItemId): ItemId[] {
+  const used = partsUsed(items, id);
+  return [...items.filter((_, slot) => !used.includes(slot)), id];
+}
+
+/** Why the shop would refuse `id`, or null if it wouldn't. The host decides; clients use it to grey things out. */
+export function whyNot(items: readonly ItemId[], gold: number, inShop: boolean, id: ItemId): string | null {
+  if (!inShop) return 'Shop at your fountain';
+  const used = partsUsed(items, id);
+  const kept = items.filter((_, slot) => !used.includes(slot));
+  if (kept.some((owned) => conflicts(owned, id))) return ITEMS[id].tier === 'boots' ? 'Already have boots' : 'Already owned';
+  if (kept.length >= INVENTORY_SLOTS) return 'Inventory full';
+  if (gold < priceFor(items, id)) return 'Not enough gold';
+  return null;
+}
+
 /** Whether owning `a` rules out buying `b`: only one pair of boots, and one of each core item. */
 export function conflicts(a: ItemId, b: ItemId): boolean {
   const A = ITEMS[a];

@@ -24,6 +24,10 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
     if (typeof cmd.slot === 'number') unit.sell(world, cmd.slot);
     return;
   }
+  if (cmd.k === 'undo') {
+    unit.undo(world);
+    return;
+  }
   // Pings work dead or alive and don't interrupt anything, but only a few at a time.
   // Emotes don't interrupt anything either; the dead have nothing to emote with.
   if (cmd.k === 'emote') {

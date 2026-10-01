@@ -122,6 +122,8 @@ export class GameClient {
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
   private readonly bubbles = new Bubbles();
+  /** When you last pressed Undo in the shop (what comes back then isn't celebrated as a purchase). */
+  private undoneAt = -Infinity;
   /** Where the treetops are, for snow to settle on. */
   private crowns: MapLayers['crowns'] = [];
   /** In the snow: when each champion next breathes out a little cloud. */
@@ -238,6 +240,12 @@ export class GameClient {
     this.hud.onSell = (slot) => {
       this.sound.play('click', 0.5);
       this.send({ k: 'sell', slot });
+    };
+    this.hud.onUndo = () => {
+      this.sound.play('gold', 0.5);
+      this.send({ k: 'undo' });
+      // What comes back isn't a purchase: no fanfare for it.
+      this.undoneAt = performance.now() / 1000;
     };
     this.hud.onMute = () => this.hud.setMuted(this.sound.toggleMute());
     this.tips = new Tips(hudRoot);
@@ -946,6 +954,7 @@ export class GameClient {
     this.lastStats = { ...me.stats };
     this.lastMhp = self.mhp ?? 0;
     if (!before || !stats) return;
+    if (performance.now() / 1000 - this.undoneAt < 1.5) return;
     const { bought, sold } = itemChanges(before, me.items);
     if (!bought.length && !sold.length) return;
     const t = performance.now() / 1000;

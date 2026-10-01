@@ -69,6 +69,7 @@ export class Hud {
   onLevelUp: ((slot: Slot) => void) | null = null;
   onBuy: ((id: ItemId) => void) | null = null;
   onSell: ((slot: number) => void) | null = null;
+  onUndo: (() => void) | null = null;
   onMute: (() => void) | null = null;
   private readonly muteButton: HTMLButtonElement;
   readonly shop: ShopPanel;
@@ -233,6 +234,7 @@ export class Hud {
       root,
       (id) => this.onBuy?.(id),
       (slot) => this.onSell?.(slot),
+      () => this.onUndo?.(),
     );
     this.portrait.addEventListener('mouseenter', () => this.showTooltip(this.portrait, -1));
     this.portrait.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
@@ -246,6 +248,7 @@ export class Hud {
     (this.portrait.querySelector('.initial') as HTMLElement).textContent = face ? '' : info.name.slice(0, 2).toUpperCase();
     if (face) (this.portrait.querySelector('.face') as HTMLImageElement).src = face;
     this.live.show(info.id, skin);
+    this.shop.setChampion(info.id);
     this.bar.classList.toggle('rage', info.resource === 'rage');
     this.bar.classList.toggle('nores', info.resource === 'none');
     info.abilities.forEach((a, i) => {

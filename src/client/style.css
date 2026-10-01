@@ -2284,6 +2284,122 @@ html.colorblind .gold-peak.theirs {
   border-color: #c9a05a;
 }
 
+/* The shop: Wick's suggested build along the top, what each item is made from, and Undo. */
+.shop-advice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: rgba(155, 92, 255, 0.1);
+  border: 1px solid rgba(155, 92, 255, 0.3);
+}
+
+.shop-advice:empty {
+  display: none;
+}
+
+.advice-label {
+  margin-right: 4px;
+  font: 13px var(--font-display);
+  letter-spacing: 0.04em;
+  color: #c8a8ff;
+}
+
+.advice-step {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid #3b3048;
+  border-radius: 6px;
+  background: #1a1422;
+  cursor: pointer;
+}
+
+.advice-step .ico,
+.advice-next .ico {
+  width: 20px;
+  height: 20px;
+}
+
+.advice-step.done {
+  opacity: 0.4;
+  border-color: #3a5a3a;
+}
+
+.advice-step.toward {
+  border-color: #c9a05a;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.45);
+}
+
+.advice-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid #c9a05a;
+  border-radius: 4px;
+  background: #2b2010;
+  color: #ffe2a0;
+  font: 800 13px Nunito, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.advice-next:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.advice-done {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.card-path {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.path-chip .ico {
+  width: 16px;
+  height: 16px;
+}
+
+.card-cost s {
+  opacity: 0.55;
+  font-size: 0.85em;
+}
+
+.shop-card.discounted .card-cost {
+  color: #8ef0a8;
+}
+
+.shop-undo {
+  margin: 6px 0 2px;
+  padding: 5px 10px;
+  border: 1px solid #5a4a30;
+  border-radius: 4px;
+  background: #1c1610;
+  color: #f2ead8;
+  font: 800 13px Nunito, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.shop-undo:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .feed {
   position: absolute;
   top: 34px;

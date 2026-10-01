@@ -31,6 +31,8 @@ export type Command =
   | { k: 'buy'; item: ItemId }
   /** Sell the item in this inventory slot. */
   | { k: 'sell'; slot: number }
+  /** Take back the last purchase or sale, while still at the shop. */
+  | { k: 'undo' }
   /** Mark a spot on the map for your team. */
   | { k: 'ping'; kind: PingKind; x: number; y: number }
   | { k: 'emote'; kind: EmoteKind };
@@ -323,6 +325,8 @@ export interface MeSnap {
   items: ItemId[];
   /** Standing where the shop will serve you. */
   inShop: boolean;
+  /** There's a purchase or sale this visit that can be taken back. */
+  undo?: boolean;
   /** Jungle buffs and the seconds left on each. */
   buffs: { kind: BuffKind; left: number }[];
   /** For the shop's stat panel. `as` is attacks per second; `ls` is lifesteal in percent. */

@@ -1,6 +1,6 @@
 import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
-import { INVENTORY_SLOTS, ITEMS, conflicts, hasteMultiplier, sellPrice, sumItemStats, type ItemId } from '../items';
+import { INVENTORY_SLOTS, hasteMultiplier, partsUsed, priceFor, sellPrice, sumItemStats, whyNot, type ItemId } from '../items';
 import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { BUFFS, EMBER, GLOWCAP } from '../sim/jungle';
@@ -46,6 +46,8 @@ export abstract class Champion extends Unit {
   private itemStats = sumItemStats([]);
   /** Jungle buffs this champion had when it died, for whoever gets the kill. */
   lostBuffs: { kind: BuffKind; left: number }[] = [];
+  /** This visit's purchases and sales, newest last, for undoing (forgotten once you leave the shop). */
+  private undoLog: ({ kind: 'buy'; item: ItemId; paid: number; parts: ItemId[] } | { kind: 'sell'; item: ItemId; got: number; slot: number })[] = [];
   private recallStartedAt: number | null = null;
 
   constructor(
@@ -61,6 +63,7 @@ export abstract class Champion extends Unit {
 
   update(world: World): void {
     super.update(world);
+    if (this.undoLog.length && !this.inShop()) this.undoLog = [];
     if (!this.dead && world.time >= PASSIVE_GOLD.from) {
       this.gold += PASSIVE_GOLD.perSecond * DT;
       this.score.goldEarned += PASSIVE_GOLD.perSecond * DT;
@@ -189,17 +192,18 @@ export abstract class Champion extends Unit {
 
   /** Why `id` can't be bought right now, or null if it can. */
   cantBuy(id: ItemId): string | null {
-    if (!this.inShop()) return 'Shop at your fountain';
-    if (this.items.some((owned) => conflicts(owned, id))) return ITEMS[id].tier === 'boots' ? 'Already have boots' : 'Already owned';
-    if (this.items.length >= INVENTORY_SLOTS) return 'Inventory full';
-    if (this.gold < ITEMS[id].cost) return 'Not enough gold';
-    return null;
+    return whyNot(this.items, this.gold, this.inShop(), id);
   }
 
+  /** Buys `id`, using up any of its parts in the inventory (they knock their price off). */
   buy(world: World, id: ItemId): boolean {
     if (this.cantBuy(id) !== null) return false;
-    this.gold -= ITEMS[id].cost;
+    const paid = priceFor(this.items, id);
+    const used = partsUsed(this.items, id).sort((a, b) => b - a);
+    const parts = used.map((slot) => this.items.splice(slot, 1)[0]);
+    this.gold -= paid;
     this.items.push(id);
+    this.undoLog.push({ kind: 'buy', item: id, paid, parts });
     this.refreshItems(world);
     return true;
   }
@@ -208,7 +212,34 @@ export abstract class Champion extends Unit {
   sell(world: World, index: number): boolean {
     if (!this.inShop() || !Number.isInteger(index) || index < 0 || index >= this.items.length) return false;
     const [id] = this.items.splice(index, 1);
-    this.gold += sellPrice(id);
+    const got = sellPrice(id);
+    this.gold += got;
+    this.undoLog.push({ kind: 'sell', item: id, got, slot: index });
+    this.refreshItems(world);
+    return true;
+  }
+
+  /** Whether there's a purchase or sale this visit to take back. */
+  get canUndo(): boolean {
+    return this.undoLog.length > 0 && this.inShop();
+  }
+
+  /** Takes back the last purchase (all the gold back, and its parts) or sale, while still at the shop. */
+  undo(world: World): boolean {
+    const last = this.undoLog.at(-1);
+    if (!last || !this.inShop()) return false;
+    if (last.kind === 'buy') {
+      const at = this.items.lastIndexOf(last.item);
+      if (at < 0) return false;
+      this.items.splice(at, 1);
+      this.items.push(...last.parts);
+      this.gold += last.paid;
+    } else {
+      if (this.items.length >= INVENTORY_SLOTS || this.gold < last.got) return false;
+      this.items.splice(Math.min(last.slot, this.items.length), 0, last.item);
+      this.gold -= last.got;
+    }
+    this.undoLog.pop();
     this.refreshItems(world);
     return true;
   }
@@ -346,6 +377,7 @@ export abstract class Champion extends Unit {
       gold: Math.floor(this.gold),
       items: [...this.items],
       inShop: this.inShop(),
+      ...(this.canUndo ? { undo: true } : {}),
       buffs: this.buffsLeft(world).map((b) => ({ kind: b.kind, left: Math.ceil(b.left) })),
       stats: {
         ad: Math.round(this.stats.ad),
