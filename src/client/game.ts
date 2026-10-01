@@ -18,6 +18,7 @@ import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { castFlash, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { Lighting } from './render/lighting';
+import { Water } from './render/water';
 import { Minimap, type MinimapPing } from './minimap';
 import { PINGS, PingWheel } from './pings';
 import type { Tone } from './hud';
@@ -48,6 +49,7 @@ export class GameClient {
   private readonly indicator = new Graphics();
   private readonly fx = new FxLayer();
   private readonly ambience = new Ambience(MAP);
+  private readonly water = new Water(MAP);
   private navOverlay: Graphics | null = null;
   private readonly nav = new NavGrid(MAP);
   private readonly visionGrid = new VisionGrid(MAP, this.nav);
@@ -132,6 +134,7 @@ export class GameClient {
     this.setMap(TEAM.blue);
     this.worldLayer.addChild(
       this.groundLayer,
+      this.water.container,
       this.ambience.container,
       this.underLayer,
       this.fx.under,
@@ -197,6 +200,7 @@ export class GameClient {
     }
     this.fx.update(dt);
     this.ambience.update(dt);
+    this.water.update(dt, this.ents.values());
     this.fog.update(this.ents.values(), this.myTeam, performance.now() / 1000);
 
     const me = this.ents.get(this.myId);
