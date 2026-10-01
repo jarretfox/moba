@@ -45,17 +45,17 @@ const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 export const MARKSMAN_INFO: ChampionInfo = {
   id: 'marksman',
-  name: 'Marksman',
-  title: 'The Steady Hand',
+  name: 'Jordini',
+  title: 'The Naysayer',
   resource: 'mana',
   passive: {
-    name: 'Steady Rhythm',
-    icon: '🎵',
-    description: `Each basic attack on the same target grants ${pct(STEADY_RHYTHM.attackSpeedPerStack)} attack speed (max ${STEADY_RHYTHM.maxStacks} stacks, ${STEADY_RHYTHM.duration}s). Switching targets starts the rhythm over.`,
+    name: 'By the Book',
+    icon: '📕',
+    description: `Each basic attack on the same target grants ${pct(STEADY_RHYTHM.attackSpeedPerStack)} attack speed (max ${STEADY_RHYTHM.maxStacks} stacks, ${STEADY_RHYTHM.duration}s). Switching targets starts the count over: one thing at a time, in order.`,
   },
   abilities: [
     {
-      name: 'Piercing Bolt',
+      name: 'Objection!',
       icon: '🏹',
       description: `Fire a bolt through every enemy in a line for ${perRank(PIERCING_BOLT.damage)} (+${pct(PIERCING_BOLT.adRatio)} AD) physical damage. Each enemy after the first takes ${pct(PIERCING_BOLT.falloffPerHit)} less, down to ${pct(PIERCING_BOLT.minMultiplier)}.`,
       cost: PIERCING_BOLT.cost,
@@ -64,7 +64,7 @@ export const MARKSMAN_INFO: ChampionInfo = {
       targeting: { kind: 'direction', range: PIERCING_BOLT.range, width: PIERCING_BOLT.width },
     },
     {
-      name: 'Snare Trap',
+      name: 'Red Tape',
       icon: '🕸️',
       description: `Place a trap that arms after ${SNARE_TRAP.armTime}s and is hidden from enemies. The first enemy champion to step on it is rooted for ${perRank(SNARE_TRAP.rootDuration)}s. Up to ${perRank(SNARE_TRAP.maxActive)} traps at once.`,
       cost: SNARE_TRAP.cost,
@@ -73,7 +73,7 @@ export const MARKSMAN_INFO: ChampionInfo = {
       targeting: { kind: 'point', range: SNARE_TRAP.range, radius: SNARE_TRAP.radius },
     },
     {
-      name: 'Roll',
+      name: 'Step Back',
       icon: '💨',
       description: `Roll a short distance. Your next basic attack within ${ROLL.empowerWindow}s is ready instantly and deals ${perRank(ROLL.bonusDamage)} (+${pct(ROLL.adRatio)} AD) bonus physical damage.`,
       cost: ROLL.cost,
@@ -82,7 +82,7 @@ export const MARKSMAN_INFO: ChampionInfo = {
       targeting: { kind: 'direction', range: ROLL.distance, width: RADIUS * 2 },
     },
     {
-      name: 'Longshot',
+      name: 'Final Notice',
       icon: '🎯',
       description: `Aim for ${LONGSHOT.castTime}s, then fire a huge shot across the map. The first enemy champion hit takes ${perRank(LONGSHOT.damage)} (+${pct(LONGSHOT.adRatio)} AD) physical damage, up to ${pct(LONGSHOT.missingHpBonus)} more the more health they're missing.`,
       cost: LONGSHOT.cost,
@@ -101,7 +101,7 @@ export class Marksman extends Champion {
   private traps: SnareTrap[] = [];
 
   constructor(world: World, team: PlayerTeam) {
-    super(world, team, RADIUS, BASE_STATS, GROWTH, 'Marksman');
+    super(world, team, RADIUS, BASE_STATS, GROWTH, 'Jordini');
   }
 
   // ─── Passive: Steady Rhythm ───────────────────────────────────────────────

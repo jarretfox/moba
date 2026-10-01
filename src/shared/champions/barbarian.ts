@@ -46,17 +46,17 @@ const DEG = Math.PI / 180;
 
 export const BARBARIAN_INFO: ChampionInfo = {
   id: 'barbarian',
-  name: 'Barbarian',
-  title: 'The Unchained Fury',
+  name: 'The Oak',
+  title: 'Has Done the Research',
   resource: 'rage',
   passive: {
-    name: 'Blood Rage',
+    name: 'Paranoia',
     icon: '🔥',
-    description: `Hitting and getting hit builds Rage, which burns off after ${RAGE.decayAfter}s out of combat. At ${RAGE.max} Rage his next ability is Brutal: stronger, and it spends all his Rage.`,
+    description: `Everyone's in on it. Hitting and getting hit builds Rage, which burns off after ${RAGE.decayAfter}s out of combat. At ${RAGE.max} Rage the next ability is Brutal: stronger, and it spends all the Rage.`,
   },
   abilities: [
     {
-      name: 'Cleave',
+      name: 'Timber!',
       icon: '🪓',
       description: `Swing through everything in front of you for ${perRank(CLEAVE.damage)} (+${pct(CLEAVE.adRatio)} AD) physical damage, healing ${CLEAVE.healPerEnemy} per enemy hit and ${perRank(CLEAVE.healPerChampion)} per champion. Brutal: longer reach, ${pct(CLEAVE.brutal.damageMult - 1)} more damage, double healing.`,
       cost: FREE,
@@ -65,16 +65,16 @@ export const BARBARIAN_INFO: ChampionInfo = {
       targeting: { kind: 'cone', range: CLEAVE.range, angle: CLEAVE.angle },
     },
     {
-      name: 'War Cry',
+      name: 'Wake Up!',
       icon: '📣',
-      description: `Nearby enemies are slowed by ${perRank(WAR_CRY.slow, pct)} for ${WAR_CRY.slowDuration}s and deal ${pct(WAR_CRY.weaken)} less damage for ${WAR_CRY.weakenDuration}s. Brutal: ${pct(WAR_CRY.brutal.slow)} slow for ${WAR_CRY.brutal.slowDuration}s, ${pct(WAR_CRY.brutal.weaken)} less damage.`,
+      description: `A furious rant about what they're not telling you. Nearby enemies are slowed by ${perRank(WAR_CRY.slow, pct)} for ${WAR_CRY.slowDuration}s and deal ${pct(WAR_CRY.weaken)} less damage for ${WAR_CRY.weakenDuration}s. Brutal: ${pct(WAR_CRY.brutal.slow)} slow for ${WAR_CRY.brutal.slowDuration}s, ${pct(WAR_CRY.brutal.weaken)} less damage.`,
       cost: FREE,
       cooldown: WAR_CRY.cooldown,
       castTime: 0,
       targeting: { kind: 'self', radius: WAR_CRY.radius },
     },
     {
-      name: 'Leap',
+      name: 'Leap of Faith',
       icon: '🦘',
       description: `Leap to a spot (even over walls), dealing ${perRank(LEAP.damage)} (+${pct(LEAP.adRatio)} AD) physical damage where you land and slowing by ${pct(LEAP.slow)}. Brutal: a wider landing that stuns for ${LEAP.brutal.stun}s instead.`,
       cost: FREE,
@@ -83,9 +83,9 @@ export const BARBARIAN_INFO: ChampionInfo = {
       targeting: { kind: 'point', range: LEAP.range, radius: LEAP.radius },
     },
     {
-      name: 'Berserk',
+      name: 'It’s All Connected',
       icon: '😡',
-      description: `For ${perRank(BERSERK.duration)}s: grow bigger, gain ${perRank(BERSERK.attackSpeed, pct)} attack speed and ${pct(BERSERK.tenacity)} shorter crowd control, and your attacks splash ${pct(BERSERK.cleaveShare)} damage around your target. Gain ${BERSERK.rageOnCast} Rage. Takedowns add ${BERSERK.takedownExtend}s. Brutal: lasts ${BERSERK.brutal.extraDuration}s longer.`,
+      description: `For ${perRank(BERSERK.duration)}s it all finally makes sense: grow bigger, gain ${perRank(BERSERK.attackSpeed, pct)} attack speed and ${pct(BERSERK.tenacity)} shorter crowd control, and your attacks splash ${pct(BERSERK.cleaveShare)} damage around your target. Gain ${BERSERK.rageOnCast} Rage. Takedowns add ${BERSERK.takedownExtend}s. Brutal: lasts ${BERSERK.brutal.extraDuration}s longer.`,
       cost: FREE,
       cooldown: BERSERK.cooldown,
       castTime: 0,
@@ -102,7 +102,7 @@ export class Barbarian extends Champion {
   private brutalCast = false;
 
   constructor(world: World, team: PlayerTeam) {
-    super(world, team, RADIUS, BASE_STATS, GROWTH, 'Barbarian');
+    super(world, team, RADIUS, BASE_STATS, GROWTH, 'The Oak');
     this.mana = 0; // Rage starts empty
   }
 

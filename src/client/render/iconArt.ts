@@ -445,7 +445,16 @@ const ART: Record<string, Draw> = {
     g.ellipse(0, 15, 4, 3).fill(0x7a1e1e);
   },
 
-  // ── Marksman
+  // ── Jordini
+  '📕': (g) => {
+    // By the Book: a thick red rulebook with a gold check mark.
+    g.roundRect(-20, -26, 40, 52, 4).fill(0xc0392b).stroke(ink());
+    g.rect(-20, -26, 7, 52).fill(0x8a1a22);
+    g.moveTo(16, -22).lineTo(16, 22).stroke({ width: 3, color: PAPER });
+    g.moveTo(-6, 0).lineTo(1, 8).lineTo(12, -10).stroke({ width: 5, color: GOLD, cap: 'round', join: 'round' });
+    g.moveTo(-6, 0).lineTo(1, 8).lineTo(12, -10).stroke({ width: 1.5, color: INK, cap: 'round', join: 'round' });
+  },
+  // ── (the rest of Jordini's kit keeps the Marksman's pictures)
   '🎵': (g) => {
     rod(g, (g) => g.moveTo(-6, 14).lineTo(-6, -17), 3, GOLD);
     rod(g, (g) => g.moveTo(16, 8).lineTo(16, -23), 3, GOLD);

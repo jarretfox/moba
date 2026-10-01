@@ -159,19 +159,21 @@ Mechanics that come from this:
 
 ### Newcomers
 
+- **Jordini** (the champion first built as "Marksman") has read every rule in the realm and objected to most of them. When the Chuds crawled up out of the Deep without a single permit, Jordini started shooting, and every arrow since has been a strongly worded rejection. Willmore and HunnaG are in clear violation.
+- **The Oak** (first built as "Barbarian") broke out of the king's fighting pit bare-handed, lives for the kill, and has been asking questions ever since. Birds aren't real, Old Wick is three Chuds in a coat, the Warden is a cover-up, and Dongmaster's jaw is a government implant. Named for the Oakners, the only things that never lied.
 - **Dongmaster** turned up one morning doing pull-ups on the Warden's chains, and nobody has seen him skip a day since. The Barbarian calls him a show-off; they trade words whenever they meet.
 - **The Dark Dabber** is the Rat King's runaway son. He found HunnaG's rot garden in the Deep, ate everything in it, and came back up giggling, red-eyed and wrapped in smoke. He has been trying to get a bite of Havarti for years.
 - **Master Paris** taught King Rix's guard to fence and the king himself to lose gracefully (it didn't take). When Rix caged a lion for the court's amusement, Paris flicked his gloves onto the throne and walked out. Rix has never forgiven the fencing teacher.
 - **Havarti** was a wheel of cheese left in the deepest royal cellar six hundred years ago. Around year four hundred it began to glow; by six hundred it had wings. She guards the jungle against her oldest enemies: mold, rot and rats (HunnaG and the Dark Dabber know who she means).
 
-These rivalries are flavor for now (the match intro and kill quips), not mechanics: Dongmaster vs the Barbarian, Paris vs King Rix, Havarti vs the Dark Dabber and HunnaG.
+These rivalries are flavor for now (the match intro and kill quips), not mechanics: Dongmaster vs The Oak, Paris vs King Rix, Havarti vs the Dark Dabber and HunnaG, and Jordini vs the Chuds (Willmore and HunnaG).
 
 ## Champions
 
 | Champion | Role | Range | Damage | Resource |
 |---|---|---|---|---|
-| Marksman | Ranged carry | Ranged | Physical | Mana |
-| Barbarian | Juggernaut | Melee | Physical | Rage |
+| Jordini | Ranged carry | Ranged | Physical | Mana |
+| The Oak | Juggernaut | Melee | Physical | Rage |
 | Willmore | Jungle ambusher | Melee | Physical | None |
 | HunnaG | Control mage | Ranged | Magic | Mana |
 | Logan Lionheart | Starts fights, protects allies | Melee | Physical | None |
@@ -181,27 +183,27 @@ These rivalries are flavor for now (the match intro and kill quips), not mechani
 | Master Paris | Melee carry (resets) | Melee | Physical and true | Mana |
 | Havarti | Grows into a ranged carry, protects allies | Melee, then ranged | Mixed | Mana |
 
-Marksman and Barbarian still have placeholder names and kits; the user will send names and kit preferences for them.
+Jordini and The Oak keep the kits first built as "Marksman" and "Barbarian" (the code still calls them `marksman` and `barbarian`); only the names, lore, lines and ability names changed.
 
 King Rix deals magic damage on purpose. Without him, HunnaG would be the only source of magic damage and magic-resist items would be pointless.
 
-### Marksman ✅ implemented
+### Jordini, the Naysayer ✅ implemented
 
 The numbers live at the top of `src/shared/champions/marksman.ts`.
-- **Passive, Steady Rhythm:** each basic attack on the same target grants +8% attack speed (max 5 stacks, 3s). Switching targets starts the rhythm over.
-- **Q, Piercing Bolt:** a line skillshot that passes through every enemy it hits. Each enemy after the first takes 15% less damage, down to 55%.
-- **W, Snare Trap:** places a trap that arms after 0.75s and roots the first enemy champion to step on it for 1.25s. Up to 2 traps at once.
-- **E, Roll:** a short dash. The next basic attack within 3s is ready instantly and deals bonus damage.
-- **R, Longshot:** a 1s telegraphed aim, then a map-wide shot at the first champion hit. It deals up to 50% more damage the more health the target is missing.
+- **Passive, By the Book:** each basic attack on the same target grants +8% attack speed (max 5 stacks, 3s). Switching targets starts the rhythm over.
+- **Q, Objection!:** a line skillshot that passes through every enemy it hits. Each enemy after the first takes 15% less damage, down to 55%.
+- **W, Red Tape:** places a trap that arms after 0.75s and roots the first enemy champion to step on it for 1.25s. Up to 2 traps at once.
+- **E, Step Back:** a short dash. The next basic attack within 3s is ready instantly and deals bonus damage.
+- **R, Final Notice:** a 1s telegraphed aim, then a map-wide shot at the first champion hit. It deals up to 50% more damage the more health the target is missing.
 
-### Barbarian ✅ implemented
+### The Oak ✅ implemented
 
 The numbers live at the top of `src/shared/champions/barbarian.ts`. Resource: Rage, which starts empty.
-- **Passive, Blood Rage:** hitting (+8 per basic attack, +5 per enemy an ability hits) and getting hit (+2) builds Rage. It burns off after 6s out of combat. At 100 Rage his next ability is **Brutal**: stronger, and it spends all his Rage. Brutal is decided the moment you press the key.
-- **Q, Cleave:** a 110° swing in front of him. Heals 10 per enemy hit and 30 per champion. Brutal: longer reach, +50% damage, double healing.
-- **W, War Cry:** nearby enemies are slowed 30% for 2s and deal 20% less damage for 4s. Brutal: a 60% slow and 35% less damage.
-- **E, Leap:** jumps to a spot, even over walls, and slows enemies where he lands. Brutal: a wider landing that stuns instead.
-- **R, Berserk:** for 6s he grows bigger, gains +30% attack speed and 40% tenacity, and his basic attacks splash half damage around the target. Gives 50 Rage. Takedowns (kills and assists) add 2s, up to 12s. Brutal: 9s.
+- **Passive, Paranoia:** hitting (+8 per basic attack, +5 per enemy an ability hits) and getting hit (+2) builds Rage. It burns off after 6s out of combat. At 100 Rage his next ability is **Brutal**: stronger, and it spends all his Rage. Brutal is decided the moment you press the key.
+- **Q, Timber!:** a 110° swing in front of him. Heals 10 per enemy hit and 30 per champion. Brutal: longer reach, +50% damage, double healing.
+- **W, Wake Up!:** nearby enemies are slowed 30% for 2s and deal 20% less damage for 4s. Brutal: a 60% slow and 35% less damage.
+- **E, Leap of Faith:** jumps to a spot, even over walls, and slows enemies where he lands. Brutal: a wider landing that stuns instead.
+- **R, It's All Connected:** for 6s he grows bigger, gains +30% attack speed and 40% tenacity, and his basic attacks splash half damage around the target. Gives 50 Rage. Takedowns (kills and assists) add 2s, up to 12s. Brutal: 9s.
 
 ### Willmore ✅ implemented
 

@@ -36,7 +36,7 @@ export function addBots(world: World, team: PlayerTeam, count: number, taken: re
     const champion = options[Math.min(options.length - 1, Math.floor(random() * options.length))];
     have.add(champion);
     const unit = world.add(createChampion(champion, world, team));
-    unit.name = `Bot ${CHAMPION_INFO[champion].name}`;
+    unit.name = `Bot ${CHAMPION_INFO[champion].name.replace(/^The /, '')}`; // "Bot Oak", not "Bot The Oak"
     return new Bot(unit, lane, world);
   });
 }

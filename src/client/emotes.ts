@@ -8,18 +8,18 @@ type Said = EmoteKind | 'kill';
 
 const LINES: Record<ChampionId, Record<Said, readonly string[]>> = {
   marksman: {
-    taunt: ['You can run. It won’t help.', 'I never miss twice.'],
-    laugh: ['Heh. Predictable.', 'Ha! Too slow.'],
-    cheer: ['Steady, everyone!', 'Eyes up — we’ve got this.'],
-    line: ['Breathe. Aim. Loose.', 'One shot is all I need.', 'The steady hand wins.'],
-    kill: ['Right where I aimed.', 'One arrow. One less problem.', 'Steady... and done.'],
+    taunt: ['Absolutely not.', 'That’s against the rules, you know.'],
+    laugh: ['Heh. No.', 'Ha. Denied.'],
+    cheer: ['Single file, people!', 'By the book, everyone!'],
+    line: ['I did not approve this.', 'Chuds. Ugh.', 'There’s a procedure for this.'],
+    kill: ['Denied.', 'Request rejected.', 'Should’ve read the rules.'],
   },
   barbarian: {
-    taunt: ['Come on! Hit me!', 'Is that all you’ve got?!'],
-    laugh: ['HAHAHA!', 'Ha! Pathetic!'],
-    cheer: ['RAAAAH!', 'Smash them all!'],
-    line: ['Chains couldn’t hold me. Neither will you.', 'More! MORE!', 'I broke the shackles. I’ll break you.'],
-    kill: ['WHO’S NEXT?!', 'Too easy!', 'RAAAH! Next!'],
+    taunt: ['Wake up, sheeple!', 'You’re in on it, aren’t you?!'],
+    laugh: ['HAHAHA! THEY DON’T KNOW!', 'Heh. Classic cover-up.'],
+    cheer: ['KILL! KILL! KILL!', 'They can’t stop all of us!'],
+    line: ['Birds aren’t real.', 'The Warden is a cover-up.', 'Who builds the Chuds? Think about it.'],
+    kill: ['One less spy!', 'MORE!', 'That’s what you get for lying!'],
   },
   willmore: {
     taunt: ['I’ve fished better than you out of the drain.', 'Come down to the Deep, friend.'],
@@ -84,14 +84,18 @@ const LINES: Record<ChampionId, Record<Said, readonly string[]>> = {
 const RIVAL: Partial<Record<`${ChampionId}:${ChampionId}`, readonly string[]>> = {
   'logan:kingrix': ['Your cage is empty, Rix.', 'Long live the lion.', 'Kneel to THAT.'],
   'kingrix:logan': ['Back in your cage, kitten.', 'Every lion has a master.', 'Bad kitty.'],
-  'dongmaster:barbarian': ['Rage is for people who skip leg day.', 'Mogged. Again.', 'Should’ve trained instead of yelling.'],
+  'dongmaster:barbarian': ['Rage is for people who skip leg day.', 'Mogged. Again.', 'Should’ve trained instead of ranting.'],
   'havarti:dabber': ['Back to the sewer, vermin.', 'Not one nibble.', 'Pest control.'],
   'dabber:havarti': ['Cheese! Finally!', 'Smells delicious, man.', 'Hehehe... snack time.'],
   'havarti:hunnag': ['Mold has no place here.', 'Rot is no match for age.', 'Scrubbed clean.'],
   'hunnag:havarti': ['Everything rots. Even cheese.', 'A little mold suits you.', 'Ripe at last.'],
   'paris:kingrix': ['Your footwork was always sloppy, Majesty.', 'Lesson over.', 'Touché, Your Majesty.'],
   'kingrix:paris': ['You’re fired. Again.', 'Off with his beret!', 'Teach THAT.'],
-  'barbarian:dongmaster': ['HOW’S THAT FOR A JAWLINE?!', 'Pretty face. Broke easy.', 'FLEX THAT!'],
+  'barbarian:dongmaster': ['That jaw was a GOVERNMENT IMPLANT!', 'Pretty face. Broke easy.', 'Who’s funding you NOW?!'],
+  'marksman:willmore': ['Back in your gutter, Chud.', 'No permit, no mercy.', 'Request to exist: denied.'],
+  'marksman:hunnag': ['Rot is not up to code.', 'Fungus is a violation.', 'Denied, mushroom.'],
+  'willmore:marksman': ['Found something in the gutter: you.', 'File a complaint about THAT.', 'Heh heh... paperwork this.'],
+  'hunnag:marksman': ['Everything rots. Even rules.', 'Breathe deep, little clerk.', 'Ripe for the Deep.'],
 };
 
 /** The line a champion says for an emote; \`n\` picks which, the same on every screen. */

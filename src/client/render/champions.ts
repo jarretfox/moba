@@ -30,13 +30,13 @@ const CLASSIC: Record<ChampionId, Palette> = {
 /** Each champion's looks: the classic one first, then two skins (just different palettes). */
 export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette }[]> = {
   marksman: [
-    { name: 'Greenwood', colors: {} },
+    { name: 'By the Book', colors: {} },
     { name: 'Frost Ranger', colors: { cloak: 0x34506e, hood: 0x6fa8d6, quiver: 0x4a5a6a, bow: 0xb8d8f0, face: 0x1a2533, fletch: 0xdff7ff } },
     { name: 'Ember Hunter', colors: { cloak: 0x6b2a1a, hood: 0xc0502a, quiver: 0x3a2a1a, bow: 0x2a1a10, fletch: 0xffb347, face: 0x2a1410 } },
   ],
   barbarian: [
-    { name: 'Unchained', colors: {} },
-    { name: 'Frostborn', colors: { skin: 0xb8c8d8, fur: 0xe8eef4, furDot: 0xc8d4e0, helmet: 0x6a8aa8, horns: 0xffffff, blade: 0x9fe6ff } },
+    { name: 'The Oak', colors: {} },
+    { name: 'Tinfoil', colors: { helmet: 0xe2e8ef, horns: 0xb8c4d0, fur: 0x5a5f6a, furDot: 0x8a9099, blade: 0xc9d3dc, chain: 0xe2e8ef } },
     { name: 'Blood Rage', colors: { skin: 0xc06050, fur: 0x2a1a14, furDot: 0x4a2a20, helmet: 0x3a3a40, horns: 0xc0182b, blade: 0xe5484d, haft: 0x2a1a14 } },
   ],
   willmore: [

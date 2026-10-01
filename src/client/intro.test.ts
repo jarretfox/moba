@@ -19,11 +19,11 @@ describe('what gets said as a match opens', () => {
   it('remarks on a mirror match', () => {
     const [line] = introLines([row('barbarian', 1), row('barbarian', 2)], 0);
     expect(line.champ).toBeUndefined();
-    expect(line.text).toContain('Barbarian');
+    expect(line.text).toContain('Two Oaks');
   });
 
   it('hears the Warden stir when someone from the Deep is playing', () => {
-    expect(introLines([row('willmore', 1), row('marksman', 2)], 0)[0].text).toContain('Warden');
+    expect(introLines([row('willmore', 1), row('logan', 2)], 0)[0].text).toContain('Warden');
     expect(introLines([row('marksman', 1), row('barbarian', 2)], 0)).toEqual([]);
   });
 

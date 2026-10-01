@@ -28,7 +28,7 @@ describe('the match report', () => {
     const lines = text.split('\n');
     expect(lines[0]).toMatch(/18:42 · Blue won$/);
     expect(lines[1]).toBe('BLUE (won)');
-    expect(lines[2]).toBe('  Jo (Marksman) Lv12 5/2/7 · CS 142 · dmg 14.2k · taken 9.1k · towers 3.2k · gold 9.8k · Pride Longbow, Swiftstriders');
+    expect(lines[2]).toBe('  Jo (Jordini) Lv12 5/2/7 · CS 142 · dmg 14.2k · taken 9.1k · towers 3.2k · gold 9.8k · Pride Longbow, Swiftstriders');
     expect(lines[3]).toBe('RED');
     expect(lines[4]).toContain('Bot Logan Lionheart (Logan Lionheart) Lv12');
     expect(lines[4]).toContain('no items');

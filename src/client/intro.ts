@@ -37,6 +37,24 @@ const RIVALRIES: { pair: [ChampionId, ChampionId]; lines: [IntroLine, IntroLine]
     ],
   },
   {
+    pair: ['marksman', 'willmore'],
+    lines: [
+      [
+        { champ: 'marksman', text: 'A Chud. Out of the gutter. Unlicensed.' },
+        { champ: 'willmore', text: 'Heh. Wanna see my license? It’s a boot.' },
+      ],
+    ],
+  },
+  {
+    pair: ['marksman', 'hunnag'],
+    lines: [
+      [
+        { champ: 'marksman', text: 'That fungus is a code violation.' },
+        { champ: 'hunnag', text: 'Breathe deep, little rule-keeper.' },
+      ],
+    ],
+  },
+  {
     pair: ['havarti', 'dabber'],
     lines: [
       [
@@ -75,12 +93,12 @@ const RIVALRIES: { pair: [ChampionId, ChampionId]; lines: [IntroLine, IntroLine]
     pair: ['dongmaster', 'barbarian'],
     lines: [
       [
-        { champ: 'barbarian', text: 'You call that a rage?' },
-        { champ: 'dongmaster', text: 'I call it discipline.' },
+        { champ: 'barbarian', text: 'Nobody’s jaw is that square. Who’s funding you?' },
+        { champ: 'dongmaster', text: 'Discipline, brother.' },
       ],
       [
         { champ: 'dongmaster', text: 'Nice chains. Do you even lift them?' },
-        { champ: 'barbarian', text: 'I BROKE THEM!' },
+        { champ: 'barbarian', text: 'Chains are how THEY control you!' },
       ],
     ],
   },
@@ -97,7 +115,7 @@ export function introLines(rows: readonly ScoreRow[], n: number): IntroLine[] {
     if ([...a].some((team) => [...b].some((other) => other !== team))) return lines[n % lines.length];
   }
   const mirror = rows.find((r) => rows.some((o) => o.champ === r.champ && o.team !== r.team));
-  if (mirror) return [{ text: `Two ${CHAMPION_INFO[mirror.champ].name}s? This map isn’t big enough.` }];
+  if (mirror) return [{ text: `Two ${CHAMPION_INFO[mirror.champ].name.replace(/^The /, '')}s? This map isn’t big enough.` }];
   if (rows.some((r) => r.champ === 'willmore' || r.champ === 'hunnag')) return [{ text: 'Somewhere under the river, the Warden stirs...' }];
   return [];
 }
