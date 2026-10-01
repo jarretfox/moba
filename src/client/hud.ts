@@ -1,6 +1,6 @@
 import { atRank, perRank, type ChampionId, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
-import { ACTIVES, ACTIVE_KEYS, INVENTORY_SLOTS, ITEMS, activeSlots, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
+import { ACTIVES, ACTIVE_KEYS, INVENTORY_SLOTS, ITEMS, activeSlots, hasteMultiplier, priceFor, sellPrice, statLines, type ItemId } from '../shared/items';
 import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
@@ -10,7 +10,8 @@ import { RECALL_TIME } from '../shared/champions/champion';
 import type { GameEvent } from '../shared/protocol';
 import { iconEl } from './render/icons';
 import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
-import { ShopPanel } from './shop';
+import { ShopPanel, suggest } from './shop';
+import { PROFILES } from '../shared/bots/profiles';
 import type { RecapEntry } from './recap';
 import type { Award } from './awards';
 import type { Highlight } from './highlights';
@@ -92,6 +93,8 @@ export class Hud {
   private readonly live = new LivePortrait();
   /** Settings subscriptions, dropped when the HUD goes. */
   private readonly offs: (() => void)[] = [];
+  /** The "next buy" chip over the purse: the next thing in your recommended build, and how close you are. */
+  private nextBuy!: { root: HTMLElement; icon: HTMLElement; text: HTMLElement };
   /** Whether you're the host (the end screen offers you a side swap). */
   private isHost = false;
   /** Everyone, live, on the end screen. */
@@ -173,6 +176,7 @@ export class Hud {
         <div class="side">
           <div class="inv">${'<div class="item"><span class="item-icon"></span><span class="item-cd"></span><span class="item-key"></span></div>'.repeat(INVENTORY_SLOTS)}</div>
           <button class="purse" title="Shop (P)"><span class="coin"></span><span class="gold">0</span></button>
+          <button class="next-buy" hidden><span class="nb-label">Next buy</span><span class="nb-row"><span class="nb-icon"></span><span class="nb-text"></span></span></button>
         </div>
       </div>
       <div class="tooltip" hidden></div>`;
@@ -250,6 +254,8 @@ export class Hud {
       el.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
     });
     q('.purse').addEventListener('click', () => this.shop.toggle());
+    this.nextBuy = { root: q('.next-buy'), icon: q('.nb-icon'), text: q('.nb-text') };
+    this.nextBuy.root.addEventListener('click', () => this.shop.toggle(true));
     this.shop = new ShopPanel(
       root,
       (id) => this.onBuy?.(id),
@@ -316,6 +322,7 @@ export class Hud {
       this.set(parts.cd, 'background', cd > 0 ? `conic-gradient(rgba(0, 0, 0, 0.7) ${(cd / active!.cooldown) * 360}deg, transparent 0)` : '');
     });
     this.shop.update(me);
+    this.updateNextBuy(me);
     this.updateBuffs(me);
     this.set(this.stacks, 'text', me.passiveStacks ? String(me.passiveStacks) : '');
     this.set(this.portrait, 'class', me.empowered ? 'portrait empowered' : 'portrait');
@@ -484,6 +491,24 @@ export class Hud {
   setTitle(title: string): void {
     const el = this.debug.parentElement?.querySelector('.help-title') as HTMLElement | null;
     if (el) el.textContent = title;
+  }
+
+  /**
+   * The next buy, over the purse: what your recommended build wants next (or a part of it you can afford),
+   * how much more gold it needs, and a glow once you can buy it. Click it to open the shop.
+   */
+  private updateNextBuy(me: MeSnap): void {
+    const nb = this.nextBuy;
+    const { next, toward } = this.info ? suggest(PROFILES[this.info.id].build, me.items, me.gold) : { next: null, toward: null };
+    this.set(nb.root, 'class', 'next-buy');
+    nb.root.hidden = !next || !toward;
+    if (!next || !toward) return;
+    const price = priceFor(me.items, next);
+    const ready = me.gold >= price;
+    this.set(nb.icon, 'icon', ITEMS[next].icon);
+    this.set(nb.text, 'text', ready ? (me.inShop ? 'Buy now' : 'Ready: head home') : `${price - me.gold}g to go`);
+    this.set(nb.root, 'class', `next-buy${ready ? ' ready' : ''}`);
+    nb.root.title = `Next in your build: ${ITEMS[next].name} (${price}g)${next !== toward ? `, a part of ${ITEMS[toward].name}` : ''}. Click to open the shop.`;
   }
 
   /** You're the host: a rematch can swap the sides too. */

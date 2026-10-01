@@ -2,7 +2,9 @@ import { PROFILES } from '../shared/bots/profiles';
 import type { ChampionId } from '../shared/champions/types';
 import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, RECIPES, buildsInto, priceFor, sellPrice, statLines, whyNot, type ItemId, type ItemTier } from '../shared/items';
 import type { MeSnap } from '../shared/protocol';
+import { CHAMPION_INFO } from '../shared/champions/registry';
 import { iconEl } from './render/icons';
+import { el } from './ui/dom';
 import { WICK_NAME } from './wick';
 
 const TIERS: [ItemTier, string][] = [
@@ -45,6 +47,8 @@ export function statGains(before: MeSnap['stats'], after: MeSnap['stats'], hp?: 
   }
   return out;
 }
+
+const FOLD_KEY = 'moba.recFolded';
 
 /** Old Wick's face for the shop's header: a hood, darkness, two eyes. */
 const WICK_FACE = `<svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="true"><defs><radialGradient id="wick-bg" cx="70%" cy="70%" r="75%"><stop offset="0" stop-color="#a66bff" stop-opacity=".75"/><stop offset="1" stop-color="#140f1c"/></radialGradient></defs><circle cx="20" cy="20" r="19" fill="url(#wick-bg)" stroke="#0b0f14" stroke-width="2"/><path d="M7 36 C7 21 11 8 21 6 C31 5 34 17 34 36 Z" fill="#1f1828" stroke="#0b0f14" stroke-width="1.5"/><path d="M29 12 C33 18 33 26 31 32" stroke="#a66bff" stroke-width="1.5" fill="none" opacity=".7"/><ellipse cx="21" cy="21" rx="8" ry="9.5" fill="#050308"/><path d="M12 25 h18 v6 h-18z" fill="#6e2a36" stroke="#0b0f14" stroke-width="1"/><g class="wick-eyes"><ellipse cx="18" cy="19" rx="1.8" ry="1.5" fill="#eedcff"/><ellipse cx="24" cy="19" rx="1.8" ry="1.5" fill="#eedcff"/></g></svg>`;
@@ -106,6 +110,14 @@ export class ShopPanel {
   private readonly advice: HTMLElement;
   private readonly undoButton: HTMLButtonElement;
   private champ: ChampionId | null = null;
+  /** The recommended build folded down to its header. */
+  private folded = (() => {
+    try {
+      return localStorage.getItem(FOLD_KEY) === '1';
+    } catch {
+      return false;
+    }
+  })();
   private lastKey = '';
 
   constructor(
@@ -199,6 +211,7 @@ export class ShopPanel {
   setChampion(id: ChampionId): void {
     this.champ = id;
     this.lastKey = '';
+    this.markGrid();
   }
 
   toggle(open = !this.open): void {
@@ -251,34 +264,110 @@ export class ShopPanel {
     for (const [key, , fmt] of STAT_ROWS) this.stats.get(key)!.textContent = fmt(me.stats[key]);
   }
 
-  /** "Wick suggests": your champion's build, ticked off as you go, with the next thing to buy picked out. */
+  /**
+   * The recommended build, laid out plainly: how far along you are, every step in order (ticked when you
+   * have it, the next one picked out, each with what it costs you now), and a "Next up" box saying exactly
+   * what to buy: the whole item if you can afford it, or else a part of it, with the parts you already
+   * own ticked off.
+   */
   private drawAdvice(me: MeSnap): void {
     this.advice.replaceChildren();
     if (!this.champ) return;
-    const { steps, next, toward } = suggest(PROFILES[this.champ].build, me.items, me.gold);
-    const label = document.createElement('span');
-    label.className = 'advice-label';
-    label.textContent = 'Wick suggests';
-    this.advice.append(label);
-    for (const step of steps) {
-      const chip = document.createElement('button');
-      chip.className = `advice-step${step.done ? ' done' : ''}${step.id === toward ? ' toward' : ''}`;
-      chip.title = `${ITEMS[step.id].name}${step.done ? ' (done)' : ` · ${priceFor(me.items, step.id)}g`}`;
-      chip.append(iconEl(ITEMS[step.id].icon));
-      chip.addEventListener('click', () => this.onBuy(step.id));
-      this.advice.append(chip);
-    }
-    if (!next) {
-      this.advice.append(Object.assign(document.createElement('span'), { className: 'advice-done', textContent: 'All done. Lovely.' }));
+    const build = PROFILES[this.champ].build;
+    const { steps, next, toward } = suggest(build, me.items, me.gold);
+    const done = steps.filter((s) => s.done).length;
+
+    const head = el('div', 'rec-head');
+    // Folds down to just this line, for anyone who'd rather browse (remembered).
+    const fold = el('button', 'rec-fold', this.folded ? 'Show ▾' : 'Hide ▴');
+    fold.addEventListener('click', () => {
+      this.folded = !this.folded;
+      try {
+        localStorage.setItem(FOLD_KEY, this.folded ? '1' : '0');
+      } catch {
+        // storage blocked: it just won't be remembered
+      }
+      this.lastKey = '';
+      this.update(me);
+    });
+    this.advice.classList.toggle('folded', this.folded);
+    head.append(el('span', 'rec-title', `Recommended build for ${CHAMPION_INFO[this.champ].name}`), el('span', 'rec-count', `${done} of ${steps.length} done`), fold);
+    const bar = el('div', 'rec-bar');
+    const fill = el('div', 'rec-fill');
+    fill.style.width = `${(done / steps.length) * 100}%`;
+    bar.append(fill);
+
+    const path = el('div', 'rec-path');
+    steps.forEach((step, i) => {
+      if (i) path.append(el('span', 'rec-arrow', '›'));
+      const it = ITEMS[step.id];
+      const card = el('button', `rec-step${step.done ? ' done' : ''}${step.id === toward ? ' next' : ''}`);
+      card.append(
+        el('span', 'rec-num', step.done ? '✓' : String(i + 1)),
+        iconEl(it.icon, 'ico rec-ico'),
+        el('span', 'rec-name', it.name),
+        el('span', 'rec-price', step.done ? 'Got it' : `${priceFor(me.items, step.id)}g`),
+      );
+      card.title = step.done ? `${it.name}: you have it` : `${it.name}: ${statLines(it.stats).join(', ')}`;
+      card.addEventListener('click', () => this.onBuy(step.id));
+      path.append(card);
+    });
+
+    const box = el('div', 'rec-next');
+    if (!toward || !next) {
+      box.append(el('div', 'rec-complete', 'Build complete. Spend anything spare on whatever takes your fancy.'));
+      this.advice.append(head, bar, path, box);
       return;
     }
-    const buy = document.createElement('button');
-    buy.className = 'advice-next';
-    buy.disabled = cantBuy(me, next) !== null;
-    buy.append(iconEl(ITEMS[next].icon), ` ${next === toward ? 'Buy' : 'Start on it:'} ${ITEMS[next].name} · ${priceFor(me.items, next)}g`);
-    buy.title = cantBuy(me, next) ?? (next === toward ? 'Next in your build' : `A part of ${ITEMS[toward!].name}`);
-    buy.addEventListener('click', () => this.onBuy(next));
-    this.advice.append(buy);
+    const it = ITEMS[toward];
+    const price = priceFor(me.items, toward);
+    const short = Math.max(0, price - me.gold);
+    const info = el('div', 'rec-info');
+    info.append(el('div', 'rec-label', 'Next up'), el('div', 'rec-item', it.name), el('div', 'rec-stats', statLines(it.stats).join(' · ')));
+    // What it's made of: the parts you have ticked, the rest with what they cost.
+    const parts = RECIPES[toward];
+    if (parts) {
+      const free = [...me.items];
+      const row = el('div', 'rec-parts');
+      row.append(el('span', 'rec-parts-label', 'Made from'));
+      for (const p of parts) {
+        const at = free.indexOf(p);
+        const owned = at >= 0;
+        if (owned) free.splice(at, 1);
+        const chip = el('span', `rec-part${owned ? ' owned' : ''}`);
+        chip.append(iconEl(ITEMS[p].icon, 'ico rec-part-ico'), `${ITEMS[p].name} ${owned ? '✓' : `· ${priceFor(me.items, p)}g`}`);
+        row.append(chip);
+      }
+      info.append(row);
+    }
+    const actions = el('div', 'rec-actions');
+    const buyWhole = el('button', 'rec-buy', `Buy ${it.name} · ${price}g`);
+    const why = cantBuy(me, toward);
+    buyWhole.disabled = why !== null;
+    buyWhole.title = why ?? 'Next in your build';
+    buyWhole.addEventListener('click', () => this.onBuy(toward));
+    actions.append(buyWhole);
+    if (next !== toward) {
+      const part = el('button', 'rec-buy part', `Or start with ${ITEMS[next].name} · ${priceFor(me.items, next)}g`);
+      part.disabled = cantBuy(me, next) !== null;
+      part.title = cantBuy(me, next) ?? `A part of ${it.name}: buy it now, the rest later`;
+      part.addEventListener('click', () => this.onBuy(next));
+      actions.append(part);
+    }
+    if (short > 0) actions.append(el('div', 'rec-short', `${short}g more for the whole thing`));
+    else if (!me.inShop) actions.append(el('div', 'rec-short', 'Affordable: head home to buy it'));
+    box.append(iconEl(it.icon, 'ico rec-big-ico'), info, actions);
+    this.advice.append(head, bar, path, box);
+  }
+
+  /** Recommended items in the grid get their step number in the corner. */
+  private markGrid(): void {
+    const build = this.champ ? PROFILES[this.champ].build : [];
+    for (const [id, card] of this.cards) {
+      const at = build.indexOf(id);
+      card.classList.toggle('recommended', at >= 0);
+      card.dataset.step = at >= 0 ? String(at + 1) : '';
+    }
   }
 
   private card(id: ItemId): HTMLElement {

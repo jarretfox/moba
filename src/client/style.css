@@ -2486,83 +2486,345 @@ html.colorblind .gold-peak.theirs {
   opacity: 0.45;
 }
 
-/* The shop: Wick's suggested build along the top, what each item is made from, and Undo. */
+/* The recommended build, at the top of the shop: how far along, the path, and what to buy next. */
 .shop-advice {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  background: rgba(155, 92, 255, 0.1);
-  border: 1px solid rgba(155, 92, 255, 0.3);
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(155, 92, 255, 0.09);
+  border: 1px solid rgba(155, 92, 255, 0.35);
 }
 
 .shop-advice:empty {
   display: none;
 }
 
-.advice-label {
-  margin-right: 4px;
-  font: 13px var(--font-display);
-  letter-spacing: 0.04em;
+.rec-fold {
+  margin-left: auto;
+  padding: 0 6px;
+  border: none;
+  background: none;
   color: #c8a8ff;
-}
-
-.advice-step {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 2px solid #3b3048;
-  border-radius: 6px;
-  background: #1a1422;
+  font: 800 12px Nunito, system-ui, sans-serif;
   cursor: pointer;
 }
 
-.advice-step .ico,
-.advice-next .ico {
-  width: 20px;
-  height: 20px;
+.shop-advice.folded .rec-path,
+.shop-advice.folded .rec-next {
+  display: none;
 }
 
-.advice-step.done {
-  opacity: 0.4;
-  border-color: #3a5a3a;
+.rec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.advice-step.toward {
-  border-color: #c9a05a;
-  box-shadow: 0 0 8px rgba(255, 209, 102, 0.45);
+.rec-title {
+  font: 16px var(--font-display);
+  letter-spacing: 0.03em;
+  color: #e2ccff;
 }
 
-.advice-next {
+.rec-count {
+  font: 800 13px Nunito, system-ui, sans-serif;
+  color: var(--muted);
+}
+
+.rec-bar {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.rec-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #7a52c4, #c8a8ff);
+  transition: width 0.4s ease;
+}
+
+.rec-path {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.rec-arrow {
+  align-self: center;
+  font: 18px var(--font-display);
+  color: #6f5a8f;
+}
+
+.rec-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 70px;
+  max-width: 90px;
+  flex: 1;
+  padding: 14px 4px 4px;
+  border: 2px solid #3b3048;
+  border-radius: 6px;
+  background: #1a1422;
+  color: #e8dcc0;
+  cursor: pointer;
+}
+
+.rec-step:hover {
+  border-color: #8f6fc8;
+}
+
+.rec-num {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font: 12px var(--font-display);
+  color: #c8a8ff;
+}
+
+.rec-ico {
+  width: 24px;
+  height: 24px;
+}
+
+.rec-name {
+  font: 800 11px/1.15 Nunito, system-ui, sans-serif;
+  text-align: center;
+}
+
+.rec-price {
+  font: 12px var(--font-display);
+  color: var(--gold);
+}
+
+.rec-step.done {
+  border-color: #2f5a3a;
+  background: #121a14;
+}
+
+.rec-step.done .rec-num,
+.rec-step.done .rec-price {
+  color: #6fe08f;
+}
+
+.rec-step.done .rec-ico,
+.rec-step.done .rec-name {
+  opacity: 0.55;
+}
+
+.rec-step.next {
+  border-color: #ffd166;
+  background: #2b2010;
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.45);
+}
+
+.rec-step.next::after {
+  content: 'NEXT';
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font: 10px var(--font-display);
+  letter-spacing: 0.06em;
+  color: #ffd166;
+}
+
+.rec-next {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.rec-big-ico {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+.rec-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rec-label {
+  font: 11px var(--font-display);
+  letter-spacing: 0.08em;
+  color: #ffd166;
+  text-transform: uppercase;
+}
+
+.rec-item {
+  font: 17px var(--font-display);
+  color: #fff3d6;
+}
+
+.rec-stats {
+  font-size: 12px;
+  color: #b9e6c4;
+}
+
+.rec-parts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.rec-parts-label {
+  color: var(--muted);
+}
+
+.rec-part {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: auto;
-  padding: 5px 10px;
-  border: 1px solid #c9a05a;
+  padding: 1px 7px;
+  border: 1px solid #4a3f30;
+  border-radius: 10px;
+  color: #e8dcc0;
+}
+
+.rec-part.owned {
+  border-color: #2f7a46;
+  color: #8ef0a8;
+}
+
+.rec-part-ico {
+  width: 14px;
+  height: 14px;
+}
+
+.rec-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  flex: none;
+}
+
+.rec-buy {
+  padding: 6px 12px;
+  border: 1px solid #ffd166;
   border-radius: 4px;
-  background: #2b2010;
-  color: #ffe2a0;
+  background: #3a2c12;
+  color: #ffe29a;
   font: 800 13px Nunito, system-ui, sans-serif;
   cursor: pointer;
 }
 
-.advice-next:disabled {
-  opacity: 0.5;
+.rec-buy.part {
+  border-color: #8f6fc8;
+  background: #221a30;
+  color: #e2ccff;
+}
+
+.rec-buy:disabled {
+  opacity: 0.45;
   cursor: default;
 }
 
-.advice-done {
-  margin-left: auto;
+.rec-short,
+.rec-complete {
+  font-size: 12px;
   color: var(--muted);
-  font-size: 13px;
+  text-align: center;
 }
 
+/* Recommended items in the grid: their step number in a gold corner badge. */
+.shop-card.recommended {
+  position: relative;
+  border-color: #6f5a8f;
+}
+
+.shop-card.recommended::after {
+  content: attr(data-step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px 0 8px 0;
+  background: #7a52c4;
+  font: 11px var(--font-display);
+  color: #fff;
+}
+
+/* The next buy, floating over the purse: glowing once you can afford it. */
+.side {
+  position: relative;
+}
+
+.next-buy {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 22px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 9px 5px;
+  border: 1px solid #5a4a30;
+  border-radius: 6px;
+  background: rgba(20, 15, 10, 0.92);
+  color: #e8dcc0;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.next-buy[hidden] {
+  display: none;
+}
+
+.nb-label {
+  font: 10px var(--font-display);
+  letter-spacing: 0.08em;
+  color: #c8a8ff;
+  text-transform: uppercase;
+}
+
+.nb-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 800 13px Nunito, system-ui, sans-serif;
+}
+
+.nb-icon {
+  display: grid;
+  width: 22px;
+  height: 22px;
+}
+
+.next-buy.ready {
+  border-color: #ffd166;
+  color: #ffe29a;
+  animation: nb-ready 1.6s ease-in-out infinite;
+}
+
+@keyframes nb-ready {
+  50% {
+    box-shadow: 0 0 14px rgba(255, 209, 102, 0.6);
+  }
+}
+
+/* The shop: what each item is made from, and Undo. */
 .card-path {
   display: flex;
   align-items: center;
@@ -3093,11 +3355,11 @@ img.item-fly {
 
 .shop {
   position: absolute;
-  top: 60px;
+  top: 48px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(760px, calc(100vw - 32px));
-  max-height: calc(100vh - 250px);
+  width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 232px);
   display: flex;
   flex-direction: column;
   border-radius: 4px;
@@ -3162,6 +3424,7 @@ img.item-fly {
 
 .shop-items {
   flex: 1;
+  overflow-x: hidden;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -3253,6 +3516,7 @@ img.item-fly {
 .shop-side {
   flex: none;
   width: 190px;
+  overflow-y: auto;
 }
 
 .inv-row {
