@@ -82,10 +82,17 @@ export class Hud {
   /** The final match report, for the Copy button. */
   private report = '';
   private readonly written = new WeakMap<HTMLElement, Map<string, string>>();
+  private readonly announceEl: HTMLElement;
+  private readonly dangerEl: HTMLElement;
+  /** Banners waiting their turn; one shows at a time. */
+  private banners: { title: string; detail: string; tone: Tone }[] = [];
+  private bannerUntil = 0;
 
   constructor(root: HTMLElement) {
     root.innerHTML = `
       <div class="vignette"></div>
+      <div class="danger"></div>
+      <div class="announce"></div>
       <div class="debug"></div>
       <div class="feed"></div>
       <div class="clock"><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
@@ -114,6 +121,8 @@ export class Hud {
       <div class="tooltip" hidden></div>`;
     const q = (sel: string, parent: ParentNode = root) => parent.querySelector(sel) as HTMLElement;
     this.debug = q('.debug');
+    this.announceEl = q('.announce');
+    this.dangerEl = q('.danger');
     this.feed = q('.feed');
     this.buffBar = q('.buffs');
     this.clockTime = q('.clock .time');
@@ -215,6 +224,9 @@ export class Hud {
       if (el.up.hidden === canLevel) el.up.hidden = !canLevel;
     });
 
+    const low = !self.dead && (self.hp ?? 0) / (self.mhp ?? 1) < 0.3;
+    this.set(this.dangerEl, 'class', low ? 'danger on' : 'danger');
+
     const recalling = self.st?.includes('recall');
     this.set(this.respawn, 'text', me.respawnIn > 0 ? `Respawning in ${Math.ceil(me.respawnIn)}` : recalling ? 'Recalling…' : '');
   }
@@ -237,6 +249,40 @@ export class Hud {
       );
     }
     me.buffs.forEach((b, i) => this.set(this.buffBar.children[i].querySelector('b') as HTMLElement, 'text', `${b.left}s`));
+  }
+
+  /** A big banner across the top for a moment worth shouting about. Queued if one is already up. */
+  announce(title: string, detail: string, tone: Tone): void {
+    if (this.banners.length >= 3) this.banners.shift();
+    this.banners.push({ title, detail, tone });
+    this.nextBanner();
+  }
+
+  private nextBanner(): void {
+    const now = performance.now();
+    if (now < this.bannerUntil || !this.banners.length) return;
+    const b = this.banners.shift()!;
+    const el = this.announceEl;
+    el.replaceChildren();
+    const card = document.createElement('div');
+    card.className = `banner ${b.tone}`;
+    const title = document.createElement('div');
+    title.className = 'banner-title';
+    title.textContent = b.title;
+    const detail = document.createElement('div');
+    detail.className = 'banner-detail';
+    detail.textContent = b.detail;
+    card.append(title, detail);
+    el.append(card);
+    const hold = 2600;
+    this.bannerUntil = now + hold;
+    setTimeout(() => {
+      card.classList.add('out');
+      setTimeout(() => {
+        card.remove();
+        this.nextBanner();
+      }, 350);
+    }, hold - 350);
   }
 
   /** A line in the kill feed; `ours` colors it for the viewer's side. */
@@ -399,6 +445,9 @@ export class Hud {
     else el.style[prop] = value;
   }
 }
+
+/** Whose good news a banner is: yours (gold), theirs (red), or nobody's. */
+export type Tone = 'ours' | 'theirs' | 'neutral';
 
 const mmss = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 

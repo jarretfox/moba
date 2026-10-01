@@ -1,4 +1,4 @@
-import { Container, Graphics, type Application } from 'pixi.js';
+import { ColorMatrixFilter, Container, Graphics, type Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { atRank, type ChampionInfo } from '../shared/champions/types';
 import { TEAM, type Slot, type Team } from '../shared/constants';
@@ -15,7 +15,9 @@ import { Hud } from './hud';
 import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
-import { castFlash, playSpell, projectileTrail, statusAura } from './render/spells';
+import { castFlash, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
+import { Lighting } from './render/lighting';
+import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
 import { HEIGHT, buildMap, buildNavOverlay, elevate } from './render/mapView';
 import { PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
@@ -55,6 +57,19 @@ export class GameClient {
   private readonly hud: Hud;
   private readonly sound = new Sound();
   private gameOverPlayed = false;
+  /** Dusk and the lights in it, laid over the world. */
+  private readonly lighting = new Lighting(MAP);
+  /** Spell glows: drawn above the lighting so they shine in the dark. Follows the camera like the world. */
+  private readonly emissive = new Container();
+  /** World, lighting and glows together, so the whole view can go grey while you're dead. */
+  private readonly view = new Container();
+  private readonly deathFilter = new ColorMatrixFilter();
+  private deadFade = 0;
+  /** For the announcer: has anyone drawn first blood, and who's on a multi-kill. */
+  private firstBlood = false;
+  private multiKills = new Map<string, { n: number; at: number }>();
+  /** When the match ends: where Da Base fell, and when, so the camera can go and watch before the scores. */
+  private finale: { x: number; y: number; at: number } | null = null;
 
   private myId = -1;
   private myTeam: Team = TEAM.blue;
@@ -104,9 +119,11 @@ export class GameClient {
       this.indicator,
       this.unitLayer,
       this.projectileLayer,
-      this.fx.container,
     );
-    app.stage.addChild(this.worldLayer);
+    this.emissive.addChild(this.fx.container);
+    this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive);
+    app.stage.addChild(this.view);
+    this.deathFilter.desaturate();
     this.bindInput();
     app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
   }
@@ -151,7 +168,7 @@ export class GameClient {
     for (const ev of events) {
       this.playEvent(ev);
       const cue = cueFor(ev, this.ents, this.myId);
-      if (cue) this.playCue(cue);
+      if (cue && ev.e !== 'kill') this.playCue(cue); // the announcer voices kills
     }
     this.fx.update(dt);
     this.ambience.update(dt);
@@ -165,10 +182,24 @@ export class GameClient {
 
     const { width: w, height: h } = this.app.screen;
     this.camera.update(dt, me && !me.dead ? me : null, this.mouse.inside ? this.mouse : null, w, h, this.centerHeld);
+    if (this.finale) {
+      // Glide over to watch Da Base fall.
+      const k = Math.min(1, dt * 2.5);
+      this.camera.x += (this.finale.x - this.camera.x) * k;
+      this.camera.y += (this.finale.y - this.camera.y) * k;
+    }
     this.camera.apply(this.worldLayer, w, h, dt);
     elevate(this.wallTops, HEIGHT.wall, this.camera.x, this.camera.y);
     elevate(this.structureTops, HEIGHT.structure, this.camera.x, this.camera.y);
     elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
+    this.emissive.position.copyFrom(this.worldLayer.position);
+    this.emissive.scale.copyFrom(this.worldLayer.scale);
+    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights);
+    // The world drains of color while you wait to respawn.
+    this.deadFade = Math.max(0, Math.min(1, this.deadFade + (me?.dead && !this.finale ? dt * 2 : -dt * 3)));
+    this.deathFilter.alpha = this.deadFade * 0.85;
+    const wantFilter = this.deadFade > 0;
+    if (wantFilter !== (this.view.filters?.length === 1)) this.view.filters = wantFilter ? [this.deathFilter] : [];
 
     const mouseWorld = this.mouseWorld();
     if (this.rightHeld && (this.holdTimer -= dt) <= 0) this.rightClick(false);
@@ -182,6 +213,13 @@ export class GameClient {
     this.hud.setWarden(latest?.warden, this.myTeam);
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
     if (latest?.winner) {
+      if (!this.finale) {
+        const base = [...this.ents.values()].find((e) => e.k === 'structure' && e.role === 'daBase' && e.dead);
+        this.finale = { x: base?.x ?? this.camera.x, y: base?.y ?? this.camera.y, at: performance.now() / 1000 };
+        this.camera.locked = false;
+      }
+    }
+    if (latest?.winner && performance.now() / 1000 - this.finale!.at > 3.2) {
       this.hud.showGameOver(latest.winner === this.myTeam);
       if (!this.gameOverPlayed) this.sound.play(latest.winner === this.myTeam ? 'victory' : 'defeat', 0.8);
       this.gameOverPlayed = true;
@@ -282,8 +320,10 @@ export class GameClient {
       case 'death': {
         const t = this.ents.get(ev.id);
         if (!t) return;
-        this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
+        if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
+        else this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
         if (ev.id === this.myId) this.camera.shake(16);
+        else if (t.k === 'structure' && t.role === 'daBase') this.camera.shake(24);
         else if (t.k === 'structure' || (t.k === 'monster' && t.mon === 'warden')) this.shakeNear(t, 20);
         return;
       }
@@ -305,6 +345,7 @@ export class GameClient {
       }
       case 'kill':
         this.hud.pushFeed(ev.killer, ev.victim, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
+        this.announceKill(ev);
         return;
       case 'fx':
         this.playFx(ev);
@@ -312,6 +353,48 @@ export class GameClient {
       case 'cast': {
         const caster = this.ents.get(ev.src);
         if (caster) castFlash(this.fx, caster);
+        return;
+      }
+    }
+  }
+
+  /** The announcer: a banner (and a fanfare or a toll) for kills, sprees, structures and the Warden. */
+  private announceKill(ev: Extract<GameEvent, { e: 'kill' }>): void {
+    const tone: Tone = ev.team === TEAM.neutral ? 'neutral' : ev.team === this.myTeam ? 'ours' : 'theirs';
+    const good = tone === 'ours';
+    const say = (title: string, detail: string, big: boolean) => {
+      this.hud.announce(title, detail, tone);
+      this.sound.play(big ? (good ? 'fanfare' : 'toll') : 'kill', big ? 0.7 : 0.5);
+    };
+    switch (ev.what) {
+      case 'warden':
+        return say('THE WARDEN IS SLAIN', `${good ? 'We are' : 'They are'} ${ev.victim.includes('Uprising') ? 'in Uprising!' : 'Unchained'}`, true);
+      case 'oakner':
+        return say('OAKNER FELLED', `${ev.killer} brought down ${good ? 'their' : 'our'} Oakner`, true);
+      case 'outerShootie':
+      case 'innerShootie':
+      case 'baseShootie':
+        return say('SHOOTIE DESTROYED', `${ev.killer} destroyed ${good ? 'their' : 'our'} ${ev.victim}`, true);
+      case 'daBase':
+        return; // the finale speaks for itself
+      case 'champion': {
+        if (ev.team === TEAM.neutral) return say('EXECUTED', `${ev.victim} fell to ${ev.killer === 'Executed' ? 'the lane' : ev.killer}`, false);
+        const now = this.buffer.latest?.time ?? 0;
+        const last = this.multiKills.get(ev.killer);
+        const n = last && now - last.at < 10 ? last.n + 1 : 1;
+        this.multiKills.set(ev.killer, { n, at: now });
+        const myName = this.ents.get(this.myId)?.name;
+        const detail = `${ev.killer} slew ${ev.victim}`;
+        const streak = ev.streak ?? 0;
+        if (!this.firstBlood) say('FIRST BLOOD', detail, true);
+        else if (n >= 2) say(n === 2 ? 'DOUBLE KILL' : n === 3 ? 'TRIPLE KILL' : 'RAMPAGE', detail, true);
+        else if (ev.shutdown) say('SHUT DOWN', `${ev.killer} ended ${ev.victim}'s streak`, true);
+        else if (streak >= 3) say(streak === 3 ? 'KILLING SPREE' : streak === 4 ? 'RAMPAGE' : streak === 5 ? 'UNSTOPPABLE' : 'GODLIKE', detail, true);
+        else if (ev.victim === myName) say('YOU HAVE BEEN SLAIN', detail, false);
+        else if (ev.killer === myName) say('YOU HAVE SLAIN AN ENEMY', detail, false);
+        else say(good ? 'ENEMY SLAIN' : 'ALLY SLAIN', detail, false);
+        this.firstBlood = true;
+        if (ev.ace) say('ACE', good ? 'Their whole team is down' : 'Our whole team is down', true);
         return;
       }
     }

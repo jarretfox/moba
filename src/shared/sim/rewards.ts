@@ -73,7 +73,7 @@ function rewardWarden(world: World, source: Unit | null, helpers: Unit[]): void 
   }
   const uprising = holdsGrudge(killer);
   world.unchained[team] = { until: world.time + UNCHAINED.duration, uprising };
-  world.emit({ e: 'kill', killer: killer.name, victim: uprising ? 'The Warden (Uprising!)' : 'The Warden', team });
+  world.emit({ e: 'kill', killer: killer.name, victim: uprising ? 'The Warden (Uprising!)' : 'The Warden', team, what: 'warden' });
 }
 
 function isRivalry(a: Champion, b: Champion): boolean {
@@ -87,7 +87,7 @@ function rewardStructure(world: World, s: Structure, source: Unit | null): void 
   const gold = STRUCTURE_GOLD[s.role];
   for (const u of world.units()) if (u instanceof Champion && u.team === team) u.gainGold(world, gold);
   const credit = source instanceof Champion ? source.name : team === 1 ? 'Blue' : 'Red';
-  world.emit({ e: 'kill', killer: credit, victim: s.name, team });
+  world.emit({ e: 'kill', killer: credit, victim: s.name, team, what: s.role });
 }
 
 function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers: Unit[]): void {
@@ -95,6 +95,7 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
   for (const h of enemies) h.onTakedown(world, victim);
   if (!(victim instanceof Champion)) return; // training dummies count as takedowns, but pay nothing
 
+  const endedStreak = victim.streak;
   // A champion who hurt them in the last few seconds gets the kill even if a Shootie or Chud finished them.
   const killer = source instanceof Champion && source.team !== victim.team ? source : enemies[0];
   const assisters = enemies.filter((h) => h !== killer);
@@ -118,5 +119,15 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
   victim.streak = 0;
   // No champion to credit: name whatever did it (a Shootie, the Warden), or call it an execution.
   const credit = killer ?? source;
-  world.emit({ e: 'kill', killer: credit?.name ?? 'Executed', victim: victim.name, team: credit?.team ?? 0 });
+  const team = [...world.units()].filter((u) => u instanceof Champion && u.team === victim.team);
+  world.emit({
+    e: 'kill',
+    killer: credit?.name ?? 'Executed',
+    victim: victim.name,
+    team: credit?.team ?? 0,
+    what: 'champion',
+    streak: killer?.streak,
+    shutdown: endedStreak >= 3,
+    ace: team.length > 1 && team.every((u) => u.dead),
+  });
 }

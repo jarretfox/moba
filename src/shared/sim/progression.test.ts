@@ -114,7 +114,19 @@ describe('gold and experience', () => {
     expect(killer.streak).toBe(1);
     expect(victim.streak).toBe(0);
     const feed = world.drainEvents().find((e) => e.e === 'kill');
-    expect(feed).toMatchObject({ killer: killer.name, victim: victim.name, team: TEAM.blue });
+    expect(feed).toMatchObject({ killer: killer.name, victim: victim.name, team: TEAM.blue, what: 'champion', streak: 1, shutdown: true, ace: false });
+  });
+
+  it('tells the announcer when a whole team is down', () => {
+    const world = new World(MAP);
+    const killer = champ(world, TEAM.blue, LANE.x, LANE.y);
+    const first = champ(world, TEAM.red, LANE.x + 300, LANE.y);
+    const last = champ(world, TEAM.red, LANE.x + 400, LANE.y);
+
+    world.damage(killer, first, 1e6, 'true');
+    expect(world.drainEvents().find((e) => e.e === 'kill')).toMatchObject({ victim: first.name, streak: 1, shutdown: false, ace: false });
+    world.damage(killer, last, 1e6, 'true');
+    expect(world.drainEvents().find((e) => e.e === 'kill')).toMatchObject({ victim: last.name, streak: 2, ace: true });
   });
 
   it('credits the kill to the last champion who hurt them when a Shootie finishes the job', () => {

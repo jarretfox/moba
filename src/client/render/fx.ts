@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import type { DamageType } from '../../shared/protocol';
+import type { Light } from './lighting';
 import { Particles, mix } from './particles';
 
 interface Effect {
@@ -38,6 +39,7 @@ export class FxLayer {
   private readonly top = new Container();
   private effects: Effect[] = [];
   private timers: { at: number; fn: () => void }[] = [];
+  private glows: { light: Light; strength: number; age: number; life: number }[] = [];
   private clock = 0;
   /** This frame's step, for effects that spray particles while they last. */
   dt = 0;
@@ -64,6 +66,21 @@ export class FxLayer {
       this.effects = this.effects.filter((e) => e.age < e.life);
     }
     this.particles.update(dt);
+    for (const l of this.glows) {
+      l.age += dt;
+      l.light.alpha = l.strength * (1 - l.age / l.life);
+    }
+    this.glows = this.glows.filter((l) => l.age < l.life);
+  }
+
+  /** Light an effect throws on the ground around it, fading out over `life` (see lighting.ts). */
+  light(x: number, y: number, r: number, color: number, life: number, strength = 0.6): void {
+    this.glows.push({ light: { x, y, r, color, alpha: strength }, strength, age: 0, life });
+  }
+
+  /** The lights effects are casting right now. */
+  get lights(): Light[] {
+    return this.glows.map((l) => l.light);
   }
 
   /** Run something a moment from now (staggered rings, a splash when a lob lands). */
@@ -165,11 +182,13 @@ export class FxLayer {
 
   /** A soft round flash of light. */
   flash(x: number, y: number, r: number, color: number, life = 0.3, alpha = 0.8): void {
+    this.light(x, y, r * 4, color, life * 1.6, alpha * 0.7);
     this.particles.emit({ shape: 'glow', x, y, life, size: r * 2.6, size2: r * 3.4, color, alpha, fadeIn: 0.05 });
   }
 
   /** A ring that sweeps out to `radius`. */
   shockwave(x: number, y: number, radius: number, color: number, life = 0.4): void {
+    this.light(x, y, radius * 1.2, color, life, 0.35);
     const g = new Graphics();
     g.blendMode = 'add';
     this.add(g, life, (t) => {
@@ -194,6 +213,7 @@ export class FxLayer {
 
   /** A circle of runes turning on the ground: summonings, marks, casts. */
   sigil(x: number, y: number, r: number, color: number, life: number, spin = 1): void {
+    this.light(x, y, r * 1.6, color, life, 0.5);
     const g = new Graphics();
     g.blendMode = 'add';
     g.position.set(x, y);
@@ -266,6 +286,7 @@ export class FxLayer {
 
   /** A column of light rising from a spot (seen from above, it reaches up the screen). */
   pillar(x: number, y: number, r: number, color: number, life: number): void {
+    this.light(x, y, r * 5, color, life, 0.7);
     const g = new Graphics();
     g.blendMode = 'add';
     this.add(g, life, (t) => {

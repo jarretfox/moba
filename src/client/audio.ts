@@ -23,7 +23,10 @@ export type SoundName =
   | 'click'
   | 'buy'
   | 'victory'
-  | 'defeat';
+  | 'defeat'
+  /** The announcer: good news for your side, and bad. */
+  | 'fanfare'
+  | 'toll';
 
 /** The same sound won't restart sooner than this, so a lane full of Chuds doesn't become a buzz. */
 const MIN_GAP: Partial<Record<SoundName, number>> = { swing: 0.06, shoot: 0.06, hit: 0.07, smallDeath: 0.09, gold: 0.12, tower: 0.1, cast: 0.05 };
@@ -155,7 +158,7 @@ class Voice {
 }
 
 /** Notes for the little jingles. */
-const NOTE = { C5: 523.25, E5: 659.25, G5: 783.99, C6: 1046.5, A4: 440, F4: 349.23, D4: 293.66, Bb4: 466.16 };
+const NOTE = { C5: 523.25, E5: 659.25, G5: 783.99, C6: 1046.5, A4: 440, F4: 349.23, D4: 293.66, Bb4: 466.16, G4: 392 };
 
 const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
   swing: (v, t) => v.noise(t, 'bandpass', 2400, 600, 0.09, 0.5, 2),
@@ -226,6 +229,16 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
   victory: (v, t) => {
     const tune = [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6];
     tune.forEach((f, i) => v.tone(t + i * 0.18, 'triangle', f, f, i === 3 ? 0.9 : 0.2, 0.3));
+  },
+  fanfare: (v, t) => {
+    for (const f of [NOTE.G4, NOTE.C5, NOTE.E5]) v.tone(t, 'sawtooth', f, f, 0.18, 0.045, 0.01);
+    for (const f of [NOTE.C5, NOTE.E5, NOTE.G5]) v.tone(t + 0.16, 'sawtooth', f, f, 0.7, 0.05, 0.02);
+    v.tone(t + 0.16, 'triangle', NOTE.C6, NOTE.C6, 0.8, 0.12, 0.02);
+  },
+  toll: (v, t) => {
+    v.tone(t, 'sine', 110, 108, 1.6, 0.32, 0.005);
+    v.tone(t, 'triangle', 220, 216, 0.9, 0.12, 0.005);
+    v.tone(t, 'sine', 297, 294, 0.7, 0.08, 0.005);
   },
   defeat: (v, t) => {
     const tune = [NOTE.A4, NOTE.F4, NOTE.D4];

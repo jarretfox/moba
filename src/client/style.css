@@ -120,6 +120,99 @@ kbd {
   background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
 }
 
+/* Pulses red at the edges while you're low on health. */
+.danger {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(200, 20, 30, 0.55) 100%);
+  transition: opacity 0.3s;
+}
+
+.danger.on {
+  animation: danger 1.1s ease-in-out infinite;
+}
+
+@keyframes danger {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ─── Announcer ─────────────────────────────────────────────────────── */
+
+.announce {
+  position: absolute;
+  top: 92px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.banner {
+  min-width: 340px;
+  padding: 6px 48px 8px;
+  text-align: center;
+  background: linear-gradient(90deg, transparent, rgba(12, 16, 22, 0.88) 18%, rgba(12, 16, 22, 0.88) 82%, transparent);
+  border-top: 2px solid;
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, transparent, var(--tone) 20%, var(--tone) 80%, transparent) 1;
+  animation: banner-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+  --tone: #e8c46a;
+}
+
+.banner.theirs {
+  --tone: #ff5a5f;
+}
+
+.banner.neutral {
+  --tone: #9fb4c8;
+}
+
+.banner.out {
+  animation: banner-out 0.35s ease-in forwards;
+}
+
+.banner-title {
+  font: 40px/1.1 var(--font-display);
+  letter-spacing: 0.08em;
+  color: var(--tone);
+  text-shadow: 0 3px 0 #000, 0 0 24px color-mix(in srgb, var(--tone) 60%, transparent);
+}
+
+.banner-detail {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  text-shadow: 0 1px 2px #000;
+}
+
+.banner-detail:empty {
+  display: none;
+}
+
+@keyframes banner-in {
+  from {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes banner-out {
+  to {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+}
+
 .debug {
   position: absolute;
   top: 10px;

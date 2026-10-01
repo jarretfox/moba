@@ -403,6 +403,38 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
   }
 }
 
+/**
+ * A structure coming down: dust, rubble and a shockwave. Da Base goes out with a string of blasts, a
+ * pillar of light and a ring that sweeps the screen: the end of the match.
+ */
+export function structureCollapse(fx: FxLayer, x: number, y: number, r: number, finale: boolean): void {
+  const p = fx.particles;
+  fx.shockwave(x, y, r * 3, 0xffc27a, 0.6);
+  fx.cracks(x, y, r * 2, FIRE, 1.6, 9);
+  fx.flash(x, y, r, 0xffb070, 0.4);
+  p.burst(16, { shape: 'smoke', glow: false, x, y, life: 1.6, size: r * 0.7, size2: r * 1.8, color: 0x9a8f80, alpha: 0.6, drag: 0.15 }, [r * 0.8, r * 2]);
+  p.burst(26, { shape: 'shard', glow: false, x, y, life: 1, size: 16, size2: 8, color: 0x6b6f78, drag: 0.2, spin: 10, ay: 220 }, [r * 1.5, r * 4]);
+  p.burst(20, { shape: 'spark', x, y, life: 0.6, size: 18, size2: 4, stretch: 0.05, color: 0xfff1c1, color2: FIRE, drag: 0.05 }, [300, 800]);
+  if (!finale) return;
+  for (let i = 0; i < 6; i++) {
+    fx.later(0.25 + i * 0.22, () => {
+      const a = Math.random() * Math.PI * 2;
+      const d = Math.random() * r * 0.9;
+      const bx = x + Math.cos(a) * d;
+      const by = y + Math.sin(a) * d;
+      fx.flash(bx, by, r * 0.6, 0xffd9a8, 0.35);
+      fx.shockwave(bx, by, r * 1.4, FIRE, 0.45);
+      flames(fx, bx, by, r * 0.4, 20);
+    });
+  }
+  fx.later(1.6, () => {
+    fx.pillar(x, y, r * 0.9, 0xffffff, 2);
+    fx.shockwave(x, y, r * 12, 0xffffff, 1.4);
+    fx.flash(x, y, r * 2, 0xffffff, 0.8, 1);
+    p.burst(60, { shape: 'spark', x, y, life: 1.2, size: 24, size2: 6, stretch: 0.04, color: 0xffffff, color2: GOLD, drag: 0.1 }, [400, 1400]);
+  });
+}
+
 /** A small rune circle in the champion's colors under anyone casting an ability. */
 export function castFlash(fx: FxLayer, caster: EntitySnap): void {
   if (!caster.champ) return;

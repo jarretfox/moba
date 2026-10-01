@@ -160,8 +160,12 @@ export type GameEvent =
   | { e: 'death'; id: number }
   | { e: 'level'; id: number; level: number }
   | { e: 'gold'; id: number; amount: number }
-  /** For the kill feed, which everyone sees. `team` is the killer's side (0 when nobody gets the credit). */
-  | { e: 'kill'; killer: string; victim: string; team: Team }
+  /**
+   * For the kill feed and the announcer, which everyone sees. `team` is the killer's side (0 when nobody gets
+   * the credit) and `what` says what fell. Champion kills also carry the killer's streak, whether it ended
+   * the victim's streak (3 or more), and whether the victim's whole team is now dead.
+   */
+  | { e: 'kill'; killer: string; victim: string; team: Team; what?: 'champion' | 'warden' | StructureRole; streak?: number; shutdown?: boolean; ace?: boolean }
   | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team };
 
 export interface EntitySnap {
