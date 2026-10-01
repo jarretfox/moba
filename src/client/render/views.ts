@@ -10,7 +10,9 @@ import { Beast } from './beasts';
 import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
 import { Rig, type Expression, type Figure, type Posture } from './rig';
 import { flightHeight } from './stature';
-import { BUILDING, buildingHeight, drawCrystal, drawFort, drawFortRuin, drawOak, drawOakStump, drawTower, drawTowerRuin } from './structures';
+import type { Wind } from './wind';
+import { blade } from './organic';
+import { BUILDING, buildingHeight, drawCrystal, drawFlag, drawFort, drawFortRuin, drawOak, drawOakStump, drawTower, drawTowerRuin, flagSpots } from './structures';
 import { RECALLS, type RecallRoutine, type Say } from './recalls';
 import { arc } from './draw';
 
@@ -50,6 +52,10 @@ export interface ViewContext {
   /** The viewer's champion, if alive. */
   me: EntitySnap | undefined;
   inBrush(x: number, y: number): boolean;
+  /** In the river (figures wade, their legs under the water). */
+  inWater?(x: number, y: number): boolean;
+  /** The wind, for grass round the legs and banners. */
+  wind?: Wind;
 }
 
 export interface EntityView {
@@ -135,6 +141,11 @@ export class UnitView implements EntityView {
   private lastCast = -9;
   /** How far above the unit's spot the top of it is (bars and names go over that). */
   private readonly headroom: number;
+  /** Standing in the river: the water round their shins, and rings spreading out. */
+  private readonly wade = new Container();
+  private readonly ripple = new Graphics();
+  /** In the brush: tall grass in front of their legs, swaying. */
+  private readonly grass = new Graphics();
   private readonly resourceColor: number;
 
   constructor(s: EntitySnap, private readonly relation: Relation) {
@@ -194,7 +205,26 @@ export class UnitView implements EntityView {
     this.label.position.set(0, -this.headroom - 24);
 
     this.recallOver.addChild(this.recallOverG);
-    this.container.addChild(this.statusRing, this.recallUnder, this.body, this.facing, ...(this.rig ? [this.rig.root] : []), this.recallOver, this.bars, this.label);
+    if (this.rig) {
+      // The water's surface round the legs (with a pale rim), and a ring spreading out from them.
+      const water = new Graphics()
+        .ellipse(0, -r * 0.02, r * 0.8, r * 0.24)
+        .fill({ color: 0x2a6a80, alpha: 0.88 })
+        .ellipse(0, -r * 0.02, r * 0.8, r * 0.24)
+        .stroke({ width: 2.5, color: 0xbfe9f4, alpha: 0.7 });
+      water.moveTo(-r * 0.35, -r * 0.08).lineTo(-r * 0.1, -r * 0.1).stroke({ width: 2, color: 0xffffff, alpha: 0.45 });
+      this.ripple.ellipse(0, 0, r * 0.8, r * 0.24).stroke({ width: 2, color: 0xbfe9f4, alpha: 0.8 });
+      this.wade.addChild(this.ripple, water);
+      this.wade.visible = false;
+      // Blades of grass across the front of the legs, darker at the back.
+      for (let i = 0; i < 14; i++) {
+        const x = (-0.7 + (i / 13) * 1.4) * r + (Math.random() - 0.5) * 6;
+        const h = (0.45 + Math.random() * 0.4) * r;
+        blade(this.grass, x, r * 0.12, h, (Math.random() - 0.5) * r * 0.3, 0.13 * r, [0x2f6e28, 0x3a7a31, 0x4c8f40][i % 3]);
+      }
+      this.grass.visible = false;
+    }
+    this.container.addChild(this.statusRing, this.recallUnder, this.body, this.facing, ...(this.rig ? [this.rig.root, this.wade, this.grass] : []), this.recallOver, this.bars, this.label);
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -365,6 +395,7 @@ export class UnitView implements EntityView {
     // In the Dark Dabber's smoke, his own side sees him faintly.
     this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') || s.st?.includes('vanished') ? 0.4 : s.st?.includes('untargetable') ? 0.55 : 1;
     if (this.rig) this.rig.root.alpha = under ? 0.12 : this.body.alpha;
+    if (this.rig) this.surroundings(s, ctx, moved);
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
 
     const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
@@ -377,6 +408,24 @@ export class UnitView implements EntityView {
       this.statusKey = statusKey;
       this.drawStatus(s);
     }
+  }
+
+  /** Wading in the river, or pushing through tall grass. */
+  private surroundings(s: EntitySnap, ctx: ViewContext, speed: number): void {
+    const rig = this.rig!;
+    const grounded = !s.dead && !this.air;
+    const wet = grounded && !!ctx.inWater?.(s.x, s.y);
+    this.wade.visible = wet;
+    // They sink in a little (their team ring still shows round them).
+    rig.root.y = wet ? s.r * 0.16 : 0;
+    if (wet) {
+      const k = (this.clock * (speed > 40 ? 1.6 : 0.7)) % 1;
+      this.ripple.scale.set(1 + k * 0.8);
+      this.ripple.alpha = 1 - k;
+    }
+    const hidden = grounded && ctx.inBrush(s.x, s.y);
+    this.grass.visible = hidden;
+    if (hidden) this.grass.skew.x = (ctx.wind?.at(s.x, s.y) ?? 0) * 0.12 + (speed > 40 ? Math.sin(this.clock * 14) * 0.12 : 0);
   }
 
   private drawRecall(routine: RecallRoutine): void {
@@ -813,6 +862,8 @@ export class StructureView implements EntityView {
   private crystalY = 0;
   /** See-through while your champion is behind it, so a tower never hides you. */
   private fade = 1;
+  /** Banners flying from the poles, flapping in the wind. */
+  private flags: Graphics[] = [];
   private readonly range = new Graphics();
   private readonly body = new Graphics();
   private readonly light = new Graphics();
@@ -857,6 +908,12 @@ export class StructureView implements EntityView {
     const behind = !!me && !s.dead && me.y < s.y && me.y > s.y - tall - me.r && Math.abs(me.x - s.x) < s.r * 1.1 + me.r;
     this.fade += ((behind ? 0.4 : 1) - this.fade) * Math.min(1, dt * 10);
     this.upper.alpha = this.crystal.alpha = this.fade;
+    this.flags.forEach((f, i) => {
+      const w = ctx.wind;
+      f.alpha = this.fade;
+      f.skew.y = (w ? w.flutter(s.x, i * 1.7) * 0.14 + w.at(s.x, s.y) * 0.1 : Math.sin(this.clock * 6 + i) * 0.08);
+      f.scale.x = 1 - Math.abs(f.skew.y) * 0.3;
+    });
     // A felled Oakner springing back up when it regrows.
     if (this.wasDead && !s.dead) this.grow = 0;
     this.wasDead = !!s.dead;
@@ -906,6 +963,8 @@ export class StructureView implements EntityView {
     const team = this.relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
     g.ellipse(r * 0.12, r * 0.16, r * (s.dead ? 0.85 : 1.05), r * (s.dead ? 0.36 : 0.45)).fill({ color: 0x000000, alpha: 0.32 });
     if (s.dead) {
+      for (const f of this.flags) f.destroy();
+      this.flags = [];
       if (s.role === 'oakner') drawOakStump(up, r);
       else if (s.role === 'daBase') drawFortRuin(up, r);
       else drawTowerRuin(up, r);
@@ -916,7 +975,15 @@ export class StructureView implements EntityView {
     const role = s.role ?? 'outerShootie';
     if (role === 'oakner') drawOak(up, r, team);
     else if (role === 'daBase') drawFort(up, r, team);
-    else drawTower(up, r, team);
+    else drawTower(up, r);
+    for (const f of this.flags) f.destroy();
+    this.flags = flagSpots(role, r).map((spot) => {
+      const f = new Graphics();
+      drawFlag(f, spot.len, team);
+      f.position.set(spot.x, spot.y);
+      this.top.addChildAt(f, this.top.getChildIndex(this.upper) + 1);
+      return f;
+    });
     if (role !== 'oakner') {
       const spec = role === 'daBase' ? BUILDING.daBase : BUILDING.shootie;
       drawCrystal(this.crystal, (role === 'daBase' ? 0.8 : 0.7) * r, team);

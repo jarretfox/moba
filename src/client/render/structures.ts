@@ -24,6 +24,26 @@ export function buildingHeight(role: string): number {
   return role === 'oakner' ? BUILDING.oakner.height : role === 'daBase' ? BUILDING.daBase.height : BUILDING.shootie.height;
 }
 
+/** Where a building's banners fly from (the top of each pole), and how long each is. */
+export function flagSpots(role: string, r: number): { x: number; y: number; len: number }[] {
+  if (role === 'oakner') return [];
+  if (role === 'daBase') {
+    const spots = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      spots.push({ x: Math.cos(a) * 0.95 * r, y: Math.sin(a) * 0.95 * r * 0.5 - 0.7 * r - 0.62 * r, len: 0.24 * r });
+    }
+    return spots;
+  }
+  return [{ x: -0.38 * r, y: -BUILDING.shootie.body * r - 1.02 * r, len: 0.46 * r }];
+}
+
+/** A swallow-tailed banner in the team's color, from the pole at (0, 0) out along +x. */
+export function drawFlag(g: Graphics, len: number, team: number): void {
+  inked(g, smooth([0, 0, len, len * 0.12, len * 0.78, len * 0.34, len, len * 0.58, 0, len * 0.62], true, 1), team, 2);
+  g.moveTo(len * 0.08, len * 0.15).lineTo(len * 0.7, len * 0.2).stroke({ width: 1.5, color: 0xffffff, alpha: 0.3 });
+}
+
 /** Points round part of an ellipse, from angle a0 to a1. */
 function arcPts(cx: number, cy: number, rx: number, ry: number, a0: number, a1: number, n = 16): Pts {
   const pts: Pts = [];
@@ -64,7 +84,7 @@ export function drawCrystal(g: Graphics, s: number, team: number): void {
 }
 
 /** A Shootie: a round stone watchtower, battlements on top, a crystal hovering over the deck. */
-export function drawTower(g: Graphics, r: number, team: number): void {
+export function drawTower(g: Graphics, r: number): void {
   const random = rng(77);
   const H = BUILDING.shootie.body * r;
   const rxB = 0.8 * r;
@@ -131,9 +151,8 @@ export function drawTower(g: Graphics, r: number, team: number): void {
     inked(g, [x - w, y, x - w, y - 0.2 * r, x + w, y - 0.2 * r, x + w, y], Math.cos(a) > 0.3 ? STONE : STONE_LIGHT, 2, INK_STONE);
   };
   for (let i = 0; i < 6; i++) merlon(Math.PI + (i + 0.5) * (Math.PI / 6)); // the back ones
-  // A banner on its pole at the back.
+  // A pole at the back for the banner (the banner itself flaps in the wind: see drawFlag).
   g.moveTo(-0.38 * r, -H - 0.1 * r).lineTo(-0.38 * r, -H - 1.05 * r).stroke({ width: 3.5, color: 0x3a2814 });
-  inked(g, smooth([-0.36 * r, -H - 1.02 * r, 0.05 * r, -H - 0.96 * r, -0.05 * r, -H - 0.84 * r, 0.08 * r, -H - 0.72 * r, -0.36 * r, -H - 0.72 * r], true, 1), team, 2);
   // A stone plinth for the crystal.
   inked(g, [-0.12 * r, -H + 0.02 * r, -0.08 * r, -H - 0.14 * r, 0.08 * r, -H - 0.14 * r, 0.12 * r, -H + 0.02 * r], STONE_LIGHT, 2, INK_STONE);
   for (let i = 0; i < 6; i++) merlon((i + 0.5) * (Math.PI / 6)); // and the front ones
@@ -288,7 +307,6 @@ export function drawFort(g: Graphics, r: number, team: number): void {
     inked(g, [x - tr * 1.2, y - th, x, y - th - 0.42 * r, x + tr * 1.2, y - th], team, 2.5);
     g.poly([x, y - th - 0.42 * r, x + tr * 1.2, y - th, x + tr * 0.2, y - th]).fill({ color: 0x000000, alpha: 0.2 });
     g.moveTo(x, y - th - 0.42 * r).lineTo(x, y - th - 0.62 * r).stroke({ width: 2.5, color: 0x3a2814 });
-    inked(g, [x, y - th - 0.62 * r, x + 0.2 * r, y - th - 0.57 * r, x, y - th - 0.5 * r], team, 1.5);
   };
   // Back walls and towers first, then the front, nearest last.
   for (const e of edges) if (!isFront(e)) wall(e, false);

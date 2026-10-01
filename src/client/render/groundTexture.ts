@@ -10,6 +10,32 @@ function css(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
 
+/** A soft, tiling noise texture: what the wind uses to stir the leaves. */
+export function noiseTexture(size = 128): Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const img = ctx.createImageData(size, size);
+  // Waves at whole-number frequencies across the tile, so it repeats without a seam.
+  const T = Math.PI * 2;
+  const wave = (u: number, v: number, k: number) =>
+    0.5 + 0.22 * Math.sin(T * (2 * u + v) + k) * Math.cos(T * 3 * v + k * 2) + 0.16 * Math.sin(T * (5 * u - 3 * v) + k * 3) + 0.1 * Math.cos(T * (7 * u + 4 * v) + k);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      img.data[i] = wave(x / size, y / size, 0.7) * 255;
+      img.data[i + 1] = wave(y / size, x / size, 2.1) * 255;
+      img.data[i + 2] = 128;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = Texture.from(canvas);
+  tex.source.addressMode = 'repeat';
+  return tex;
+}
+
 export class GroundCanvas {
   readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;

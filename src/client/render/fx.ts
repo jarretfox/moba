@@ -43,6 +43,8 @@ export class FxLayer {
   private glows: { light: Light; strength: number; age: number; life: number }[] = [];
   /** Marks left on the ground, oldest first; only so many at once. */
   private scars: Effect[] = [];
+  /** Footprints, oldest first (only so many at once). */
+  private prints: Effect[] = [];
   private clock = 0;
   /** This frame's step, for effects that spray particles while they last. */
   dt = 0;
@@ -213,6 +215,25 @@ export class FxLayer {
     this.scars.push(this.effects[this.effects.length - 1]);
     this.scars = this.scars.filter((s) => s.age < s.life);
     if (this.scars.length > 36) this.scars.shift()!.age = Infinity;
+  }
+
+  /** A footprint pressed into the dirt, pointing along `angle`, fading after a few seconds. */
+  footprint(x: number, y: number, angle: number, size: number, paw = false): void {
+    const g = new Graphics();
+    const color = { color: 0x241a10, alpha: 0.4 };
+    if (paw) {
+      g.circle(0, 0, size * 0.32).fill(color);
+      for (const k of [-1, 0, 1]) g.circle(size * 0.45, k * size * 0.28, size * 0.14).fill(color);
+    } else {
+      g.ellipse(size * 0.25, 0, size * 0.42, size * 0.22).fill(color); // the ball of the foot
+      g.ellipse(-size * 0.35, 0, size * 0.22, size * 0.19).fill(color); // heel
+    }
+    g.position.set(x, y);
+    g.rotation = angle;
+    this.add(g, 6, (t) => (g.alpha = t < 0.6 ? 1 : (1 - t) / 0.4), 'under');
+    this.prints.push(this.effects[this.effects.length - 1]);
+    this.prints = this.prints.filter((p) => p.age < p.life);
+    if (this.prints.length > 90) this.prints.shift()!.age = Infinity;
   }
 
   healNumber(x: number, y: number, amount: number): void {

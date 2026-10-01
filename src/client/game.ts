@@ -1,4 +1,4 @@
-import { BlurFilter, ColorMatrixFilter, Container, Graphics, RenderTexture, Sprite, type Application } from 'pixi.js';
+import { BlurFilter, ColorMatrixFilter, Container, DisplacementFilter, Graphics, RenderTexture, Sprite, type Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { atRank, type ChampionInfo } from '../shared/champions/types';
 import { TEAM, type Slot, type Team } from '../shared/constants';
@@ -28,6 +28,8 @@ import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
 import { CAST_COLORS } from './render/spells';
 import { chestHeight, crystalHeight, flightHeight, standHeight } from './render/stature';
+import { Wind } from './render/wind';
+import { noiseTexture } from './render/groundTexture';
 import type { FxKind } from '../shared/protocol';
 import type { SoundName } from './audio';
 import { driftAt } from './render/backdrop';
@@ -136,7 +138,14 @@ export class GameClient {
   private peek: Vec2 | null = null;
   private frameCount = 0;
   /** Where each walker was and when its next footstep is due. */
-  private readonly steps = new Map<number, { x: number; y: number; next: number }>();
+  private readonly steps = new Map<number, { x: number; y: number; next: number; left: boolean }>();
+  /** The wind: leans the brush, flaps the banners, stirs the leaves. */
+  private readonly wind = new Wind();
+  /** Patches of tall grass, for the wind to lean. */
+  private sway: Container[] = [];
+  /** Ripples the tree crowns, as if the leaves were stirring (high graphics only). */
+  private readonly leafNoise = new Sprite(noiseTexture());
+  private readonly leaves = new DisplacementFilter({ sprite: this.leafNoise, scale: 5 });
   /** When you last traded hits with a champion, for the music. */
   private lastFight = -Infinity;
   /** Old Wick at each fountain (blue's, then red's), and how yours is feeling about you. */
@@ -305,6 +314,7 @@ export class GameClient {
 
   private setWeather(w: WeatherView): void {
     this.weather = w;
+    this.wind.setWeather(w.kind);
     w.density = settings.quality === 'high' ? 1 : 0.4;
     // Mist and splashes sit over the trees; rain and lightning over everything.
     this.worldLayer.addChildAt(w.world, this.worldLayer.getChildIndex(this.canopy) + 1);
@@ -335,6 +345,7 @@ export class GameClient {
     replace(this.groundLayer, layers.ground);
     replace(this.wallTops, layers.wallTops);
     replace(this.canopy, layers.canopy);
+    this.sway = layers.sway;
   }
 
   showNotice(title: string, detail: string): void {
@@ -357,6 +368,7 @@ export class GameClient {
     this.fx.update(dt);
     this.ambience.update(dt);
     this.water.update(dt, this.ents.values());
+    this.blowWind(dt);
     this.fog.update(this.ents.values(), this.myTeam, performance.now() / 1000);
 
     const me = this.ents.get(this.myId);
@@ -479,7 +491,12 @@ export class GameClient {
       this.views.delete(id);
     }
     const me = this.ents.get(this.myId);
-    const ctx: ViewContext = { me: me && !me.dead ? me : undefined, inBrush: (x, y) => this.visionGrid.brushAt({ x, y }) > 0 };
+    const ctx: ViewContext = {
+      me: me && !me.dead ? me : undefined,
+      inBrush: (x, y) => this.visionGrid.brushAt({ x, y }) > 0,
+      inWater: (x, y) => MAP.ground.some((p) => p.style === 'river' && shapeContains(p.shape, x, y)),
+      wind: this.wind,
+    };
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);
       if (!view) {
@@ -911,10 +928,11 @@ export class GameClient {
     if (s.dead || (s.k !== 'champion' && s.k !== 'chud' && s.k !== 'monster' && s.k !== 'guard') || s.st?.includes('burrowed') || s.st?.includes('underground')) return;
     const last = this.steps.get(s.id);
     if (!last) {
-      this.steps.set(s.id, { x: s.x, y: s.y, next: time });
+      this.steps.set(s.id, { x: s.x, y: s.y, next: time, left: false });
       return;
     }
     const moved = Math.hypot(s.x - last.x, s.y - last.y);
+    const heading = Math.atan2(s.y - last.y, s.x - last.x);
     last.x = s.x;
     last.y = s.y;
     if (moved < 1 || time < last.next) return;
@@ -923,6 +941,30 @@ export class GameClient {
     if (style === 'river') return; // the water has its own ripples
     const inBrush = this.visionGrid.brushAt({ x: s.x, y: s.y }) > 0;
     footstep(this.fx, s.x, s.y, s.r, inBrush ? 'brush' : style === 'lane' || style === 'base' ? 'dust' : 'grass');
+    // Champions leave footprints in the dirt, left and right in turn (paws for the lion and the rat).
+    if (s.k === 'champion' && !inBrush && (style === 'lane' || style === 'jungle')) {
+      last.left = !last.left;
+      const side = (last.left ? 1 : -1) * s.r * 0.16;
+      this.fx.footprint(s.x - Math.sin(heading) * side, s.y + Math.cos(heading) * side, heading, s.r * 0.42, s.champ === 'logan' || s.champ === 'dabber');
+    }
+  }
+
+  /** The wind: the brush leans from its foot, and (on high graphics) the tree crowns stir. */
+  private blowWind(dt: number): void {
+    this.wind.update(dt);
+    for (const patch of this.sway) patch.skew.x = this.wind.at(patch.x, patch.y) * 0.07;
+    const stir = settings.quality === 'high';
+    if (stir && !this.leafNoise.parent) {
+      this.leafNoise.renderable = false;
+      this.leafNoise.scale.set(6);
+      this.worldLayer.addChild(this.leafNoise);
+    }
+    this.canopy.filters = stir ? [this.leaves] : [];
+    if (stir) {
+      this.leafNoise.x += dt * 30 * this.wind.strength * this.wind.gust();
+      this.leafNoise.y += dt * 9 * this.wind.strength;
+      this.leaves.scale.set(3 + 4 * this.wind.strength * this.wind.gust());
+    }
   }
 
   /** A Shootie firing: a flash off its crystal (up on the raised top) and sparks toward its target. */

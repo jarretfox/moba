@@ -81,6 +81,8 @@ export interface MapLayers {
   ground: Container;
   wallTops: Container;
   canopy: Container;
+  /** Patches of tall grass, each pivoted at its foot, for the wind to lean. */
+  sway: Container[];
 }
 
 /** How far each kind of tall thing leans out from the middle of the screen (share of its distance). */
@@ -139,9 +141,17 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
   const props = new Graphics();
   paintProps(props, wallTops, propSpots(map));
   root.addChild(props);
-  const brush = new Graphics();
-  for (const b of map.brush) paintBrush(brush, b, random);
-  root.addChild(brush);
+  // Each patch of tall grass on its own, so the wind can lean it from its foot.
+  const sway: Container[] = [];
+  for (const b of map.brush) {
+    const patch = new Graphics();
+    paintBrush(patch, b, random);
+    const box = polyBounds(shapeOutline(b, 20, 20));
+    patch.pivot.set(box.x + box.w / 2, box.y + box.h);
+    patch.position.copyFrom(patch.pivot);
+    root.addChild(patch);
+    sway.push(patch);
+  }
 
   for (const [text, y] of [['TOP LANE', 1100], ['BOT LANE', map.height - 1100]] as const) {
     const t = new Text({ text, style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 60, fill: 0xffffff, letterSpacing: 6 } });
@@ -150,7 +160,7 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
     t.position.set(map.width / 2, y);
     root.addChild(t);
   }
-  return { ground: root, wallTops, canopy };
+  return { ground: root, wallTops, canopy, sway };
 }
 
 /** A soft round pool of light, fading smoothly to nothing at radius `r` (added over what's under it). */
