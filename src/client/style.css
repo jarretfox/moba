@@ -2,7 +2,8 @@
   /* A gold gauntlet-style pointer, and a sword over enemies. */
   --cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M4 3 L4 25 L10 19.5 L14.5 29 L19 27 L14.5 17.5 L22.5 17 Z' fill='%23e8c46a' stroke='%232a1a08' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M7 8 L7 19' stroke='%23fff3c4' stroke-width='1.6' opacity='.7'/%3E%3C/svg%3E") 4 3, auto;
   --cursor-attack: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M3 3 L9 3 L23 17 L17 23 L3 9 Z' fill='%23dfe5ee' stroke='%2315181d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M6 6 L20 20' stroke='%239aa4b2' stroke-width='1.5'/%3E%3Cpath d='M14 26 L26 14' stroke='%23c0182b' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M21 21 L28 28' stroke='%236b4a2b' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='28.5' cy='28.5' r='2.6' fill='%23e8c46a' stroke='%2315181d' stroke-width='1'/%3E%3C/svg%3E") 3 3, crosshair;
-  --font-display: 'Lilita One', 'Nunito', system-ui, sans-serif;
+  --cursor-shop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ccircle cx='16' cy='17' r='11' fill='%23a87420' stroke='%232a1a08' stroke-width='2'/%3E%3Ccircle cx='15' cy='15' r='11' fill='%23f2c14e' stroke='%232a1a08' stroke-width='2'/%3E%3Ccircle cx='15' cy='15' r='6.5' fill='none' stroke='%23b8862a' stroke-width='2'/%3E%3Cpath d='M9.5 10.5 Q12 7.5 16 7.2' stroke='%23fff3c4' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") 15 15, pointer;
+  --font-display:'Lilita One', 'Nunito', system-ui, sans-serif;
   --font-body: 'Nunito', system-ui, 'Segoe UI', sans-serif;
   --panel: rgba(10, 14, 18, 0.88);
   --panel-edge: #2b3440;
@@ -39,6 +40,11 @@ canvas,
 .slot,
 .minimap canvas {
   cursor: var(--cursor) !important;
+}
+
+/* Over Old Wick: a gold coin, to shop. */
+canvas.shop {
+  cursor: var(--cursor-shop) !important;
 }
 
 canvas.attack {

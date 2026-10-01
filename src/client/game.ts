@@ -453,7 +453,7 @@ export class GameClient {
 
     const mouseWorld = this.mouseWorld();
     if (this.rightHeld && (this.holdTimer -= dt) <= 0) this.rightClick(false);
-    this.setCursor(this.enemyAt(mouseWorld) ? 'attack' : '');
+    this.setCursor(this.enemyAt(mouseWorld) ? 'attack' : !this.replay && this.wicks[this.myTeam - 1]?.hit(mouseWorld) ? 'shop' : '');
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
 
@@ -1362,6 +1362,11 @@ export class GameClient {
     canvas.addEventListener('pointerdown', (e) => {
       track(e);
       if (e.button === 0 && this.startPing(e, this.mouseWorld())) return;
+      // Either button on Old Wick opens the shop (and walks you over if you're not at the fountain).
+      if ((e.button === 2 || (e.button === 0 && this.aiming === null)) && this.visitWick()) {
+        this.aiming = null;
+        return;
+      }
       if (e.button === 2) {
         this.aiming = null;
         this.rightHeld = true;
@@ -1472,6 +1477,21 @@ export class GameClient {
     }
   }
 
+  /** Clicked on your Old Wick: open the shop, and if you're out of reach of it, walk over to him. */
+  private visitWick(): boolean {
+    const wick = this.wicks[this.myTeam - 1];
+    if (!wick || this.replay || !wick.hit(this.mouseWorld())) return false;
+    this.hud.shop.toggle(true);
+    wick.showWares(2);
+    const me = this.ents.get(this.myId);
+    if (me && !me.dead && !this.buffer.latest?.me?.inShop) {
+      const to = wick.counter;
+      this.send({ k: 'move', x: Math.round(to.x), y: Math.round(to.y) });
+      this.fx.clickMarker(to.x, to.y, false);
+    }
+    return true;
+  }
+
   private rightClick(initial: boolean): void {
     this.holdTimer = HOLD_MOVE_INTERVAL;
     const p = this.mouseWorld();
@@ -1527,6 +1547,7 @@ export class GameClient {
     if (c === this.cursor) return;
     this.cursor = c;
     this.app.canvas.classList.toggle('attack', c === 'attack');
+    this.app.canvas.classList.toggle('shop', c === 'shop');
   }
 
   setTitle(title: string): void {

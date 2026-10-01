@@ -120,6 +120,20 @@ export class Shopkeeper {
     this.paintGround();
   }
 
+  /** Whether a spot on the map is on Wick (his figure, pack and staff) or his rug of wares: click him to shop. */
+  hit(p: Vec2): boolean {
+    const f = this.facing;
+    const onHim = Math.abs(p.x - (this.x + 6 * f)) < 0.85 * R && p.y < this.y + 0.35 * R && p.y > this.y - this.rig.height - 0.3 * R;
+    const rx = (p.x - (this.x + 92 * f)) / 68;
+    const ry = (p.y - (this.y + 18)) / 42;
+    return onHim || rx * rx + ry * ry < 1;
+  }
+
+  /** A spot just in front of him, toward the fountain, for a customer to walk up to. */
+  get counter(): Vec2 {
+    return { x: this.x + 40 * this.facing, y: this.y + 90 };
+  }
+
   /** Where a speech bubble goes: over his hood. */
   get anchor(): { x: number; y: number; r: number } {
     return { x: this.x + 14 * this.facing, y: this.y, r: 128 };

@@ -38,7 +38,7 @@ const HELP = [
   ['Shift+Q W E R', 'level up an ability'],
   ['S', 'stop'],
   ['B', 'recall home (4s, breaks if hit)'],
-  ['P', 'shop (at your fountain)'],
+  ['P', 'shop (or click Old Wick)'],
   ['M', 'mute sound'],
   ['N', 'music on / off'],
   ['1 2 3 4', 'taunt, laugh, cheer, say a line'],
