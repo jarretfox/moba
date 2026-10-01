@@ -11,6 +11,7 @@ import { pickWeather } from '../shared/weather';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
 import { Jungle } from '../shared/sim/jungle';
+import { CrabSpawner } from '../shared/sim/crab';
 import { WardenLair } from '../shared/sim/warden';
 import { scoreRows } from '../shared/sim/score';
 import { spawnStructures } from '../shared/sim/structure';
@@ -66,6 +67,7 @@ export class HostCore {
     spawnStructures(this.world);
     this.world.addSystem(new Fountain());
     this.world.addSystem(new Jungle(this.world));
+    this.world.addSystem(new CrabSpawner(this.world));
   }
 
   receive(connId: string, raw: unknown): void {

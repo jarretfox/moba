@@ -4,6 +4,7 @@ import { dist } from '../math';
 import { MushroomTotem, TOTEM_BOUNTY } from '../champions/hunnag';
 import { GUARD_BOUNTY, RoyalGuard } from '../champions/kingrix';
 import { Chud } from './chud';
+import { Crab, rewardCrab } from './crab';
 import { CAMPS, MONSTERS, Monster } from './jungle';
 import { UNCHAINED, WARDEN, Warden, holdsGrudge } from './warden';
 import { ASSIST_GOLD, CHUD_REWARD, STRUCTURE_GOLD, WANTED_STREAK, XP_SHARE_RANGE, killBounty, killXp, xpShare } from './progression';
@@ -18,6 +19,7 @@ import type { World } from './world';
 export function rewardDeath(world: World, victim: Unit, source: Unit | null, helpers: Unit[]): void {
   if (victim instanceof Chud) return rewardChud(world, victim, source);
   if (victim instanceof Monster) return rewardMonster(world, victim, source, helpers);
+  if (victim instanceof Crab) return rewardCrab(world, victim, source, helpers);
   if (victim instanceof Warden) return rewardWarden(world, source, helpers);
   if (victim instanceof RoyalGuard) {
     if (source instanceof Champion && source.team !== victim.team) source.gainGold(world, GUARD_BOUNTY);

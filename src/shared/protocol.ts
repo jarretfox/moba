@@ -134,7 +134,7 @@ export type StatusKind =
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
-export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'warden';
+export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'warden' | 'crab';
 
 /** One champion's line on the scoreboard. `dmg` is to champions, `tdmg` to structures; `gold` is everything earned. */
 export interface ScoreRow {
@@ -250,7 +250,7 @@ export type GameEvent =
       killer: string;
       victim: string;
       team: Team;
-      what?: 'champion' | 'warden' | StructureRole;
+      what?: 'champion' | 'warden' | 'crab' | StructureRole;
       streak?: number;
       shutdown?: boolean;
       /** Gold the killer got for ending the victim's spree (their bounty). */

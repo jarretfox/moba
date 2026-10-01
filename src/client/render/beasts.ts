@@ -11,7 +11,7 @@ import { limb, type Figure, type RigInput } from './rig';
 // Ember Toad snaps at a fly buzzing round its head, the rats squabble (turning on each other, nipping,
 // hopping), the Rat King guarding a crumb of cheese.
 
-export type BeastKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'siege' | 'dummy';
+export type BeastKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'crab' | 'siege' | 'dummy';
 
 interface Legs {
   /** Hip positions along the body, front first. */
@@ -157,6 +157,28 @@ const SPECS: Record<BeastKind, BeastSpec> = {
       inked(g, cap, 0x2f7fb8, 3);
       g.moveTo(-0.9 * r, -0.82 * r).quadraticCurveTo(0, -0.98 * r, 0.9 * r, -0.82 * r).stroke({ width: 3, color: 0x1a4a6a }); // gills
       for (const [x, y, s] of [[-0.5, -1.2, 0.12], [0.1, -1.4, 0.1], [0.55, -1.15, 0.09], [-0.15, -1.08, 0.07], [0.82, -0.95, 0.06], [-0.82, -0.98, 0.06]]) g.ellipse(x * r, y * r, s * r, s * 0.8 * r).fill(0xdff7ff);
+    },
+  },
+
+  /** The Sewer Crab: a wide shell on six legs, claws up, eyes on stalks. It walks sideways, so it never turns. */
+  crab: {
+    height: 0.95,
+    turns: false,
+    pace: 4,
+    legs: { xs: [0.42, 0.18, -0.18, -0.42], hipY: -0.26, len: 0.3, w: 0.09, color: 0xb8461f, swing: 0.7 },
+    body(g, r) {
+      // Claws up either side, then the shell, spotted, then the eyes on their stalks.
+      for (const side of [-1, 1]) {
+        inkLine(g, side * 0.5 * r, -0.4 * r, side * 0.72 * r, -0.66 * r, 5, { color: 0xb8461f, tip: 0.5 }, 0.1);
+        inked(g, smooth([side * 0.62 * r, -0.66 * r, side * 0.86 * r, -0.92 * r, side * 0.98 * r, -0.72 * r, side * 0.84 * r, -0.58 * r], true, 1), 0xe0662e, 2);
+        g.moveTo(side * 0.82 * r, -0.66 * r).lineTo(side * 0.94 * r, -0.8 * r).stroke({ width: 2, color: 0x6a2a10 }); // the pincer's gap
+        inkLine(g, side * 0.14 * r, -0.62 * r, side * 0.2 * r, -0.86 * r, 2.5, { color: 0x6a2a10 }, 0);
+        g.circle(side * 0.2 * r, -0.9 * r, 0.07 * r).fill(0xfff6e0).stroke({ width: 1.5, color: 0x1a1414 });
+        g.circle(side * 0.21 * r, -0.9 * r, 0.035 * r).fill(0x1a1414);
+      }
+      inked(g, blob(0, -0.45 * r, 0.62 * r, 0.3 * r, 21, 0.08, 22), 0xd9733a, 2.5);
+      for (const [x, y, s] of [[-0.25, -0.52, 0.06], [0.1, -0.58, 0.05], [0.32, -0.46, 0.05], [-0.05, -0.4, 0.04]]) g.circle(x * r, y * r, s * r).fill({ color: 0xffb06a, alpha: 0.8 });
+      g.moveTo(-0.3 * r, -0.32 * r).quadraticCurveTo(0, -0.24 * r, 0.3 * r, -0.32 * r).stroke({ width: 2, color: 0x6a2a10 }); // a grumpy mouth
     },
   },
 

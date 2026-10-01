@@ -13,6 +13,7 @@ import { mitigate, type World } from '../sim/world';
 import { pointAlong, progressAlong } from './lanes';
 import { PROFILES, type BotContext } from './profiles';
 import { nextPurchase } from './shopping';
+import { Crab } from '../sim/crab';
 
 // ─── Tuning: a "decent new player" ────────────────────────────────────────────
 
@@ -151,6 +152,10 @@ export class Bot {
     if (this.state === 'retreat') return this.retreat(world, out, hp, nearest);
 
     if (nearest && this.shouldFight(world, nearest, hp)) return this.fight(world, out, nearest);
+
+    // A Sewer Crab close by with nobody around to contest it: take it.
+    const crab = !nearest && hp > 0.5 ? world.units().find((u) => u instanceof Crab && !u.dead && dist(u.pos, me.pos) < 900) : undefined;
+    if (crab) return this.attack(out, crab);
 
     // Being hit by a champion we don't want to fight: give ground.
     const hitBy = foes.find((f) => (me.championHits.get(f.id) ?? -Infinity) > world.time - 1);

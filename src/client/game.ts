@@ -1206,6 +1206,8 @@ export class GameClient {
         return say('SHOOTIE DESTROYED', `${ev.killer} destroyed ${good ? 'their' : 'our'} ${ev.victim}`, true);
       case 'daBase':
         return; // the finale speaks for itself
+      case 'crab':
+        return say('SEWER CRAB TAKEN', `${ev.killer} took the river: ${good ? 'we' : 'they'} can see it now`, false);
       case 'champion': {
         if (ev.team === TEAM.neutral) return say('EXECUTED', `${ev.victim} fell to ${ev.killer === 'Executed' ? 'the lane' : ev.killer}`, false);
         const now = this.replay?.time ?? this.buffer.latest?.time ?? 0;

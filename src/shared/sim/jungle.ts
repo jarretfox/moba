@@ -8,7 +8,7 @@ import type { World, WorldSystem } from './world';
 // ─── Tuning: jungle camps ─────────────────────────────────────────────────────
 
 /** Camp monsters (the Warden has its own file). */
-export type CampMonsterKind = Exclude<MonsterKind, 'warden'>;
+export type CampMonsterKind = Exclude<MonsterKind, 'warden' | 'crab'>;
 
 interface MonsterDef {
   name: string;

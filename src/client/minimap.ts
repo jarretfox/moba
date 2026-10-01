@@ -134,6 +134,7 @@ export class Minimap {
         else square(g, x, y, 6, color);
       } else if (e.k === 'monster' && !e.dead) {
         if (e.mon === 'warden') dot(g, x, y, 6, '#7fe3ff', '#0b0f0b');
+        else if (e.mon === 'crab') dot(g, x, y, 3.5, '#ff8a3d', '#0b0f0b');
         else dot(g, x, y, 3, '#e8c46a', '#0b0f0b');
       }
     }
