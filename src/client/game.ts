@@ -19,7 +19,8 @@ import { Hud } from './hud';
 import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
-import { castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
+import { brazierFire, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
+import { paintLampGlows, propSpots } from './render/props';
 import { Lighting, nightAt, skyAt } from './render/lighting';
 import { driftAt } from './render/backdrop';
 import { Water } from './render/water';
@@ -81,6 +82,8 @@ export class GameClient {
   /** Which champion each Shootie is shooting at, so a beam can show it. */
   private readonly towerShots = new Map<number, { target: number; until: number }>();
   private readonly beams = new Graphics();
+  /** Lantern lamps glowing in the dark: raised like the lantern heads they sit in. */
+  private readonly lamps = new Graphics();
   /** Glow bleeding off spells: the glowing layer, blurred and added back over the view. */
   private readonly bloomRt = RenderTexture.create({ width: 16, height: 16, resolution: 0.35 });
   private readonly bloom = new Sprite(this.bloomRt);
@@ -158,7 +161,9 @@ export class GameClient {
       this.unitLayer,
       this.projectileLayer,
     );
-    this.emissive.addChild(this.beams, this.fx.container, this.bubbles.container);
+    paintLampGlows(this.lamps, propSpots(MAP));
+    this.lamps.blendMode = 'add';
+    this.emissive.addChild(this.lamps, this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
     this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35 })];
@@ -246,6 +251,7 @@ export class GameClient {
     elevate(this.wallTops, HEIGHT.wall, this.camera.x, this.camera.y);
     elevate(this.structureTops, HEIGHT.structure, this.camera.x, this.camera.y);
     elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
+    elevate(this.lamps, HEIGHT.wall, this.camera.x, this.camera.y);
     this.emissive.position.copyFrom(this.worldLayer.position);
     this.emissive.scale.copyFrom(this.worldLayer.scale);
     const matchTime = this.buffer.latest?.time ?? 0;
@@ -313,6 +319,9 @@ export class GameClient {
     const halfW = width / 2 / this.camera.zoom + 250;
     const halfH = height / 2 / this.camera.zoom + 250;
     const time = performance.now() / 1000;
+    for (const b of propSpots(MAP).braziers) {
+      if (Math.abs(b.x - this.camera.x) < halfW && Math.abs(b.y - this.camera.y) < halfH) brazierFire(this.fx, b.x, b.y);
+    }
     for (const s of this.ents.values()) {
       if (Math.abs(s.x - this.camera.x) > halfW || Math.abs(s.y - this.camera.y) > halfH) continue;
       if (s.k === 'projectile') projectileTrail(this.fx, s, s.tm === this.myTeam);

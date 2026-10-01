@@ -3,6 +3,7 @@ import { TEAM, type Team } from '../../shared/constants';
 import type { GroundStyle, MapData } from '../../shared/map/mapData';
 import type { NavGrid } from '../../shared/map/navGrid';
 import { shapeContains, type Shape } from '../../shared/map/shapes';
+import { paintProps, propSpots } from './props';
 
 // The map, painted once at load. Everything decorative is placed by a seeded random generator, so the
 // map looks the same for everyone and every match. Gameplay shapes (ground, walls, brush) come straight
@@ -109,6 +110,11 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
     glow(lights, piece.shape.x, piece.shape.y, piece.shape.r * 0.9, groundColor('base', piece.shape, map, myTeam) === PAL.allyBase ? 0x3d8bfd : 0xe5484d, 0.045);
   }
   root.addChild(lights);
+
+  // Lanterns, braziers, glowing mushrooms and bones.
+  const props = new Graphics();
+  paintProps(props, wallTops, propSpots(map));
+  root.addChild(props);
 
   const brush = new Graphics();
   for (const b of map.brush) paintBrush(brush, b, random);
@@ -400,6 +406,8 @@ function paintNest(g: Graphics, x: number, y: number, random: () => number): voi
 function paintForest(g: Graphics, top: Graphics, map: MapData, t: Terrain, random: () => number): void {
   const step = 130;
   const trees: { x: number; y: number; r: number; c: number }[] = [];
+  // A little clearing round each lantern so it isn't hidden under the trees.
+  const lanterns = propSpots(map).lanterns;
   for (let y = -500; y < map.height + 500; y += step) {
     for (let x = -500; x < map.width + 500; x += step) {
       const px = x + (random() - 0.5) * step * 0.9;
@@ -407,6 +415,7 @@ function paintForest(g: Graphics, top: Graphics, map: MapData, t: Terrain, rando
       const d = t.distanceToGround(px, py);
       if (d === 0 || d > 9) continue;
       if (t.styleAt(px, py) || t.blocked(px, py)) continue; // never over somewhere you can walk, or over the rocks
+      if (lanterns.some((l) => Math.hypot(l.x - px, l.y - py) < 150)) continue;
       trees.push({ x: px, y: py, r: 70 + random() * 55 + (d > 4 ? 20 : 0), c: Math.floor(random() * PAL.canopy.length) });
     }
   }

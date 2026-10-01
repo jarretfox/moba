@@ -45,6 +45,14 @@ function flames(fx: FxLayer, x: number, y: number, r: number, n: number): void {
   }
 }
 
+/** The fire in a brazier: a few flames a frame while it's on screen. */
+export function brazierFire(fx: FxLayer, x: number, y: number): void {
+  for (let i = 0; i < fx.rate(26); i++) {
+    fx.particles.emit({ shape: 'glow', x: x + rand(-12, 12), y: y + rand(-8, 8), vx: rand(-10, 10), vy: rand(-110, -50), drag: 0.5, life: rand(0.4, 0.75), size: rand(18, 28), size2: 4, color: 0xfff1a8, color2: 0xff3b1f, alpha: 0.85 });
+  }
+  if (Math.random() < fx.dt * 4) fx.particles.emit({ shape: 'mote', x, y, vx: rand(-30, 30), vy: rand(-160, -90), drag: 0.6, life: 1.2, size: 5, size2: 2, color: 0xffd9a8, color2: FIRE });
+}
+
 /** Toxic bubbles and fumes. */
 function fumes(fx: FxLayer, x: number, y: number, r: number, n: number): void {
   const p = fx.particles;

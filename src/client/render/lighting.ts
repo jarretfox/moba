@@ -2,6 +2,7 @@ import { Container, Graphics, RenderTexture, Sprite, Texture, type Renderer } fr
 import type { MapData } from '../../shared/map/mapData';
 import type { EntitySnap } from '../../shared/protocol';
 import { mix } from './particles';
+import { flickerAt, propLights, propSpots, type FlickerLight } from './props';
 
 // Dusk over the map. Each frame a small "light map" is drawn: the dim evening color everywhere, cloud
 // shadows drifting over it, and soft pools of light around champions, Chuds, structures, glowing monsters,
@@ -105,6 +106,9 @@ export class Lighting {
   private readonly pool: Sprite[] = [];
   private readonly texture = lightTexture();
   private readonly fixed: Light[];
+  /** Lanterns, braziers and mushrooms: lights that waver. */
+  private readonly flickering: FlickerLight[];
+  private clock = 0;
   private ambientKey = '';
 
   constructor(private readonly map: MapData) {
@@ -126,6 +130,7 @@ export class Lighting {
     }
     this.world.addChild(this.lights);
     // Lights that never move: the bases glow, and so does the Warden's seal.
+    this.flickering = propLights(propSpots(map));
     this.fixed = [
       ...map.ground.flatMap((p) => (p.style === 'base' && p.shape.type === 'circle' ? [{ x: p.shape.x, y: p.shape.y, r: p.shape.r * 1.6, color: WARM, alpha: 0.55 }] : [])),
       { x: map.width / 2, y: map.height / 2, r: 700, color: 0x8fd14f, alpha: 0.3 },
@@ -177,6 +182,11 @@ export class Lighting {
       used++;
     };
     for (const l of this.fixed) put(l);
+    this.clock += dt;
+    for (const l of this.flickering) {
+      l.alpha = flickerAt(l, this.clock);
+      put(l);
+    }
     for (const e of ents) {
       if (e.dead) continue;
       const side = e.tm === myTeam ? ALLY : ENEMY;
