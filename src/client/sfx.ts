@@ -10,7 +10,7 @@ export interface SoundCue {
   gain: number;
 }
 
-const MELEE: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan']);
+export const MELEE: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan']);
 
 const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   aimLine: ['warn', 0.6],

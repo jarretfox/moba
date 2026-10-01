@@ -10,7 +10,7 @@ import { dist, type Vec2 } from '../shared/math';
 import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/protocol';
 import { Sound } from './audio';
 import { Camera } from './camera';
-import { cueFor, type SoundCue } from './sfx';
+import { MELEE, cueFor, type SoundCue } from './sfx';
 import type { Connection } from './net/connection';
 import { Hud } from './hud';
 import { FogLayer } from './render/fog';
@@ -334,8 +334,9 @@ export class GameClient {
     switch (ev.e) {
       case 'dmg': {
         // Like League, only damage you deal or take gets a number; a lane full of Chuds would be unreadable otherwise.
-        if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.();
         const hit = this.ents.get(ev.target);
+        const from = ev.src !== undefined ? this.ents.get(ev.src) : undefined;
+        if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.(from, !!hit && ev.amount >= (hit.mhp ?? 1000) * 0.08);
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
           this.fx.impact(hit.x, hit.y, hit.r, ev.type, heavy);
@@ -348,9 +349,19 @@ export class GameClient {
         if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);
         return;
       }
-      case 'attack':
+      case 'attack': {
         this.views.get(ev.src)?.onAttack?.();
+        // Melee champions' hits leave a small slash where they land.
+        const src = this.ents.get(ev.src);
+        const tgt = this.ents.get(ev.target);
+        if (src?.k === 'champion' && src.champ && MELEE.has(src.champ) && tgt) {
+          const a = Math.atan2(tgt.y - src.y, tgt.x - src.x);
+          const reach = Math.min(Math.hypot(tgt.x - src.x, tgt.y - src.y) + tgt.r * 0.4, src.r * 3.2);
+          const color = src.champ === 'barbarian' ? 0xff8a3d : src.champ === 'logan' ? 0xffc04d : 0xc8945a;
+          this.fx.slash(src.x, src.y, a, reach, 1.2, color, 0.2);
+        }
         return;
+      }
       case 'death': {
         const t = this.ents.get(ev.id);
         if (!t) return;
@@ -392,6 +403,7 @@ export class GameClient {
         return;
       case 'cast': {
         const caster = this.ents.get(ev.src);
+        this.views.get(ev.src)?.onCast?.(ev.slot);
         if (caster) castFlash(this.fx, caster);
         return;
       }

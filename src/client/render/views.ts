@@ -2,7 +2,10 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChudType, EntitySnap, MonsterKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
-import { drawChampionBase, drawChampionFigure } from './champions';
+import type { Slot } from '../../shared/constants';
+import type { ChampionId } from '../../shared/champions/types';
+import { ATTACK, castAnim, sample, type Anim } from './animation';
+import { drawChampionBase, drawChampionFigure, drawChampionWeapon } from './champions';
 import { arc } from './draw';
 
 export type Relation = 'self' | 'ally' | 'enemy' | 'neutral';
@@ -37,8 +40,10 @@ export interface EntityView {
   readonly container: Container;
   update(s: EntitySnap, dt: number, ctx: ViewContext): void;
   onAttack?(): void;
-  /** Took a hit: a quick flash. */
-  onHit?(): void;
+  /** Took a hit: a quick flash, and a stagger away from `from` if it was a big one. */
+  onHit?(from?: { x: number; y: number }, heavy?: boolean): void;
+  /** Cast an ability: the champion strikes a pose for it. */
+  onCast?(slot: Slot): void;
   /** The tall part of the view, drawn on a raised layer (structures). */
   readonly top?: Container;
 }
@@ -49,7 +54,17 @@ const DEATH_TIME = 0.55;
 export class UnitView implements EntityView {
   readonly container = new Container();
   private readonly body = new Graphics();
-  private readonly facing = new Graphics();
+  /** Everything that turns to face where the unit's going: the figure, and a champion's weapon. */
+  private readonly facing = new Container();
+  private readonly figure = new Graphics();
+  /** A champion's weapon, drawn around its grip so it can swing on its own. */
+  private readonly weapon: Graphics | null = null;
+  private readonly weaponRest = { x: 0, y: 0 };
+  private readonly champ: ChampionId | null = null;
+  /** The move playing right now (attack or cast), t from 0 to 1. */
+  private anim: { a: Anim; t: number } | null = null;
+  /** Knocked back by a big hit; settles back to 0. */
+  private readonly knock = { x: 0, y: 0 };
   private readonly statusRing = new Graphics();
   private readonly bars = new Graphics();
   private readonly label: Text;
@@ -85,16 +100,16 @@ export class UnitView implements EntityView {
     this.body.circle(4, 6, r).fill({ color: 0x000000, alpha: 0.35 });
     if (s.k === 'chud') {
       // Chuds turn to face what they're fighting, so the whole figure lives on the rotating layer.
-      drawChud(this.facing, s.chud ?? 'melee', r, color);
+      drawChud(this.figure, s.chud ?? 'melee', r, color);
     } else if (s.k === 'monster') {
-      drawMonster(this.facing, s.mon ?? 'rat', r);
+      drawMonster(this.figure, s.mon ?? 'rat', r);
     } else if (s.k === 'guard') {
       // A royal guard from above: team-colored tabard, a steel helmet, a round shield and a spear.
-      this.facing.circle(0, 0, r).fill(color).stroke({ width: 2, color: PALETTE.outline });
-      this.facing.circle(0, 0, r * 0.55).fill(0xb8bec6).stroke({ width: 2, color: 0x4a4f58 });
-      this.facing.circle(-r * 0.2, r * 0.85, r * 0.45).fill(0xd9c27a).stroke({ width: 2, color: 0x6b5a22 });
-      this.facing.rect(r * 0.2, -r * 0.95, r * 1.6, r * 0.18).fill(0x8a6a44);
-      this.facing.poly([r * 1.8, -r * 1.05, r * 2.2, -r * 0.86, r * 1.8, -r * 0.67]).fill(0xb8bec6);
+      this.figure.circle(0, 0, r).fill(color).stroke({ width: 2, color: PALETTE.outline });
+      this.figure.circle(0, 0, r * 0.55).fill(0xb8bec6).stroke({ width: 2, color: 0x4a4f58 });
+      this.figure.circle(-r * 0.2, r * 0.85, r * 0.45).fill(0xd9c27a).stroke({ width: 2, color: 0x6b5a22 });
+      this.figure.rect(r * 0.2, -r * 0.95, r * 1.6, r * 0.18).fill(0x8a6a44);
+      this.figure.poly([r * 1.8, -r * 1.05, r * 2.2, -r * 0.86, r * 1.8, -r * 0.67]).fill(0xb8bec6);
     } else if (s.k === 'totem') {
       // A squat glowing mushroom with a team-colored ring around its stalk.
       this.body.circle(0, 0, r).fill({ color: 0x6fd6ff, alpha: 0.12 });
@@ -108,12 +123,20 @@ export class UnitView implements EntityView {
     } else if (s.k === 'champion' && s.champ) {
       this.body.clear();
       drawChampionBase(this.body, r, color, relation === 'self');
-      drawChampionFigure(this.facing, s.champ, r);
+      drawChampionFigure(this.figure, s.champ, r);
+      this.champ = s.champ;
+      this.weapon = new Graphics();
+      Object.assign(this.weaponRest, drawChampionWeapon(this.weapon, s.champ, r));
+      this.weapon.position.copyFrom(this.weaponRest);
     } else {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: relation === 'self' ? 0xffffff : PALETTE.outline });
       this.body.circle(0, 0, r * 0.55).fill({ color: 0xffffff, alpha: 0.12 });
-      this.facing.poly([r - 6, -10, r + 12, 0, r - 6, 10]).fill(0xffffff).stroke({ width: 2, color: PALETTE.outline });
+      this.figure.poly([r - 6, -10, r + 12, 0, r - 6, 10]).fill(0xffffff).stroke({ width: 2, color: PALETTE.outline });
     }
+    // Logan's paws tuck under his mane; everyone else holds their weapon in front.
+    if (this.weapon && s.champ === 'logan') this.facing.addChild(this.weapon, this.figure);
+    else if (this.weapon) this.facing.addChild(this.figure, this.weapon);
+    else this.facing.addChild(this.figure);
 
     this.label = new Text({
       text: s.name ?? '',
@@ -146,7 +169,30 @@ export class UnitView implements EntityView {
     this.container.alpha = (ctx.inBrush(s.x, s.y) ? 0.55 : 1) * (1 - fall);
     this.container.rotation = fall * 0.6;
     this.bars.visible = this.label.visible = !s.dead;
-    this.container.position.set(s.x, s.y);
+    // A big hit knocks the figure back a step; it recovers quickly.
+    const settle = Math.exp(-dt * 10);
+    this.knock.x *= settle;
+    this.knock.y *= settle;
+    this.container.position.set(s.x + this.knock.x, s.y + this.knock.y);
+
+    // The current move: how far through it, and where each part is.
+    let turn = 0;
+    let reach = 0;
+    let twist = 0;
+    let lungeBy = 0;
+    let grow = 0;
+    if (this.anim) {
+      this.anim.t += dt / this.anim.a.dur;
+      if (this.anim.t >= 1 || s.dead) this.anim = null;
+      else {
+        const { a, t } = this.anim;
+        turn = sample(a.turn, t);
+        reach = sample(a.reach, t);
+        twist = sample(a.twist, t);
+        lungeBy = sample(a.lunge, t);
+        grow = sample(a.grow, t);
+      }
+    }
 
     // Walking: how far it moved since last frame drives the step cycle.
     const moved = this.last && dt > 0 ? Math.hypot(s.x - this.last.x, s.y - this.last.y) / dt : 0;
@@ -157,19 +203,24 @@ export class UnitView implements EntityView {
     this.clock += dt;
     const step = Math.sin(this.walk) * this.stride;
     const breathe = 1 + Math.sin(this.clock * 2.4) * 0.015 * (1 - this.stride);
-    this.facing.rotation = s.f + step * 0.08;
+    this.facing.rotation = s.f + step * 0.08 + twist;
+    if (this.weapon) {
+      // At rest the weapon sways a little with the walk and the breath.
+      this.weapon.rotation = turn + Math.sin(this.clock * 1.7) * 0.04 + step * 0.1;
+      this.weapon.position.set(this.weaponRest.x + reach * this.baseR, this.weaponRest.y);
+    }
 
     this.pulse = Math.max(0, this.pulse - dt * 6);
     this.flash = Math.max(0, this.flash - dt * 8);
     // Leaping units swell toward the camera and settle back as they land.
     const airborne = s.st?.includes('airborne') ?? false;
     this.air = airborne ? Math.min(1, this.air + dt * 8) : Math.max(0, this.air - dt * 8);
-    const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3) * breathe * (1 - fall * 0.35);
+    const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3) * (1 + grow) * breathe * (1 - fall * 0.35);
     this.body.scale.set(size);
     this.facing.scale.set(size);
     this.shade.scale.set(size);
-    // A swing lunges the figure forward a little.
-    const lunge = this.pulse * 7;
+    // A swing lunges the figure forward a little (champions follow their move instead).
+    const lunge = this.champ ? lungeBy * s.r : this.pulse * 7;
     this.facing.position.set(Math.cos(s.f) * lunge, Math.sin(s.f) * lunge);
     this.facing.tint = this.flash > 0 ? 0xff9a9a : 0xffffff;
     // Feet sit under the figure and step in turn while it walks.
@@ -204,10 +255,21 @@ export class UnitView implements EntityView {
 
   onAttack(): void {
     this.pulse = 1;
+    if (this.champ) this.anim = { a: ATTACK[this.champ], t: 0 };
   }
 
-  onHit(): void {
+  onCast(slot: Slot): void {
+    if (this.champ) this.anim = { a: castAnim(this.champ, slot), t: 0 };
+  }
+
+  onHit(from?: { x: number; y: number }, heavy?: boolean): void {
     this.flash = 1;
+    if (!heavy || !from) return;
+    const dx = this.container.x - from.x;
+    const dy = this.container.y - from.y;
+    const d = Math.hypot(dx, dy) || 1;
+    this.knock.x = (dx / d) * 12;
+    this.knock.y = (dy / d) * 12;
   }
 
   private setBadge(text: string, r: number): void {

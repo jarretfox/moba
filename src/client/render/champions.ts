@@ -17,9 +17,81 @@ export function drawChampionBase(g: Graphics, r: number, teamColor: number, self
   if (self) g.circle(0, 0, r + 4).stroke({ width: 2, color: 0xffffff, alpha: 0.9 });
 }
 
+/** The champion without their weapon (see drawChampionWeapon, which animates on its own). */
 export function drawChampionFigure(g: Graphics, id: ChampionId, r: number): void {
   FIGURES[id](g, r);
 }
+
+/**
+ * Draws the champion's weapon around its pivot (their hand) and says where that pivot sits on the figure,
+ * so the weapon can swing, draw back or whirl while the body stays put.
+ */
+export function drawChampionWeapon(g: Graphics, id: ChampionId, r: number): { x: number; y: number } {
+  const w = WEAPONS[id];
+  w.draw(g, r);
+  return { x: w.pivot[0] * r, y: w.pivot[1] * r };
+}
+
+interface Weapon {
+  /** Where the weapon is held, in units of the champion's radius. */
+  pivot: [number, number];
+  /** Draws it with the pivot at (0, 0). */
+  draw(g: Graphics, r: number): void;
+}
+
+const WEAPONS: Record<ChampionId, Weapon> = {
+  marksman: {
+    pivot: [0.35, 0],
+    draw(g, r) {
+      arc(g, 0, 0, 0.95 * r, -1.15, 1.15).stroke({ width: 4, color: 0x8a5a2b }); // bow
+      const tip = { x: Math.cos(1.15) * 0.95 * r, y: Math.sin(1.15) * 0.95 * r };
+      g.moveTo(tip.x, -tip.y).lineTo(0, 0).lineTo(tip.x, tip.y).stroke({ width: 1.5, color: 0xf2efe6 }); // string
+      g.moveTo(0, 0).lineTo(1.05 * r, 0).stroke({ width: 2, color: 0xe8d7b0 }); // arrow
+      g.poly([1.05 * r, -5, 1.25 * r, 0, 1.05 * r, 5]).fill(0xb8bec6);
+    },
+  },
+  barbarian: {
+    pivot: [0.3, 0.75],
+    draw(g, r) {
+      g.moveTo(0, 0).lineTo(1.05 * r, -0.2 * r).stroke({ width: 5, color: 0x6b4a2b }); // haft
+      g.poly([0.85 * r, -0.6 * r, 1.2 * r, -0.45 * r, 1.25 * r, 0, 0.85 * r, 0.2 * r, 0.95 * r, -0.2 * r]).fill(0xb8bec6).stroke(OUTLINE); // blade
+      g.moveTo(1.18 * r, -0.42 * r).lineTo(1.22 * r, -0.02 * r).stroke({ width: 2, color: 0xffffff, alpha: 0.6 });
+    },
+  },
+  willmore: {
+    pivot: [0.3, 0.6],
+    draw(g, r) {
+      g.moveTo(0, 0).lineTo(0.55 * r, 0.15 * r).stroke({ width: 2, color: 0x8a6a44 }); // rope
+      arc(g, 0.7 * r, 0, 0.22 * r, -0.5, 3.4).stroke({ width: 4, color: 0x5d636d }); // hook
+    },
+  },
+  hunnag: {
+    pivot: [0.2, 0.65],
+    draw(g, r) {
+      g.moveTo(0, 0).lineTo(1.05 * r, -0.15 * r).stroke({ width: 3, color: 0x6b4a2b }); // staff
+      g.circle(1.1 * r, -0.15 * r, 0.36 * r).fill({ color: 0x8fd14f, alpha: 0.25 });
+      g.circle(1.1 * r, -0.15 * r, 0.18 * r).fill(0xb8f07a).stroke({ width: 1.5, color: 0x3d6a14 });
+    },
+  },
+  logan: {
+    // Two front paws, reaching out from under the mane.
+    pivot: [0.45, 0],
+    draw(g, r) {
+      for (const side of [-1, 1]) {
+        g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(0xe8a33d).stroke({ width: 1.5, color: 0x8a4f12 });
+        for (let i = -1; i <= 1; i++) g.circle(0.28 * r, side * 0.46 * r + i * 0.08 * r, 0.045 * r).fill(0x8a4f12);
+      }
+    },
+  },
+  kingrix: {
+    pivot: [0.3, 0.6],
+    draw(g, r) {
+      g.moveTo(0, 0).lineTo(0.9 * r, -0.15 * r).stroke({ width: 3, color: 0xd9a52b }); // scepter
+      g.circle(0.95 * r, -0.16 * r, 0.15 * r).fill(0xffd166).stroke({ width: 1.5, color: 0x8a6a1e });
+      g.circle(0.95 * r, -0.16 * r, 0.06 * r).fill(0xc0182b);
+    },
+  },
+};
 
 const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
   /** A hooded archer in a green cloak, an arrow on the string and a quiver on her back. */
@@ -30,11 +102,6 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
     g.circle(0.1 * r, 0, 0.48 * r).fill(0x3d7a4a).stroke(OUTLINE); // hood
     g.circle(0.3 * r, 0, 0.22 * r).fill(0x1d2a20); // face in shadow
     g.circle(0.55 * r, 0.35 * r, 0.14 * r).fill(SKIN); // drawing hand
-    arc(g, 0.35 * r, 0, 0.95 * r, -1.15, 1.15).stroke({ width: 4, color: 0x8a5a2b }); // bow
-    const tip = { x: 0.35 * r + Math.cos(1.15) * 0.95 * r, y: Math.sin(1.15) * 0.95 * r };
-    g.moveTo(tip.x, -tip.y).lineTo(0.35 * r, 0).lineTo(tip.x, tip.y).stroke({ width: 1.5, color: 0xf2efe6 }); // string
-    g.moveTo(0.35 * r, 0).lineTo(1.4 * r, 0).stroke({ width: 2, color: 0xe8d7b0 }); // arrow
-    g.poly([1.4 * r, -5, 1.6 * r, 0, 1.4 * r, 5]).fill(0xb8bec6);
   },
 
   /** Broad shoulders, fur pauldrons, a horned helmet, a great axe, and a broken shackle on one wrist. */
@@ -44,8 +111,6 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
       g.circle(-0.05 * r, side * 0.68 * r, 0.38 * r).fill(0x6b4a2b).stroke(OUTLINE); // fur
       for (const [x, y] of [[-0.2, 0.55], [0.1, 0.6], [-0.05, 0.85]]) g.circle(x * r, side * y * r, 0.1 * r).fill(0x8a6a44);
     }
-    g.moveTo(0.3 * r, 0.75 * r).lineTo(1.35 * r, 0.55 * r).stroke({ width: 5, color: 0x6b4a2b }); // axe haft
-    g.poly([1.15 * r, 0.15 * r, 1.5 * r, 0.3 * r, 1.55 * r, 0.75 * r, 1.15 * r, 0.95 * r, 1.25 * r, 0.55 * r]).fill(0xb8bec6).stroke(OUTLINE); // blade
     g.circle(0.15 * r, 0, 0.42 * r).fill(SKIN).stroke(OUTLINE); // head
     g.circle(0.1 * r, 0, 0.36 * r).fill(0x8a9099).stroke(OUTLINE); // helmet
     for (const side of [-1, 1]) g.poly([0.05 * r, side * 0.3 * r, 0.6 * r, side * 0.8 * r, 0.32 * r, side * 0.24 * r]).fill(0xefe3c8).stroke(OUTLINE); // horns
@@ -61,16 +126,11 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
     g.roundRect(-0.03 * r, -0.08 * r, 0.16 * r, 0.16 * r, 2).fill(0x5d636d);
     g.moveTo(0.5 * r, -0.28 * r).lineTo(0.5 * r, 0.28 * r).stroke({ width: 3, color: 0x6b5a22 }); // goggle strap
     for (const side of [-1, 1]) g.circle(0.55 * r, side * 0.28 * r, 0.2 * r).fill(0x9fe6ff).stroke({ width: 3, color: 0xb8a46a }); // goggles
-    g.moveTo(0.3 * r, 0.6 * r).lineTo(0.85 * r, 0.75 * r).stroke({ width: 2, color: 0x8a6a44 }); // rope
-    arc(g, 1.0 * r, 0.6 * r, 0.22 * r, -0.5, 3.4).stroke({ width: 4, color: 0x5d636d }); // hook
   },
 
   /** A Chud under a spotted mushroom cap, eyes glowing green, with a staff topped by a glowing spore. */
   hunnag(g, r) {
     g.circle(0, 0, 0.8 * r).fill(CHUD_SKIN).stroke(OUTLINE); // body
-    g.moveTo(0.2 * r, 0.65 * r).lineTo(1.25 * r, 0.5 * r).stroke({ width: 3, color: 0x6b4a2b }); // staff
-    g.circle(1.3 * r, 0.5 * r, 0.36 * r).fill({ color: 0x8fd14f, alpha: 0.25 });
-    g.circle(1.3 * r, 0.5 * r, 0.18 * r).fill(0xb8f07a).stroke({ width: 1.5, color: 0x3d6a14 });
     g.ellipse(-0.1 * r, 0, 0.9 * r, 0.85 * r).fill(0x7a3fb0).stroke(OUTLINE); // the cap
     for (const [x, y, rr] of [[-0.45, -0.35, 0.16], [-0.1, 0.4, 0.13], [-0.55, 0.25, 0.1], [0.15, -0.3, 0.12], [-0.25, -0.05, 0.09]]) g.circle(x * r, y * r, rr * r).fill(0xe8d7ff);
     for (const side of [-1, 1]) g.circle(0.62 * r, side * 0.2 * r, 0.09 * r).fill(0xb8f07a); // eyes under the brim
@@ -100,9 +160,6 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number) => void> = {
     g.ellipse(-0.35 * r, 0, 0.85 * r, 0.95 * r).fill(0xa8232e).stroke(OUTLINE); // cape
     g.ellipse(0, 0, 0.5 * r, 0.72 * r).fill(0xf2f2f2).stroke(OUTLINE); // ermine
     for (const [x, y] of [[-0.25, -0.45], [-0.3, 0.4], [0.2, -0.55], [0.15, 0.55], [-0.4, 0]]) g.ellipse(x * r, y * r, 2, 3).fill(0x111111);
-    g.moveTo(0.3 * r, 0.6 * r).lineTo(1.2 * r, 0.45 * r).stroke({ width: 3, color: 0xd9a52b }); // scepter
-    g.circle(1.25 * r, 0.44 * r, 0.15 * r).fill(0xffd166).stroke({ width: 1.5, color: 0x8a6a1e });
-    g.circle(1.25 * r, 0.44 * r, 0.06 * r).fill(0xc0182b);
     g.circle(0.1 * r, 0, 0.33 * r).fill(SKIN).stroke(OUTLINE); // head
     g.circle(0.1 * r, 0, 0.28 * r).stroke({ width: 5, color: 0xffd166 }); // crown band
     for (let i = 0; i < 6; i++) {
@@ -125,8 +182,12 @@ export function renderPortraits(renderer: Renderer, ids: readonly ChampionId[]):
   for (const id of ids) {
     const root = new Container();
     const bg = new Graphics().circle(0, 0, R * 1.7).fill(0x10161f);
-    const fig = new Graphics();
-    drawChampionFigure(fig, id, R);
+    const fig = new Container();
+    const body = new Graphics();
+    drawChampionFigure(body, id, R);
+    const weapon = new Graphics();
+    weapon.position.copyFrom(drawChampionWeapon(weapon, id, R));
+    fig.addChild(id === 'logan' ? weapon : body, id === 'logan' ? body : weapon);
     fig.rotation = -Math.PI / 2; // facing up, at the viewer
     fig.scale.set(1.15);
     root.addChild(bg, fig);
