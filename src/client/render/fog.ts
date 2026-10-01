@@ -55,6 +55,8 @@ export class FogLayer {
     const sources: VisionSource[] = [];
     for (const e of ents) {
       if (e.tm !== team || e.dead) continue;
+      // Wards see as far as their radius; the Lantern's light sees into brush and over walls.
+      if (e.k === 'ward') sources.push({ x: e.x, y: e.y, sight: e.r, pierce: e.vis === 'lantern' });
       const sight = sightOf(e.k, e.role);
       if (sight > 0) sources.push({ x: e.x, y: e.y, sight });
     }

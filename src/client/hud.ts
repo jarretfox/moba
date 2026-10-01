@@ -1,6 +1,6 @@
 import { atRank, perRank, type ChampionId, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
-import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
+import { ACTIVES, ACTIVE_KEYS, INVENTORY_SLOTS, ITEMS, activeSlots, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
 import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
@@ -70,10 +70,14 @@ export class Hud {
   onBuy: ((id: ItemId) => void) | null = null;
   onSell: ((slot: number) => void) | null = null;
   onUndo: (() => void) | null = null;
+  /** An inventory slot was clicked: use its item's active, if it has one. */
+  onUseItem: ((slot: number) => void) | null = null;
   onMute: (() => void) | null = null;
   private readonly muteButton: HTMLButtonElement;
   readonly shop: ShopPanel;
   private readonly inv: HTMLElement[] = [];
+  /** Each inventory slot's icon, cooldown shade and hotkey (D or F, for items with an active). */
+  private readonly invParts: { icon: HTMLElement; cd: HTMLElement; key: HTMLElement }[] = [];
   private invItems: (ItemId | undefined)[] = [];
   private readonly debug: HTMLElement;
   private readonly clockTime: HTMLElement;
@@ -161,7 +165,7 @@ export class Hud {
           <div class="res xp"><div class="fill"></div><span></span></div>
         </div>
         <div class="side">
-          <div class="inv">${'<div class="item"></div>'.repeat(INVENTORY_SLOTS)}</div>
+          <div class="inv">${'<div class="item"><span class="item-icon"></span><span class="item-cd"></span><span class="item-key"></span></div>'.repeat(INVENTORY_SLOTS)}</div>
           <button class="purse" title="Shop (P)"><span class="coin"></span><span class="gold">0</span></button>
         </div>
       </div>
@@ -226,6 +230,8 @@ export class Hud {
     });
     root.querySelectorAll<HTMLElement>('.inv .item').forEach((el, i) => {
       this.inv.push(el);
+      this.invParts.push({ icon: q('.item-icon', el), cd: q('.item-cd', el), key: q('.item-key', el) });
+      el.addEventListener('click', () => this.onUseItem?.(i));
       el.addEventListener('mouseenter', () => this.showItemTooltip(el, i));
       el.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
     });
@@ -281,10 +287,19 @@ export class Hud {
     this.set(this.level, 'text', String(me.level));
     this.set(this.gold, 'text', String(me.gold));
     this.invItems = me.items;
+    const actives = activeSlots(me.items);
     this.inv.forEach((el, i) => {
       const id = me.items[i];
-      this.set(el, 'icon', id ? ITEMS[id].icon : '');
-      this.set(el, 'class', id ? `item tier-${ITEMS[id].tier}` : 'item');
+      const active = id ? ACTIVES[id] : undefined;
+      const parts = this.invParts[i];
+      this.set(parts.icon, 'icon', id ? ITEMS[id].icon : '');
+      this.set(el, 'class', id ? `item tier-${ITEMS[id].tier}${active ? ' usable' : ''}` : 'item');
+      const key = actives.indexOf(i);
+      this.set(parts.key, 'text', key >= 0 ? ACTIVE_KEYS[key] : '');
+      // Cooling down: the slot shades over and counts down.
+      const cd = active ? (me.itemCd?.[i] ?? 0) : 0;
+      this.set(parts.cd, 'text', cd > 0 ? String(Math.ceil(cd)) : '');
+      this.set(parts.cd, 'background', cd > 0 ? `conic-gradient(rgba(0, 0, 0, 0.7) ${(cd / active!.cooldown) * 360}deg, transparent 0)` : '');
     });
     this.shop.update(me);
     this.updateBuffs(me);
@@ -781,10 +796,13 @@ export class Hud {
     const it = ITEMS[id];
     const t = this.tooltip;
     t.replaceChildren();
+    const active = ACTIVES[id];
+    const key = activeSlots(this.invItems).indexOf(slot);
     for (const [cls, text] of [
       ['tt-name', it.name],
       ['tt-meta', `${it.cost} gold · sells for ${sellPrice(id)}`],
       ['tt-desc', statLines(it.stats).join(' · ')],
+      ...(active ? [['tt-desc', `Use${key >= 0 ? ` [${ACTIVE_KEYS[key]}]` : ''}: ${active.name}. ${active.description} ${active.cooldown}s cooldown.`]] : []),
       ['tt-flavor', it.flavor],
     ]) {
       const d = document.createElement('div');

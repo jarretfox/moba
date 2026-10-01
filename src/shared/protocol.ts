@@ -33,6 +33,8 @@ export type Command =
   | { k: 'sell'; slot: number }
   /** Take back the last purchase or sale, while still at the shop. */
   | { k: 'undo' }
+  /** Use the item in this inventory slot (its active), aimed at a spot if it needs one. */
+  | { k: 'use'; slot: number; x: number; y: number }
   /** Mark a spot on the map for your team. */
   | { k: 'ping'; kind: PingKind; x: number; y: number }
   | { k: 'emote'; kind: EmoteKind };
@@ -162,7 +164,7 @@ export interface WardenStatus {
   unchained?: { team: PlayerTeam; left: number; uprising: boolean }[];
 }
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
-export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem' | 'guard' | 'projectile' | 'trap' | 'pickup' | 'zone';
+export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem' | 'guard' | 'projectile' | 'trap' | 'pickup' | 'zone' | 'ward';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind =
@@ -224,7 +226,11 @@ export type FxKind =
   | 'jackbox'
   | 'boxShot'
   | 'doubleAct'
-  | 'cloneBoom';
+  | 'cloneBoom'
+  /** Item actives: the Lantern's light landing, the Aegis's ward going up, the Drum's beat. */
+  | 'lanternLight'
+  | 'aegisWard'
+  | 'drumBeat';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
@@ -327,6 +333,8 @@ export interface MeSnap {
   inShop: boolean;
   /** There's a purchase or sale this visit that can be taken back. */
   undo?: boolean;
+  /** Seconds until each inventory slot's item can be used again (0 when ready, or when it has no active). */
+  itemCd?: number[];
   /** Jungle buffs and the seconds left on each. */
   buffs: { kind: BuffKind; left: number }[];
   /** For the shop's stat panel. `as` is attacks per second; `ls` is lifesteal in percent. */

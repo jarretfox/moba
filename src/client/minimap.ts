@@ -117,7 +117,7 @@ export class Minimap {
     if (this.terrain) g.drawImage(this.terrain, 0, 0, this.w, this.h);
     v.drawFog(g, this.w, this.h);
 
-    const ents = [...v.ents].filter((e) => e.k !== 'projectile' && e.k !== 'trap' && e.k !== 'zone' && e.k !== 'pickup');
+    const ents = [...v.ents].filter((e) => e.k !== 'projectile' && e.k !== 'trap' && e.k !== 'zone' && e.k !== 'pickup' && e.k !== 'ward');
     const enemy = enemyCss();
     const side = (e: EntitySnap) => (e.tm === v.myTeam ? ALLY : enemy);
     for (const e of ents) {

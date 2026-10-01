@@ -7,6 +7,7 @@ import type { GameEvent } from '../protocol';
 import type { Entity } from './entity';
 import { sightOf } from './sight';
 import { Unit } from './unit';
+import { Ward } from './ward';
 import type { World } from './world';
 
 /** How close an enemy has to get to spot the Dark Dabber in his Hotbox smoke. */
@@ -16,6 +17,8 @@ export interface VisionSource {
   x: number;
   y: number;
   sight: number;
+  /** Sees into brush and over walls (the Glowworm Lantern's light). */
+  pierce?: boolean;
 }
 
 /** Vision cells are coarser than nav cells: walls are thick, and this keeps fog cheap enough for 10 updates a second. */
@@ -85,8 +88,8 @@ export class VisionGrid {
           if (out[i]) continue;
           if ((cx - sx) ** 2 + (cy - sy) ** 2 > reach * reach) continue;
           const b = this.brush[i];
-          if (b && b !== ownBrush) continue;
-          if (this.lineOfSight(sx, sy, cx, cy)) out[i] = 1;
+          if (b && b !== ownBrush && !s.pierce) continue;
+          if (s.pierce || this.lineOfSight(sx, sy, cx, cy)) out[i] = 1;
         }
       }
     }
@@ -133,6 +136,7 @@ export class Vision {
         const sight = sightOf(u.kind, (u as { role?: StructureRole }).role);
         if (sight > 0) sources.push({ x: u.pos.x, y: u.pos.y, sight });
       }
+      for (const e of world.all()) if (e instanceof Ward && e.team === team && !e.removed) sources.push({ x: e.pos.x, y: e.pos.y, sight: e.radius, pierce: e.pierce });
       this.sources[team] = sources;
       this.grid.compute(sources, this.visible[team]);
     }
@@ -142,6 +146,7 @@ export class Vision {
   canSee(team: Team, e: Entity): boolean {
     if (team === 0 || e.team === team) return true;
     if (e.kind === 'structure') return true; // like League's turrets, always on the map
+    if (e.kind === 'ward') return false; // only its own team knows it's there
     // Traps are hidden from the other side, unless they've sprung (Daltonomo's Surprise Box).
     if (e.kind === 'trap' && !(e as Entity & { revealed?: boolean }).revealed) return false;
     if (e instanceof Unit && e.has('decreed')) return true; // Royal Decree: revealed to everyone, wherever they are

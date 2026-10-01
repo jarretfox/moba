@@ -180,6 +180,7 @@ export class Bot {
     if (nearest) {
       const escape = PROFILES[me.info.id].escape(this.ctx(world), nearest);
       if (escape) out.push(escape);
+      this.useItems(world, out, nearest, hp, true);
     }
     this.moveTo(out, this.home);
   }
@@ -199,8 +200,20 @@ export class Bot {
   private fight(world: World, out: Command[], foe: Unit): void {
     const spell = PROFILES[this.champion.info.id].fight(this.ctx(world), foe);
     if (spell) out.push(spell);
+    this.useItems(world, out, foe, this.champion.hp / this.champion.stats.maxHp, false);
     out.push({ k: 'attack', target: foe.id });
     this.lastMove = null;
+  }
+
+  /** Item actives: the Aegis's ward when a fight turns against us, the Drum to run someone down or to get away. (The Lantern is left to people.) */
+  private useItems(world: World, out: Command[], foe: Unit, hp: number, fleeing: boolean): void {
+    const me = this.champion;
+    me.items.forEach((id, slot) => {
+      if (!me.canUse(world, slot)) return;
+      const use = (): void => void out.push({ k: 'use', slot, x: Math.round(foe.pos.x), y: Math.round(foe.pos.y) });
+      if (id === 'aegis' && hp < 0.45 && dist(foe.pos, me.pos) < 700) use();
+      else if (id === 'drum' && (fleeing || dist(foe.pos, me.pos) > me.stats.attackRange + 150)) use();
+    });
   }
 
   // ─── Laning ───────────────────────────────────────────────────────────────

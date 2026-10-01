@@ -1,6 +1,7 @@
 import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
-import { INVENTORY_SLOTS, hasteMultiplier, partsUsed, priceFor, sellPrice, sumItemStats, whyNot, type ItemId } from '../items';
+import { ACTIVES, AEGIS_WARD, DRUM_BEAT, INVENTORY_SLOTS, LANTERN_LIGHT, hasteMultiplier, partsUsed, priceFor, sellPrice, sumItemStats, whyNot, type ItemId } from '../items';
+import { Ward } from '../sim/ward';
 import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { BUFFS, EMBER, GLOWCAP } from '../sim/jungle';
@@ -46,6 +47,8 @@ export abstract class Champion extends Unit {
   private itemStats = sumItemStats([]);
   /** Jungle buffs this champion had when it died, for whoever gets the kill. */
   lostBuffs: { kind: BuffKind; left: number }[] = [];
+  /** When each item's active can next be used (match seconds). */
+  private readonly itemReady: Partial<Record<ItemId, number>> = {};
   /** This visit's purchases and sales, newest last, for undoing (forgotten once you leave the shop). */
   private undoLog: ({ kind: 'buy'; item: ItemId; paid: number; parts: ItemId[] } | { kind: 'sell'; item: ItemId; got: number; slot: number })[] = [];
   private recallStartedAt: number | null = null;
@@ -256,6 +259,44 @@ export abstract class Champion extends Unit {
     this.stats = after;
   }
 
+  /** Uses the active of the item in inventory slot `slot` (see ACTIVES), aimed at `aim` if it needs aiming. */
+  useItem(world: World, slot: number, aim: Vec2): boolean {
+    const id = this.items[slot];
+    const active = id ? ACTIVES[id] : undefined;
+    if (!id || !active || this.dead || !this.canAct(world) || world.time < (this.itemReady[id] ?? 0)) return false;
+    this.itemReady[id] = world.time + active.cooldown;
+    const allies = (radius: number) => world.units().filter((u) => u.kind === 'champion' && u.team === this.team && !u.dead && dist(u.pos, this.pos) <= radius);
+    switch (id) {
+      case 'lantern': {
+        const d = dist(this.pos, aim);
+        const at = d > LANTERN_LIGHT.range ? add(this.pos, scale(dirTo(this.pos, aim), LANTERN_LIGHT.range)) : { x: aim.x, y: aim.y };
+        world.add(new Ward(world, this.team, at, LANTERN_LIGHT.radius, LANTERN_LIGHT.duration, 'lantern'));
+        world.emit({ e: 'fx', fx: 'lanternLight', x: Math.round(at.x), y: Math.round(at.y), x2: Math.round(this.pos.x), y2: Math.round(this.pos.y), r: LANTERN_LIGHT.radius, team: this.team });
+        break;
+      }
+      case 'aegis':
+        for (const u of allies(AEGIS_WARD.radius)) u.addShield(world, AEGIS_WARD.shield + AEGIS_WARD.maxHpShare * u.stats.maxHp, AEGIS_WARD.duration);
+        world.emit({ e: 'fx', fx: 'aegisWard', x: Math.round(this.pos.x), y: Math.round(this.pos.y), r: AEGIS_WARD.radius, team: this.team });
+        break;
+      case 'drum':
+        for (const u of allies(DRUM_BEAT.radius)) u.addStatus(world, 'speed', DRUM_BEAT.duration, DRUM_BEAT.speed);
+        world.emit({ e: 'fx', fx: 'drumBeat', x: Math.round(this.pos.x), y: Math.round(this.pos.y), r: DRUM_BEAT.radius, team: this.team });
+        break;
+    }
+    return true;
+  }
+
+  /** Whether the item in `slot` has an active that's ready to go. */
+  canUse(world: World, slot: number): boolean {
+    const id = this.items[slot];
+    return !!id && !!ACTIVES[id] && world.time >= (this.itemReady[id] ?? 0);
+  }
+
+  /** Seconds until the item in each slot can be used again (0 when ready, or with no active). */
+  itemCooldowns(world: World): number[] {
+    return this.items.map((id) => (ACTIVES[id] ? Math.max(0, Math.round(((this.itemReady[id] ?? 0) - world.time) * 10) / 10) : 0));
+  }
+
   // ─── Recall ───────────────────────────────────────────────────────────────
 
   get recalling(): boolean {
@@ -378,6 +419,7 @@ export abstract class Champion extends Unit {
       items: [...this.items],
       inShop: this.inShop(),
       ...(this.canUndo ? { undo: true } : {}),
+      ...(this.items.some((id) => ACTIVES[id]) ? { itemCd: this.itemCooldowns(world) } : {}),
       buffs: this.buffsLeft(world).map((b) => ({ kind: b.kind, left: Math.ceil(b.left) })),
       stats: {
         ad: Math.round(this.stats.ad),

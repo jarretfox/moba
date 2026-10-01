@@ -696,7 +696,44 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       if (t) fx.ghost(t, x, y - r * 1.2, { size: 120, size2: 60, dy: r * 0.9, life: 0.45, alpha: 0.85 });
       fx.later(0.4, () => p.burst(16, { shape: 'star', x, y, life: 0.6, size: 14, size2: 2, color: 0xffffff, color2: GOLD, drag: 0.05, spin: 6 }, [120, 300]));
       return;
-    }    default: {
+    }
+    case 'lanternLight': {
+      // The lantern's light lobbed from the hand, landing in a burst that lights the place up for a while.
+      const r = ev.r ?? 550;
+      const fromX = ev.x2 ?? x;
+      const fromY = ev.y2 ?? y;
+      const glow = 0xd8f7a0;
+      fx.custom(0.35, (g, t) => {
+        const bx = fromX + (x - fromX) * t;
+        const by = fromY + (y - fromY) * t - Math.sin(t * Math.PI) * 160 - 60 * (1 - t);
+        g.circle(bx, by, 22).fill({ color: glow, alpha: 0.35 }).circle(bx, by, 9).fill({ color: 0xfaffe0, alpha: 0.95 });
+      }, 'top', true);
+      fx.later(0.35, () => {
+        fx.flash(x, y, 120, glow, 0.4);
+        fx.shockwave(x, y, r, glow, 0.6);
+        fx.light(x, y, r * 1.1, 0xe8ffc0, 6, 0.7);
+        p.burst(24, { shape: 'mote', x, y, life: 1.6, size: 10, size2: 2, color: 0xfaffe0, color2: glow, drag: 0.4, ay: -40 }, [80, 260]);
+      });
+      return;
+    }
+    case 'aegisWard': {
+      // A ring of Deepstone shards bursting out, and a ward circle round everyone it covers.
+      const r = ev.r ?? 600;
+      fx.shockwave(x, y, r, 0x8fd0ff, 0.5);
+      fx.sigil(x, y, r * 0.55, 0x8fd0ff, 0.7, -1);
+      fx.flash(x, y, 90, 0xcfeaff, 0.3);
+      p.burst(22, { shape: 'shard', glow: false, x, y: y - 40, life: 0.7, size: 14, size2: 6, color: 0x9fb4c8, color2: 0x5a6a7a, drag: 0.08, ay: 600, spin: 8 }, [200, 420], -Math.PI / 2, Math.PI * 1.4);
+      return;
+    }
+    case 'drumBeat': {
+      // Three beats of the war drum, rolling out, and everyone close picks up the pace.
+      const r = ev.r ?? 700;
+      for (let i = 0; i < 3; i++) fx.later(i * 0.16, () => fx.shockwave(x, y, r * (0.55 + i * 0.22), i === 2 ? 0xffd166 : 0xff7a2f, 0.45));
+      fx.comic(x, y - 150, 'BOOM!', 0xff7a2f);
+      p.burst(14, { shape: 'smoke', glow: false, x, y, life: 0.6, size: 20, size2: 44, color: 0xc9a37a, alpha: 0.4, drag: 0.06 }, [120, 260]);
+      return;
+    }
+    default: {
       // Every effect the simulation can send needs a look here.
       const unhandled: never = ev.fx;
       void unhandled;

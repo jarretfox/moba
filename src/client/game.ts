@@ -44,7 +44,7 @@ import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
 import { HEIGHT, buildMap, buildNavOverlay, destroyMapLayer, elevate, type MapLayers } from './render/mapView';
 import { lanePath } from '../shared/map/mapData';
-import { PALETTE, enemyLight, setColorblind, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
+import { PALETTE, WardView, enemyLight, setColorblind, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
 import { DamageLog } from './recap';
@@ -58,7 +58,7 @@ import { Shopkeeper, wickSpot } from './render/shopkeeper';
 import { buildLandmarks } from './render/landmarks';
 import { WickMood, wickLine, type WickMoment } from './wick';
 import { cantBuy, itemChanges, statGains } from './shop';
-import { ITEMS, sellPrice, type ItemId } from '../shared/items';
+import { ACTIVES, ITEMS, activeSlots, sellPrice, type ItemId } from '../shared/items';
 import { CHUD_DEFS } from '../shared/sim/chud';
 
 /** While right mouse is held, re-send the move target this often. */
@@ -241,6 +241,7 @@ export class GameClient {
       this.sound.play('click', 0.5);
       this.send({ k: 'sell', slot });
     };
+    this.hud.onUseItem = (slot) => this.useItem(slot, false);
     this.hud.onUndo = () => {
       this.sound.play('gold', 0.5);
       this.send({ k: 'undo' });
@@ -600,6 +601,10 @@ export class GameClient {
         break;
       case 'zone':
         view = new ZoneView(s);
+        layer = this.underLayer;
+        break;
+      case 'ward':
+        view = new WardView(s);
         layer = this.underLayer;
         break;
       default:
@@ -1452,6 +1457,12 @@ export class GameClient {
       case 'KeyS':
         this.send({ k: 'stop' });
         break;
+      case 'KeyD':
+      case 'KeyF': {
+        const slot = activeSlots(this.buffer.latest?.me?.items ?? [])[e.code === 'KeyD' ? 0 : 1];
+        if (slot !== undefined) this.useItem(slot, true);
+        break;
+      }
       case 'KeyB':
         this.aiming = null;
         this.send({ k: 'recall' });
@@ -1502,6 +1513,23 @@ export class GameClient {
       this.fx.clickMarker(to.x, to.y, false);
     }
     return true;
+  }
+
+  /**
+   * Uses the item in an inventory slot. From a hotkey it's aimed at the cursor; clicked on the HUD, where
+   * the cursor's on the bar, it goes off where you stand.
+   */
+  private useItem(slot: number, atCursor: boolean): void {
+    const me = this.buffer.latest?.me;
+    const id = me?.items[slot];
+    const self = this.ents.get(this.myId);
+    if (!me || !id || !ACTIVES[id] || !self || self.dead) return;
+    if ((me.itemCd?.[slot] ?? 0) > 0) {
+      this.sound.play('deny', 0.5);
+      return;
+    }
+    const p = atCursor ? this.mouseWorld() : { x: self.x, y: self.y };
+    this.send({ k: 'use', slot, x: Math.round(p.x), y: Math.round(p.y) });
   }
 
   private rightClick(initial: boolean): void {

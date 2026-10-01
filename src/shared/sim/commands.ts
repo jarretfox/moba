@@ -67,6 +67,11 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
     case 'recall':
       unit.startRecall(world);
       return;
+    case 'use': {
+      const p = toPoint(world, cmd.x, cmd.y);
+      if (p && Number.isInteger(cmd.slot)) unit.useItem(world, cmd.slot, p);
+      return;
+    }
   }
 }
 

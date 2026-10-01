@@ -116,6 +116,58 @@ export const RECIPES: Partial<Record<ItemId, readonly ItemId[]>> = {
   staff: ['sagestone', 'loaf'],
 };
 
+/** An item you can use, on a cooldown: D and F use the first two in your inventory. */
+export interface ItemActive {
+  name: string;
+  description: string;
+  cooldown: number;
+  /** 'point' ones go where the cursor is (in range); 'self' ones go off around you. */
+  targeting: 'self' | 'point';
+  range?: number;
+}
+
+// ─── Tuning: item actives ─────────────────────────────────────────────────────
+
+/** The Glowworm Lantern's light: how far it sees, how far it can be thrown, and how long it lasts. */
+export const LANTERN_LIGHT = { radius: 550, range: 1400, duration: 6 };
+/** The Aegis's ward: a shield of this much plus a share of each one's max health, on allies this close. */
+export const AEGIS_WARD = { shield: 120, maxHpShare: 0.1, duration: 3, radius: 600 };
+/** The War Drum's beat: this much faster, for this long, for allies this close. */
+export const DRUM_BEAT = { speed: 0.3, duration: 3, radius: 700 };
+
+export const ACTIVES: Partial<Record<ItemId, ItemActive>> = {
+  lantern: {
+    name: 'Light the Way',
+    description: `Throw light on a spot: you see everything within ${LANTERN_LIGHT.radius} of it, brush and all, for ${LANTERN_LIGHT.duration}s.`,
+    cooldown: 60,
+    targeting: 'point',
+    range: LANTERN_LIGHT.range,
+  },
+  aegis: {
+    name: 'Deepstone Ward',
+    description: `You and allies close by get a shield of ${AEGIS_WARD.shield} + ${AEGIS_WARD.maxHpShare * 100}% of max health for ${AEGIS_WARD.duration}s.`,
+    cooldown: 75,
+    targeting: 'self',
+  },
+  drum: {
+    name: 'War Beat',
+    description: `You and allies close by run ${DRUM_BEAT.speed * 100}% faster for ${DRUM_BEAT.duration}s.`,
+    cooldown: 45,
+    targeting: 'self',
+  },
+};
+
+/** The keys for item actives: the first item in the inventory with one is D, the second F. */
+export const ACTIVE_KEYS = ['D', 'F'] as const;
+
+/** The inventory slots whose items have actives, in order (at most one per key). */
+export function activeSlots(items: readonly (ItemId | undefined)[]): number[] {
+  return items
+    .map((id, slot) => (id && ACTIVES[id] ? slot : -1))
+    .filter((slot) => slot >= 0)
+    .slice(0, ACTIVE_KEYS.length);
+}
+
 /** The items `id` goes into. */
 export function buildsInto(id: ItemId): ItemId[] {
   return ITEM_IDS.filter((other) => RECIPES[other]?.includes(id));

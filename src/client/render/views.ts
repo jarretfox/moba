@@ -917,6 +917,47 @@ export class ZoneView implements EntityView {
   }
 }
 
+/**
+ * Sight left on the map, seen only by its own team: the Glowworm Lantern's light (a glowworm lantern
+ * hanging in the air over a lit patch) or the Sewer Crab's shell (a little shell on a stick, with an eye).
+ * Both fade away as their time runs out.
+ */
+export class WardView implements EntityView {
+  readonly container = new Graphics();
+  private age = 0;
+
+  constructor(private readonly s: EntitySnap) {}
+
+  update(s: EntitySnap, dt: number): void {
+    this.age += dt;
+    const t = this.age;
+    const left = s.regrow ?? 1;
+    const fade = Math.min(1, t * 3, left / 0.8);
+    const g = this.container.clear();
+    this.container.position.set(s.x, s.y);
+    this.container.alpha = fade;
+    if (this.s.vis === 'lantern') {
+      // The edge of the light, faintly, and the lantern hanging over the middle of it.
+      g.circle(0, 0, s.r).stroke({ width: 2, color: 0xd8f7a0, alpha: 0.25 });
+      g.ellipse(0, 0, 60, 22).fill({ color: 0xd8f7a0, alpha: 0.18 });
+      const y = -90 + Math.sin(t * 2) * 8;
+      g.moveTo(0, y - 26).lineTo(0, y - 12).stroke({ width: 2, color: 0x2a2018 });
+      g.roundRect(-11, y - 12, 22, 26, 5).fill(0x2a2018);
+      g.roundRect(-7, y - 8, 14, 18, 3).fill(0xd8f7a0);
+      g.circle(0, y, 26).fill({ color: 0xd8f7a0, alpha: 0.18 + 0.06 * Math.sin(t * 7) });
+      return;
+    }
+    // The Sewer Crab's shell, planted on a stick, its eye open and looking about.
+    g.ellipse(0, 4, 26, 9).fill({ color: 0x000000, alpha: 0.3 });
+    g.moveTo(0, 0).lineTo(0, -44).stroke({ width: 4, color: 0x5a4024 });
+    g.ellipse(0, -52, 22, 16).fill(0xd9733a).stroke({ width: 2.5, color: 0x6a2a10 });
+    const look = Math.sin(t * 1.3) * 5;
+    g.circle(look, -54, 7).fill(0xfff6e0).stroke({ width: 1.5, color: 0x1a1414 });
+    g.circle(look + 1.5, -54, 3.5).fill(0x1a1414);
+    g.circle(0, -52, 34).fill({ color: 0xffb06a, alpha: 0.1 + 0.05 * Math.sin(t * 3) });
+  }
+}
+
 /** Something to pick up: Willmore's scrap. */
 export class PickupView implements EntityView {
   readonly container = new Graphics();
