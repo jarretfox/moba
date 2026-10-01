@@ -1,6 +1,7 @@
 import { Container, Graphics, RenderTexture, Sprite, Texture, type Renderer } from 'pixi.js';
 import type { MapData } from '../../shared/map/mapData';
 import type { EntitySnap } from '../../shared/protocol';
+import { mix } from './particles';
 
 // Dusk over the map. Each frame a small "light map" is drawn: the dim evening color everywhere, cloud
 // shadows drifting over it, and soft pools of light around champions, Chuds, structures, glowing monsters,
@@ -16,8 +17,32 @@ export interface Light {
   alpha: number;
 }
 
-/** The evening: everything unlit is multiplied by this. */
-const AMBIENT = 0x9ba4c0;
+/**
+ * The sky over the match, by match time: a golden evening at the start, blue dusk by eight minutes, and
+ * night from eighteen on. Everything unlit is multiplied by it.
+ */
+const SKY: readonly (readonly [number, number])[] = [
+  [0, 0xd6c4aa],
+  [480, 0x9ba4c0],
+  [1080, 0x7381aa],
+];
+
+export function skyAt(time: number): number {
+  if (time <= SKY[0][0]) return SKY[0][1];
+  for (let i = 1; i < SKY.length; i++) {
+    const [t1, c1] = SKY[i];
+    if (time <= t1) {
+      const [t0, c0] = SKY[i - 1];
+      return mix(c0, c1, (time - t0) / (t1 - t0));
+    }
+  }
+  return SKY[SKY.length - 1][1];
+}
+
+/** How far into the night it is, 0 (evening) to 1 (full night). */
+export function nightAt(time: number): number {
+  return Math.max(0, Math.min(1, (time - SKY[1][0]) / (SKY[2][0] - SKY[1][0])));
+}
 /** The light map is drawn at this share of screen resolution; it's all soft gradients anyway. */
 const RESOLUTION = 0.5;
 
@@ -80,6 +105,7 @@ export class Lighting {
   private readonly pool: Sprite[] = [];
   private readonly texture = lightTexture();
   private readonly fixed: Light[];
+  private ambientKey = '';
 
   constructor(private readonly map: MapData) {
     this.rt = RenderTexture.create({ width: 16, height: 16, resolution: RESOLUTION });
@@ -107,10 +133,12 @@ export class Lighting {
   }
 
   /** Redraws the light map for this frame. `world` is the game's world layer (for the camera transform). */
-  update(renderer: Renderer, world: Container, screenW: number, screenH: number, dt: number, ents: Iterable<EntitySnap>, myTeam: number, extra: readonly Light[]): void {
-    if (this.rt.width !== screenW || this.rt.height !== screenH) {
-      this.rt.resize(screenW, screenH);
-      this.ambient.clear().rect(0, 0, screenW, screenH).fill(AMBIENT);
+  update(renderer: Renderer, world: Container, screenW: number, screenH: number, dt: number, ents: Iterable<EntitySnap>, myTeam: number, extra: readonly Light[], sky: number): void {
+    if (this.rt.width !== screenW || this.rt.height !== screenH) this.rt.resize(screenW, screenH);
+    const key = `${screenW}x${screenH}:${sky}`;
+    if (key !== this.ambientKey) {
+      this.ambientKey = key;
+      this.ambient.clear().rect(0, 0, screenW, screenH).fill(sky);
     }
     this.world.position.copyFrom(world.position);
     this.world.scale.copyFrom(world.scale);

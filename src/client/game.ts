@@ -18,7 +18,7 @@ import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
-import { Lighting } from './render/lighting';
+import { Lighting, nightAt, skyAt } from './render/lighting';
 import { Water } from './render/water';
 import { Minimap, type MinimapPing } from './minimap';
 import { PINGS, PingWheel } from './pings';
@@ -228,7 +228,9 @@ export class GameClient {
     elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
     this.emissive.position.copyFrom(this.worldLayer.position);
     this.emissive.scale.copyFrom(this.worldLayer.scale);
-    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights);
+    const matchTime = this.buffer.latest?.time ?? 0;
+    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, skyAt(matchTime));
+    this.ambience.setNight(nightAt(matchTime));
     // The world drains of color while you wait to respawn.
     this.deadFade = Math.max(0, Math.min(1, this.deadFade + (me?.dead && !this.finale ? dt * 2 : -dt * 3)));
     this.deathFilter.alpha = this.deadFade * 0.85;

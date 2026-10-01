@@ -23,6 +23,8 @@ const COUNTS: Record<Kind, number> = { firefly: 90, glint: 70, spore: 24 };
 export class Ambience {
   readonly container = new Graphics();
   private readonly motes: Mote[] = [];
+  /** 0 in the evening, 1 at night: the fireflies come out. */
+  private night = 0;
 
   constructor(private readonly map: MapData) {
     this.container.blendMode = 'add';
@@ -33,6 +35,10 @@ export class Ambience {
         this.motes.push(m);
       }
     }
+  }
+
+  setNight(k: number): void {
+    this.night = k;
   }
 
   update(dt: number): void {
@@ -48,7 +54,7 @@ export class Ambience {
       const fade = Math.sin(t * Math.PI); // in and out over its life
       switch (m.kind) {
         case 'firefly': {
-          const a = fade * (0.55 + 0.45 * Math.sin(m.phase * 6));
+          const a = fade * (0.55 + 0.45 * Math.sin(m.phase * 6)) * (0.45 + 0.75 * this.night);
           g.circle(m.x, m.y, 7).fill({ color: 0xd9f27a, alpha: a * 0.18 });
           g.circle(m.x, m.y, 2.2).fill({ color: 0xf2ffb0, alpha: a });
           break;
