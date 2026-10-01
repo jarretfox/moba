@@ -45,6 +45,17 @@ function flames(fx: FxLayer, x: number, y: number, r: number, n: number): void {
   }
 }
 
+/** A footstep: a puff of dust on the paths, or leaves kicked up in the brush. */
+export function footstep(fx: FxLayer, x: number, y: number, r: number, ground: 'dust' | 'brush' | 'grass'): void {
+  const p = fx.particles;
+  if (ground === 'brush') {
+    for (let i = 0; i < 3; i++) p.emit({ shape: 'leaf', glow: false, x: x + rand(-r, r) * 0.6, y: y + rand(-r, r) * 0.6, vx: rand(-60, 60), vy: rand(-70, -10), ay: 120, drag: 0.3, life: rand(0.5, 0.8), size: 12, size2: 8, color: 0x4f8a2b, color2: 0x2c4a1a, spin: rand(-8, 8) });
+    return;
+  }
+  const color = ground === 'dust' ? 0xb9a27c : 0x7d8a5a;
+  p.emit({ shape: 'smoke', glow: false, x: x + rand(-r, r) * 0.3, y: y + r * 0.4, vx: rand(-20, 20), vy: rand(-15, 5), drag: 0.2, life: rand(0.45, 0.7), size: r * 0.5, size2: r * 1.1, color, alpha: ground === 'dust' ? 0.4 : 0.2 });
+}
+
 /** The fire in a brazier: a few flames a frame while it's on screen. */
 export function brazierFire(fx: FxLayer, x: number, y: number): void {
   for (let i = 0; i < fx.rate(26); i++) {

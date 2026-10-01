@@ -7,6 +7,7 @@ import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { LOCAL_CONN, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
+import { pickWeather } from '../shared/weather';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
 import { Jungle } from '../shared/sim/jungle';
@@ -128,12 +129,13 @@ export class HostCore {
     const everyone = [...this.lobby.values()];
     if (everyone.some((p) => !p.champion)) return;
     this.phase = 'playing';
+    const weather = pickWeather(Math.random);
 
     for (const p of everyone) {
       const champ = this.world.add(createChampion(p.champion!, this.world, p.team));
       champ.name = p.name;
       this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
-      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team });
+      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather });
     }
     if (mode === 'practice') {
       setupPracticeRange(this.world);

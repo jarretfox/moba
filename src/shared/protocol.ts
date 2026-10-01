@@ -4,6 +4,7 @@
 import type { ChampionId } from './champions/types';
 import type { PlayerTeam, Slot, Team } from './constants';
 import type { ItemId } from './items';
+import type { Weather } from './weather';
 import type { StructureRole } from './map/mapData';
 import type { SnapshotDelta } from './snapshotCodec';
 
@@ -65,7 +66,7 @@ export type HostMessage =
   /** The lobby changed. `you` is the recipient's own player id. */
   | { t: 'lobby'; lobby: LobbyState; you: string }
   /** The match started; this is your champion. */
-  | { t: 'welcome'; unitId: number; team: Team }
+  | { t: 'welcome'; unitId: number; team: Team; weather?: Weather }
   | { t: 'snap'; snap: SnapshotDelta }
   | { t: 'refused'; reason: string }
   /** Keep-alive, handled by the network layer. */

@@ -19,9 +19,10 @@ import { Hud } from './hud';
 import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
-import { brazierFire, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
+import { brazierFire, footstep, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { paintLampGlows, propSpots } from './render/props';
 import { Lighting, nightAt, skyAt } from './render/lighting';
+import { WeatherView } from './render/weather';
 import { driftAt } from './render/backdrop';
 import { Water } from './render/water';
 import { Minimap, type MinimapPing } from './minimap';
@@ -79,6 +80,8 @@ export class GameClient {
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
   private readonly bubbles = new Bubbles();
+  /** Rain, storms or mist: set when the match starts. */
+  private weather: WeatherView | null = null;
   /** Which champion each Shootie is shooting at, so a beam can show it. */
   private readonly towerShots = new Map<number, { target: number; until: number }>();
   private readonly beams = new Graphics();
@@ -96,6 +99,8 @@ export class GameClient {
   /** Held on the minimap: the camera looks there. */
   private peek: Vec2 | null = null;
   private frameCount = 0;
+  /** Where each walker was and when its next footstep is due. */
+  private readonly steps = new Map<number, { x: number; y: number; next: number }>();
   /** When you last traded hits with a champion, for the music. */
   private lastFight = -Infinity;
   private nextPlaceCheck = 0;
@@ -178,6 +183,7 @@ export class GameClient {
   handle(msg: HostMessage): void {
     if (msg.t === 'welcome') {
       this.myId = msg.unitId;
+      if (msg.weather && msg.weather !== 'clear' && !this.weather) this.setWeather(new WeatherView(msg.weather, MAP));
       if (msg.team !== this.myTeam) {
         this.myTeam = msg.team;
         // Repaint the ground so your own base is the blue one.
@@ -187,6 +193,18 @@ export class GameClient {
     } else if (msg.t === 'snap') {
       this.buffer.push(this.decoder.decode(msg.snap), performance.now() / 1000);
     }
+  }
+
+  private setWeather(w: WeatherView): void {
+    this.weather = w;
+    // Mist and splashes sit over the trees; rain and lightning over everything.
+    this.worldLayer.addChildAt(w.world, this.worldLayer.getChildIndex(this.canopy) + 1);
+    this.view.addChild(w.screen);
+    w.onBolt = () => {
+      this.camera.shake(4);
+      setTimeout(() => this.sound.play('thunder', 0.8), 300 + Math.random() * 1200);
+    };
+    this.sound.setRain(w.wetness);
   }
 
   /** (Re)paints the map, tinted for the viewer's team. */
@@ -255,7 +273,9 @@ export class GameClient {
     this.emissive.position.copyFrom(this.worldLayer.position);
     this.emissive.scale.copyFrom(this.worldLayer.scale);
     const matchTime = this.buffer.latest?.time ?? 0;
-    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, skyAt(matchTime));
+    this.weather?.update(dt, w, h, this.camera);
+    const sky = this.weather ? this.weather.sky(skyAt(matchTime)) : skyAt(matchTime);
+    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, sky);
     this.ambience.setNight(nightAt(matchTime));
     // The world drains of color while you wait to respawn.
     this.deadFade = Math.max(0, Math.min(1, this.deadFade + (me?.dead && !this.finale ? dt * 2 : -dt * 3)));
@@ -319,6 +339,8 @@ export class GameClient {
     const halfW = width / 2 / this.camera.zoom + 250;
     const halfH = height / 2 / this.camera.zoom + 250;
     const time = performance.now() / 1000;
+    // Forget footsteps of things that are gone (dead Chuds pile up over a match).
+    if (this.frameCount % 300 === 0) for (const id of this.steps.keys()) if (!this.ents.has(id)) this.steps.delete(id);
     for (const b of propSpots(MAP).braziers) {
       if (Math.abs(b.x - this.camera.x) < halfW && Math.abs(b.y - this.camera.y) < halfH) brazierFire(this.fx, b.x, b.y);
     }
@@ -326,6 +348,7 @@ export class GameClient {
       if (Math.abs(s.x - this.camera.x) > halfW || Math.abs(s.y - this.camera.y) > halfH) continue;
       if (s.k === 'projectile') projectileTrail(this.fx, s, s.tm === this.myTeam);
       else {
+        this.footsteps(s, time);
         if (s.k === 'monster' && !s.dead) monsterAura(this.fx, s);
         if (s.st || s.sh) statusAura(this.fx, s, time);
       }
@@ -465,6 +488,25 @@ export class GameClient {
         return;
       }
     }
+  }
+
+  /** Dust and leaves under anything walking: champions step often, Chuds and monsters less. */
+  private footsteps(s: EntitySnap, time: number): void {
+    if (s.dead || (s.k !== 'champion' && s.k !== 'chud' && s.k !== 'monster' && s.k !== 'guard') || s.st?.includes('burrowed') || s.st?.includes('underground')) return;
+    const last = this.steps.get(s.id);
+    if (!last) {
+      this.steps.set(s.id, { x: s.x, y: s.y, next: time });
+      return;
+    }
+    const moved = Math.hypot(s.x - last.x, s.y - last.y);
+    last.x = s.x;
+    last.y = s.y;
+    if (moved < 1 || time < last.next) return;
+    last.next = time + (s.k === 'champion' ? 0.16 : 0.32);
+    const style = MAP.ground.find((p) => shapeContains(p.shape, s.x, s.y))?.style;
+    if (style === 'river') return; // the water has its own ripples
+    const inBrush = this.visionGrid.brushAt({ x: s.x, y: s.y }) > 0;
+    footstep(this.fx, s.x, s.y, s.r, inBrush ? 'brush' : style === 'lane' || style === 'base' ? 'dust' : 'grass');
   }
 
   /** A beam from each Shootie to the champion it's shooting: red when it's one of yours. */

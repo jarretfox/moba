@@ -34,7 +34,9 @@ export type SoundName =
   | 'pingDanger'
   | 'pingMissing'
   /** A champion's emote or quip. */
-  | 'emote';
+  | 'emote'
+  /** A storm's thunder, rolling in after the lightning. */
+  | 'thunder';
 
 /** The same sound won't restart sooner than this, so a lane full of Chuds doesn't become a buzz. */
 const MIN_GAP: Partial<Record<SoundName, number>> = { swing: 0.06, shoot: 0.06, hit: 0.07, smallDeath: 0.09, gold: 0.12, tower: 0.1, cast: 0.05 };
@@ -94,6 +96,11 @@ export class Sound {
   /** How much of a fight you're in, 0–1: brings the drums in. */
   setIntensity(v: number): void {
     this.music?.setIntensity(v);
+  }
+
+  /** Rain on the soundscape, 0–1. */
+  setRain(v: number): void {
+    this.scape?.setRain(v);
   }
 
   /** How much jungle and river is around the camera, 0–1 each: crickets and water. */
@@ -270,6 +277,11 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
     v.tone(t, 'sine', 110, 108, 1.6, 0.32, 0.005);
     v.tone(t, 'triangle', 220, 216, 0.9, 0.12, 0.005);
     v.tone(t, 'sine', 297, 294, 0.7, 0.08, 0.005);
+  },
+  thunder: (v, t) => {
+    v.noise(t, 'lowpass', 900, 70, 2.6, 0.55, 0.7, 0.02);
+    v.noise(t + 0.15, 'lowpass', 300, 50, 3, 0.45, 0.9, 0.3);
+    v.tone(t, 'sine', 55, 38, 2.2, 0.2, 0.2);
   },
   emote: (v, t) => {
     v.tone(t, 'triangle', 620, 760, 0.07, 0.2);

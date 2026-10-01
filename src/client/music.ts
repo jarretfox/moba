@@ -226,6 +226,8 @@ export class Music {
 export class Soundscape {
   private readonly windGain: GainNode;
   private readonly riverGain: GainNode;
+  private readonly rainGain: GainNode;
+  private rain = 0;
   private readonly bus: GainNode;
   private jungle = 0;
   private river = 0;
@@ -263,7 +265,22 @@ export class Soundscape {
     this.riverGain = ctx.createGain();
     this.riverGain.gain.value = 0;
     water.connect(low).connect(high).connect(this.riverGain).connect(this.bus);
+    // Rain: a soft hiss.
+    const hiss = this.loop(noise);
+    const hissBand = ctx.createBiquadFilter();
+    hissBand.type = 'bandpass';
+    hissBand.frequency.value = 3200;
+    hissBand.Q.value = 0.4;
+    this.rainGain = ctx.createGain();
+    this.rainGain.gain.value = 0;
+    hiss.connect(hissBand).connect(this.rainGain).connect(this.bus);
     setInterval(() => this.tick(), 120);
+  }
+
+  setRain(v: number): void {
+    if (v === this.rain) return;
+    this.rain = v;
+    this.rainGain.gain.setTargetAtTime(v * 0.05, this.ctx.currentTime, 1);
   }
 
   /** How much of the view is jungle and river (0–1 each). */
