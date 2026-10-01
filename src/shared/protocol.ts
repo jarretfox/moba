@@ -14,6 +14,10 @@ export const LOCAL_CONN = 'local';
 export type PingKind = 'look' | 'danger' | 'omw' | 'missing' | 'assist';
 export const PING_KINDS: readonly PingKind[] = ['look', 'danger', 'omw', 'missing', 'assist'];
 
+/** Emotes players can send (1–4): a taunt, a laugh, a cheer, a line from the champion's story. */
+export type EmoteKind = 'taunt' | 'laugh' | 'cheer' | 'line';
+export const EMOTE_KINDS: readonly EmoteKind[] = ['taunt', 'laugh', 'cheer', 'line'];
+
 export type Command =
   | { k: 'move'; x: number; y: number }
   | { k: 'attack'; target: number }
@@ -27,7 +31,8 @@ export type Command =
   /** Sell the item in this inventory slot. */
   | { k: 'sell'; slot: number }
   /** Mark a spot on the map for your team. */
-  | { k: 'ping'; kind: PingKind; x: number; y: number };
+  | { k: 'ping'; kind: PingKind; x: number; y: number }
+  | { k: 'emote'; kind: EmoteKind };
 
 export type ClientMessage =
   /** Enter the lobby. */
@@ -173,6 +178,11 @@ export type GameEvent =
    */
   | { e: 'kill'; killer: string; victim: string; team: Team; what?: 'champion' | 'warden' | StructureRole; streak?: number; shutdown?: boolean; ace?: boolean }
   | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team }
+  /**
+   * A champion emoting, or quipping after a kill ('kill', with the victim's champion in `vs`). `n` picks
+   * which of their lines, the same on every screen.
+   */
+  | { e: 'emote'; id: number; kind: EmoteKind | 'kill'; n: number; vs?: ChampionId }
   /** A teammate's ping (only their team is told). */
   | { e: 'ping'; kind: PingKind; x: number; y: number; from: number; name: string; team: PlayerTeam };
 

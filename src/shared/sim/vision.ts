@@ -169,6 +169,8 @@ export class Vision {
         return true; // the kill feed is announced to everyone
       case 'ping':
         return ev.team === team;
+      case 'emote':
+        return byId(ev.id);
       case 'fx':
         return ev.team === team || this.visible[team][this.grid.cellOf(ev)] === 1;
     }

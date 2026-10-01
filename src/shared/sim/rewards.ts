@@ -118,6 +118,8 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
   for (const c of xpTakers) c.gainXp(world, killXp(victim.level) / xpTakers.length);
   victim.streak = 0;
   // No champion to credit: name whatever did it (a Shootie, the Warden), or call it an execution.
+  // The killer has something to say about it.
+  if (killer) world.emit({ e: 'emote', id: killer.id, kind: 'kill', n: killer.score.kills, vs: victim.info.id });
   const credit = killer ?? source;
   const team = [...world.units()].filter((u) => u instanceof Champion && u.team === victim.team);
   world.emit({

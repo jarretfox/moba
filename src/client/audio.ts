@@ -32,7 +32,9 @@ export type SoundName =
   /** Map pings from your team. */
   | 'ping'
   | 'pingDanger'
-  | 'pingMissing';
+  | 'pingMissing'
+  /** A champion's emote or quip. */
+  | 'emote';
 
 /** The same sound won't restart sooner than this, so a lane full of Chuds doesn't become a buzz. */
 const MIN_GAP: Partial<Record<SoundName, number>> = { swing: 0.06, shoot: 0.06, hit: 0.07, smallDeath: 0.09, gold: 0.12, tower: 0.1, cast: 0.05 };
@@ -268,6 +270,10 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
     v.tone(t, 'sine', 110, 108, 1.6, 0.32, 0.005);
     v.tone(t, 'triangle', 220, 216, 0.9, 0.12, 0.005);
     v.tone(t, 'sine', 297, 294, 0.7, 0.08, 0.005);
+  },
+  emote: (v, t) => {
+    v.tone(t, 'triangle', 620, 760, 0.07, 0.2);
+    v.tone(t + 0.07, 'triangle', 760, 980, 0.1, 0.2);
   },
   ping: (v, t) => {
     v.tone(t, 'sine', 880, 880, 0.08, 0.25);

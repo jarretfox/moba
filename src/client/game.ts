@@ -1,4 +1,4 @@
-import { ColorMatrixFilter, Container, Graphics, type Application } from 'pixi.js';
+import { BlurFilter, ColorMatrixFilter, Container, Graphics, RenderTexture, Sprite, type Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { atRank, type ChampionInfo } from '../shared/champions/types';
 import { TEAM, type Slot, type Team } from '../shared/constants';
@@ -11,7 +11,9 @@ import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/prot
 import { Sound } from './audio';
 import { Camera } from './camera';
 import { MELEE, cueFor, type SoundCue } from './sfx';
-import { wardenWindup } from './render/animation';
+import { EMOTE_ANIM, wardenWindup } from './render/animation';
+import { Bubbles } from './render/bubbles';
+import { emoteLine } from './emotes';
 import type { Connection } from './net/connection';
 import { Hud } from './hud';
 import { FogLayer } from './render/fog';
@@ -75,6 +77,13 @@ export class GameClient {
   /** For the announcer: has anyone drawn first blood, and who's on a multi-kill. */
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
+  private readonly bubbles = new Bubbles();
+  /** Which champion each Shootie is shooting at, so a beam can show it. */
+  private readonly towerShots = new Map<number, { target: number; until: number }>();
+  private readonly beams = new Graphics();
+  /** Glow bleeding off spells: the glowing layer, blurred and added back over the view. */
+  private readonly bloomRt = RenderTexture.create({ width: 16, height: 16, resolution: 0.35 });
+  private readonly bloom = new Sprite(this.bloomRt);
   private readonly minimap: Minimap;
   private readonly pingWheel: PingWheel;
   /** Where the ping being picked on the wheel will go. */
@@ -149,8 +158,11 @@ export class GameClient {
       this.unitLayer,
       this.projectileLayer,
     );
-    this.emissive.addChild(this.fx.container);
-    this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive);
+    this.emissive.addChild(this.beams, this.fx.container, this.bubbles.container);
+    this.bloom.blendMode = 'add';
+    this.bloom.alpha = 0.75;
+    this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35 })];
+    this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive, this.bloom);
     app.stage.addChild(this.view);
     this.deathFilter.desaturate();
     this.bindInput();
@@ -251,6 +263,9 @@ export class GameClient {
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
 
+    this.bubbles.update(dt, this.ents);
+    this.drawBeams();
+    this.renderBloom(w, h);
     this.drawMinimap(w, h);
     this.updateSoundscape();
 
@@ -369,6 +384,8 @@ export class GameClient {
       }
       case 'attack': {
         this.views.get(ev.src)?.onAttack?.();
+        const shooter = this.ents.get(ev.src);
+        if (shooter?.k === 'structure' && this.ents.get(ev.target)?.k === 'champion') this.towerShots.set(ev.src, { target: ev.target, until: performance.now() / 1000 + 1.4 });
         // Melee champions' hits leave a small slash where they land.
         const src = this.ents.get(ev.src);
         const tgt = this.ents.get(ev.target);
@@ -399,11 +416,24 @@ export class GameClient {
       case 'gold': {
         const t = ev.id === this.myId ? this.ents.get(ev.id) : undefined;
         if (t && ev.amount > 0) this.fx.goldNumber(t.x, t.y - t.r - 18, ev.amount);
+        if (t && ev.amount >= 15) {
+          const { width, height } = this.app.screen;
+          this.hud.flyCoins((t.x - this.camera.x) * this.camera.zoom + width / 2, (t.y - this.camera.y) * this.camera.zoom + height / 2, ev.amount);
+        }
         return;
       }
       case 'level': {
         const t = ev.id === this.myId ? this.ents.get(ev.id) : undefined;
         if (t) this.fx.levelUp(t.x, t.y, t.r, ev.level);
+        if (t) this.hud.levelFlash();
+        return;
+      }
+      case 'emote': {
+        const u = this.ents.get(ev.id);
+        if (!u?.champ) return;
+        const color = u.id === this.myId ? 0xe8c46a : u.tm === this.myTeam ? 0x3d8bfd : 0xe5484d;
+        this.bubbles.say(u.id, emoteLine(u.champ, ev.kind, ev.n, ev.vs), color);
+        (this.views.get(u.id) as UnitView | undefined)?.play?.(EMOTE_ANIM[ev.kind]);
         return;
       }
       case 'ping': {
@@ -426,6 +456,39 @@ export class GameClient {
         return;
       }
     }
+  }
+
+  /** A beam from each Shootie to the champion it's shooting: red when it's one of yours. */
+  private drawBeams(): void {
+    const g = this.beams.clear();
+    const now = performance.now() / 1000;
+    for (const [id, shot] of this.towerShots) {
+      const s = this.ents.get(id);
+      const t = this.ents.get(shot.target);
+      if (now > shot.until || !s || !t || s.dead || t.dead) {
+        this.towerShots.delete(id);
+        continue;
+      }
+      // From the crystal on top, which leans with the raised layer.
+      const sx = s.x + HEIGHT.structure * (s.x - this.camera.x);
+      const sy = s.y + HEIGHT.structure * (s.y - this.camera.y);
+      const ours = t.tm === this.myTeam;
+      const color = ours ? 0xff4a4a : 0x6fb4ff;
+      const pulse = 0.75 + 0.25 * Math.sin(now * 12);
+      g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 14, color, alpha: 0.18 * pulse, cap: 'round' });
+      g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 3, color: ours ? 0xffb0a8 : 0xd6ecff, alpha: 0.85 * pulse, cap: 'round' });
+      g.circle(t.x, t.y, t.r + 10).stroke({ width: 3, color, alpha: 0.7 * pulse });
+    }
+  }
+
+  /** Renders the glowing layer (no numbers or bubbles) into a small texture that's blurred over the view. */
+  private renderBloom(w: number, h: number): void {
+    if (this.bloomRt.width !== w || this.bloomRt.height !== h) this.bloomRt.resize(w, h);
+    this.fx.top.visible = false;
+    this.bubbles.container.visible = false;
+    this.app.renderer.render({ container: this.emissive, target: this.bloomRt, clear: true });
+    this.fx.top.visible = true;
+    this.bubbles.container.visible = true;
   }
 
   /** Feeds the music how much of a fight you're in, and the soundscape what's around the camera. */
@@ -646,6 +709,12 @@ export class GameClient {
         break;
       case 'KeyM':
         this.hud.setMuted(this.sound.toggleMute());
+        break;
+      case 'Digit1':
+      case 'Digit2':
+      case 'Digit3':
+      case 'Digit4':
+        this.send({ k: 'emote', kind: (['taunt', 'laugh', 'cheer', 'line'] as const)[Number(e.code.slice(5)) - 1] });
         break;
       case 'KeyN':
         this.sound.toggleMusic();

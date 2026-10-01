@@ -1470,7 +1470,64 @@ kbd {
 }
 
 .res.hp .fill {
+  position: relative;
   background-color: #3fbf6a;
+}
+
+/* What you just lost: a white chunk that drains after a beat. */
+.res .lag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #f4efe2;
+  transition: width 0.45s ease-in 0.35s;
+}
+
+.slot.ready {
+  animation: ready 0.55s ease-out;
+}
+
+@keyframes ready {
+  0% {
+    box-shadow: 0 0 0 2px #fff1b8, 0 0 22px #ffd166;
+    transform: scale(1.1);
+  }
+}
+
+.purse.bump {
+  animation: bump 0.25s ease-out;
+}
+
+@keyframes bump {
+  40% {
+    transform: scale(1.15);
+    box-shadow: 0 0 14px rgba(255, 209, 102, 0.8);
+  }
+}
+
+.coin-fly {
+  position: fixed;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff1b8, #c8962e);
+  box-shadow: 0 0 0 1px #6b4f16, 0 0 8px rgba(255, 209, 102, 0.8);
+  pointer-events: none;
+  z-index: 12;
+}
+
+.res.xp.burst,
+.portrait.burst {
+  animation: burst 0.8s ease-out;
+}
+
+@keyframes burst {
+  0% {
+    box-shadow: 0 0 0 3px #fff1b8, 0 0 28px #c9a2ff;
+    filter: brightness(1.8);
+  }
 }
 
 .res.mp {

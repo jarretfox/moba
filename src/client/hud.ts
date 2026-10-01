@@ -32,6 +32,7 @@ const HELP = [
   ['P', 'shop (at your fountain)'],
   ['M', 'mute sound'],
   ['N', 'music on / off'],
+  ['1 2 3 4', 'taunt, laugh, cheer, say a line'],
   ['Tab', 'scoreboard (hold)'],
   ['Space', 'center camera (hold)'],
   ['Alt / G + click', 'ping (drag to pick one)'],
@@ -75,6 +76,12 @@ export class Hud {
   private readonly gold: HTMLElement;
   private readonly slots: SlotEls[] = [];
   private readonly hp: BarEls;
+  /** The white chunk behind the health bar showing what you just lost; it drains after a moment. */
+  private readonly hpLag: HTMLElement;
+  private lastHp = -1;
+  /** Each slot's cooldown last frame, to flash it the moment it comes back. */
+  private readonly lastCd: number[] = [0, 0, 0, 0];
+  private readonly purse: HTMLElement;
   private readonly mp: BarEls;
   private readonly xp: BarEls;
   private readonly tooltip: HTMLElement;
@@ -115,7 +122,7 @@ export class Hud {
             (k) =>
               `<div class="slot"><button class="up" hidden>+</button><div class="icon"></div><div class="name"></div><div class="cd"></div><div class="cdtext"></div><kbd>${k}</kbd><div class="cost"></div><div class="pips"></div></div>`,
           ).join('')}</div>
-          <div class="res hp"><div class="fill"></div><span></span></div>
+          <div class="res hp"><div class="lag"></div><div class="fill"></div><span></span></div>
           <div class="res mp"><div class="fill"></div><span></span></div>
           <div class="res xp"><div class="fill"></div><span></span></div>
         </div>
@@ -156,6 +163,8 @@ export class Hud {
       void navigator.clipboard?.writeText(this.report).then(() => (copy.textContent = 'Copied! Paste it to whoever balances the game'));
     });
     this.hp = { fill: q('.hp .fill'), text: q('.hp span') };
+    this.hpLag = q('.hp .lag');
+    this.purse = q('.purse');
     this.mp = { fill: q('.mp .fill'), text: q('.mp span') };
     this.xp = { fill: q('.xp .fill'), text: q('.xp span') };
     root.querySelectorAll<HTMLElement>('.slot').forEach((el, i) => {
@@ -199,6 +208,17 @@ export class Hud {
     if (!this.info || !me || !self) return;
 
     this.set(this.hp.fill, 'width', pct(self.hp ?? 0, self.mhp ?? 1));
+    // Losing health leaves a white chunk that drains after a beat; healing just fills straight up.
+    const hp = self.hp ?? 0;
+    if (hp !== this.lastHp) {
+      if (hp > this.lastHp) {
+        this.hpLag.style.transition = 'none';
+        this.hpLag.style.width = pct(hp, self.mhp ?? 1);
+        void this.hpLag.offsetWidth;
+        this.hpLag.style.transition = '';
+      } else this.hpLag.style.width = pct(hp, self.mhp ?? 1);
+      this.lastHp = hp;
+    }
     this.set(this.hp.text, 'text', `${Math.max(0, self.hp ?? 0)} / ${self.mhp}`);
     this.set(this.mp.fill, 'width', pct(self.mp ?? 0, self.mmp ?? 1));
     this.set(this.mp.text, 'text', `${self.mp} / ${self.mmp}`);
@@ -233,6 +253,9 @@ export class Hud {
       this.set(el.pips, 'text', '●'.repeat(a.rank) + '○'.repeat(maxRank - a.rank));
       this.set(el.root, 'class', `slot${a.rank === 0 ? ' unlearned' : ''}${a.cd > 0 ? ' cooling' : ''}${noMana ? ' nomana' : ''}${canLevel ? ' levelable' : ''}`);
       if (el.up.hidden === canLevel) el.up.hidden = !canLevel;
+      // Back off cooldown: a quick golden flash.
+      if (this.lastCd[i] > 0 && a.cd <= 0 && a.rank > 0) this.pop(el.root, 'ready');
+      this.lastCd[i] = a.cd;
     });
 
     const low = !self.dead && (self.hp ?? 0) / (self.mhp ?? 1) < 0.3;
@@ -394,6 +417,48 @@ export class Hud {
         return d;
       }),
     );
+  }
+
+  /** Coins flying from where you earned them (screen position) into the purse. */
+  flyCoins(fromX: number, fromY: number, amount: number): void {
+    const target = this.purse.getBoundingClientRect();
+    const count = Math.min(6, 1 + Math.floor(amount / 25));
+    for (let i = 0; i < count; i++) {
+      const coin = document.createElement('div');
+      coin.className = 'coin-fly';
+      const sx = fromX + (Math.random() - 0.5) * 40;
+      const sy = fromY + (Math.random() - 0.5) * 30;
+      coin.style.left = `${sx}px`;
+      coin.style.top = `${sy}px`;
+      this.purse.parentElement!.closest('#hud')!.append(coin);
+      const dx = target.left + 14 - sx;
+      const dy = target.top + target.height / 2 - sy;
+      const flight = coin.animate(
+        [
+          { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+          { transform: `translate(${dx * 0.3}px, ${dy * 0.3 - 60}px) scale(1.2)`, opacity: 1, offset: 0.35 },
+          { transform: `translate(${dx}px, ${dy}px) scale(0.6)`, opacity: 0.9 },
+        ],
+        { duration: 650 + i * 70, easing: 'cubic-bezier(0.5, 0, 0.75, 0.6)' },
+      );
+      flight.onfinish = () => {
+        coin.remove();
+        this.pop(this.purse, 'bump');
+      };
+    }
+  }
+
+  /** The XP bar and portrait burst with light on a level up. */
+  levelFlash(): void {
+    this.pop(this.xp.fill.parentElement as HTMLElement, 'burst');
+    this.pop(this.portrait, 'burst');
+  }
+
+  /** Replays a one-shot CSS animation class on an element. */
+  private pop(el: HTMLElement, cls: string): void {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
   }
 
   /** Brief red flash when you press an ability that isn't ready. */

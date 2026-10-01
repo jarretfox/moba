@@ -121,6 +121,15 @@ export function wardenWindup(telegraph: number): Anim {
   };
 }
 
+/** Emotes and kill quips: a lunge for a taunt, a wobble for a laugh, bouncing for a cheer. */
+export const EMOTE_ANIM: Record<'taunt' | 'laugh' | 'cheer' | 'line' | 'kill', Anim> = {
+  taunt: { dur: 0.7, lunge: [[0, 0], [0.25, 0.3], [0.45, 0.25], [1, 0]], grow: [[0, 0], [0.25, 0.12], [1, 0]], turn: [[0, 0], [0.25, -0.8], [0.6, -0.8], [1, 0]] },
+  laugh: { dur: 0.9, twist: [[0, 0], [0.15, 0.18], [0.3, -0.18], [0.45, 0.18], [0.6, -0.18], [0.8, 0.1], [1, 0]], grow: [[0, 0], [0.2, 0.06], [0.4, 0], [0.6, 0.06], [1, 0]] },
+  cheer: { dur: 0.9, grow: [[0, 0], [0.2, 0.2], [0.4, 0], [0.6, 0.2], [0.8, 0], [1, 0]], turn: [[0, 0], [0.2, -1.2], [0.8, -1.2], [1, 0]] },
+  line: { dur: 0.6, grow: [[0, 0], [0.3, 0.1], [1, 0]] },
+  kill: { dur: 0.6, grow: [[0, 0], [0.25, 0.15], [1, 0]], turn: [[0, 0], [0.25, -1], [1, 0]] },
+};
+
 export function castAnim(champ: ChampionId, slot: Slot): Anim {
   return SLOT_MOVES[`${champ}:${slot}`] ?? CAST[champ];
 }

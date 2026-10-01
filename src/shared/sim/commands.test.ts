@@ -3,10 +3,45 @@ import { Marksman } from '../champions/marksman';
 import { TEAM, TICK_RATE } from '../constants';
 import { MAP } from '../map/mapData';
 import type { Command, GameEvent } from '../protocol';
-import { PING_LIMIT, PING_WINDOW, applyCommand } from './commands';
+import { Barbarian } from '../champions/barbarian';
+import { EMOTE_LIMIT, PING_LIMIT, PING_WINDOW, applyCommand } from './commands';
 import { World } from './world';
 
 const pings = (events: GameEvent[]) => events.filter((e) => e.e === 'ping');
+const emotes = (events: GameEvent[]) => events.filter((e) => e.e === 'emote');
+
+describe('emotes', () => {
+  it('are seen by whoever can see the champion, a few at a time, and not while dead', () => {
+    const world = new World(MAP);
+    const me = world.add(new Marksman(world, TEAM.blue));
+    me.pos = { x: 1000, y: 3500 };
+    for (let i = 0; i < EMOTE_LIMIT + 2; i++) applyCommand(world, me, { k: 'emote', kind: 'laugh' });
+    const sent = emotes(world.drainEvents());
+    expect(sent).toHaveLength(EMOTE_LIMIT);
+    expect(sent[0]).toMatchObject({ id: me.id, kind: 'laugh' });
+    world.vision.update();
+    expect(world.vision.canSeeEvent(TEAM.blue, sent[0])).toBe(true);
+    expect(world.vision.canSeeEvent(TEAM.red, sent[0])).toBe(false); // deep in blue's base
+    const ghost = world.add(new Marksman(world, TEAM.red));
+    ghost.dead = true;
+    applyCommand(world, ghost, { k: 'emote', kind: 'taunt' });
+    expect(emotes(world.drainEvents())).toHaveLength(0);
+    // Kill quips come from the host, not from players.
+    const liar = world.add(new Marksman(world, TEAM.red));
+    applyCommand(world, liar, { k: 'emote', kind: 'kill' } as unknown as Command);
+    expect(emotes(world.drainEvents())).toHaveLength(0);
+  });
+
+  it('include a quip from whoever gets a kill, naming who they beat', () => {
+    const world = new World(MAP);
+    const killer = world.add(new Barbarian(world, TEAM.blue));
+    const victim = world.add(new Marksman(world, TEAM.red));
+    killer.pos = { x: 5600, y: 1100 };
+    victim.pos = { x: 5700, y: 1100 };
+    world.damage(killer, victim, 1e6, 'true');
+    expect(emotes(world.drainEvents())).toEqual([expect.objectContaining({ id: killer.id, kind: 'kill', vs: 'marksman' })]);
+  });
+});
 
 describe('pings', () => {
   it('mark a spot for the pinger’s team only', () => {

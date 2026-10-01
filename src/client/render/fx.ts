@@ -36,7 +36,8 @@ export class FxLayer {
   readonly under = new Container();
   readonly particles = new Particles();
   private readonly mid = new Container();
-  private readonly top = new Container();
+  /** Numbers and labels: kept out of the bloom pass so they stay crisp. */
+  readonly top = new Container();
   private effects: Effect[] = [];
   private timers: { at: number; fn: () => void }[] = [];
   private glows: { light: Light; strength: number; age: number; life: number }[] = [];

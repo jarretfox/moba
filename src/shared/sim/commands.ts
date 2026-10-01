@@ -2,7 +2,7 @@ import type { Champion } from '../champions/champion';
 import { clamp, type Vec2 } from '../math';
 import { isItemId } from '../items';
 import type { PlayerTeam } from '../constants';
-import { PING_KINDS, type Command } from '../protocol';
+import { EMOTE_KINDS, PING_KINDS, type Command } from '../protocol';
 import type { World } from './world';
 
 /**
@@ -25,9 +25,16 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
     return;
   }
   // Pings work dead or alive and don't interrupt anything, but only a few at a time.
+  // Emotes don't interrupt anything either; the dead have nothing to emote with.
+  if (cmd.k === 'emote') {
+    if (!unit.dead && EMOTE_KINDS.includes(cmd.kind) && allow(emoteTimes, EMOTE_LIMIT, EMOTE_WINDOW, world, unit)) {
+      world.emit({ e: 'emote', id: unit.id, kind: cmd.kind, n: world.tick });
+    }
+    return;
+  }
   if (cmd.k === 'ping') {
     const p = toPoint(world, cmd.x, cmd.y);
-    if (p && PING_KINDS.includes(cmd.kind) && allowPing(world, unit)) {
+    if (p && PING_KINDS.includes(cmd.kind) && allow(pingTimes, PING_LIMIT, PING_WINDOW, world, unit)) {
       world.emit({ e: 'ping', kind: cmd.kind, x: Math.round(p.x), y: Math.round(p.y), from: unit.id, name: unit.name, team: unit.team as PlayerTeam });
     }
     return;
@@ -62,16 +69,21 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
 /** At most this many pings per champion in any PING_WINDOW seconds, so nobody can spam their team. */
 export const PING_LIMIT = 4;
 export const PING_WINDOW = 4;
+/** And emotes: a few, then a breather. */
+export const EMOTE_LIMIT = 3;
+export const EMOTE_WINDOW = 6;
 const pingTimes = new WeakMap<Champion, number[]>();
+const emoteTimes = new WeakMap<Champion, number[]>();
 
-function allowPing(world: World, unit: Champion): boolean {
-  const recent = (pingTimes.get(unit) ?? []).filter((t) => world.time - t < PING_WINDOW);
-  if (recent.length >= PING_LIMIT) {
-    pingTimes.set(unit, recent);
+/** Whether a champion may do another one of these yet (at most `limit` in any `window` seconds). */
+function allow(log: WeakMap<Champion, number[]>, limit: number, window: number, world: World, unit: Champion): boolean {
+  const recent = (log.get(unit) ?? []).filter((t) => world.time - t < window);
+  if (recent.length >= limit) {
+    log.set(unit, recent);
     return false;
   }
   recent.push(world.time);
-  pingTimes.set(unit, recent);
+  log.set(unit, recent);
   return true;
 }
 

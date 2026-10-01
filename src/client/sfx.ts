@@ -95,6 +95,10 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
     }
     case 'heal':
       return null;
+    case 'emote': {
+      const u = ents.get(ev.id);
+      return u ? { name: 'emote', at: { x: u.x, y: u.y }, gain: 0.45 } : null;
+    }
     case 'ping':
       return { name: ev.kind === 'danger' ? 'pingDanger' : ev.kind === 'missing' ? 'pingMissing' : 'ping', gain: 0.6 };
   }
