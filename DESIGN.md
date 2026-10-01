@@ -310,10 +310,40 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
     - Camps are trampled nests with bones.
     - The Warden's pit is a ring of cracked stone over the Deep, with runes and rot seeping up.
   - **Atmosphere** (`ambience.ts`): fireflies over the jungle, glints on the river, rot spores rising from the seal, and a soft vignette.
+  - **Night comes on** over the match (`render/nightlife.ts`, `render/lighting.ts`):
+    - The lanterns are dark through the golden evening. From five minutes in they're lit one by one, each sputtering before it catches.
+    - The Shooties' arrow slits glow with candlelight.
+    - The fireflies gather round the lanterns and braziers.
+    - Once it's night the moon shows in the river, broken up by the ripples and sliding along the water as you move.
+  - **Weather** is rolled per match (`shared/weather.ts`, drawn in `render/weather.ts`):
+    - **Clear.**
+    - **Rain:** streaks with splashes.
+    - **Storm:** rain and lightning.
+    - **Mist** rolling over the map.
+    - **Snow:** flakes drift down, the ground frosts over (not the river) and snow settles on the treetops. Breath puffs white, feet sink in deep (Chuds' too), and the crickets go quiet.
+    - **Autumn wind:** the canopy turns orange and rust, fallen leaves cover the ground and more blow across in gusts.
+    - The wind's strength and sound follow the weather.
   - **Everyone stands up.** Units are upright figures seen side-on from a little above, facing left or right (they mirror when they turn), standing on their spot on the ground. They're depth-sorted, so nearer the bottom of the screen draws in front.
     - Champions, Chuds, King Rix's guards and The Warden are jointed rigs (`render/rig.ts`): a torso, head, two-part arms and legs, feet and a held weapon, drawn once and posed every frame. Legs swing with bending knees in a walk cycle, arms swing against them, the chest breathes. The animation tracks drive the joints: turn raises the arm (negative is up), reach pushes it out in front, lunge leans and steps in, twist spins the figure, grow rears up.
     - Each one's look and proportions are a build (`render/builds.ts`). Champions: Jordini's hood and bow, The Oak's horns and axe, Willmore's sack and bin lid, HunnaG's cap, Logan the lion on his hind legs, King Rix's cape and crown, Dongmaster's jaw and fists, the Dabber's hoodie and tail, Paris's beret and épée, Havarti the winged wheel of cheese, Daltonomo's belled hat and two knives. Chuds wear hoods in their team's color.
     - Creatures that aren't on two legs (`render/beasts.ts`): scurrying rats (the Rat King in a stolen crown), the Mossback with a garden on its shell, the Ember Toad and its tongue, the swaying Glowcap, the siege cart on turning wheels, and a straw practice dummy.
+    - **Monsters left alone have lives of their own:**
+      - The Mossback dozes off, with z's drifting up.
+      - The Ember Toad snaps a fly out of the air.
+      - The rats squabble, rounding on each other and nipping, and the Rat King guards a crumb of cheese.
+      - The Warden paces its pit, stopping to look about.
+    - **Chuds have personality** (`render/chudLife.ts`):
+      - Each wears whatever it found: a pot, a bucket, a traffic cone, a paper hat, a mushroom cap or a feather.
+      - Each has a face of its own: brows, a unibrow, a moustache, a plaster, an eyepatch or warts.
+      - They cheer when a Shootie or an Oakner falls.
+      - They flap their arms in a panic when nearly done for. This is only the look: the sim still decides where they go.
+      - They bicker on the march (a line, then a reply).
+    - **Gear shows on the body** (`render/gear.ts`): what a champion buys, they wear.
+      - Royal Plate adds a breastplate and a steel pauldron.
+      - The Aegis, the war drum and the longbow go on the back.
+      - Treads and striders change the boots.
+      - The Glowworm Lantern hangs at the belt, and the Warden's Link wraps the forearm.
+      - Bloodreaver stains the weapon (or the fists) red.
     - Hits, numbers, words and auras happen on the body (`render/stature.ts` knows how tall everything stands), arrows fly at chest height with a shadow below, and units can be clicked anywhere from feet to head.
     - **They're alive** (all in the rig):
       - Capes, tails, sacks and wings swing behind the movement, and hats wobble.
@@ -331,8 +361,18 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
       - Champions glow on the side of the nearest lantern, brazier or base light, and every figure takes a little of its color.
       - Shadows fall away from the light, longer at night under the moon.
     - In **champion select** the showcase shows the champion live (`ui/stage.ts`): idling, fidgeting, spinning into a new skin, and striking their ultimate's pose when locked in.
+    - **The HUD portrait is live** (`ui/livePortrait.ts`), wearing your gear:
+      - It winces when you're low.
+      - It grins after a kill or an ultimate.
+      - It nods off while you recall, and is X-ed out while you're dead.
+    - **The end screen lines everyone up** (`ui/podium.ts`, poses in `render/poses.ts`), each in what they bought.
+      - The winners celebrate in character: the Oak hoists his axe, Dongmaster flexes, Logan roars, Daltonomo bows, Paris salutes, King Rix holds his scepter high, and Dabber spins.
+      - The losers hang their heads, sit with their heads in their hands, or lie flat on their faces.
   - **Structures** stand up too (`render/structures.ts`): Shooties are round stone watchtowers with ivy and a crystal floating over the battlements (beams and shots start there), Oakners are great oaks with a team ribbon round the trunk, and Da Base is a walled fort over the Chud burrow with towers, banners and a big floating crystal.
-  - Champions stand on a ring in their team's color (white edge for you). The HUD portrait and the champion-select pictures are busts of the same figures, rendered to images once at startup.
+  - Champions stand on a ring in their team's color (white edge for you). The champion-select pictures (and the kill feed's faces) are busts of the same figures, rendered to images once at startup.
+  - **Spells are inked too** (`render/fx.ts`, `render/particles.ts`): rings, bursts and slashes have brushed ink edges, smoke is lumpy and outlined, and big hits throw comic words (`render/comic.ts`: CHOP!, BONK!, TOUCHÉ!, K.O.!).
+  - **The HUD is inked** (`ui/ink.ts`): panels and slots have brushed ink frames over warm paper, drawn at startup.
+  - **Old Wick** (`render/shopkeeper.ts`), the landmarks and the map's props (lanterns, braziers, toadstools) are drawn in the same hand. Their standing parts are sorted in with the units, so you pass behind them.
   - Abilities, passives and items use emoji icons. Only emoji up to version 12 are used, so they show on Windows 10 too.
   - **Character:** champions fidget when they stand still (`FIDGETS` in `render/animation.ts`) and talk in synthesized gibberish voices on emotes, ultimates, big hits and deaths (`src/client/voices.ts`).
   - **Story landmarks** (`render/landmarks.ts`): Logan's broken Royal Cage, the Fallen King statue, the Warden's chains in the pit, Willmore's sewer (the Deep) and HunnaG's Rot; and round the pit, Master Paris's Le Petit Café, Dongmaster's Iron Paradise, Havarti's Royal Cellar and the Dark Dabber's Hotbox. They're decoration only (no collision), kept clear of brush.
