@@ -1,4 +1,7 @@
 :root {
+  /* A gold gauntlet-style pointer, and a sword over enemies. */
+  --cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M4 3 L4 25 L10 19.5 L14.5 29 L19 27 L14.5 17.5 L22.5 17 Z' fill='%23e8c46a' stroke='%232a1a08' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M7 8 L7 19' stroke='%23fff3c4' stroke-width='1.6' opacity='.7'/%3E%3C/svg%3E") 4 3, auto;
+  --cursor-attack: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M3 3 L9 3 L23 17 L17 23 L3 9 Z' fill='%23dfe5ee' stroke='%2315181d' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M6 6 L20 20' stroke='%239aa4b2' stroke-width='1.5'/%3E%3Cpath d='M14 26 L26 14' stroke='%23c0182b' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M21 21 L28 28' stroke='%236b4a2b' stroke-width='4' stroke-linecap='round'/%3E%3Ccircle cx='28.5' cy='28.5' r='2.6' fill='%23e8c46a' stroke='%2315181d' stroke-width='1'/%3E%3C/svg%3E") 3 3, crosshair;
   --font-display: 'Lilita One', 'Nunito', system-ui, sans-serif;
   --font-body: 'Nunito', system-ui, 'Segoe UI', sans-serif;
   --panel: rgba(10, 14, 18, 0.88);
@@ -25,6 +28,21 @@ body {
   font-family: var(--font-body);
   font-weight: 600;
   user-select: none;
+  cursor: var(--cursor);
+}
+
+button,
+canvas,
+.select-card,
+.skin-dot,
+.purse,
+.slot,
+.minimap canvas {
+  cursor: var(--cursor) !important;
+}
+
+canvas.attack {
+  cursor: var(--cursor-attack) !important;
 }
 
 button,
@@ -113,6 +131,11 @@ kbd {
   font: 800 11px/1.5 var(--font-body);
   text-align: center;
   color: var(--text);
+}
+
+#splash.done {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .vignette {
@@ -394,14 +417,246 @@ kbd {
   margin-bottom: 2px;
 }
 
+/* Dead: your portrait in a ring that counts down to your respawn. */
 .respawn {
   position: absolute;
-  top: 38%;
-  width: 100%;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: banner-in 0.4s ease-out;
+}
+
+.respawn[hidden],
+.recall[hidden],
+.esc-menu[hidden] {
+  display: none;
+}
+
+.respawn-ring {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+
+.respawn-face {
+  position: absolute;
+  inset: 6px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  filter: grayscale(1) brightness(0.6);
+}
+
+.respawn-time {
+  position: relative;
+  font: 46px var(--font-display);
+  text-shadow: 0 3px 0 #000, 0 0 12px #000;
+}
+
+.respawn-label {
+  font: 18px var(--font-display);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: 0 2px 0 #000;
+}
+
+/* Recalling: a bar over the ability bar, filling up. */
+.recall {
+  position: absolute;
+  bottom: 196px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
   text-align: center;
-  font: 40px var(--font-display);
+}
+
+.recall-label {
+  font: 15px var(--font-display);
+  letter-spacing: 0.15em;
+  color: #9fd0ff;
+  text-shadow: 0 2px 0 #000;
+}
+
+.recall-bar {
+  height: 10px;
+  margin-top: 3px;
+  border-radius: 5px;
+  background: #05080b;
+  box-shadow: 0 0 0 1px rgba(127, 196, 255, 0.5), inset 0 1px 3px #000;
+  overflow: hidden;
+}
+
+.recall-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #3d8bfd, #bfe6ff);
+  box-shadow: 0 0 10px #7cc4ff;
+}
+
+/* The match fades in from black. */
+.fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.fade.out {
+  opacity: 0;
+  transition: opacity 1.2s ease-out 0.2s;
+}
+
+/* The in-match menu. */
+.esc-menu {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 6, 9, 0.6);
+  backdrop-filter: blur(3px);
+  pointer-events: auto;
+  z-index: 35;
+}
+
+.esc-panel {
+  width: min(420px, calc(100vw - 32px));
+  padding: 18px 22px;
+  border: 1px solid var(--rim);
+  border-radius: 6px;
+  background: var(--grain), linear-gradient(180deg, #1e252e, #0c1015 75%);
+  box-shadow: inset 0 1px 0 rgba(255, 226, 160, 0.18), 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.esc-title {
+  margin-bottom: 12px;
+  text-align: center;
+  font: 30px var(--font-display);
+  letter-spacing: 0.1em;
+  color: var(--gold);
+}
+
+.esc-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.esc-actions button,
+.settings-close {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--rim);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #232c37, #12171d);
+  color: var(--text);
+  font: 15px var(--font-display);
   letter-spacing: 0.04em;
-  text-shadow: 0 3px 0 #000, 0 4px 18px #000;
+  cursor: pointer;
+}
+
+.esc-actions button:hover,
+.settings-close:hover {
+  border-color: var(--gold);
+}
+
+.esc-leave {
+  color: #ff9ea1 !important;
+}
+
+.settings {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 34px;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.settings-row input[type='range'] {
+  accent-color: var(--gold);
+}
+
+.settings-row b {
+  text-align: right;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-choice {
+  grid-column: 2 / 4;
+  display: flex;
+  gap: 6px;
+}
+
+.settings-choice button {
+  flex: 1;
+  padding: 5px;
+  border: 1px solid #36404d;
+  border-radius: 5px;
+  background: #121820;
+  color: var(--muted);
+  font: 800 13px var(--font-body);
+  cursor: pointer;
+}
+
+.settings-choice button.on {
+  border-color: var(--gold);
+  color: var(--text);
+  background: #2a2210;
+}
+
+/* The gear on the main menu, and the settings box it opens. */
+.menu-gear {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--rim);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #232c37, #12171d);
+  color: var(--gold);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.menu-settings {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 6, 9, 0.6);
+  z-index: 50;
+}
+
+.feed-face {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  vertical-align: -5px;
+  margin-right: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.feed-sword {
+  margin: 0 7px;
+  color: var(--muted);
 }
 
 .gameover {

@@ -5,6 +5,8 @@ import { GameClient } from './game';
 import { PORTRAITS, renderPortraits } from './render/champions';
 import { renderIcons } from './render/icons';
 import { MenuBackdrop } from './render/backdrop';
+import { getSound } from './audio';
+import { onSettings } from './settings';
 import type { Connection } from './net/connection';
 import { HostWorker } from './net/hostWorker';
 import { PeerHost, PeerLink, normalizeCode } from './net/peer';
@@ -32,6 +34,26 @@ async function boot(): Promise<void> {
   Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));
   renderIcons(app.renderer);
   await fonts;
+  onSettings((s) => {
+    if (s.quality === 'low' && app.renderer.resolution !== 1) app.renderer.resize(app.screen.width, app.screen.height, 1);
+  });
+  // Soft ticks as the pointer moves over things you can click, and a click when you do.
+  const clickable = (t: EventTarget | null) => (t instanceof Element ? t.closest('button, .select-card, .skin-dot, .menu-gear') : null);
+  let hovered: Element | null = null;
+  document.addEventListener('pointerover', (e) => {
+    const c = clickable(e.target);
+    if (c && c !== hovered) getSound().playIfReady('hover', 0.6);
+    hovered = c;
+  });
+  document.addEventListener('click', (e) => {
+    if (clickable(e.target)) getSound().play('click', 0.4);
+  });
+  // The loading splash fades away now that everything's ready.
+  const splash = document.getElementById('splash');
+  if (splash) {
+    splash.classList.add('done');
+    setTimeout(() => splash.remove(), 700);
+  }
   const hudRoot = document.getElementById('hud')!;
   // The map at dusk behind the menu, until the match screen takes over.
   const backdrop = new MenuBackdrop(app);

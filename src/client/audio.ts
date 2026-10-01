@@ -2,6 +2,7 @@
 // a few lines of oscillators, noise and envelopes below. Music and the ambient soundscape are in music.ts.
 
 import { Music, Soundscape } from './music';
+import { onSettings, settings } from './settings';
 
 export type SoundName =
   | 'swing'
@@ -26,6 +27,8 @@ export type SoundName =
   | 'buy'
   | 'victory'
   | 'defeat'
+  /** Menus: a soft tick when the pointer moves onto something you can click. */
+  | 'hover'
   /** The announcer: good news for your side, and bad. */
   | 'fanfare'
   | 'toll'
@@ -39,7 +42,7 @@ export type SoundName =
   | 'thunder';
 
 /** The same sound won't restart sooner than this, so a lane full of Chuds doesn't become a buzz. */
-const MIN_GAP: Partial<Record<SoundName, number>> = { swing: 0.06, shoot: 0.06, hit: 0.07, smallDeath: 0.09, gold: 0.12, tower: 0.1, cast: 0.05 };
+const MIN_GAP: Partial<Record<SoundName, number>> = { hover: 0.05, swing: 0.06, shoot: 0.06, hit: 0.07, smallDeath: 0.09, gold: 0.12, tower: 0.1, cast: 0.05 };
 /** At most this many sounds start in any quarter second. */
 const VOICE_CAP = 14;
 const MUTE_KEY = 'moba.muted';
@@ -61,6 +64,13 @@ function saveFlag(key: string, on: boolean): void {
   }
 }
 
+let shared: Sound | null = null;
+
+/** The one sound engine, shared by the menus and the match. */
+export function getSound(): Sound {
+  return (shared ??= new Sound());
+}
+
 export class Sound {
   muted = loadFlag(MUTE_KEY);
   musicOn = !loadFlag(MUSIC_KEY);
@@ -77,13 +87,27 @@ export class Sound {
     const unlock = () => this.ensure();
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
+    onSettings(() => this.applyVolumes());
   }
 
   toggleMute(): boolean {
     this.muted = !this.muted;
     saveFlag(MUTE_KEY, this.muted);
-    if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.55, this.ctx.currentTime, 0.02);
+    this.applyVolumes();
     return this.muted;
+  }
+
+  /** Master (and mute), music and effects volumes from the settings. */
+  private applyVolumes(): void {
+    if (!this.master || !this.ctx) return;
+    this.master.gain.setTargetAtTime(this.muted ? 0 : 0.55 * settings.master, this.ctx.currentTime, 0.02);
+    this.music?.setLevel(settings.music);
+    this.scape?.setLevel(settings.effects);
+  }
+
+  /** Plays a sound only if audio's already running (menus: never wake audio up from a hover). */
+  playIfReady(name: SoundName, gain = 1): void {
+    if (this.ctx?.state === 'running') this.play(name, gain);
   }
 
   /** Music on or off (N); sound effects carry on. */
@@ -110,6 +134,7 @@ export class Sound {
 
   /** Play a sound at `gain` (0..1), panned left/right by `pan` (-1..1). */
   play(name: SoundName, gain = 1, pan = 0): void {
+    gain *= settings.effects;
     if (this.muted || gain < 0.03) return;
     const ctx = this.ensure();
     if (!ctx || ctx.state !== 'running') return;
@@ -145,6 +170,7 @@ export class Sound {
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
       this.music = new Music(this.ctx, this.master, this.noise, this.musicOn);
       this.scape = new Soundscape(this.ctx, this.master);
+      this.applyVolumes();
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
     return this.ctx;
@@ -260,6 +286,7 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
     v.tone(t, 'square', 600, 200, 0.06, 0.15);
   },
   click: (v, t) => v.tone(t, 'square', 1200, 900, 0.03, 0.08),
+  hover: (v, t) => v.tone(t, 'sine', 1800, 1700, 0.025, 0.05),
   buy: (v, t) => {
     v.tone(t, 'sine', 1046, 1046, 0.06, 0.2);
     v.tone(t + 0.05, 'sine', 1568, 1568, 0.16, 0.2);

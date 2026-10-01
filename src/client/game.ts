@@ -8,7 +8,8 @@ import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
 import { dist, type Vec2 } from '../shared/math';
 import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/protocol';
-import { Sound } from './audio';
+import { getSound } from './audio';
+import { onSettings, settings } from './settings';
 import { Camera } from './camera';
 import { MELEE, cueFor, type SoundCue } from './sfx';
 import { EMOTE_ANIM, wardenWindup } from './render/animation';
@@ -66,7 +67,7 @@ export class GameClient {
   private readonly decoder = new SnapshotDecoder();
   private readonly views = new Map<number, EntityView>();
   private readonly hud: Hud;
-  private readonly sound = new Sound();
+  private readonly sound = getSound();
   private gameOverPlayed = false;
   /** Dusk and the lights in it, laid over the world. */
   private readonly lighting = new Lighting(MAP);
@@ -173,6 +174,16 @@ export class GameClient {
     this.bloom.alpha = 0.75;
     this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35 })];
     this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive, this.bloom);
+    // Low graphics: no glow pass, fewer particles and raindrops, and a plain-resolution canvas.
+    onSettings((s) => {
+      const high = s.quality === 'high';
+      this.bloom.visible = high;
+      this.fx.density = high ? 1 : 0.45;
+      this.fx.particles.limit = high ? 3000 : 900;
+      if (this.weather) this.weather.density = high ? 1 : 0.4;
+      const resolution = high ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+      if (this.app.renderer.resolution !== resolution) this.app.renderer.resize(this.app.screen.width, this.app.screen.height, resolution);
+    });
     app.stage.addChild(this.view);
     this.deathFilter.desaturate();
     this.bindInput();
@@ -183,6 +194,7 @@ export class GameClient {
   handle(msg: HostMessage): void {
     if (msg.t === 'welcome') {
       this.myId = msg.unitId;
+      this.hud.fadeIn();
       if (msg.weather && msg.weather !== 'clear' && !this.weather) this.setWeather(new WeatherView(msg.weather, MAP));
       if (msg.team !== this.myTeam) {
         this.myTeam = msg.team;
@@ -197,6 +209,7 @@ export class GameClient {
 
   private setWeather(w: WeatherView): void {
     this.weather = w;
+    w.density = settings.quality === 'high' ? 1 : 0.4;
     // Mist and splashes sit over the trees; rain and lightning over everything.
     this.worldLayer.addChildAt(w.world, this.worldLayer.getChildIndex(this.canopy) + 1);
     this.view.addChild(w.screen);
@@ -285,7 +298,7 @@ export class GameClient {
 
     const mouseWorld = this.mouseWorld();
     if (this.rightHeld && (this.holdTimer -= dt) <= 0) this.rightClick(false);
-    this.setCursor(this.enemyAt(mouseWorld) ? 'crosshair' : 'default');
+    this.setCursor(this.enemyAt(mouseWorld) ? 'attack' : '');
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
 
@@ -475,7 +488,7 @@ export class GameClient {
         return;
       }
       case 'kill':
-        this.hud.pushFeed(ev.killer, ev.victim, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
+        this.hud.pushFeed(ev, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
         this.announceKill(ev);
         return;
       case 'fx':
@@ -534,6 +547,7 @@ export class GameClient {
 
   /** Renders the glowing layer (no numbers or bubbles) into a small texture that's blurred over the view. */
   private renderBloom(w: number, h: number): void {
+    if (settings.quality !== 'high') return;
     if (this.bloomRt.width !== w || this.bloomRt.height !== h) this.bloomRt.resize(w, h);
     this.fx.top.visible = false;
     this.bubbles.container.visible = false;
@@ -777,8 +791,10 @@ export class GameClient {
         this.hud.shop.toggle();
         break;
       case 'Escape':
-        if (this.aiming === null) this.hud.shop.toggle(false);
-        this.aiming = null;
+        // Esc backs out of whatever's open: aiming, then the shop, then the menu.
+        if (this.aiming !== null) this.aiming = null;
+        else if (this.hud.shop.open) this.hud.shop.toggle(false);
+        else this.hud.toggleMenu();
         break;
     }
   }
@@ -835,7 +851,7 @@ export class GameClient {
   private setCursor(c: string): void {
     if (c === this.cursor) return;
     this.cursor = c;
-    this.app.canvas.style.cursor = c;
+    this.app.canvas.classList.toggle('attack', c === 'attack');
   }
 
   setTitle(title: string): void {

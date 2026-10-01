@@ -73,7 +73,7 @@ function rewardWarden(world: World, source: Unit | null, helpers: Unit[]): void 
   }
   const uprising = holdsGrudge(killer);
   world.unchained[team] = { until: world.time + UNCHAINED.duration, uprising };
-  world.emit({ e: 'kill', killer: killer.name, victim: uprising ? 'The Warden (Uprising!)' : 'The Warden', team, what: 'warden' });
+  world.emit({ e: 'kill', killer: killer.name, victim: uprising ? 'The Warden (Uprising!)' : 'The Warden', team, what: 'warden', killerChamp: killer.info.id, killerSkin: killer.skin });
 }
 
 function isRivalry(a: Champion, b: Champion): boolean {
@@ -87,7 +87,8 @@ function rewardStructure(world: World, s: Structure, source: Unit | null): void 
   const gold = STRUCTURE_GOLD[s.role];
   for (const u of world.units()) if (u instanceof Champion && u.team === team) u.gainGold(world, gold);
   const credit = source instanceof Champion ? source.name : team === 1 ? 'Blue' : 'Red';
-  world.emit({ e: 'kill', killer: credit, victim: s.name, team, what: s.role });
+  const by = source instanceof Champion ? { killerChamp: source.info.id, killerSkin: source.skin } : {};
+  world.emit({ e: 'kill', killer: credit, victim: s.name, team, what: s.role, ...by });
 }
 
 function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers: Unit[]): void {
@@ -131,5 +132,8 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
     streak: killer?.streak,
     shutdown: endedStreak >= 3,
     ace: team.length > 1 && team.every((u) => u.dead),
+    ...(killer ? { killerChamp: killer.info.id, killerSkin: killer.skin } : {}),
+    victimChamp: victim.info.id,
+    victimSkin: victim.skin,
   });
 }

@@ -5,6 +5,9 @@ import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../sh
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
 import { portraitOf } from './render/champions';
+import { onSettings, settingsPanel } from './settings';
+import { RECALL_TIME } from '../shared/champions/champion';
+import type { GameEvent } from '../shared/protocol';
 import { iconEl } from './render/icons';
 import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
@@ -81,11 +84,21 @@ export class Hud {
   private lastHp = -1;
   /** Each slot's cooldown last frame, to flash it the moment it comes back. */
   private readonly lastCd: number[] = [0, 0, 0, 0];
+  /** The longest respawn time seen this death, so the ring can count it down. */
+  private respawnLeft = 0;
   private readonly purse: HTMLElement;
   private readonly mp: BarEls;
   private readonly xp: BarEls;
   private readonly tooltip: HTMLElement;
   private readonly respawn: HTMLElement;
+  private readonly respawnRing: HTMLElement;
+  private readonly respawnTime: HTMLElement;
+  private readonly recall: HTMLElement;
+  private readonly recallFill: HTMLElement;
+  /** When the current recall began (local clock), to fill its bar. */
+  private recallStart = 0;
+  private readonly escMenu: HTMLElement;
+  private readonly fade: HTMLElement;
   private readonly gameOver: HTMLElement;
   private info: ChampionInfo | null = null;
   private ranks: number[] = [0, 0, 0, 0];
@@ -111,7 +124,10 @@ export class Hud {
       <div class="clock"><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
       <div class="warden"></div>
       <div class="help"><div class="help-title"></div><div class="help-keys">${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div><div class="help-hint"><kbd>H</kbd> controls</div></div>
-      <div class="respawn"></div>
+      <div class="respawn" hidden><div class="respawn-ring"><img class="respawn-face" alt="" /><b class="respawn-time"></b></div><div class="respawn-label">Respawning</div></div>
+      <div class="recall" hidden><div class="recall-label">Recalling</div><div class="recall-bar"><div class="recall-fill"></div></div></div>
+      <div class="fade"></div>
+      <div class="esc-menu" hidden><div class="esc-panel"><div class="esc-title">Menu</div><div class="esc-settings"></div><div class="esc-actions"><button class="esc-resume">Back to the match</button><button class="esc-leave">Leave match</button></div></div></div>
       <div class="scoreboard" hidden></div>
       <div class="gameover" hidden><div class="gameover-rays"></div><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-again">Back to menu</button></div></div>
       <div class="buffs"></div>
@@ -155,6 +171,19 @@ export class Hud {
     this.gold = q('.gold');
     this.tooltip = q('.tooltip');
     this.respawn = q('.respawn');
+    this.respawnRing = q('.respawn-ring');
+    this.respawnTime = q('.respawn-time');
+    this.recall = q('.recall');
+    this.recallFill = q('.recall-fill');
+    this.fade = q('.fade');
+    this.escMenu = q('.esc-menu');
+    q('.esc-settings').append(settingsPanel());
+    q('.esc-resume').addEventListener('click', () => this.toggleMenu(false));
+    q('.esc-leave').addEventListener('click', () => location.reload());
+    this.escMenu.addEventListener('click', (e) => {
+      if (e.target === this.escMenu) this.toggleMenu(false);
+    });
+    onSettings((s) => (this.debug.hidden = !s.showFps));
     this.gameOver = q('.gameover');
     q('.gameover-again').addEventListener('click', () => location.reload());
     this.scoreboard = q('.scoreboard');
@@ -193,6 +222,7 @@ export class Hud {
     this.info = info;
     this.bar.hidden = false;
     const face = portraitOf(info.id, skin);
+    (this.respawn.querySelector('.respawn-face') as HTMLImageElement).src = face ?? '';
     (this.portrait.querySelector('.initial') as HTMLElement).textContent = face ? '' : info.name.slice(0, 2).toUpperCase();
     if (face) (this.portrait.querySelector('.face') as HTMLImageElement).src = face;
     this.bar.classList.toggle('rage', info.resource === 'rage');
@@ -261,8 +291,20 @@ export class Hud {
     const low = !self.dead && (self.hp ?? 0) / (self.mhp ?? 1) < 0.3;
     this.set(this.dangerEl, 'class', low ? 'danger on' : 'danger');
 
-    const recalling = self.st?.includes('recall');
-    this.set(this.respawn, 'text', me.respawnIn > 0 ? `Respawning in ${Math.ceil(me.respawnIn)}` : recalling ? 'Recalling…' : '');
+    // Dead: a card with your portrait and a ring counting down. Recalling: a bar filling up.
+    const dead = me.respawnIn > 0;
+    if (this.respawn.hidden === dead) this.respawn.hidden = !dead;
+    if (dead) {
+      this.set(this.respawnTime, 'text', String(Math.ceil(me.respawnIn)));
+      this.respawnLeft = Math.max(this.respawnLeft, me.respawnIn);
+      this.set(this.respawnRing, 'background', `conic-gradient(#e8c46a ${(1 - me.respawnIn / this.respawnLeft) * 360}deg, rgba(255,255,255,0.08) 0)`);
+    } else this.respawnLeft = 0;
+    const recalling = !!self.st?.includes('recall');
+    if (this.recall.hidden === recalling) {
+      this.recall.hidden = !recalling;
+      this.recallStart = performance.now();
+    }
+    if (recalling) this.recallFill.style.width = pct((performance.now() - this.recallStart) / 1000, RECALL_TIME);
   }
 
   /** One chip per jungle buff, with seconds left. Rebuilt only when the set of buffs changes. */
@@ -319,15 +361,27 @@ export class Hud {
     }, hold - 350);
   }
 
-  /** A line in the kill feed; `ours` colors it for the viewer's side. */
-  pushFeed(killer: string, victim: string, ours: boolean | null): void {
+  /** A line in the kill feed, with portraits; `ours` colors it for the viewer's side. */
+  pushFeed(ev: Extract<GameEvent, { e: 'kill' }>, ours: boolean | null): void {
     const line = document.createElement('div');
     line.className = `feed-line${ours === null ? '' : ours ? ' ours' : ' theirs'}`;
+    const face = (champ: typeof ev.killerChamp, skin?: number) => {
+      const url = champ ? portraitOf(champ, skin ?? 0) : undefined;
+      if (!url) return [];
+      const img = document.createElement('img');
+      img.className = 'feed-face';
+      img.src = url;
+      img.alt = '';
+      return [img];
+    };
     const k = document.createElement('b');
-    k.textContent = killer;
+    k.textContent = ev.killer;
     const v = document.createElement('b');
-    v.textContent = victim;
-    line.append(k, document.createTextNode(' ⚔ '), v);
+    v.textContent = ev.victim;
+    const sword = document.createElement('span');
+    sword.className = 'feed-sword';
+    sword.textContent = '⚔';
+    line.append(...face(ev.killerChamp, ev.killerSkin), k, sword, ...face(ev.victimChamp, ev.victimSkin), v);
     this.feed.prepend(line);
     while (this.feed.children.length > 5) this.feed.lastElementChild!.remove();
     setTimeout(() => line.remove(), FEED_TIME * 1000);
@@ -459,6 +513,20 @@ export class Hud {
     el.classList.remove(cls);
     void el.offsetWidth;
     el.classList.add(cls);
+  }
+
+  /** The in-match menu (Esc): settings, and a way out. */
+  toggleMenu(open = this.escMenu.hidden): void {
+    this.escMenu.hidden = !open;
+  }
+
+  get menuOpen(): boolean {
+    return !this.escMenu.hidden;
+  }
+
+  /** The match fading in from black when it starts. */
+  fadeIn(): void {
+    this.fade.classList.add('out');
   }
 
   /** Brief red flash when you press an ability that isn't ready. */

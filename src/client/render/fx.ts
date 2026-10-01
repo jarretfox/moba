@@ -44,6 +44,8 @@ export class FxLayer {
   private clock = 0;
   /** This frame's step, for effects that spray particles while they last. */
   dt = 0;
+  /** How many of those to spray (thinned out on low graphics). */
+  density = 1;
 
   constructor() {
     this.container.addChild(this.mid, this.particles.container, this.top);
@@ -91,7 +93,7 @@ export class FxLayer {
 
   /** How many to spray this frame for something emitting `perSecond`. */
   rate(perSecond: number): number {
-    const n = perSecond * this.dt;
+    const n = perSecond * this.dt * this.density;
     return Math.floor(n) + (Math.random() < n % 1 ? 1 : 0);
   }
 

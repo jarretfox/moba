@@ -127,7 +127,7 @@ function buildSheet(): Record<Shape, Texture> {
   return Object.fromEntries(SHAPES.map((s, i) => [s, new Texture({ source, frame: new Rectangle(i * CELL, 0, CELL, CELL) })])) as Record<Shape, Texture>;
 }
 
-/** Most particles alive at once; past this, new ones are skipped (cosmetic, so nothing breaks). */
+/** Most particles alive at once by default; past this, new ones are skipped (cosmetic, so nothing breaks). */
 const MAX = 3000;
 
 export class Particles {
@@ -137,6 +137,8 @@ export class Particles {
   private readonly glow: ParticleContainer;
   private readonly sheet = buildSheet();
   private live: Live[] = [];
+  /** Most alive at once (lower on low graphics). */
+  limit = MAX;
   /** Particles were added since the batches were last rebuilt. */
   private dirty = false;
 
@@ -155,7 +157,7 @@ export class Particles {
   }
 
   emit(e: Emit): void {
-    if (this.live.length >= MAX) return;
+    if (this.live.length >= this.limit) return;
     const p = new Particle({ texture: this.sheet[e.shape], anchorX: 0.5, anchorY: 0.5, x: e.x, y: e.y });
     this.live.push({ p, e, vx: e.vx ?? 0, vy: e.vy ?? 0, age: 0, rot: e.rotation ?? Math.random() * Math.PI * 2 });
     this.place(this.live[this.live.length - 1], 0);

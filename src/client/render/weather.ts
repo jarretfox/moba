@@ -55,6 +55,8 @@ export class WeatherView {
   private splashList: Splash[] = [];
   private readonly banks: Bank[] = [];
   private flash = 0;
+  /** Thins the rain out on low graphics. */
+  density = 1;
   private nextBolt = 6 + Math.random() * 8;
   /** Lightning just struck: the game plays the thunder (a moment later, it's far off). */
   onBolt: (() => void) | null = null;
@@ -95,7 +97,7 @@ export class WeatherView {
 
   update(dt: number, w: number, h: number, cam: { x: number; y: number; zoom: number }): void {
     // Rain: streaks in screen space, wrapping round as they fall.
-    const want = Math.round(this.wetness * 420 * ((w * h) / (1280 * 720)));
+    const want = Math.round(this.wetness * 420 * this.density * ((w * h) / (1280 * 720)));
     while (this.drops.length < want) this.drops.push({ x: Math.random() * (w + 200) - 100, y: Math.random() * h, speed: 1100 + Math.random() * 700, len: 18 + Math.random() * 22 });
     if (this.drops.length > want) this.drops.length = want;
     const g = this.rain.clear();

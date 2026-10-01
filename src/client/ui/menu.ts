@@ -1,5 +1,6 @@
 import type { MatchMode } from '../../shared/protocol';
 import { el } from './dom';
+import { settingsPanel } from '../settings';
 
 export type MenuChoice = { kind: 'solo'; mode: MatchMode } | { kind: 'host' } | { kind: 'join'; code: string };
 
@@ -25,6 +26,23 @@ function saveName(name: string): void {
 export function showMenu(root: HTMLElement, error?: string): Promise<{ choice: MenuChoice; name: string }> {
   return new Promise((resolve) => {
     const screen = el('div', 'menu');
+    const gear = el('button', 'menu-gear', '⚙');
+    gear.title = 'Settings';
+    gear.addEventListener('click', () => {
+      const box = el('div', 'menu-settings');
+      const panel = el('div', 'esc-panel');
+      const close = el('button', 'settings-close', 'Done');
+      close.addEventListener('click', () => box.remove());
+      box.addEventListener('click', (e) => {
+        if (e.target === box) box.remove();
+      });
+      panel.append(el('div', 'esc-title', 'Settings'), settingsPanel(), close);
+      close.style.marginTop = '16px';
+      close.style.width = '100%';
+      box.append(panel);
+      root.append(box);
+    });
+    screen.append(gear);
     const nameInput = el('input', 'menu-name');
     nameInput.placeholder = 'Your name';
     nameInput.maxLength = 16;

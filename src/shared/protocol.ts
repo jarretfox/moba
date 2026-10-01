@@ -181,7 +181,21 @@ export type GameEvent =
    * the credit) and `what` says what fell. Champion kills also carry the killer's streak, whether it ended
    * the victim's streak (3 or more), and whether the victim's whole team is now dead.
    */
-  | { e: 'kill'; killer: string; victim: string; team: Team; what?: 'champion' | 'warden' | StructureRole; streak?: number; shutdown?: boolean; ace?: boolean }
+  | {
+      e: 'kill';
+      killer: string;
+      victim: string;
+      team: Team;
+      what?: 'champion' | 'warden' | StructureRole;
+      streak?: number;
+      shutdown?: boolean;
+      ace?: boolean;
+      /** Who did it and who fell, as champions in their looks, for portraits in the kill feed. */
+      killerChamp?: ChampionId;
+      killerSkin?: number;
+      victimChamp?: ChampionId;
+      victimSkin?: number;
+    }
   | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team }
   /**
    * A champion emoting, or quipping after a kill ('kill', with the victim's champion in `vs`). `n` picks

@@ -114,7 +114,7 @@ describe('gold and experience', () => {
     expect(killer.streak).toBe(1);
     expect(victim.streak).toBe(0);
     const feed = world.drainEvents().find((e) => e.e === 'kill');
-    expect(feed).toMatchObject({ killer: killer.name, victim: victim.name, team: TEAM.blue, what: 'champion', streak: 1, shutdown: true, ace: false });
+    expect(feed).toMatchObject({ killer: killer.name, victim: victim.name, team: TEAM.blue, what: 'champion', streak: 1, shutdown: true, ace: false, killerChamp: 'marksman', victimChamp: 'marksman' });
   });
 
   it('tells the announcer when a whole team is down', () => {

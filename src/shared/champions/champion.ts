@@ -17,7 +17,8 @@ interface AbilityState {
 }
 
 /** Seconds of standing still to teleport home. Taking damage, a stun, or any other order breaks it. */
-const RECALL_TIME = 4;
+/** Seconds a recall takes. */
+export const RECALL_TIME = 4;
 /** Death timers grow with level, like League's: early deaths cost little, late ones let the enemy push and finish. */
 const RESPAWN = { base: 5, perLevel: 2.5 };
 

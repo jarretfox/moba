@@ -38,6 +38,8 @@ export class Music {
   private intensity = 0;
   private targetIntensity = 0;
   private on: boolean;
+  /** The music volume setting, 0–1. */
+  private level = 1;
 
   constructor(
     private readonly ctx: AudioContext,
@@ -47,7 +49,7 @@ export class Music {
   ) {
     this.on = on;
     this.bus = ctx.createGain();
-    this.bus.gain.value = on ? 0.7 : 0;
+    this.bus.gain.value = on ? 0.7 * this.level : 0;
     this.bus.connect(out);
     this.dry = ctx.createGain();
     this.dry.connect(this.bus);
@@ -75,8 +77,17 @@ export class Music {
 
   toggle(): boolean {
     this.on = !this.on;
-    this.bus.gain.setTargetAtTime(this.on ? 0.7 : 0, this.ctx.currentTime, 0.4);
+    this.applyVolume();
     return this.on;
+  }
+
+  setLevel(v: number): void {
+    this.level = v;
+    this.applyVolume();
+  }
+
+  private applyVolume(): void {
+    this.bus.gain.setTargetAtTime(this.on ? 0.7 * this.level : 0, this.ctx.currentTime, 0.2);
   }
 
   /** 0 when calm, 1 in a fight; the drums follow it. */
@@ -275,6 +286,11 @@ export class Soundscape {
     this.rainGain.gain.value = 0;
     hiss.connect(hissBand).connect(this.rainGain).connect(this.bus);
     setInterval(() => this.tick(), 120);
+  }
+
+  /** The sound effects volume setting: the soundscape follows it. */
+  setLevel(v: number): void {
+    this.bus.gain.setTargetAtTime(v, this.ctx.currentTime, 0.2);
   }
 
   setRain(v: number): void {
