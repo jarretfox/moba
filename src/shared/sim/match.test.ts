@@ -46,7 +46,7 @@ describe('Chud Brutes', () => {
     const lastWave = newChuds(world, before);
     expect(lastWave.length).toBeGreaterThan(0);
     expect(lastWave.filter((c) => c.chudType === 'brute')).toHaveLength(0);
-  });
+  }, 30_000); // simulates over four minutes of waves
 });
 
 describe('winning', () => {
