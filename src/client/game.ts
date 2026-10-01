@@ -35,7 +35,7 @@ import { Minimap, type MinimapPing } from './minimap';
 import { PINGS, PingWheel } from './pings';
 import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
-import { HEIGHT, buildMap, buildNavOverlay, elevate } from './render/mapView';
+import { HEIGHT, buildMap, buildNavOverlay, destroyMapLayer, elevate } from './render/mapView';
 import { lanePath } from '../shared/map/mapData';
 import { PALETTE, enemyLight, setColorblind, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
@@ -329,7 +329,7 @@ export class GameClient {
   private setMap(team: Team): void {
     const layers = buildMap(MAP, team);
     const replace = (parent: Container, child: Container) => {
-      if (parent.children.length) parent.removeChildAt(0).destroy({ children: true });
+      if (parent.children.length) destroyMapLayer(parent.removeChildAt(0));
       parent.addChildAt(child, 0);
     };
     replace(this.groundLayer, layers.ground);

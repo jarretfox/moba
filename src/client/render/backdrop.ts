@@ -3,7 +3,7 @@ import { TEAM } from '../../shared/constants';
 import { MAP } from '../../shared/map/mapData';
 import { Ambience } from './ambience';
 import { Lighting, skyAt } from './lighting';
-import { HEIGHT, buildMap, elevate } from './mapView';
+import { HEIGHT, buildMap, destroyMapLayer, elevate } from './mapView';
 import { Water } from './water';
 
 /** Where the camera drifts while there's no match to watch: a slow loop over the middle of the map. */
@@ -23,6 +23,7 @@ export class MenuBackdrop {
   private readonly world = new Container();
   private readonly wallTops: Container;
   private readonly canopy: Container;
+  private readonly ground: Container;
   private readonly water = new Water(MAP);
   private readonly ambience = new Ambience(MAP);
   private readonly lighting = new Lighting(MAP);
@@ -33,6 +34,7 @@ export class MenuBackdrop {
     const layers = buildMap(MAP, TEAM.blue);
     this.wallTops = layers.wallTops;
     this.canopy = layers.canopy;
+    this.ground = layers.ground;
     this.world.addChild(layers.ground, this.water.container, this.ambience.container, this.wallTops, this.canopy);
     this.view.addChild(this.world, this.lighting.sprite);
     this.ambience.setNight(0.8);
@@ -42,6 +44,8 @@ export class MenuBackdrop {
 
   destroy(): void {
     this.app.ticker.remove(this.tick);
+    this.ground.removeFromParent();
+    destroyMapLayer(this.ground);
     this.view.destroy({ children: true });
   }
 
