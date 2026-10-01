@@ -77,6 +77,7 @@ async function boot(): Promise<void> {
         code = normalizeCode(choice.code);
       } else {
         const host = new HostWorker();
+        if (import.meta.env.DEV) Object.assign(window, { hostWorker: host }); // e.g. hostWorker.worker.postMessage({ conn: 'local', devWin: 1 })
         conn = host.localLink();
         if (choice.kind === 'host') code = await new PeerHost(host).open();
       }
@@ -87,17 +88,26 @@ async function boot(): Promise<void> {
   }
 
   backdrop.destroy();
-  const game = new GameClient(app, conn, hudRoot);
-  if (import.meta.env.DEV) Object.assign(window, { game }); // poke at it from devtools
-  game.setTitle(choice.kind === 'solo' && choice.mode === 'practice' ? 'Practice Range' : choice.kind === 'solo' ? 'Match vs Bots' : `Lobby ${code}`);
-
-  const lobby = new LobbyScreen(hudRoot, {
-    solo: choice.kind === 'solo' ? choice.mode : undefined,
-    code: choice.kind === 'host' ? code : undefined,
-    onPick: (pick) => conn.send({ t: 'pick', ...pick }),
-    onStart: (mode) => conn.send({ t: 'start', mode }),
-    onSettings: (settings) => conn.send({ t: 'settings', settings }),
-  });
+  const title = choice.kind === 'solo' && choice.mode === 'practice' ? 'Practice Range' : choice.kind === 'solo' ? 'Match vs Bots' : `Lobby ${code}`;
+  const newGame = () => {
+    const g = new GameClient(app, conn, hudRoot);
+    if (import.meta.env.DEV) Object.assign(window, { game: g }); // poke at it from devtools
+    g.setTitle(title);
+    g.onRematch = (swap) => conn.send({ t: 'rematch', swap });
+    return g;
+  };
+  const newLobby = () =>
+    new LobbyScreen(hudRoot, {
+      solo: choice.kind === 'solo' ? choice.mode : undefined,
+      code: choice.kind === 'host' ? code : undefined,
+      onPick: (pick) => conn.send({ t: 'pick', ...pick }),
+      onStart: (mode) => conn.send({ t: 'start', mode }),
+      onSettings: (settings) => conn.send({ t: 'settings', settings }),
+    });
+  let game = newGame();
+  let lobby = newLobby();
+  /** A match has been played on this screen: the next lobby is a rematch, on a fresh one. */
+  let played = false;
 
   // Team and all chat, for the whole session (over the HUD, so it outlasts the match screens).
   const chat = new ChatBox(document.body, (text, all) => conn.send({ t: 'chat', text, all }));
@@ -109,13 +119,29 @@ async function boot(): Promise<void> {
     } else if (msg.t === 'lobby') {
       const me = msg.lobby.players.find((p) => p.id === msg.you);
       if (me) chat.setTeam(me.team);
-      if (msg.lobby.phase === 'lobby') lobby.update(msg.lobby, msg.you);
+      game.setHost(!!me?.host);
+      if (msg.lobby.phase === 'lobby') {
+        if (played) {
+          // Rematch: a fresh match screen and lobby, picks and settings as they were.
+          played = false;
+          game.destroy();
+          lobby.close();
+          hudRoot.replaceChildren();
+          game = newGame();
+          game.setHost(!!me?.host);
+          lobby = newLobby();
+        }
+        lobby.update(msg.lobby, msg.you);
+      }
+    } else if (msg.t === 'rematch') {
+      game.rematchVotes(msg.votes, msg.of);
     } else if (msg.t === 'refused') {
       lobby.close();
       game.showNotice("Couldn't join", msg.reason);
     } else {
       if (msg.t === 'welcome') {
         lobby.close();
+        played = true;
         if (msg.team === 1 || msg.team === 2) chat.setTeam(msg.team);
       }
       game.handle(msg);

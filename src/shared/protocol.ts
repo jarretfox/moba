@@ -48,6 +48,8 @@ export type ClientMessage =
   | { t: 'start'; mode: MatchMode }
   /** Host only, in the lobby: change the match settings. */
   | { t: 'settings'; settings: Partial<MatchSettings> }
+  /** After the match: play again (the host can swap the teams' sides). */
+  | { t: 'rematch'; swap?: boolean }
   | { t: 'cmd'; cmd: Command }
   /** Say something: to your team, or to everyone (`all`). */
   | { t: 'chat'; text: string; all: boolean }
@@ -102,6 +104,8 @@ export type HostMessage =
   | { t: 'welcome'; unitId: number; team: Team; weather?: Weather; /** Seconds to add to the match clock for the look of the sky (starting at night). */ clock?: number }
   | { t: 'snap'; snap: SnapshotDelta }
   | { t: 'refused'; reason: string }
+  /** Who wants a rematch so far (the host starting one sends everyone back to the lobby). */
+  | { t: 'rematch'; votes: string[]; of: number }
   /** A chat line, from a player by name (and champion, once the match is on). */
   | { t: 'chat'; from: string; team: PlayerTeam; all: boolean; text: string; champ?: ChampionId }
   /** Keep-alive, handled by the network layer. */

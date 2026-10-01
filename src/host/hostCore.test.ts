@@ -289,3 +289,68 @@ describe('match settings', () => {
     expect(jo.gold).toBe(3000 + 100 * FAST_RATES.gold);
   });
 });
+
+describe('rematch', () => {
+  /** Jo (host) and Al, a match played to the end. */
+  function finished() {
+    const h = host();
+    h.core.receive(LOCAL_CONN, { t: 'hello', name: 'Jo' });
+    h.core.receive('peer:a', { t: 'hello', name: 'Al' });
+    h.core.receive(LOCAL_CONN, { t: 'pick', champion: 'logan', skin: 1 });
+    h.core.receive('peer:a', { t: 'pick', champion: 'kingrix' });
+    h.core.receive(LOCAL_CONN, { t: 'start', mode: 'bots' });
+    for (let i = 0; i < 10; i++) h.core.step();
+    return h;
+  }
+
+  it("only comes up once the match is over, and the host's ask starts it: back to the lobby, picks kept, a fresh match", () => {
+    const { core, lastLobby } = finished();
+    const before = core.world;
+    core.receive(LOCAL_CONN, { t: 'rematch' });
+    expect(core.world).toBe(before); // not over yet
+    core.world.declareWinner(TEAM.blue);
+    core.receive(LOCAL_CONN, { t: 'rematch' });
+    expect(core.world).not.toBe(before);
+    expect(core.world.tick).toBe(0);
+    expect(core.bots).toHaveLength(0);
+    const lobby = lastLobby('peer:a')!;
+    expect(lobby.phase).toBe('lobby');
+    expect(lobby.players.map((p) => [p.name, p.champion, p.skin])).toEqual([['Jo', 'logan', 1], ['Al', 'kingrix', 0]]);
+    // And it plays again.
+    core.receive(LOCAL_CONN, { t: 'start', mode: 'bots' });
+    expect(champions(core)).toHaveLength(6);
+  });
+
+  it("counts everyone's asks for all to see, and lets only the host swap the sides", () => {
+    const { core, sent, lastLobby } = finished();
+    const teamOf = (name: string) => lastLobby(LOCAL_CONN)!.players.find((p) => p.name === name)!.team;
+    const jo = teamOf('Jo');
+    const al = teamOf('Al');
+    core.world.declareWinner(TEAM.red);
+    // Al asks (and asks to swap, which isn't his to ask): everyone hears it.
+    core.receive('peer:a', { t: 'rematch', swap: true });
+    const votes = sent.filter((s) => s.msg.t === 'rematch').map((s) => s.msg as Extract<HostMessage, { t: 'rematch' }>);
+    expect(votes.at(-1)).toEqual({ t: 'rematch', votes: ['Al'], of: 2 });
+    expect(lastLobby(LOCAL_CONN)!.phase).toBe('playing');
+    // Jo, the host, asks to swap.
+    core.receive(LOCAL_CONN, { t: 'rematch', swap: true });
+    expect(lastLobby(LOCAL_CONN)!.phase).toBe('lobby');
+    expect([teamOf('Jo'), teamOf('Al')]).toEqual([jo === TEAM.blue ? TEAM.red : TEAM.blue, al === TEAM.blue ? TEAM.red : TEAM.blue]);
+  });
+});
+
+describe('the end of a match', () => {
+  it('sends one last snapshot with the winner, then stands still', () => {
+    const { core, sent } = host();
+    core.quickStart(LOCAL_CONN, 'Jo', 'logan', 'bots');
+    core.step();
+    core.world.declareWinner(TEAM.red);
+    const before = sent.length;
+    const tick = core.world.tick;
+    core.step();
+    core.step();
+    const snaps = sent.slice(before).filter((s) => s.msg.t === 'snap');
+    expect(snaps).toHaveLength(1);
+    expect(core.world.tick).toBe(tick);
+  });
+});

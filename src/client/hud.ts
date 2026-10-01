@@ -70,6 +70,8 @@ export class Hud {
   onBuy: ((id: ItemId) => void) | null = null;
   onSell: ((slot: number) => void) | null = null;
   onUndo: (() => void) | null = null;
+  /** The end screen's Rematch (`swap`: the host wants the teams to change sides). */
+  onRematch: ((swap: boolean) => void) | null = null;
   /** An inventory slot was clicked: use its item's active, if it has one. */
   onUseItem: ((slot: number) => void) | null = null;
   onMute: (() => void) | null = null;
@@ -88,6 +90,10 @@ export class Hud {
   private readonly portrait: HTMLElement;
   /** Your champion, live in the portrait. */
   private readonly live = new LivePortrait();
+  /** Settings subscriptions, dropped when the HUD goes. */
+  private readonly offs: (() => void)[] = [];
+  /** Whether you're the host (the end screen offers you a side swap). */
+  private isHost = false;
   /** Everyone, live, on the end screen. */
   private podium: Podium | null = null;
   private readonly stacks: HTMLElement;
@@ -151,7 +157,7 @@ export class Hud {
       <div class="fade"></div>
       <div class="esc-menu" hidden><div class="esc-panel"><div class="esc-title">Menu</div><div class="esc-settings"></div><div class="esc-actions"><button class="esc-resume">Back to the match</button><button class="esc-leave">Leave match</button></div></div></div>
       <div class="scoreboard" hidden></div>
-      <div class="gameover" hidden><div class="gameover-rays"></div><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-again">Back to menu</button></div></div>
+      <div class="gameover" hidden><div class="gameover-rays"></div><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-rematch">Rematch</button><button class="gameover-swap" hidden>Rematch, swap sides</button><button class="gameover-again">Back to menu</button></div><div class="gameover-votes"></div></div>
       <div class="buffs"></div>
       <div class="bar" hidden>
         <div class="portrait"><img class="face" alt="" /><span class="initial"></span><span class="stacks"></span><span class="lvl">1</span></div>
@@ -208,9 +214,17 @@ export class Hud {
     this.escMenu.addEventListener('click', (e) => {
       if (e.target === this.escMenu) this.toggleMenu(false);
     });
-    onSettings((s) => (this.debug.hidden = !s.showFps));
+
     this.gameOver = q('.gameover');
     q('.gameover-again').addEventListener('click', () => location.reload());
+    const rematch = q('.gameover-rematch') as HTMLButtonElement;
+    rematch.addEventListener('click', () => {
+      this.onRematch?.(false);
+      rematch.disabled = true;
+      rematch.textContent = this.isHost ? 'Starting…' : 'Asked for a rematch';
+    });
+    q('.gameover-swap').addEventListener('click', () => this.onRematch?.(true));
+    this.offs.push(onSettings((s) => (this.debug.hidden = !s.showFps)));
     this.scoreboard = q('.scoreboard');
     const copy = q('.gameover-copy');
     copy.addEventListener('click', () => {
@@ -470,6 +484,25 @@ export class Hud {
   setTitle(title: string): void {
     const el = this.debug.parentElement?.querySelector('.help-title') as HTMLElement | null;
     if (el) el.textContent = title;
+  }
+
+  /** You're the host: a rematch can swap the sides too. */
+  setRematchHost(host: boolean): void {
+    this.isHost = host;
+    (this.gameOver.querySelector('.gameover-swap') as HTMLElement).hidden = !host;
+  }
+
+  /** Who's asked for a rematch so far. */
+  rematchVotes(votes: string[], of: number): void {
+    const box = this.gameOver.querySelector('.gameover-votes') as HTMLElement;
+    box.textContent = `${votes.join(', ')} ${votes.length === 1 ? 'wants' : 'want'} a rematch (${votes.length}/${of})${this.isHost ? '' : ' — waiting for the host'}`;
+  }
+
+  /** Takes the HUD down (a rematch builds a new one): the little renderers it runs, and its settings hooks. */
+  destroy(): void {
+    for (const off of this.offs) off();
+    this.live.destroy();
+    this.podium?.destroy();
   }
 
   /** The end screen, with everyone lined up under the title: the winners celebrating, the losers slumped. */

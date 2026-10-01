@@ -1230,6 +1230,30 @@ html.colorblind .gold-peak.theirs {
   gap: 12px;
 }
 
+.gameover-votes {
+  min-height: 1.2em;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.gameover-rematch,
+.gameover-swap {
+  margin-top: 14px;
+  padding: 10px 18px;
+  border: 1px solid #4ade80;
+  border-radius: 4px;
+  background: #12301c;
+  color: #c8f7d6;
+  font: 15px var(--font-display);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.gameover-rematch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .gameover-actions button[hidden] {
   display: none;
 }

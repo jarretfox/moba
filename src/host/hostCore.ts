@@ -42,19 +42,36 @@ const MAX_NAME = 16;
 export const CHAT_LIMIT = 5;
 const CHAT_WINDOW = 6;
 
+/** A new match, not started: the map's structures, the fountains, the jungle, the crabs, the waves, the Warden. */
+function freshMatch(): { world: World; waves: WaveSpawner; lair: WardenLair } {
+  const world = new World(MAP);
+  const waves = world.addSystem(new WaveSpawner());
+  const lair = world.addSystem(new WardenLair());
+  spawnStructures(world);
+  world.addSystem(new Fountain());
+  world.addSystem(new Jungle(world));
+  world.addSystem(new CrabSpawner(world));
+  return { world, waves, lair };
+}
+
 /**
  * The authoritative game. Runs wherever the host is — a Web Worker in the hosting player's tab — and
  * talks to players only through messages. Every message may come from someone else's browser, so
  * nothing in one is trusted.
  */
 export class HostCore {
-  readonly world = new World(MAP);
+  /** The match: a fresh one for every rematch. */
+  world: World;
   readonly bots: Bot[] = [];
   private readonly lobby = new Map<string, LobbyPlayer>();
   private readonly players = new Map<string, Player>();
-  private readonly waves = this.world.addSystem(new WaveSpawner());
-  private readonly lair = this.world.addSystem(new WardenLair());
+  private waves: WaveSpawner;
+  private lair: WardenLair;
   private scores: ScoreRow[] | null = null;
+  /** The snapshot with the winner has gone out: the match is over. */
+  private finalSent = false;
+  /** Who's asked for a rematch since the match ended. */
+  private readonly rematchVotes = new Set<string>();
   private phase: LobbyState['phase'] = 'lobby';
   /** The host's choices for the match. */
   private settings: MatchSettings = { ...DEFAULT_SETTINGS };
@@ -66,10 +83,7 @@ export class HostCore {
     /** Wall-clock seconds (the match clock stands still in the lobby). */
     private readonly now: () => number = () => Date.now() / 1000,
   ) {
-    spawnStructures(this.world);
-    this.world.addSystem(new Fountain());
-    this.world.addSystem(new Jungle(this.world));
-    this.world.addSystem(new CrabSpawner(this.world));
+    ({ world: this.world, waves: this.waves, lair: this.lair } = freshMatch());
   }
 
   receive(connId: string, raw: unknown): void {
@@ -91,7 +105,35 @@ export class HostCore {
         return this.chat(connId, msg.text, msg.all);
       case 'settings':
         return this.changeSettings(connId, msg.settings);
+      case 'rematch':
+        return this.rematch(connId, msg.swap === true);
     }
+  }
+
+  /**
+   * After the match: asking for another. The host's ask starts it (swapping sides if they like); anyone
+   * else's is counted, and everyone hears who wants one.
+   */
+  private rematch(connId: string, swap: boolean): void {
+    const me = this.lobby.get(connId);
+    if (!me || this.phase !== 'playing' || !this.world.winner) return;
+    this.rematchVotes.add(connId);
+    const humans = [...this.lobby.keys()];
+    if (!me.host) {
+      const votes = [...this.rematchVotes].map((id) => this.lobby.get(id)?.name ?? '?');
+      for (const id of humans) this.send(id, { t: 'rematch', votes, of: humans.length });
+      return;
+    }
+    // Back to the lobby with everyone's picks and the settings as they were; a fresh match waiting.
+    ({ world: this.world, waves: this.waves, lair: this.lair } = freshMatch());
+    this.bots.length = 0;
+    this.players.clear();
+    this.scores = null;
+    this.rematchVotes.clear();
+    this.finalSent = false;
+    this.phase = 'lobby';
+    if (swap && me.host) for (const p of this.lobby.values()) p.team = p.team === TEAM.blue ? TEAM.red : TEAM.blue;
+    this.broadcastLobby();
   }
 
   /** The host changing the match settings in the lobby; anything that isn't one of the choices is ignored. */
@@ -224,16 +266,19 @@ export class HostCore {
   // ─── Match ────────────────────────────────────────────────────────────────
 
   step(): void {
-    // The clock runs once the match has started, and freezes on the final snapshot once a Da Base falls.
-    if (this.phase !== 'playing' || this.world.winner) return;
-    for (const p of this.players.values()) {
-      const unit = this.world.getUnit(p.unitId);
-      if (unit instanceof Champion) for (const cmd of p.queue) applyCommand(this.world, unit, cmd);
-      p.queue.length = 0;
+    // The clock runs once the match has started, and freezes on the final snapshot once a Da Base falls
+    // (one last snapshot goes out with the winner, however the match was decided).
+    if (this.phase !== 'playing' || this.finalSent) return;
+    if (!this.world.winner) {
+      for (const p of this.players.values()) {
+        const unit = this.world.getUnit(p.unitId);
+        if (unit instanceof Champion) for (const cmd of p.queue) applyCommand(this.world, unit, cmd);
+        p.queue.length = 0;
+      }
+      runBots(this.world, this.bots);
+      this.world.step();
     }
-    runBots(this.world, this.bots);
-
-    this.world.step();
+    this.finalSent = this.world.winner !== null;
 
     const ev = this.world.drainEvents();
     const sendRemote = this.world.tick % REMOTE_SEND_EVERY === 0 || this.world.winner !== null;

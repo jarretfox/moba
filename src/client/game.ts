@@ -122,6 +122,12 @@ export class GameClient {
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
   private readonly bubbles = new Bubbles();
+  /** Lets go of the page-wide input listeners when this match's screen is torn down. */
+  private readonly life = new AbortController();
+  /** Settings subscriptions to drop on the way out. */
+  private readonly offs: (() => void)[] = [];
+  /** The frame loop, as a handle so it can be stopped. */
+  private readonly tick = (ticker: { deltaMS: number }) => this.frame(ticker.deltaMS / 1000);
   /** Seconds added to the match clock for the look of the sky (a match that starts at night). */
   private clockOffset = 0;
   /** When you last pressed Undo in the shop (what comes back then isn't celebrated as a purchase). */
@@ -302,7 +308,7 @@ export class GameClient {
     this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35 })];
     this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive, this.bloom);
     // Low graphics: no glow pass, fewer particles and raindrops, and a plain-resolution canvas.
-    onSettings((s) => {
+    this.offs.push(onSettings((s) => {
       const enemy = PALETTE.enemy;
       setColorblind(s.colorblind);
       if (PALETTE.enemy !== enemy) this.redrawViews();
@@ -313,11 +319,11 @@ export class GameClient {
       if (this.weather) this.weather.density = high ? 1 : 0.4;
       const resolution = high ? Math.min(window.devicePixelRatio || 1, 2) : 1;
       if (this.app.renderer.resolution !== resolution) this.app.renderer.resize(this.app.screen.width, this.app.screen.height, resolution);
-    });
+    }));
     app.stage.addChild(this.view, this.ripple.sprite);
     this.deathFilter.desaturate();
     this.bindInput();
-    app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
+    app.ticker.add(this.tick, this);
   }
 
   /** Match messages from the host (the lobby screen handles the rest). */
@@ -1376,14 +1382,16 @@ export class GameClient {
 
   private bindInput(): void {
     const canvas = this.app.canvas;
+    // Everything here is let go of when this match's screen is torn down (a rematch builds a new one).
+    const signal = this.life.signal;
     const track = (e: PointerEvent | WheelEvent) => {
       this.mouse.x = e.clientX;
       this.mouse.y = e.clientY;
       this.mouse.inside = true;
     };
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
-    window.addEventListener('pointermove', track);
-    document.documentElement.addEventListener('mouseleave', () => (this.mouse.inside = false));
+    window.addEventListener('contextmenu', (e) => e.preventDefault(), { signal });
+    window.addEventListener('pointermove', track, { signal });
+    document.documentElement.addEventListener('mouseleave', () => (this.mouse.inside = false), { signal });
 
     canvas.addEventListener('pointerdown', (e) => {
       track(e);
@@ -1400,7 +1408,7 @@ export class GameClient {
       } else if (e.button === 0 && this.aiming !== null) {
         this.castAimed();
       }
-    });
+    }, { signal });
     window.addEventListener('pointerup', (e) => {
       if (e.button === 2) this.rightHeld = false;
       if (e.button === 0 && this.pingWheel.open) {
@@ -1408,12 +1416,12 @@ export class GameClient {
         if (kind && this.pingAt) this.send({ k: 'ping', kind, x: Math.round(this.pingAt.x), y: Math.round(this.pingAt.y) });
         this.pingAt = null;
       }
-    });
-    window.addEventListener('pointermove', (e) => this.pingWheel.move(e.clientX, e.clientY));
+    }, { signal });
+    window.addEventListener('pointermove', (e) => this.pingWheel.move(e.clientX, e.clientY), { signal });
     // Alt on its own can pull focus to the browser's menu bar; it's the ping key here.
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Alt') e.preventDefault();
-    });
+    }, { signal });
     canvas.addEventListener(
       'wheel',
       (e) => {
@@ -1421,18 +1429,49 @@ export class GameClient {
         track(e);
         this.camera.zoomBy(e.deltaY > 0 ? 0.9 : 1.1);
       },
-      { passive: false },
+      { passive: false, signal },
     );
 
-    window.addEventListener('keydown', (e) => this.onKey(e, true));
-    window.addEventListener('keyup', (e) => this.onKey(e, false));
+    window.addEventListener('keydown', (e) => this.onKey(e, true), { signal });
+    window.addEventListener('keyup', (e) => this.onKey(e, false), { signal });
     window.addEventListener('blur', () => {
       this.scoresHeld = false;
       this.rightHeld = false;
       this.aiming = null;
       this.centerHeld = false;
       this.pingKeyHeld = false;
-    });
+    }, { signal });
+  }
+
+  /**
+   * Takes this match's screen down (for a rematch, which builds a fresh one): input let go, the frame loop
+   * stopped, the scene and its little renderers destroyed, the weather's sounds hushed.
+   */
+  destroy(): void {
+    this.life.abort();
+    for (const off of this.offs) off();
+    this.app.ticker.remove(this.tick, this);
+    this.app.stage.removeChild(this.view, this.ripple.sprite);
+    this.view.destroy({ children: true });
+    this.hud.destroy();
+    this.sound.setRain(0);
+    this.sound.setWind(1, false);
+    this.app.canvas.classList.remove('attack', 'shop');
+  }
+
+  /** What the end screen's Rematch does (`swap`: change sides too). */
+  set onRematch(fn: ((swap: boolean) => void) | null) {
+    this.hud.onRematch = fn;
+  }
+
+  /** The end screen's Rematch: the host can also swap sides. */
+  setHost(host: boolean): void {
+    this.hud.setRematchHost(host);
+  }
+
+  /** Who's asked for a rematch so far. */
+  rematchVotes(votes: string[], of: number): void {
+    this.hud.rematchVotes(votes, of);
   }
 
   private onKey(e: KeyboardEvent, down: boolean): void {

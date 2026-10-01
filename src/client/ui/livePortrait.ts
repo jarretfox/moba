@@ -62,6 +62,12 @@ export class LivePortrait {
     this.rig?.setGear(items);
   }
 
+  destroy(): void {
+    if (this.started) this.app.destroy({ removeView: true }, { children: true });
+    this.started = false;
+    this.rig = null;
+  }
+
   set(mood: PortraitMood): void {
     this.mood = mood;
   }

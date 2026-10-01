@@ -65,9 +65,13 @@ export function updateSettings(patch: Partial<Settings>): void {
 }
 
 /** Calls \`fn\` now and whenever settings change. */
-export function onSettings(fn: (s: Settings) => void): void {
+export function onSettings(fn: (s: Settings) => void): () => void {
   listeners.push(fn);
   fn(settings);
+  return () => {
+    const at = listeners.indexOf(fn);
+    if (at >= 0) listeners.splice(at, 1);
+  };
 }
 
 /** Interface size, 80–130%. */
