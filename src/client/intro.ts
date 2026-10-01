@@ -17,8 +17,11 @@ export interface IntroLine {
   text: string;
 }
 
-/** Logan and King Rix have words for each other when they meet across the map. */
-const RIVALRY: [IntroLine, IntroLine][] = [
+/** Rivals have words for each other when they meet across the map: Logan and King Rix above all. */
+const RIVALRIES: { pair: [ChampionId, ChampionId]; lines: [IntroLine, IntroLine][] }[] = [
+  {
+    pair: ['logan', 'kingrix'],
+    lines: [
   [
     { champ: 'logan', text: 'Your crown comes off today, Rix.' },
     { champ: 'kingrix', text: 'Back in your cage, kitten.' },
@@ -31,6 +34,21 @@ const RIVALRY: [IntroLine, IntroLine][] = [
     { champ: 'logan', text: 'No more chains, Rix.' },
     { champ: 'kingrix', text: 'Every lion has a master.' },
   ],
+    ],
+  },
+  {
+    pair: ['dongmaster', 'barbarian'],
+    lines: [
+      [
+        { champ: 'barbarian', text: 'You call that a rage?' },
+        { champ: 'dongmaster', text: 'I call it discipline.' },
+      ],
+      [
+        { champ: 'dongmaster', text: 'Nice chains. Do you even lift them?' },
+        { champ: 'barbarian', text: 'I BROKE THEM!' },
+      ],
+    ],
+  },
 ];
 
 /**
@@ -39,10 +57,10 @@ const RIVALRY: [IntroLine, IntroLine][] = [
  */
 export function introLines(rows: readonly ScoreRow[], n: number): IntroLine[] {
   const on = (champ: ChampionId) => new Set(rows.filter((r) => r.champ === champ).map((r) => r.team));
-  const logan = on('logan');
-  const rix = on('kingrix');
-  const opposed = [...logan].some((team) => [...rix].some((other) => other !== team));
-  if (opposed) return RIVALRY[n % RIVALRY.length];
+  for (const { pair, lines } of RIVALRIES) {
+    const [a, b] = pair.map(on);
+    if ([...a].some((team) => [...b].some((other) => other !== team))) return lines[n % lines.length];
+  }
   const mirror = rows.find((r) => rows.some((o) => o.champ === r.champ && o.team !== r.team));
   if (mirror) return [{ text: `Two ${CHAMPION_INFO[mirror.champ].name}s? This map isn’t big enough.` }];
   if (rows.some((r) => r.champ === 'willmore' || r.champ === 'hunnag')) return [{ text: 'Somewhere under the river, the Warden stirs...' }];

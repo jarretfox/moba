@@ -428,6 +428,8 @@ export class UnitView implements EntityView {
     }
     if (st.includes('royal')) g.circle(0, 0, r + 4).stroke({ width: 2, color: 0xffd166, alpha: 0.7 });
     if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
+    if (st.includes('mewing')) g.circle(0, 0, r + 6).stroke({ width: 3, color: 0xffffff, alpha: 0.8 });
+    if (st.includes('ascended')) g.circle(0, 0, r + 8).fill({ color: 0xffd166, alpha: 0.15 }).stroke({ width: 5, color: 0xffd166, alpha: 0.8 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }
 }

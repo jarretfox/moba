@@ -57,6 +57,8 @@ export const ATTACK: Record<ChampionId, Anim> = {
   logan: { dur: 0.28, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.2], [1, 0]] },
   // A royal flourish of the scepter.
   kingrix: { dur: 0.36, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
+  // A short, heavy jab.
+  dongmaster: { dur: 0.28, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.15], [1, 0]], twist: [[0, 0], [0.35, -0.18], [1, 0]] },
 };
 
 /** Casting an ability, unless the slot has its own move below. */
@@ -67,6 +69,7 @@ export const CAST: Record<ChampionId, Anim> = {
   hunnag: { dur: 0.5, turn: [[0, 0], [0.35, -1.1], [0.7, -1.1], [1, 0]], reach: [[0, 0], [0.35, 0.2], [1, 0]], grow: [[0, 0], [0.35, 0.1], [1, 0]] },
   logan: { dur: 0.4, reach: [[0, 0], [0.3, 0.4], [1, 0]], grow: [[0, 0], [0.3, 0.15], [1, 0]] },
   kingrix: { dur: 0.5, turn: [[0, 0], [0.35, -1.4], [0.7, -1.4], [1, 0]], grow: [[0, 0], [0.35, 0.1], [1, 0]] },
+  dongmaster: { dur: 0.45, grow: [[0, 0], [0.3, 0.12], [1, 0]], reach: [[0, 0], [0.3, 0.25], [1, 0]] },
 };
 
 /** Abilities with a move of their own. */
@@ -81,6 +84,12 @@ const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
   'logan:3': { dur: 0.55, grow: [[0, 0], [0.25, 0.28], [0.75, 0.22], [1, 0]], lunge: [[0, 0], [0.25, -0.15], [0.5, 0.15], [1, 0]] },
   // Longshot: a long, deep draw.
   'marksman:3': { dur: 0.6, reach: [[0, 0], [0.75, -0.4], [0.85, 0.1], [1, 0]], lunge: [[0, 0], [0.85, -0.15], [1, 0]] },
+  // Chin Check: wind back and throw the uppercut.
+  'dongmaster:0': { dur: 0.35, reach: [[0, 0], [0.25, -0.2], [0.5, 0.75], [1, 0]], lunge: [[0, 0], [0.5, 0.3], [1, 0]], twist: [[0, 0], [0.25, 0.25], [0.5, -0.3], [1, 0]] },
+  // Sigma Stare: lean in, dead still.
+  'dongmaster:2': { dur: 0.6, lunge: [[0, 0], [0.3, 0.2], [0.8, 0.2], [1, 0]], grow: [[0, 0], [0.3, 0.06], [1, 0]] },
+  // Ascension: a double biceps pose, swelling up.
+  'dongmaster:3': { dur: 0.7, grow: [[0, 0], [0.3, 0.32], [0.8, 0.26], [1, 0]], reach: [[0, 0], [0.3, -0.25], [0.8, -0.25], [1, 0]] },
   // KNEEL!: the scepter raised high, then brought down.
   'kingrix:2': { dur: 0.5, turn: [[0, 0], [0.4, -1.6], [0.6, 0.4], [1, 0]], grow: [[0, 0], [0.4, 0.15], [0.6, -0.05], [1, 0]] },
 };
@@ -164,6 +173,14 @@ export const FIDGETS: Record<ChampionId, readonly Anim[]> = {
     { dur: 1.8, reach: [[0, 0], [0.25, -0.3], [0.8, -0.3], [1, 0]], twist: [[0, 0], [0.25, 0.25], [0.35, 0.18], [0.45, 0.25], [0.55, 0.18], [0.65, 0.25], [0.8, 0.25], [1, 0]] },
     // A long cat stretch: forward and low, then up.
     { dur: 2.0, lunge: [[0, 0], [0.35, 0.3], [0.6, 0.3], [1, 0]], reach: [[0, 0], [0.35, 0.5], [0.6, 0.5], [1, 0]], grow: [[0, 0], [0.35, -0.06], [0.75, 0.08], [1, 0]] },
+  ],
+  dongmaster: [
+    // A flex: shoulders up, fists back, hold.
+    { dur: 1.6, grow: [[0, 0], [0.25, 0.14], [0.75, 0.12], [1, 0]], reach: [[0, 0], [0.25, -0.2], [0.75, -0.2], [1, 0]] },
+    // Admires his jawline from both sides.
+    { dur: 1.8, twist: [[0, 0], [0.25, -0.5], [0.45, -0.5], [0.7, 0.5], [0.85, 0.5], [1, 0]], grow: [[0, 0], [0.25, 0.04], [0.7, 0.04], [1, 0]] },
+    // Mewing: chin up, perfectly still.
+    { dur: 2.0, lunge: [[0, 0], [0.2, 0.08], [0.85, 0.08], [1, 0]], grow: [[0, 0], [0.2, 0.05], [0.85, 0.05], [1, 0]] },
   ],
   kingrix: [
     // Straightens his crown with the scepter hand, fussily.

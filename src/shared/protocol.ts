@@ -101,6 +101,9 @@ export type StatusKind =
   | 'decreed'
   /** A Chud under King Rix's Royal Tax. */
   | 'royal'
+  /** Dongmaster's Mewing (a shield, and tenacity) and Ascension (his giga form). */
+  | 'mewing'
+  | 'ascended'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -166,7 +169,12 @@ export type FxKind =
   | 'roar'
   | 'summon'
   | 'kneel'
-  | 'decree';
+  | 'decree'
+  /** Dongmaster. */
+  | 'chinCheck'
+  | 'mewing'
+  | 'sigmaStare'
+  | 'ascension';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

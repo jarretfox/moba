@@ -96,7 +96,53 @@ function sword(g: Graphics, a: number): void {
   g.circle(px, py, 3.5).fill(GOLD).stroke(ink(2.5));
 }
 
+const SKIN_TONE = 0xe2b48a;
+const SKIN_SHADE = 0xb98a62;
+
 const ART: Record<string, Draw> = {
+  // ── Dongmaster
+  '😎': (g) => {
+    // Mog: a cool face behind dark shades, smirking.
+    g.circle(0, 0, 26).fill(GOLD).stroke(ink());
+    g.roundRect(-22, -10, 20, 13, 5).fill(0x1a1a22).stroke(ink(2.5));
+    g.roundRect(2, -10, 20, 13, 5).fill(0x1a1a22).stroke(ink(2.5));
+    g.moveTo(-2, -6).lineTo(2, -6).stroke(ink(3));
+    g.moveTo(-16, -7).lineTo(-10, -7).stroke({ ...shine, alpha: 0.6 });
+    g.moveTo(-10, 13).quadraticCurveTo(2, 18, 13, 9).stroke(ink(3));
+  },
+  '👊': (g) => {
+    // Chin Check: a fist, flying, with speed lines.
+    for (const y of [-14, 0, 14]) g.moveTo(-28, y).lineTo(-14, y).stroke({ width: 3, color: WHITE, alpha: 0.8, cap: 'round' });
+    g.roundRect(-12, -18, 34, 36, 10).fill(SKIN_TONE).stroke(ink());
+    for (const y of [-9, 0, 9]) g.moveTo(14, y).lineTo(21, y).stroke({ width: 2.5, color: SKIN_SHADE, cap: 'round' });
+    g.roundRect(-16, -14, 10, 28, 3).fill(PAPER).stroke(ink(2.5));
+    g.moveTo(-4, -12).lineTo(8, -12).stroke(shine);
+  },
+  '😤': (g) => {
+    // Mewing: a chiseled jaw in profile, catching the light.
+    g.moveTo(-18, -28).lineTo(8, -28).quadraticCurveTo(22, -20, 20, -4).lineTo(26, 6).lineTo(20, 10).lineTo(22, 20).lineTo(-2, 26).lineTo(-18, 22).closePath().fill(SKIN_TONE).stroke(ink());
+    g.moveTo(-18, 22).lineTo(-2, 26).lineTo(22, 20).stroke({ width: 3, color: SKIN_SHADE });
+    g.moveTo(10, -14).lineTo(16, -14).stroke(ink(3));
+    for (const [sx, sy, sr] of [[24, -22, 7], [-24, 4, 5]] as const) g.poly([sx, sy - sr, sx + sr * 0.3, sy - sr * 0.3, sx + sr, sy, sx + sr * 0.3, sy + sr * 0.3, sx, sy + sr, sx - sr * 0.3, sy + sr * 0.3, sx - sr, sy, sx - sr * 0.3, sy - sr * 0.3]).fill(WHITE).stroke(ink(1.5));
+  },
+  '👁': (g) => {
+    // Sigma Stare: one unblinking eye, red lasers out of it.
+    g.moveTo(-28, 0).quadraticCurveTo(0, -24, 28, 0).quadraticCurveTo(0, 24, -28, 0).closePath().fill(WHITE).stroke(ink());
+    g.circle(0, 0, 11).fill(RED).stroke(ink(2.5));
+    g.circle(0, 0, 5).fill(INK);
+    g.circle(-4, -4, 2.5).fill(WHITE);
+    for (const a of [-0.35, 0.35]) g.moveTo(10, a * 10).lineTo(30, a * 40).stroke({ width: 3, color: 0xff3b30, cap: 'round' });
+  },
+  '🗿': (g) => {
+    // Ascension: a stone face, chiseled to perfection, glowing from behind.
+    g.circle(0, 0, 28).fill({ color: GOLD, alpha: 0.35 });
+    g.poly([-14, -28, 14, -28, 18, -10, 16, 22, 8, 28, -8, 28, -16, 22, -18, -10]).fill(0x8a8f99).stroke(ink());
+    g.roundRect(-14, -14, 28, 6, 2).fill(0x5d636d);
+    g.poly([-2, -8, 4, -8, 6, 8, -4, 8]).fill(0x7d828c).stroke(ink(2));
+    g.moveTo(-8, 16).lineTo(8, 16).stroke(ink(3));
+    g.roundRect(-16, 20, 32, 8, 3).fill(0x6b707a).stroke(ink(2.5));
+    g.moveTo(-10, -24).lineTo(-12, 10).stroke({ ...shine, alpha: 0.35 });
+  },
   // ── Barbarian
   '🔥': (g) => {
     g.moveTo(0, 28)

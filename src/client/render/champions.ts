@@ -21,6 +21,7 @@ const CLASSIC: Record<ChampionId, Palette> = {
   hunnag: { body: CHUD_SKIN, cap: 0x7a3fb0, spots: 0xe8d7ff, eyes: 0xb8f07a, staff: 0x6b4a2b, orb: 0xb8f07a, orbGlow: 0x8fd14f, orbEdge: 0x3d6a14 },
   logan: { mane: 0xd98a2b, maneEdge: 0x8a4f12, face: 0xe8a33d, muzzle: 0xf2c27a, collar: 0x8a9099, eyes: 0x2e1a08, nose: 0x5a2e12, paw: 0xe8a33d },
   kingrix: { cape: 0xa8232e, ermine: 0xf2f2f2, spots: 0x111111, skin: SKIN, crown: 0xffd166, jewelA: 0xc0182b, jewelB: 0x3d8bfd, scepter: 0xd9a52b, orb: 0xffd166, gem: 0xc0182b },
+  dongmaster: { skin: 0xe2b48a, skinDark: 0xb98a62, tank: 0x1c1c22, hair: 0x2a1a10, band: 0xe5484d, wrap: 0xf2efe6 },
 };
 
 /** Each champion's looks: the classic one first, then two skins (just different palettes). */
@@ -50,6 +51,11 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
     { name: 'White Lion', colors: { mane: 0xf2efe6, maneEdge: 0x9a9488, face: 0xe8e2d4, muzzle: 0xffffff, collar: 0xffd166, paw: 0xe8e2d4, eyes: 0x3d6a8a } },
     { name: 'Shadow Lion', colors: { mane: 0x2a2430, maneEdge: 0x0e0c12, face: 0x5a4a3a, muzzle: 0x8a7a6a, collar: 0xb98be0, paw: 0x5a4a3a, eyes: 0xffd166, nose: 0x1a1410 } },
   ],
+  dongmaster: [
+    { name: 'Jawline Eternal', colors: {} },
+    { name: 'Bronze God', colors: { skin: 0xc98a4a, skinDark: 0x8a5a2a, tank: 0xffd166, hair: 0x1a1008, band: 0xffffff, wrap: 0xffd166 } },
+    { name: 'Sigma Grindset', colors: { tank: 0x5a5f6a, band: 0x111111, hair: 0x5a3a1a, wrap: 0x2a2a30 } },
+  ],
   kingrix: [
     { name: 'The Crown', colors: {} },
     { name: 'Midnight King', colors: { cape: 0x2a2a6a, ermine: 0xd8dce8, crown: 0xc9d1dc, scepter: 0xa8b0bc, orb: 0xc9d1dc, gem: 0x3d8bfd, jewelA: 0x3d8bfd, jewelB: 0xb98be0 } },
@@ -58,7 +64,7 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
 };
 
 /** The color that sums up each look, for the swatches in champion select. */
-const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape' };
+const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank' };
 
 export function palette(id: ChampionId, skin = 0): Palette {
   return { ...CLASSIC[id], ...(SKINS[id][skin]?.colors ?? {}) };
@@ -153,6 +159,18 @@ const WEAPONS: Record<ChampionId, (p: Palette) => Weapon> = {
       }
     },
   }),
+  dongmaster: (p) => ({
+    // Two big wrapped fists, up in a guard.
+    pivot: [0.5, 0],
+    draw(g, r) {
+      for (const side of [-1, 1]) {
+        const y = side * 0.5 * r;
+        g.roundRect(-0.05 * r, y - 0.17 * r, 0.34 * r, 0.34 * r, 0.1 * r).fill(p.skin).stroke(OUTLINE);
+        g.roundRect(-0.12 * r, y - 0.15 * r, 0.12 * r, 0.3 * r, 0.05 * r).fill(p.wrap).stroke({ width: 1.5, color: OUTLINE.color });
+        for (let i = -1; i <= 1; i++) g.moveTo(0.22 * r, y + i * 0.09 * r).lineTo(0.28 * r, y + i * 0.09 * r).stroke({ width: 1.5, color: p.skinDark });
+      }
+    },
+  }),
   kingrix: (p) => ({
     pivot: [0.3, 0.6],
     draw(g, r) {
@@ -223,6 +241,20 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number, p: Palette) => void> 
     g.ellipse(0.35 * r, 0, 0.42 * r, 0.32 * r).fill(p.muzzle).stroke({ width: 1.5, color: p.maneEdge }); // muzzle
     for (const side of [-1, 1]) g.circle(0.2 * r, side * 0.2 * r, 0.06 * r).fill(p.eyes); // eyes
     g.poly([0.62 * r, -0.1 * r, 0.75 * r, 0, 0.62 * r, 0.1 * r]).fill(p.nose); // nose
+  },
+
+  /** A giga chad from above: traps like hills, a tank top, slicked-back hair, a sweatband, and THE jaw. */
+  dongmaster(g, r, p) {
+    g.ellipse(-0.05 * r, 0, 0.78 * r, 1.08 * r).fill(p.skin).stroke(OUTLINE); // shoulders
+    g.ellipse(-0.12 * r, 0, 0.55 * r, 0.7 * r).fill(p.tank).stroke(OUTLINE); // tank top
+    for (const side of [-1, 1]) g.moveTo(-0.1 * r, side * 0.62 * r).quadraticCurveTo(0.25 * r, side * 0.75 * r, 0.3 * r, side * 0.95 * r).stroke({ width: 2, color: p.skinDark }); // delts
+    g.roundRect(0.2 * r, -0.32 * r, 0.56 * r, 0.64 * r, 0.16 * r).fill(p.skin).stroke(OUTLINE); // THE jaw, squared off
+    g.moveTo(0.68 * r, -0.24 * r).lineTo(0.68 * r, 0.24 * r).stroke({ width: 3, color: p.skinDark }); // its shadow
+    g.moveTo(0.76 * r, -0.07 * r).lineTo(0.67 * r, 0).lineTo(0.76 * r, 0.07 * r).stroke({ width: 2.5, color: p.skinDark }); // cleft chin
+    g.circle(0.04 * r, 0, 0.34 * r).fill(p.skin).stroke(OUTLINE); // head
+    g.moveTo(-0.3 * r, 0).arc(0.04 * r, 0, 0.33 * r, Math.PI, Math.PI * 1.62).quadraticCurveTo(0.3 * r, 0, 0.16 * r, 0.31 * r).arc(0.04 * r, 0, 0.33 * r, Math.PI * 0.38, Math.PI).closePath().fill(p.hair); // slicked-back hair
+    arc(g, 0.04 * r, 0, 0.32 * r, -0.7, 0.7).stroke({ width: 5, color: p.band }); // sweatband across the brow
+    g.moveTo(-0.45 * r, -0.62 * r).lineTo(-0.2 * r, -0.85 * r).stroke({ width: 3, color: 0xffffff, alpha: 0.35 }); // the shine
   },
 
   /** The king from above: a cape, an ermine collar, and a jeweled crown. */

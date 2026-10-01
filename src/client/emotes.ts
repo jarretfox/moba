@@ -42,6 +42,13 @@ const LINES: Record<ChampionId, Record<Said, readonly string[]>> = {
     line: ['The cage is open.', 'No more chains.', 'A lion doesn’t ask permission.'],
     kill: ['The pride stands!', 'That’s for the cage.', 'ROOOAR!'],
   },
+  dongmaster: {
+    taunt: ['You’re mogged.', 'Imagine skipping leg day.'],
+    laugh: ['Hah. Cute.', 'Ha ha ha. Weak jaw.'],
+    cheer: ['WE’RE ALL GONNA MAKE IT!', 'Stay hard, brothers!'],
+    line: ['The jawline is a lifestyle.', 'Mewing in progress.', 'Never skipped a day. Not once.'],
+    kill: ['Mogged.', 'Should’ve stayed in the gym.', 'Another rep.'],
+  },
   kingrix: {
     taunt: ['Kneel.', 'Know your place, peasant.'],
     laugh: ['Hohoho! Delightful.', 'Ha! The crown wins again.'],
@@ -52,15 +59,17 @@ const LINES: Record<ChampionId, Record<Said, readonly string[]>> = {
 };
 
 /** What they say after beating their rival. */
-const RIVAL: Partial<Record<ChampionId, readonly string[]>> = {
-  logan: ['Your cage is empty, Rix.', 'Long live the lion.', 'Kneel to THAT.'],
-  kingrix: ['Back in your cage, kitten.', 'Every lion has a master.', 'Bad kitty.'],
+/** What they say after beating their rival, keyed "killer:victim". */
+const RIVAL: Partial<Record<`${ChampionId}:${ChampionId}`, readonly string[]>> = {
+  'logan:kingrix': ['Your cage is empty, Rix.', 'Long live the lion.', 'Kneel to THAT.'],
+  'kingrix:logan': ['Back in your cage, kitten.', 'Every lion has a master.', 'Bad kitty.'],
+  'dongmaster:barbarian': ['Rage is for people who skip leg day.', 'Mogged. Again.', 'Should’ve trained instead of yelling.'],
+  'barbarian:dongmaster': ['HOW’S THAT FOR A JAWLINE?!', 'Pretty face. Broke easy.', 'FLEX THAT!'],
 };
-const RIVALS: Partial<Record<ChampionId, ChampionId>> = { logan: 'kingrix', kingrix: 'logan' };
 
 /** The line a champion says for an emote; \`n\` picks which, the same on every screen. */
 export function emoteLine(champ: ChampionId, kind: Said, n: number, vs?: ChampionId): string {
-  const rival = kind === 'kill' && vs !== undefined && RIVALS[champ] === vs ? RIVAL[champ] : undefined;
+  const rival = kind === 'kill' && vs !== undefined ? RIVAL[`${champ}:${vs}`] : undefined;
   const lines = rival ?? LINES[champ][kind];
   return lines[Math.abs(Math.floor(n)) % lines.length];
 }

@@ -10,7 +10,7 @@ import { Bot } from './bot';
  * slot lists the champions that suit it; a bot takes one its team doesn't have yet.
  */
 const SLOTS: { lane: Lane; picks: ChampionId[] }[] = [
-  { lane: 'top', picks: ['barbarian', 'willmore', 'logan'] },
+  { lane: 'top', picks: ['barbarian', 'willmore', 'logan', 'dongmaster'] },
   { lane: 'bot', picks: ['marksman', 'kingrix', 'hunnag'] },
   { lane: 'bot', picks: ['hunnag', 'logan', 'kingrix', 'willmore'] },
 ];

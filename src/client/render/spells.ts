@@ -19,6 +19,7 @@ export const CAST_COLORS: Record<ChampionId, number> = {
   hunnag: 0x8fd14f,
   logan: 0xffc04d,
   kingrix: 0xffd166,
+  dongmaster: 0xffb070,
 };
 
 const GOLD = 0xffd166;
@@ -312,6 +313,63 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     }
 
     // ── Logan
+    // ── Dongmaster
+    case 'chinCheck': {
+      // A charge: a hot streak with speed lines, and a star-burst where the uppercut lands.
+      fx.custom(0.35, (g, t) => g.moveTo(x, y).lineTo(x2, y2).stroke({ width: 34 * (1 - t), color: 0xffb070, alpha: 0.4 * (1 - t), cap: 'round' }), 'mid', true);
+      for (let i = 0; i < 10; i++) {
+        const k = Math.random();
+        const side = (Math.random() - 0.5) * 50;
+        const sx = x + (x2 - x) * k - Math.sin(angle) * side;
+        const sy = y + (y2 - y) * k + Math.cos(angle) * side;
+        p.emit({ shape: 'spark', x: sx, y: sy, vx: -Math.cos(angle) * 300, vy: -Math.sin(angle) * 300, drag: 0.1, life: 0.25, size: 14, size2: 3, stretch: 0.08, color: 0xffffff, color2: 0xffb070 });
+      }
+      fx.later(Math.min(0.3, dist / 1600), () => {
+        fx.shockwave(x2, y2, 90, 0xffd166, 0.3);
+        p.burst(10, { shape: 'star', x: x2, y: y2, life: 0.4, size: 16, size2: 3, color: 0xffffff, color2: GOLD, spin: 6 }, [150, 320]);
+        dirtBurst(fx, x2, y2, 40);
+      });
+      return;
+    }
+    case 'mewing': {
+      // Perfect posture: a pale gold bubble, and the jaw catching the light.
+      const r = (ev.r ?? 60) * 1.15;
+      fx.custom(0.8, (g, t) => {
+        const a = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+        g.circle(x, y, r * (0.9 + 0.1 * t)).fill({ color: 0xfff1b8, alpha: 0.12 * a }).stroke({ width: 4, color: 0xffffff, alpha: 0.8 * a });
+      }, 'mid', true);
+      for (let i = 0; i < 6; i++) fx.later(i * 0.08, () => p.emit({ shape: 'star', x: x + rand(-r * 0.4, r * 0.6), y: y + rand(-r * 0.5, r * 0.3), life: 0.5, size: 18, size2: 2, color: 0xffffff, color2: GOLD, spin: 5 }));
+      return;
+    }
+    case 'sigmaStare': {
+      // Two burning red lines out of his eyes, and a dark wave of pure judgment.
+      const spread = ((ev.r ?? 70) * Math.PI) / 180;
+      fx.custom(0.5, (g, t) => {
+        const a = 1 - t;
+        const rr = dist * Math.min(1, t * 3);
+        g.moveTo(x, y).arc(x, y, rr, angle - spread / 2, angle + spread / 2).closePath().fill({ color: 0x2a0a2a, alpha: 0.25 * a });
+        for (const side of [-1, 1]) {
+          const ox = -Math.sin(angle) * side * 9;
+          const oy = Math.cos(angle) * side * 9;
+          g.moveTo(x + ox, y + oy).lineTo(x + ox + Math.cos(angle) * rr, y + oy + Math.sin(angle) * rr).stroke({ width: 5 * a + 1, color: 0xff3b30, alpha: 0.9 * a, cap: 'round' });
+        }
+      }, 'mid', true);
+      const t = iconTexture('😎');
+      if (t) fx.ghost(t, x + Math.cos(angle) * 60, y + Math.sin(angle) * 60, { size: 60, size2: 120, life: 0.6, alpha: 0.7 });
+      return;
+    }
+    case 'ascension': {
+      // His final form: a golden pillar, a ring of force, the ground cracking, and a stone face watching.
+      const r = ev.r ?? 300;
+      fx.pillar(x, y, 90, 0xffd166, 1.2);
+      fx.shockwave(x, y, r, 0xfff1b8, 0.5);
+      fx.later(0.1, () => fx.shockwave(x, y, r * 0.8, 0xffb070, 0.45));
+      fx.cracks(x, y, r * 0.8, 0xffd166, 1.4, 9);
+      p.burst(30, { shape: 'mote', x, y, life: 1, size: 12, size2: 2, color: 0xffffff, color2: GOLD, drag: 0.3, ay: -60 }, [150, 420]);
+      const t = iconTexture('🗿');
+      if (t) fx.ghost(t, x, y - 80, { size: 110, size2: 220, dy: -60, life: 1, alpha: 0.6 });
+      return;
+    }
     case 'pounce': {
       fx.custom(0.4, (g, t) => g.moveTo(x, y).lineTo(x2, y2).stroke({ width: 26 * (1 - t), color: GOLD, alpha: 0.35 * (1 - t), cap: 'round' }), 'mid', true);
       for (let i = 0; i < 18; i++) {
@@ -638,6 +696,12 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
         break;
       case 'weaken':
         for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'mote', ...around(0.8), vy: rand(20, 50), life: 0.6, size: 7, size2: 3, color: 0xd8b4ff, color2: 0x7a4ac0 });
+        break;
+      case 'mewing':
+        if (Math.random() < fx.dt * 4) p.emit({ shape: 'star', x: s.x + Math.cos(s.f) * r * 0.5, y: s.y + Math.sin(s.f) * r * 0.5, life: 0.4, size: 14, size2: 2, color: 0xffffff, color2: GOLD, spin: 5 });
+        break;
+      case 'ascended':
+        for (let i = 0; i < fx.rate(40); i++) p.emit({ shape: 'glow', ...around(0.9), vx: rand(-10, 10), vy: rand(-110, -50), drag: 0.5, life: rand(0.4, 0.7), size: rand(20, 32), size2: 4, color: 0xfff6d0, color2: 0xffb070, alpha: 0.7 });
         break;
       case 'recall':
         for (let i = 0; i < fx.rate(45); i++) {

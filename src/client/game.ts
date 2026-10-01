@@ -1135,6 +1135,8 @@ export class GameClient {
       roar: { sound: 'impact', ripple: 0, duck: 0.35, punch: 0.02 },
       berserk: { sound: 'impact', ripple: 0, duck: 0.3, punch: 0.02 },
       warCry: { sound: 'impact', ripple: 0, duck: 0.25, punch: 0 },
+      ascension: { sound: 'quake', ripple: 1, duck: 0.5, punch: 0.03 },
+      chinCheck: { sound: 'impact', ripple: 0, duck: 0.2, punch: 0.01 },
       decree: { sound: 'impact', ripple: 0, duck: 0.25, punch: 0.015 },
       summon: { sound: 'impact', ripple: 0, duck: 0.2, punch: 0 },
       pounce: { sound: 'impact', ripple: 0, duck: 0, punch: 0 },

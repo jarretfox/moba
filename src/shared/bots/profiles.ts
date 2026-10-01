@@ -179,4 +179,25 @@ const kingrix: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix };
+const dongmaster: BotProfile = {
+  skillOrder: [0, 2, 1],
+  build: ['leather', 'treads', 'drum', 'plate', 'link', 'aegis'],
+  fight(ctx, foe) {
+    const { me, world } = ctx;
+    const d = dist(me.pos, foe.pos);
+    const crowd = enemiesInRadius(world, me.team, me.pos, 320).filter((u) => u.kind === 'champion').length;
+    if (ready(ctx, 3) && d < 300 && (crowd >= 2 || hpPct(me) < 0.55 || hpPct(foe) < 0.5)) return cast(3, me.pos);
+    if (ready(ctx, 0) && d > 180 && d < 420) return cast(0, foe.pos);
+    if (ready(ctx, 2) && d < 400) return cast(2, foe.pos);
+    if (ready(ctx, 1) && d < 500 && hpPct(me) < 0.8) return cast(1, me.pos);
+    return null;
+  },
+  escape(ctx, threat) {
+    const { me, home } = ctx;
+    if (ready(ctx, 2) && dist(me.pos, threat.pos) < 400) return cast(2, threat.pos);
+    if (ready(ctx, 1)) return cast(1, me.pos);
+    return ready(ctx, 0) ? cast(0, add(me.pos, scale(dirTo(me.pos, home), 420))) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster };
