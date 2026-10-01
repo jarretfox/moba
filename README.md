@@ -46,6 +46,16 @@ Friends just open that link. Whoever clicks **Host a Lobby** runs the match in t
 | Wheel | Zoom |
 | `` ` `` | Nav grid overlay |
 
+## Balance simulator
+
+Runs bots-only matches with random lineups on every CPU core and prints win rates (with 95% ranges), K/D/A, CS, damage, gold and level per champion:
+
+```bash
+npm run sim -- --games 240 --seed 1
+```
+
+Options: `--games`, `--seed` (first seed; the same seed replays the same match), `--workers`, `--minutes` (time limit per match), `--json results.json` (every match, for digging deeper). Bots aren't people, so treat it as a way to spot outliers.
+
 ## Checks
 
 ```bash

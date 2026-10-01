@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "typecheck": "tsc",
     "test": "vitest run",
+    "sim": "vite build --ssr src/shared/balance/simulate.ts --outDir .sim --emptyOutDir --logLevel warn && node scripts/sim.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
