@@ -596,6 +596,12 @@ export class StructureView implements EntityView {
   private bodyKey = '';
   private barKey = '';
   private rangeShown = false;
+  /** An Oakner growing back: 0 to 1 over a second and a half. */
+  private grow = 1;
+  private wasDead: boolean | null = null;
+  private clock = 0;
+  /** A red glow under Da Base that beats when it's in danger. */
+  private readonly danger = new Graphics();
 
   constructor(s: EntitySnap, private readonly relation: Relation) {
     this.note = new Text({
@@ -605,13 +611,33 @@ export class StructureView implements EntityView {
     this.note.anchor.set(0.5, 0);
     this.note.position.set(0, s.r + 12);
     this.light.blendMode = 'add';
-    this.container.addChild(this.light, this.range, this.body);
+    this.danger.blendMode = 'add';
+    if (s.role === 'daBase') {
+      this.danger.circle(0, 0, s.r * 2.2).fill({ color: 0xff3b30, alpha: 0.12 }).circle(0, 0, s.r * 1.5).fill({ color: 0xff3b30, alpha: 0.18 });
+      this.danger.alpha = 0;
+    }
+    this.container.addChild(this.light, this.danger, this.range, this.body);
     this.top.addChild(this.upper, this.bars, this.note);
     this.container.position.set(s.x, s.y);
     this.top.position.set(s.x, s.y);
   }
 
-  update(s: EntitySnap, _dt: number, ctx: ViewContext): void {
+  update(s: EntitySnap, dt: number, ctx: ViewContext): void {
+    this.clock += dt;
+    // A felled Oakner springing back up when it regrows.
+    if (this.wasDead && !s.dead) this.grow = 0;
+    this.wasDead = !!s.dead;
+    let beat = 0;
+    if (this.grow < 1) {
+      this.grow = Math.min(1, this.grow + dt / 1.4);
+      const g = this.grow;
+      this.top.scale.set(Math.max(0.05, g >= 1 ? 1 : 1 - Math.pow(2, -9 * g) * Math.cos(g * 12)));
+    } else if (s.role === 'daBase' && !s.dead && (s.hp ?? 1) / (s.mhp ?? 1) < 0.5) {
+      // Da Base in danger: its crystal beats like a heart, faster the lower it gets.
+      beat = heartbeat(this.clock, (s.hp ?? 0) / (s.mhp ?? 1));
+      this.top.scale.set(1 + 0.035 * beat);
+    } else this.top.scale.set(1);
+    this.danger.alpha = beat * 0.9;
     const bodyKey = `${s.dead ? 'fallen' : 'up'}|${s.inv ? 'shielded' : ''}`;
     if (bodyKey !== this.bodyKey) {
       this.bodyKey = bodyKey;
@@ -824,6 +850,14 @@ function drawMonster(g: Graphics, kind: MonsterKind, r: number): void {
       return;
     }
   }
+}
+
+/** A double thump (lub-dub), 0 to 1, repeating faster as `health` (0–1) drops. */
+export function heartbeat(time: number, health: number): number {
+  const period = 0.55 + Math.max(0, health) * 1.3;
+  const t = (time % period) / period;
+  const thump = (at: number) => Math.exp(-(((t - at) / 0.05) ** 2));
+  return Math.min(1, thump(0.05) + 0.7 * thump(0.22));
 }
 
 function clock(seconds: number): string {

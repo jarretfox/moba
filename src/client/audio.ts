@@ -35,6 +35,10 @@ export type SoundName =
   | 'quake'
   /** An ultimate going off: a rush in, then a boom. */
   | 'ultimate'
+  /** A Chud wave marching out. */
+  | 'horn'
+  /** Your Da Base in danger. */
+  | 'heartbeat'
   /** The announcer: good news for your side, and bad. */
   | 'fanfare'
   | 'toll'
@@ -311,6 +315,16 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
     v.noise(t, 'lowpass', 700, 55, 1.3, 0.6, 1, 0.01);
     // Debris pattering down after.
     for (let i = 0; i < 5; i++) v.noise(t + 0.12 + i * 0.09 + Math.random() * 0.05, 'bandpass', 900 + Math.random() * 900, 300, 0.07, 0.15, 3);
+  },
+  horn: (v, t) => {
+    for (const [dt, f, dur] of [[0, 196, 0.5], [0.42, 293.66, 0.95]] as const) {
+      v.tone(t + dt, 'sawtooth', f * 0.97, f, dur, 0.06, 0.08);
+      v.tone(t + dt, 'triangle', f, f, dur, 0.14, 0.06);
+    }
+  },
+  heartbeat: (v, t) => {
+    v.tone(t, 'sine', 72, 40, 0.16, 0.7, 0.004);
+    v.tone(t + 0.19, 'sine', 66, 38, 0.16, 0.5, 0.004);
   },
   ultimate: (v, t) => {
     v.noise(t, 'bandpass', 250, 3000, 0.32, 0.32, 1.2, 0.2); // the rush in

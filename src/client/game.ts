@@ -35,6 +35,7 @@ import { PINGS, PingWheel } from './pings';
 import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
 import { HEIGHT, buildMap, buildNavOverlay, elevate } from './render/mapView';
+import { lanePath } from '../shared/map/mapData';
 import { PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
@@ -84,6 +85,12 @@ export class GameClient {
   private readonly ripple = new Ripple();
   /** Units up in the air right now, to catch the moment they land. */
   private readonly inAir = new Set<number>();
+  /** Structures that are down, to catch an Oakner growing back. */
+  private readonly fallen = new Set<number>();
+  /** The wave timer last frame, to catch the moment a wave marches out. */
+  private lastNextWave: number | undefined;
+  /** When your Da Base's heart last beat. */
+  private nextHeartbeat = 0;
   private deadFade = 0;
   /** For the announcer: has anyone drawn first blood, and who's on a multi-kill. */
   private firstBlood = false;
@@ -315,6 +322,7 @@ export class GameClient {
     this.drawBeams();
     this.renderBloom(w, h);
     this.drawMinimap(w, h);
+    this.baseLife();
     this.updateSoundscape();
 
     const latest = this.buffer.latest;
@@ -410,6 +418,14 @@ export class GameClient {
       default:
         view = new UnitView(s, rel);
         layer = this.unitLayer;
+        // Fresh Chuds pop out of the portal near their base.
+        if (s.k === 'chud' && (['top', 'bot'] as const).some((lane) => {
+          const at = lanePath(MAP, s.tm as 1 | 2, lane)[0];
+          return Math.hypot(at.x - s.x, at.y - s.y) < 500;
+        })) {
+          this.fx.burst(s.x, s.y, s.tm === this.myTeam ? 0x7cc4ff : 0xff7a7a, 70);
+          this.fx.particles.burst(6, { shape: 'mote', x: s.x, y: s.y, life: 0.5, size: 8, size2: 2, color: 0xffffff, color2: s.tm === this.myTeam ? 0x3d8bfd : 0xe5484d, drag: 0.2 }, [60, 140]);
+        }
     }
     layer.addChild(view.container);
     return view;
@@ -458,6 +474,7 @@ export class GameClient {
         this.views.get(ev.src)?.onAttack?.();
         const shooter = this.ents.get(ev.src);
         if (shooter?.k === 'structure' && this.ents.get(ev.target)?.k === 'champion') this.towerShots.set(ev.src, { target: ev.target, until: performance.now() / 1000 + 1.4 });
+        if (shooter?.k === 'structure') this.shootieFires(shooter, this.ents.get(ev.target));
         // Melee champions' hits leave a small slash where they land.
         const src = this.ents.get(ev.src);
         const tgt = this.ents.get(ev.target);
@@ -565,6 +582,63 @@ export class GameClient {
     if (style === 'river') return; // the water has its own ripples
     const inBrush = this.visionGrid.brushAt({ x: s.x, y: s.y }) > 0;
     footstep(this.fx, s.x, s.y, s.r, inBrush ? 'brush' : style === 'lane' || style === 'base' ? 'dust' : 'grass');
+  }
+
+  /** A Shootie firing: a flash off its crystal (up on the raised top) and sparks toward its target. */
+  private shootieFires(s: EntitySnap, target: EntitySnap | undefined): void {
+    const x = s.x + HEIGHT.structure * (s.x - this.camera.x);
+    const y = s.y + HEIGHT.structure * (s.y - this.camera.y);
+    const color = s.tm === this.myTeam ? 0x7cc4ff : 0xff7a7a;
+    this.fx.flash(x, y, 34, color, 0.2, 0.9);
+    const a = target ? Math.atan2(target.y - y, target.x - x) : 0;
+    this.fx.particles.burst(8, { shape: 'spark', x, y, life: 0.25, size: 14, size2: 3, stretch: 0.05, color: 0xffffff, color2: color, drag: 0.05 }, [250, 500], a, 0.9);
+  }
+
+  /**
+   * The life of the bases: a horn and a glowing portal when a Chud wave marches out, Oakners springing
+   * back with leaves and light, and your Da Base's heart beating when it's in danger.
+   */
+  private baseLife(): void {
+    const latest = this.buffer.latest;
+    const next = latest?.nextWave;
+    if (next !== undefined && this.lastNextWave !== undefined && this.lastNextWave < 2 && next > this.lastNextWave + 5) this.waveMarches();
+    this.lastNextWave = next;
+    const now = performance.now() / 1000;
+    for (const s of this.ents.values()) {
+      if (s.k !== 'structure') continue;
+      if (s.dead) this.fallen.add(s.id);
+      else if (this.fallen.delete(s.id) && s.role === 'oakner') {
+        this.fx.pillar(s.x, s.y, 70, 0x8fd14f, 1.4);
+        this.fx.sigil(s.x, s.y, s.r * 2.2, 0x8fd14f, 1.4, 1.5);
+        this.fx.particles.burst(30, { shape: 'leaf', glow: false, x: s.x, y: s.y, life: 1.2, size: 16, size2: 10, color: 0x6fae2e, color2: 0x3d6a14, drag: 0.15, ay: 60, spin: 6 }, [150, 420]);
+        this.playCue({ name: 'magic', at: s, gain: 0.6 });
+      }
+      // Your own Da Base, badly hurt: its heartbeat, in time with the glow.
+      if (s.role === 'daBase' && s.tm === this.myTeam && !s.dead) {
+        const health = (s.hp ?? 1) / (s.mhp ?? 1);
+        if (health < 0.35 && now >= this.nextHeartbeat) {
+          this.sound.play('heartbeat', 0.5);
+          this.nextHeartbeat = now + 0.55 + health * 1.3;
+        }
+      }
+    }
+  }
+
+  /** A Chud wave marching out: a horn, and a glowing portal where each lane's Chuds climb out. */
+  private waveMarches(): void {
+    this.sound.play('horn', 0.35);
+    const halfW = this.app.screen.width / 2 / this.camera.zoom + 300;
+    const halfH = this.app.screen.height / 2 / this.camera.zoom + 300;
+    for (const team of [TEAM.blue, TEAM.red] as const) {
+      const color = team === this.myTeam ? 0x3d8bfd : 0xe5484d;
+      for (const lane of ['top', 'bot'] as const) {
+        const at = lanePath(MAP, team, lane)[0];
+        if (Math.abs(at.x - this.camera.x) > halfW || Math.abs(at.y - this.camera.y) > halfH) continue;
+        this.fx.sigil(at.x, at.y, 150, color, 1.8, 2);
+        this.fx.pillar(at.x, at.y, 60, color, 1.4);
+        this.fx.particles.burst(20, { shape: 'mote', x: at.x, y: at.y, life: 1, size: 10, size2: 2, color: 0xffffff, color2: color, drag: 0.4, ay: -80 }, [60, 200]);
+      }
+    }
   }
 
   /** A beam from each Shootie to the champion it's shooting: red when it's one of yours. */
