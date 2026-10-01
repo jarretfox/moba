@@ -141,6 +141,17 @@ export class FxLayer {
     }, 'top');
   }
 
+  /** A champion's last words: smaller than a callout, drifting up and away. */
+  quip(x: number, y: number, text: string, color: number): void {
+    const txt = new Text({ text, style: { fontFamily: FONT, fontSize: 20, fill: 0xffffff, stroke: { color, width: 5 }, letterSpacing: 1 } });
+    txt.anchor.set(0.5);
+    this.add(txt, 1.8, (t) => {
+      txt.position.set(x, y - t * 50);
+      txt.scale.set(t < 0.08 ? 0.6 + (t / 0.08) * 0.4 : 1);
+      txt.alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+    }, 'top');
+  }
+
   /**
    * A mark left on the ground that lasts a while: scorched earth, cracks, goo, or a faint royal seal.
    * Drawn once and slowly faded; the oldest go first if there are too many.

@@ -3,6 +3,7 @@ import type { ChampionId } from '../../shared/champions/types';
 import type { FxLayer } from './fx';
 import { iconTexture } from './icons';
 import type { Emit } from './particles';
+import { RECALLS } from './recalls';
 import { PALETTE } from './views';
 import { arc } from './draw';
 
@@ -744,6 +745,86 @@ export function castFlash(fx: FxLayer, caster: EntitySnap): void {
   fx.particles.burst(8, { shape: 'mote', x: caster.x, y: caster.y, life: 0.4, size: 8, size2: 2, color: 0xffffff, color2: color, drag: 0.1 }, [80, 180]);
 }
 
+/** Each champion goes down in character, on top of the usual death burst. */
+export function championDeath(fx: FxLayer, s: EntitySnap): void {
+  const p = fx.particles;
+  const { x, y, r } = s;
+  const top = y - r - 34;
+  switch (s.champ) {
+    case 'marksman':
+      // Jordini: the paperwork goes everywhere.
+      p.burst(18, { shape: 'shard', glow: false, x, y, life: 1.5, size: 13, size2: 11, color: 0xf6f0e0, drag: 0.15, ay: 80, spin: 5 }, [120, 300]);
+      fx.quip(x, top, 'Denied...', 0xc0392b);
+      return;
+    case 'barbarian':
+      // The Oak: shreds of tinfoil, and one last theory.
+      p.burst(12, { shape: 'shard', glow: false, x, y, life: 1, size: 10, size2: 8, color: 0xdfe6ee, drag: 0.1, ay: 300, spin: 10 }, [150, 320]);
+      fx.quip(x, top, 'IT’S A SETUP!', 0xff5a2a);
+      return;
+    case 'willmore':
+      // His sack bursts: junk everywhere, and his lid goes rolling.
+      p.burst(16, { shape: 'shard', glow: false, x, y, life: 0.9, size: 11, size2: 9, color: 0x9aa1ab, drag: 0.1, ay: 400, spin: 10 }, [160, 340]);
+      p.burst(8, { shape: 'shard', glow: false, x, y, life: 0.9, size: 9, size2: 7, color: 0x6b4a2b, drag: 0.1, ay: 400, spin: 10 }, [140, 300]);
+      rolling(fx, x, y, 0x9aa1ab, 0x5d636d);
+      return;
+    case 'hunnag':
+      // She comes apart in a cloud of spores.
+      for (let i = 0; i < 16; i++) p.emit({ shape: 'smoke', x: x + rand(-r, r), y: y + rand(-r, r), vy: rand(-50, -15), life: rand(1.2, 2), size: 26, size2: 70, color: 0xb8f07a, color2: 0x4f6b34, alpha: 0.45, fadeIn: 0.2 });
+      p.burst(20, { shape: 'mote', x, y, life: 1.4, size: 8, size2: 2, color: 0xe8ffc8, color2: 0x8fd14f, drag: 0.3 }, [60, 200]);
+      return;
+    case 'logan':
+      // Tufts of golden mane on the wind.
+      p.burst(16, { shape: 'leaf', glow: false, x, y, life: 1.5, size: 12, size2: 9, color: 0xd98a2b, drag: 0.2, ay: 40, spin: 4 }, [80, 220]);
+      fx.shockwave(x, y, r * 3, 0xffc04d, 0.6);
+      return;
+    case 'kingrix':
+      // His crown rolls away, and his coins spill.
+      rolling(fx, x, y, 0xffd166, 0xc0182b);
+      p.burst(14, { shape: 'star', x, y, life: 0.8, size: 12, size2: 3, color: 0xfff1b8, color2: 0xffd166, ay: 300, spin: 6 }, [120, 280]);
+      return;
+    case 'dongmaster':
+      p.burst(10, { shape: 'mote', glow: false, x, y, life: 0.7, size: 7, size2: 3, color: 0x9fd6ff, ay: 400 }, [120, 260]);
+      fx.quip(x, top, 'NOT THE JAW!', 0xe5484d);
+      return;
+    case 'dabber':
+      // Gone in a puff of smoke.
+      for (let i = 0; i < 22; i++) {
+        const a = Math.random() * Math.PI * 2;
+        p.emit({ shape: 'smoke', x: x + Math.cos(a) * r * 0.5, y: y + Math.sin(a) * r * 0.5, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90 - 20, drag: 0.5, life: rand(1.2, 2.2), size: 30, size2: 80, color: 0xc8d6b0, color2: 0x5a6a4a, alpha: 0.55, fadeIn: 0.1 });
+      }
+      return;
+    case 'paris':
+      // A last flourish of rose petals.
+      p.burst(20, { shape: 'leaf', glow: false, x, y, life: 1.6, size: 11, size2: 9, color: 0xe5484d, drag: 0.25, ay: 50, spin: 5 }, [80, 220]);
+      fx.quip(x, top, 'Adieu...', 0xff8fb0);
+      return;
+    case 'havarti':
+      // She melts into a puddle of fondue, feathers drifting down.
+      fx.scar(x, y, r * 1.6, 'goo', 0xc9a23a, 12);
+      p.burst(14, { shape: 'leaf', glow: false, x, y, life: 1.6, size: 12, size2: 10, color: 0xfff6dc, drag: 0.25, ay: 40, spin: 3 }, [80, 200]);
+      p.burst(12, { shape: 'mote', glow: false, x, y, life: 0.8, size: 9, size2: 4, color: 0xf3dc8a, ay: 300 }, [100, 240]);
+      return;
+    case 'daltonomo':
+      confetti(fx, x, y, 36, 300);
+      fx.quip(x, top, 'Ta-da...?', 0xb98be0);
+      return;
+  }
+}
+
+/** Something round (a trash-can lid, a crown) rolling off the way things do in cartoons. */
+function rolling(fx: FxLayer, x: number, y: number, color: number, trim: number): void {
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  fx.custom(1.4, (g, t) => {
+    const k = 1 - (1 - t) * (1 - t);
+    const cx = x + dir * 150 * k;
+    const cy = y + 20 * Math.sin(k * Math.PI);
+    const spin = dir * k * 9;
+    const a = t > 0.8 ? (1 - t) / 0.2 : 1;
+    g.circle(cx, cy, 13).fill({ color, alpha: a }).stroke({ width: 2.5, color: 0x0b0f14, alpha: a });
+    g.moveTo(cx, cy).lineTo(cx + Math.cos(spin) * 11, cy + Math.sin(spin) * 11).stroke({ width: 3, color: trim, alpha: a });
+  });
+}
+
 /** A burst of jester's confetti: little paper scraps in every color, fluttering down. */
 function confetti(fx: FxLayer, x: number, y: number, count: number, speed: number): void {
   const colors = [0xff6b8a, 0xffd166, 0x7fe3ff, 0x9be15d, 0xb98be0];
@@ -970,7 +1051,8 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
         for (let i = 0; i < fx.rate(40); i++) p.emit({ shape: 'glow', ...around(0.9), vx: rand(-10, 10), vy: rand(-110, -50), drag: 0.5, life: rand(0.4, 0.7), size: rand(20, 32), size2: 4, color: 0xfff6d0, color2: 0xffb070, alpha: 0.7 });
         break;
       case 'recall':
-        for (let i = 0; i < fx.rate(45); i++) {
+        if (s.champ) RECALLS[s.champ].fx?.(fx, s);
+        for (let i = 0; i < fx.rate(30); i++) {
           const a = Math.random() * Math.PI * 2;
           p.emit({ shape: i % 5 ? 'mote' : 'star', x: s.x + Math.cos(a) * r * 1.6, y: s.y + Math.sin(a) * r * 0.7, vy: rand(-160, -70), drag: 0.6, life: 0.8, size: 9, size2: 2, color: 0xe6f6ff, color2: 0x3d8bfd, spin: 4 });
         }

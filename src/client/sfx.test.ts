@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { EntitySnap } from '../shared/protocol';
-import { cueFor } from './sfx';
+import { CHAMPION_INFO } from '../shared/champions/registry';
+import type { ChampionId } from '../shared/champions/types';
+import { ATTACK_SOUND, CAST_SOUND, cueFor } from './sfx';
 
 const ME = 1;
 const snap = (id: number, extra: Partial<EntitySnap>): EntitySnap => ({ id, k: 'champion', tm: 1, x: 100 * id, y: 50, f: 0, r: 35, ...extra });
@@ -13,13 +15,20 @@ const ents = new Map<number, EntitySnap>([
 ]);
 
 describe('sound cues', () => {
-  it('tell melee swings from ranged shots, and keep Chuds quiet', () => {
-    expect(cueFor({ e: 'attack', src: 1, target: 2 }, ents, ME)).toMatchObject({ name: 'shoot' });
-    expect(cueFor({ e: 'attack', src: 2, target: 1 }, ents, ME)).toMatchObject({ name: 'swing', at: { x: 200, y: 50 } });
+  it('give every champion their own attack, and keep Chuds quiet', () => {
+    expect(cueFor({ e: 'attack', src: 1, target: 2 }, ents, ME)).toMatchObject({ name: 'atkBow' });
+    expect(cueFor({ e: 'attack', src: 2, target: 1 }, ents, ME)).toMatchObject({ name: 'atkAxe', at: { x: 200, y: 50 } });
     expect(cueFor({ e: 'attack', src: 4, target: 1 }, ents, ME)).toMatchObject({ name: 'tower' });
     const chud = cueFor({ e: 'attack', src: 3, target: 1 }, ents, ME)!;
     const champ = cueFor({ e: 'attack', src: 2, target: 1 }, ents, ME)!;
     expect(chud.gain).toBeLessThan(champ.gain / 2);
+  });
+
+  it('sound different for every champion, attacks and casts alike', () => {
+    const ids = Object.keys(CHAMPION_INFO) as ChampionId[];
+    expect(new Set(ids.map((id) => ATTACK_SOUND[id])).size).toBe(ids.length);
+    expect(new Set(ids.map((id) => CAST_SOUND[id])).size).toBe(ids.length);
+    expect(cueFor({ e: 'cast', src: 2, slot: 0, x: 0, y: 0 }, ents, ME)).toMatchObject({ name: CAST_SOUND.barbarian });
   });
 
   it('only play hits you deal or take, on champions', () => {

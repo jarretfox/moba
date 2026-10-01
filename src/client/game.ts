@@ -20,7 +20,7 @@ import { Hud } from './hud';
 import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
-import { brazierFire, footstep, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
+import { brazierFire, championDeath, footstep, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { paintLampGlows, propSpots } from './render/props';
 import { Lighting, nightAt, skyAt } from './render/lighting';
 import { WeatherView } from './render/weather';
@@ -620,6 +620,7 @@ export class GameClient {
         if (!t) return;
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
         else this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
+        if (t.k === 'champion') championDeath(this.fx, t);
         if (t.k === 'champion') this.speak(t, 'death', ev.id, true);
         if (ev.id === this.myId && !this.replay) {
           this.camera.shake(16);

@@ -10,6 +10,16 @@ export interface SoundCue {
   gain: number;
 }
 
+/** Each champion's basic attack, and the signature under their casts. */
+export const ATTACK_SOUND: Record<ChampionId, SoundName> = {
+  marksman: 'atkBow', barbarian: 'atkAxe', willmore: 'atkHook', hunnag: 'atkSpore', logan: 'atkClaw', kingrix: 'atkScepter',
+  dongmaster: 'atkPunch', dabber: 'atkRig', paris: 'atkEpee', havarti: 'atkCheese', daltonomo: 'atkDagger',
+};
+export const CAST_SOUND: Record<ChampionId, SoundName> = {
+  marksman: 'castStamp', barbarian: 'castDrum', willmore: 'castClank', hunnag: 'castBubble', logan: 'castGrowl', kingrix: 'castRoyal',
+  dongmaster: 'castGrunt', dabber: 'castFlick', paris: 'castFlourish', havarti: 'castAngelic', daltonomo: 'castJingle',
+};
+
 export const MELEE: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan', 'dongmaster', 'paris', 'daltonomo']);
 
 const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
@@ -80,7 +90,7 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       const at = { x: src.x, y: src.y };
       switch (src.k) {
         case 'champion':
-          return { name: src.champ && MELEE.has(src.champ) ? 'swing' : 'shoot', at, gain: src.id === myId ? 0.7 : 0.5 };
+          return { name: src.champ ? ATTACK_SOUND[src.champ] : 'swing', at, gain: src.id === myId ? 0.7 : 0.5 };
         case 'structure':
           return { name: 'tower', at, gain: 0.6 };
         case 'chud':
@@ -106,7 +116,7 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
     }
     case 'cast': {
       const src = ents.get(ev.src);
-      return src ? { name: 'cast', at: { x: src.x, y: src.y }, gain: src.id === myId ? 0.45 : 0.3 } : null;
+      return src ? { name: src.champ ? CAST_SOUND[src.champ] : 'cast', at: { x: src.x, y: src.y }, gain: src.id === myId ? 0.5 : 0.35 } : null;
     }
     case 'level':
       return ev.id === myId ? { name: 'levelUp', gain: 0.7 } : null;

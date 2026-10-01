@@ -5,7 +5,8 @@ import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
 import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
-import { championWeapon, drawChampionBase, drawChampionFigure, type Weapon } from './champions';
+import { championWeapon, drawChampionBase, drawChampionFigure, palette, type Weapon } from './champions';
+import { RECALLS, type RecallRoutine, type Say } from './recalls';
 import { arc } from './draw';
 
 export type Relation = 'self' | 'ally' | 'enemy' | 'neutral';
@@ -79,6 +80,13 @@ export class UnitView implements EntityView {
   private readonly champ: ChampionId | null = null;
   /** What this unit does when it attacks. */
   private readonly attackAnim: Anim | null = null;
+  /** Seconds into a recall, and the props its routine draws behind and in front of the figure. */
+  private recallT = 0;
+  private readonly recallUnder = new Graphics();
+  private readonly recallOver = new Container();
+  private readonly recallOverG = new Graphics();
+  private readonly recallTexts: Text[] = [];
+  private pal: Record<string, number> = {};
   /** Standing still (no walking, no moves): after a while a champion fidgets. */
   private idle = 0;
   private nextFidget = 4 + Math.random() * 4;
@@ -157,6 +165,7 @@ export class UnitView implements EntityView {
       drawChampionBase(this.body, r, color, relation === 'self');
       drawChampionFigure(this.figure, s.champ, r, s.skin ?? 0);
       this.champ = s.champ;
+      this.pal = palette(s.champ, s.skin ?? 0);
       this.weaponSpec = championWeapon(s.champ, s.skin ?? 0);
       this.attackAnim = ATTACK[s.champ];
     } else {
@@ -192,7 +201,8 @@ export class UnitView implements EntityView {
       this.shade.circle(-r * 0.3, -r * 0.35, r * 0.5).fill({ color: 0xffffff, alpha: 0.1 });
       this.shade.circle(r * 0.22, r * 0.28, r * 0.75).fill({ color: 0x000000, alpha: 0.1 });
     }
-    this.container.addChild(this.statusRing, this.body, ...this.feet, this.facing, this.shade, this.bars, this.label);
+    this.recallOver.addChild(this.recallOverG);
+    this.container.addChild(this.statusRing, this.recallUnder, this.body, ...this.feet, this.facing, this.shade, this.recallOver, this.bars, this.label);
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -246,6 +256,26 @@ export class UnitView implements EntityView {
         grow = sample(a.grow, t);
         stretch = sample(a.stretch, t);
       }
+    }
+
+    // Recalling: the champion's own routine (push-ups, a throne, a nap...).
+    if (this.champ && s.st?.includes('recall') && !s.dead) {
+      this.recallT += dt;
+      const routine = RECALLS[this.champ];
+      const pose = routine.pose(this.recallT);
+      // Eased in over the first moment, so whatever the routine starts with doesn't snap.
+      const ease = Math.min(1, this.recallT / 0.3);
+      turn += (pose.turn ?? 0) * ease;
+      reach += (pose.reach ?? 0) * ease;
+      twist += (pose.twist ?? 0) * ease;
+      lungeBy += (pose.lunge ?? 0) * ease;
+      grow += (pose.grow ?? 0) * ease;
+      this.drawRecall(routine);
+    } else if (this.recallT > 0) {
+      this.recallT = 0;
+      this.recallUnder.clear();
+      this.recallOverG.clear();
+      for (const t of this.recallTexts) t.visible = false;
     }
 
     // Walking: how far it moved since last frame drives the step cycle.
@@ -321,6 +351,33 @@ export class UnitView implements EntityView {
       this.statusKey = statusKey;
       this.drawStatus(s);
     }
+  }
+
+  private drawRecall(routine: RecallRoutine): void {
+    const t = this.recallT;
+    const r = this.baseR;
+    this.recallUnder.clear();
+    routine.under?.(this.recallUnder, t, r, this.pal);
+    this.recallOverG.clear();
+    let used = 0;
+    const say: Say = (text, x, y, size, color, alpha = 1) => {
+      let label = this.recallTexts[used];
+      if (!label) {
+        label = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 16, fill: 0xffffff, stroke: { color: 0x000000, width: 4 } } });
+        label.anchor.set(0.5);
+        this.recallTexts.push(label);
+        this.recallOver.addChild(label);
+      }
+      if (label.text !== text) label.text = text;
+      if (label.style.fontSize !== size) label.style.fontSize = size;
+      if (label.style.fill !== color) label.style.fill = color;
+      label.alpha = alpha;
+      label.position.set(x, y);
+      label.visible = true;
+      used++;
+    };
+    routine.over?.(this.recallOverG, t, r, this.pal, say);
+    for (let i = used; i < this.recallTexts.length; i++) this.recallTexts[i].visible = false;
   }
 
   onAttack(): void {

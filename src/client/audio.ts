@@ -44,6 +44,30 @@ export type SoundName =
   | 'deny'
   /** A bright little chime: awards on the end screen, a new tip. */
   | 'chime'
+  /** Each champion's own basic attack. */
+  | 'atkBow'
+  | 'atkAxe'
+  | 'atkHook'
+  | 'atkSpore'
+  | 'atkClaw'
+  | 'atkScepter'
+  | 'atkPunch'
+  | 'atkRig'
+  | 'atkEpee'
+  | 'atkCheese'
+  | 'atkDagger'
+  /** And a signature under every cast: a stamp, a drum, a clank, bubbles, a growl, a royal chime... */
+  | 'castStamp'
+  | 'castDrum'
+  | 'castClank'
+  | 'castBubble'
+  | 'castGrowl'
+  | 'castRoyal'
+  | 'castGrunt'
+  | 'castFlick'
+  | 'castFlourish'
+  | 'castAngelic'
+  | 'castJingle'
   /** Your Da Base in danger. */
   | 'heartbeat'
   /** The announcer: good news for your side, and bad. */
@@ -388,6 +412,92 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
   deny: (v, t) => {
     v.tone(t, 'square', 220, 190, 0.08, 0.16);
     v.tone(t + 0.1, 'square', 180, 140, 0.14, 0.16);
+  },
+  // ── Champions' attacks
+  atkBow: (v, t) => {
+    v.tone(t, 'triangle', 230, 170, 0.14, 0.28); // the twang
+    v.tone(t, 'sine', 460, 340, 0.08, 0.1);
+    v.noise(t + 0.01, 'bandpass', 3200, 1400, 0.09, 0.18, 2); // the arrow away
+  },
+  atkAxe: (v, t) => {
+    v.noise(t, 'bandpass', 900, 260, 0.2, 0.45, 1.2); // a heavy whoosh
+    v.tone(t + 0.12, 'sine', 115, 55, 0.16, 0.4); // and a thud
+  },
+  atkHook: (v, t) => {
+    for (let i = 0; i < 4; i++) v.noise(t + i * 0.035, 'bandpass', 4200 + i * 400, 3000, 0.035, 0.55, 4); // chain links
+    v.tone(t + 0.12, 'square', 620, 420, 0.05, 0.14);
+  },
+  atkSpore: (v, t) => {
+    v.tone(t, 'sine', 280, 720, 0.09, 0.25); // a wet pop
+    v.noise(t, 'lowpass', 1200, 400, 0.1, 0.14);
+  },
+  atkClaw: (v, t) => {
+    v.noise(t, 'bandpass', 2600, 800, 0.13, 0.35, 1.5); // the swipe
+    v.noise(t, 'lowpass', 320, 160, 0.16, 0.18); // a rumble in the chest
+  },
+  atkScepter: (v, t) => {
+    v.tone(t, 'sine', 880, 1320, 0.12, 0.16);
+    v.tone(t + 0.04, 'sine', 1320, 1760, 0.12, 0.1);
+  },
+  atkPunch: (v, t) => {
+    v.tone(t, 'sine', 150, 50, 0.13, 0.36); // a meaty thump
+    v.noise(t, 'lowpass', 900, 220, 0.08, 0.22);
+  },
+  atkRig: (v, t) => {
+    v.tone(t, 'sine', 2050, 2350, 0.06, 0.1); // the glass clinks
+    v.noise(t + 0.03, 'highpass', 2600, 1200, 0.22, 0.16); // and puffs
+  },
+  atkEpee: (v, t) => {
+    v.tone(t, 'sawtooth', 1800, 2700, 0.07, 0.05); // a thin zing
+    v.noise(t, 'highpass', 6200, 3000, 0.07, 0.24);
+  },
+  atkCheese: (v, t) => {
+    v.noise(t, 'bandpass', 1800, 700, 0.16, 0.3, 1.2);
+    v.noise(t, 'highpass', 4200, 3000, 0.28, 0.07); // the blade sizzles
+  },
+  atkDagger: (v, t) => {
+    v.noise(t, 'bandpass', 3200, 1500, 0.06, 0.55, 2);
+    v.tone(t + 0.03, 'sine', 2200, 2200, 0.12, 0.12); // his bells jingle
+    v.tone(t + 0.06, 'sine', 2900, 2900, 0.1, 0.09);
+  },
+  // ── Their signatures under every cast
+  castStamp: (v, t) => {
+    v.tone(t, 'sine', 125, 75, 0.1, 0.25); // a rubber stamp coming down
+    v.noise(t, 'lowpass', 1600, 300, 0.08, 0.16);
+  },
+  castDrum: (v, t) => {
+    v.tone(t, 'sine', 95, 50, 0.24, 0.28);
+    v.tone(t + 0.16, 'sine', 95, 50, 0.24, 0.23);
+  },
+  castClank: (v, t) => {
+    v.tone(t, 'square', 420, 380, 0.08, 0.15);
+    v.noise(t, 'bandpass', 2600, 2000, 0.16, 0.45, 4);
+  },
+  castBubble: (v, t) => {
+    for (let i = 0; i < 3; i++) v.tone(t + i * 0.05, 'sine', 300 + i * 120, 620 + i * 150, 0.05, 0.2);
+  },
+  castGrowl: (v, t) => {
+    v.noise(t, 'lowpass', 420, 200, 0.35, 0.7, 1, 0.04);
+    v.tone(t, 'sawtooth', 92, 72, 0.3, 0.14, 0.04);
+  },
+  castRoyal: (v, t) => {
+    [NOTE.C6, 1318.5, 1568].forEach((f, i) => v.tone(t + i * 0.05, 'sine', f, f, 0.2, 0.2));
+  },
+  castGrunt: (v, t) => v.vowel(t, 112, 88, 0.18, 0.75, [480, 1400], 0.01),
+  castFlick: (v, t) => {
+    v.noise(t, 'highpass', 5200, 3000, 0.03, 0.18); // the lighter's click
+    v.noise(t + 0.05, 'bandpass', 900, 400, 0.22, 0.14); // and the flame
+  },
+  castFlourish: (v, t) => {
+    v.noise(t, 'bandpass', 1000, 4200, 0.16, 0.55, 1.5); // a sweep of the blade
+    v.tone(t + 0.12, 'sine', 1500, 1500, 0.12, 0.18);
+  },
+  castAngelic: (v, t) => {
+    for (const [f, vol] of [[660, 0.12], [990, 0.08], [1320, 0.06]] as const) v.tone(t, 'sine', f, f, 0.42, vol, 0.06);
+  },
+  castJingle: (v, t) => {
+    [2200, 2900, 2550, 3100].forEach((f, i) => v.tone(t + i * 0.04, 'sine', f, f, 0.12, 0.14));
+    v.tone(t, 'sawtooth', 420, 390, 0.12, 0.09); // a little honk
   },
   chime: (v, t) => {
     [1318.5, 1760, 2093].forEach((f, i) => v.tone(t + i * 0.06, 'sine', f, f, 0.35, 0.12, 0.004));
