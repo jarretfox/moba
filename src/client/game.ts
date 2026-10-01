@@ -47,6 +47,7 @@ import { goldGraph, pickAwards, type GoldSample, type MatchTally } from './award
 import { Tips } from './hints';
 import { utterance, type VoiceMoment } from './voices';
 import { Shopkeeper, wickSpot } from './render/shopkeeper';
+import { buildLandmarks } from './render/landmarks';
 import { WickMood, wickLine, type WickMoment } from './wick';
 import { cantBuy, itemChanges, statGains } from './shop';
 import { ITEMS, sellPrice, type ItemId } from '../shared/items';
@@ -247,6 +248,11 @@ export class GameClient {
       this.lighting.addLight(wick.light);
       return wick;
     });
+    // Story landmarks: flat parts with the traps and zones, tall parts raised with the wall tops.
+    const landmarks = buildLandmarks(MAP);
+    this.underLayer.addChildAt(landmarks.flat, 0);
+    this.wallTops.addChild(landmarks.tall);
+    for (const light of landmarks.lights) this.lighting.addLight(light);
     paintLampGlows(this.lamps, propSpots(MAP));
     this.lamps.blendMode = 'add';
     this.emissive.addChild(this.lamps, ...this.wicks.map((w) => w.glow), this.beams, this.fx.container, this.bubbles.container);
