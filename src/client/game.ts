@@ -45,6 +45,7 @@ import { INTRO_TIME, showIntro } from './intro';
 import { Spectator } from './spectate';
 import { goldGraph, pickAwards, type GoldSample, type MatchTally } from './awards';
 import { Tips } from './hints';
+import { utterance, type VoiceMoment } from './voices';
 import { Shopkeeper, wickSpot } from './render/shopkeeper';
 import { WickMood, wickLine, type WickMoment } from './wick';
 import { cantBuy, itemChanges, statGains } from './shop';
@@ -155,6 +156,8 @@ export class GameClient {
   /** First-match tips, and what they watch for: have you moved, cast, or opened the shop yet. */
   private readonly tips: Tips;
   private moved = false;
+  /** When each champion last spoke, so grunts don't pile up. */
+  private readonly spokeAt = new Map<number, number>();
   private casts = 0;
   private shopOpened = false;
   /** The VS screen has had its turn (or there was nobody to face). */
@@ -542,6 +545,7 @@ export class GameClient {
           // you're in it, the effects crawl for a beat.
           if (heavy && (hit.k === 'champion' || hit.k === 'monster')) {
             const big = ev.amount >= (hit.mhp ?? 1000) * 0.2;
+            if (big && hit.k === 'champion') this.speak(hit, 'hurt', ev.amount);
             const hold = big ? 0.12 : 0.075;
             this.views.get(ev.target)?.freeze?.(hold, big ? 5 : 3);
             if (from && Math.hypot(from.x - hit.x, from.y - hit.y) < 450) this.views.get(from.id)?.freeze?.(hold * 0.8, 0);
@@ -586,6 +590,7 @@ export class GameClient {
         if (!t) return;
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
         else this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
+        if (t.k === 'champion') this.speak(t, 'death', ev.id, true);
         if (ev.id === this.myId) {
           this.camera.shake(16);
           this.hud.showRecap(this.damageLog.recap(performance.now() / 1000));
@@ -620,6 +625,7 @@ export class GameClient {
         if (!u?.champ) return;
         const color = u.id === this.myId ? 0xe8c46a : u.tm === this.myTeam ? PALETTE.ally : PALETTE.enemy;
         this.bubbles.say(u.id, emoteLine(u.champ, ev.kind, ev.n, ev.vs), color);
+        this.speak(u, ev.kind, ev.n, true);
         (this.views.get(u.id) as UnitView | undefined)?.play?.(EMOTE_ANIM[ev.kind]);
         return;
       }
@@ -645,6 +651,7 @@ export class GameClient {
         if (ev.src === this.myId) this.casts++;
         if (caster?.champ) this.damageLog.noteCast(ev.src, CHAMPION_INFO[caster.champ].abilities[ev.slot].name, performance.now() / 1000);
         if (caster?.champ && ev.slot === 3) {
+          this.speak(caster, 'ult', 0, true);
           const name = CHAMPION_INFO[caster.champ].abilities[3].name.toUpperCase();
           this.fx.callout(caster.x, caster.y - caster.r - 70, name.endsWith('!') ? name : `${name}!`, CAST_COLORS[caster.champ]);
           this.playCue({ name: 'ultimate', at: caster, gain: 0.8 });
@@ -1042,6 +1049,22 @@ export class GameClient {
   }
 
   /** Plays a cue where it happened: quieter the further it is from the middle of the screen, panned left or right. */
+  /**
+   * A champion says something out loud, from where they stand. Grunts wait their turn (a few seconds
+   * apart); emotes, ultimates and deaths always speak up.
+   */
+  private speak(u: EntitySnap, moment: VoiceMoment, n: number, always = false): void {
+    if (!u.champ) return;
+    const t = performance.now() / 1000;
+    if (!always && t - (this.spokeAt.get(u.id) ?? -Infinity) < 3) return;
+    this.spokeAt.set(u.id, t);
+    const halfView = this.app.screen.width / 2 / this.camera.zoom;
+    const d = Math.hypot(u.x - this.camera.x, u.y - this.camera.y);
+    const falloff = Math.max(0, Math.min(1, 1 - (d - halfView * 0.6) / (halfView * 1.4)));
+    const pan = Math.max(-1, Math.min(1, (u.x - this.camera.x) / halfView)) * 0.6;
+    this.sound.speak(utterance(u.champ, moment, n), (u.id === this.myId ? 0.75 : 0.6) * falloff, pan);
+  }
+
   private playCue(cue: SoundCue): void {
     if (!cue.at) return this.sound.play(cue.name, cue.gain);
     const halfView = this.app.screen.width / 2 / this.camera.zoom;

@@ -3,6 +3,7 @@
 
 import { Music, Soundscape } from './music';
 import { onSettings, settings } from './settings';
+import type { Syllable } from './voices';
 
 export type SoundName =
   | 'swing'
@@ -151,6 +152,30 @@ export class Sound {
   /** How much jungle and river is around the camera, 0–1 each: crickets and water. */
   setPlace(jungle: number, river: number): void {
     this.scape?.setPlace(jungle, river);
+  }
+
+  /** A champion talking (see voices.ts): each syllable a buzz shaped into its vowel, with breath and growl. */
+  speak(syllables: readonly Syllable[], gain = 1, pan = 0): void {
+    gain *= settings.effects;
+    if (this.muted || gain < 0.03 || !syllables.length) return;
+    const ctx = this.ensure();
+    if (!ctx || ctx.state !== 'running') return;
+    const now = ctx.currentTime;
+    this.recent = this.recent.filter((t) => now - t < 0.25);
+    if (this.recent.length >= VOICE_CAP) return;
+    this.recent.push(now);
+    const out = ctx.createGain();
+    out.gain.value = gain;
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+    out.connect(panner).connect(this.master!);
+    const v = new Voice(ctx, out, this.noise!);
+    for (const s of syllables) {
+      const at = now + s.at;
+      if (s.breath > 0) v.noise(at, 'bandpass', 1800, 1200, 0.06, 0.1 * s.breath, 1.2);
+      v.vowel(at + (s.breath > 0 ? 0.03 : 0), s.f0, s.f1, s.dur, s.vol, s.formants, 0.015);
+      if (s.growl > 0) v.noise(at, 'lowpass', 520, 240, s.dur, 0.45 * s.growl * s.vol, 0.8, 0.02);
+    }
   }
 
   /** Play a sound at `gain` (0..1), panned left/right by `pan` (-1..1). */
