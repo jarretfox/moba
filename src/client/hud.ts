@@ -570,6 +570,11 @@ export class Hud {
     }
   }
 
+  /** What you've bought, worn by your portrait. */
+  wear(items: readonly ItemId[]): void {
+    this.live.wear(items);
+  }
+
   /** Your portrait grins: you got a kill, or let off your ultimate. */
   smile(): void {
     this.live.smile();

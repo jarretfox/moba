@@ -463,6 +463,11 @@ export class GameClient {
     else if (me && latest?.me && !this.introUp) this.updateTips(me, latest.me, latest.time);
     if (latest?.scores && latest.scores !== this.lastScores) {
       this.lastScores = latest.scores;
+      // What everyone's bought shows on them.
+      for (const row of latest.scores) {
+        (this.views.get(row.id) as UnitView | undefined)?.wear?.(row.items);
+        if (row.id === this.myId) this.hud.wear(row.items);
+      }
       this.sampleGold(latest.scores, latest.time, !!latest.winner);
     }
     if (latest?.winner) {
@@ -573,6 +578,7 @@ export class GameClient {
       default:
         view = new UnitView(s, rel);
         layer = this.unitLayer;
+        if (s.k === 'champion') (view as UnitView).wear(this.lastScores?.find((row) => row.id === s.id)?.items ?? []);
         // Fresh Chuds pop out of the portal near their base.
         if (s.k === 'chud' && (['top', 'bot'] as const).some((lane) => {
           const at = lanePath(MAP, s.tm as 1 | 2, lane)[0];

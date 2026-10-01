@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChampionId } from '../../shared/champions/types';
+import { ITEM_IDS } from '../../shared/items';
 import { Beast } from './beasts';
 import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
 import { SKINS, palette } from './champions';
+import type { GearLayers } from './gear';
 import { Rig, type Figure, type RigInput } from './rig';
 import { chestHeight, standHeight } from './stature';
 
@@ -194,5 +196,41 @@ describe('champion rigs', () => {
     expect(body.y).toBeCloseTo(0, 6);
     run(rig, { air: 1 }, 1);
     expect(body.y).toBeLessThan(-0.5 * R);
+  });
+  it('wear what they have bought, following the body, and take it off when it is sold', () => {
+    const rig = new Rig(BUILDS.barbarian, R, palette('barbarian'));
+    const gear = () => (rig as unknown as { gear: GearLayers | null }).gear;
+    const drawn = (g: { context: { instructions: unknown[] } }) => g.context.instructions.length > 0;
+    run(rig, {}, 2);
+    // Nothing bought, nothing made.
+    expect(gear()).toBeNull();
+    rig.setGear(['plate', 'treads', 'reaver']);
+    const g = gear()!;
+    expect([drawn(g.torso), drawn(g.cap), drawn(g.footF), drawn(g.footB), drawn(g.back), drawn(g.arm)]).toEqual([true, true, true, true, false, false]);
+    // Bloodreaver stains the axe.
+    expect(rig.part.weapon.tint).not.toBe(0xffffff);
+    // Walking, the boots stay on the feet and the plate on the chest.
+    run(rig, { speed: 220 }, 20);
+    expect(g.footF.position.x).toBeCloseTo(rig.part.frontFoot.position.x, 6);
+    expect(g.footB.position.y).toBeCloseTo(rig.part.backFoot.position.y, 6);
+    expect(g.torso.rotation).toBeCloseTo(rig.part.torso.rotation, 6);
+    // Sold: gone again.
+    rig.setGear([]);
+    expect(Object.values(g).some(drawn)).toBe(false);
+    expect(rig.part.weapon.tint).toBe(0xffffff);
+    // Fighting with fists, Bloodreaver stains the hands instead.
+    const brawler = new Rig(BUILDS.dongmaster, R, palette('dongmaster'));
+    brawler.setGear(['reaver']);
+    expect(brawler.part.frontHand.tint).not.toBe(0xffffff);
+  });
+
+  it('show every item somewhere on the figure', () => {
+    for (const id of ITEM_IDS) {
+      if (id === 'reaver') continue;
+      const rig = new Rig(BUILDS.paris, R, palette('paris'));
+      rig.setGear([id]);
+      const g = (rig as unknown as { gear: GearLayers }).gear;
+      expect(Object.values(g).some((l) => l.context.instructions.length > 0)).toBe(true);
+    }
   });
 });

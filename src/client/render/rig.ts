@@ -1,4 +1,6 @@
 import { Container, Graphics, GraphicsContext } from 'pixi.js';
+import type { ItemId } from '../../shared/items';
+import { drawGear, type GearLayers } from './gear';
 import { inkOf, shade, type Pts } from './organic';
 
 // Upright figures with joints. A champion stands on the spot the game says they're at, seen from the side
@@ -263,6 +265,9 @@ export class Rig implements Figure {
   private lastTip: [number, number] | null = null;
   private streaking = false;
   private loose: Loose[] = [];
+  /** What they've bought, worn on the figure (made the first time they buy something). */
+  private gear: GearLayers | null = null;
+  private gearKey = '';
 
   /**
    * `share` names a look many units have in common (a Chud of one team and size): those draw their parts
@@ -481,6 +486,20 @@ export class Rig implements Figure {
       o.rotation = build.offhand.hold - armSwing * sin * 0.5;
     }
     this.updateStreak(hx, hy, tipAngle, dt);
+    if (this.gear) {
+      const follow = (g: Graphics, on: Graphics) => {
+        g.position.copyFrom(on.position);
+        g.rotation = on.rotation;
+        g.scale.copyFrom(on.scale);
+        g.visible = on.visible;
+      };
+      follow(this.gear.torso, this.part.torso);
+      follow(this.gear.back, this.part.torso);
+      follow(this.gear.cap, this.part.cap);
+      follow(this.gear.arm, this.part.frontFore);
+      follow(this.gear.footF, this.part.frontFoot);
+      follow(this.gear.footB, this.part.backFoot);
+    }
     this.updateFace(input, dt, dead > 0, pose);
     this.updateLoose(dead, dt);
   }
@@ -547,6 +566,7 @@ export class Rig implements Figure {
         this.z.updateLocalTransform();
         part.updateLocalTransform();
         const g = new Graphics(part.context);
+        g.tint = part.tint;
         g.setFromMatrix(this.z.localTransform.clone().append(part.localTransform));
         this.root.addChild(g);
         part.visible = false;
@@ -591,6 +611,29 @@ export class Rig implements Figure {
         }
       }
     }
+  }
+
+  /**
+   * Shows what they've bought on the figure: a breastplate, a shield or a drum on the back, heavy boots,
+   * a lantern at the belt (see gear.ts). Bloodreaver stains the weapon (or the fists) red.
+   */
+  setGear(items: readonly ItemId[]): void {
+    const key = [...new Set(items)].sort().join(',');
+    if (key === this.gearKey) return;
+    this.gearKey = key;
+    if (!this.gear) {
+      const at = (after: PartName, before = false) => {
+        const g = new Graphics();
+        this.z.addChildAt(g, this.z.getChildIndex(this.part[after]) + (before ? 0 : 1));
+        return g;
+      };
+      // Each just over the part it's worn on (the back piece just behind the body).
+      this.gear = { back: at('backUpper', true), torso: at('torso'), cap: at('cap'), arm: at('frontFore'), footF: at('frontFoot'), footB: at('backFoot') };
+    }
+    drawGear(this.gear, items, this.r, this.build.size);
+    const red = items.includes('reaver') ? 0xff8a80 : 0xffffff;
+    if (this.build.weapon) this.part.weapon.tint = red;
+    else this.part.frontHand.tint = this.part.backHand.tint = red;
   }
 
   private place(name: PartName, x: number, y: number, rotation: number): void {

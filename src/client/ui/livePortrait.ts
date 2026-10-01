@@ -1,5 +1,6 @@
 import { Application } from 'pixi.js';
 import type { ChampionId } from '../../shared/champions/types';
+import type { ItemId } from '../../shared/items';
 import { BUILDS } from '../render/builds';
 import { palette } from '../render/champions';
 import { Rig, type Expression } from '../render/rig';
@@ -27,6 +28,7 @@ export class LivePortrait {
   private mood: PortraitMood = { health: 1, dead: false, recalling: false };
   private grin = 0;
   private clock = 0;
+  private items: readonly ItemId[] = [];
 
   constructor() {
     this.canvas.className = 'live';
@@ -50,7 +52,14 @@ export class LivePortrait {
     rig.root.scale.set(k);
     rig.root.position.set(SIZE / 2 - SIZE * 0.06, 3 + rig.height * k);
     this.app.stage.addChild(rig.root);
+    rig.setGear(this.items);
     this.rig = rig;
+  }
+
+  /** What you've bought, worn in the portrait too. */
+  wear(items: readonly ItemId[]): void {
+    this.items = items;
+    this.rig?.setGear(items);
   }
 
   set(mood: PortraitMood): void {

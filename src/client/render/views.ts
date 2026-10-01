@@ -3,6 +3,7 @@ import type { FigureLight } from './lighting';
 import { mix } from './organic';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { EntitySnap, StatusKind } from '../../shared/protocol';
+import type { ItemId } from '../../shared/items';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
@@ -544,6 +545,11 @@ export class UnitView implements EntityView {
     if (this.champ) this.anim = { a: castAnim(this.champ, slot), t: 0 };
     this.lastCast = this.clock;
     if (slot === 3) this.smile(1.2);
+  }
+
+  /** What they've bought, shown on the figure. */
+  wear(items: readonly ItemId[]): void {
+    if (this.rig instanceof Rig) this.rig.setGear(items);
   }
 
   /** A grin: a kill, a laugh, a cheer. */
