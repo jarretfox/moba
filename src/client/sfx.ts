@@ -10,7 +10,7 @@ export interface SoundCue {
   gain: number;
 }
 
-export const MELEE: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan', 'dongmaster', 'paris']);
+export const MELEE: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan', 'dongmaster', 'paris', 'daltonomo']);
 
 const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   aimLine: ['warn', 0.6],
@@ -41,6 +41,12 @@ const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   summon: ['cast', 0.7],
   kneel: ['boom', 0.5],
   decree: ['kill', 0.6],
+  nowYouSeeMe: ['whoosh', 0.5],
+  backstab: ['hit', 0.7],
+  jackbox: ['snap', 0.9],
+  boxShot: ['shoot', 0.35],
+  doubleAct: ['magic', 0.8],
+  cloneBoom: ['boom', 0.9],
   curdle: ['hit', 0.6],
   fondue: ['magic', 0.5],
   rindBlade: ['snap', 0.4],

@@ -164,9 +164,10 @@ Mechanics that come from this:
 - **Dongmaster** turned up one morning doing pull-ups on the Warden's chains, and nobody has seen him skip a day since. The Barbarian calls him a show-off; they trade words whenever they meet.
 - **The Dark Dabber** is the Rat King's runaway son. He found HunnaG's rot garden in the Deep, ate everything in it, and came back up giggling, red-eyed and wrapped in smoke. He has been trying to get a bite of Havarti for years.
 - **Master Paris** taught King Rix's guard to fence and the king himself to lose gracefully (it didn't take). When Rix caged a lion for the court's amusement, Paris flicked his gloves onto the throne and walked out. Rix has never forgiven the fencing teacher.
+- **Daltonomo** was King Rix's court jester, right up until he laughed at the wrong moment. Rix had him thrown into the Deep; a week later he climbed back out, still laughing, with a box nobody should open. Since then there have always been at least two of him. Jordini finds him unbearable.
 - **Havarti** was a wheel of cheese left in the deepest royal cellar six hundred years ago. Around year four hundred it began to glow; by six hundred it had wings. She guards the jungle against her oldest enemies: mold, rot and rats (HunnaG and the Dark Dabber know who she means).
 
-These rivalries are flavor for now (the match intro and kill quips), not mechanics: Dongmaster vs The Oak, Paris vs King Rix, Havarti vs the Dark Dabber and HunnaG, and Jordini vs the Chuds (Willmore and HunnaG).
+These rivalries are flavor for now (the match intro and kill quips), not mechanics: Dongmaster vs The Oak, Paris vs King Rix, Havarti vs the Dark Dabber and HunnaG, Jordini vs the Chuds (Willmore and HunnaG), and Daltonomo vs King Rix and Jordini.
 
 ## Champions
 
@@ -182,6 +183,7 @@ These rivalries are flavor for now (the match intro and kill quips), not mechani
 | Dark Dabber | Ranged carry (stealth, stacking poison) | Ranged | Physical and true | Mana |
 | Master Paris | Melee carry (resets) | Melee | Physical and true | Mana |
 | Havarti | Grows into a ranged carry, protects allies | Melee, then ranged | Mixed | Mana |
+| Daltonomo | Assassin and trickster | Melee | Physical, magic boxes | Mana |
 
 Jordini and The Oak keep the kits first built as "Marksman" and "Barbarian" (the code still calls them `marksman` and `barbarian`); only the names, lore, lines and ability names changed.
 
@@ -283,6 +285,15 @@ The numbers live at the top of `src/shared/champions/havarti.ts`. Kayle-style. I
 - **W, Fondue Blessing:** heals her and the most hurt allied champion within 900, and both move faster for 2s.
 - **E, Rind Blade:** her attacks add magic damage. Cast: the next attack within 4s reaches 200 further and bites for a share of the target's missing health (capped against non-champions).
 - **R, Divine Fondue:** an allied champion (or herself, if nobody's where she aimed) can't be hurt for 2–3s, then molten cheese erupts around them.
+
+### Daltonomo ✅ implemented
+
+The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style. A `vanished` status (full invisibility, only Bleed gives him away) is new; sprung traps can now be seen by the enemy (`revealed` on a trap).
+- **Passive, Punchline:** basic attacks from behind the target deal bonus physical damage.
+- **Q, Now You See Me:** blinks up to 400 and turns invisible for 2.5–3.25s. Attacking or casting reveals him; the next attack within 3.5s always counts as from behind and hits harder.
+- **W, Surprise Box:** up to 2 hidden boxes (40s). When an enemy comes within 300 one springs: everything nearby is feared, and it shoots the nearest enemy (champions first) every 0.8s for 5s.
+- **E, Juggling Knives:** his attacks slow. Cast: a thrown knife at an enemy, 50% more below 30% health, slowing.
+- **R, Double Act:** he blinks out of reach for a moment and a double appears beside him for 18s. To the enemy it looks exactly like him (it's a guard-like unit that sends itself as him). It fights what he fights, deals half his damage, takes 50% more, and explodes when it dies or the act ends.
 
 ## Art and sound
 

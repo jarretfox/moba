@@ -261,4 +261,24 @@ const havarti: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris, havarti };
+const daltonomo: BotProfile = {
+  skillOrder: [2, 1, 0],
+  build: ['shiv', 'treads', 'fang', 'reaver', 'striders', 'link'],
+  fight(ctx, foe) {
+    const { me } = ctx;
+    const d = dist(me.pos, foe.pos);
+    if (ready(ctx, 3) && d < 500 && foe.kind === 'champion') return cast(3, me.pos);
+    // Blink in behind them.
+    if (ready(ctx, 0) && d > 200 && d < 650) return cast(0, add(foe.pos, scale({ x: Math.cos(foe.facing), y: Math.sin(foe.facing) }, -120)));
+    if (ready(ctx, 2) && d < 625) return cast(2, foe.pos);
+    if (ready(ctx, 1) && d < 350) return cast(1, lerpVec(me.pos, foe.pos, 0.5));
+    return null;
+  },
+  escape(ctx, threat) {
+    const { me, home } = ctx;
+    if (ready(ctx, 1) && dist(me.pos, threat.pos) < 400) return cast(1, me.pos);
+    return ready(ctx, 0) ? cast(0, add(me.pos, scale(dirTo(me.pos, home), 400))) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris, havarti, daltonomo };

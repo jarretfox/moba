@@ -37,6 +37,24 @@ const RIVALRIES: { pair: [ChampionId, ChampionId]; lines: [IntroLine, IntroLine]
     ],
   },
   {
+    pair: ['daltonomo', 'kingrix'],
+    lines: [
+      [
+        { champ: 'kingrix', text: 'I had you thrown into the Deep.' },
+        { champ: 'daltonomo', text: 'And I brought back souvenirs, Your Majesty!' },
+      ],
+    ],
+  },
+  {
+    pair: ['daltonomo', 'marksman'],
+    lines: [
+      [
+        { champ: 'marksman', text: 'No running, no jumping, no clowning.' },
+        { champ: 'daltonomo', text: 'Three out of three, then!' },
+      ],
+    ],
+  },
+  {
     pair: ['marksman', 'willmore'],
     lines: [
       [

@@ -21,6 +21,7 @@ const CLASSIC: Record<ChampionId, Palette> = {
   hunnag: { body: CHUD_SKIN, cap: 0x7a3fb0, spots: 0xe8d7ff, eyes: 0xb8f07a, staff: 0x6b4a2b, orb: 0xb8f07a, orbGlow: 0x8fd14f, orbEdge: 0x3d6a14 },
   logan: { mane: 0xd98a2b, maneEdge: 0x8a4f12, face: 0xe8a33d, muzzle: 0xf2c27a, collar: 0x8a9099, eyes: 0x2e1a08, nose: 0x5a2e12, paw: 0xe8a33d },
   kingrix: { cape: 0xa8232e, ermine: 0xf2f2f2, spots: 0x111111, skin: SKIN, crown: 0xffd166, jewelA: 0xc0182b, jewelB: 0x3d8bfd, scepter: 0xd9a52b, orb: 0xffd166, gem: 0xc0182b },
+  daltonomo: { tunicA: 0x7a3fb0, tunicB: 0xffd166, hatA: 0x7a3fb0, hatB: 0xffd166, bell: 0xffe29a, face: 0xf6f0e8, grin: 0xc0182b, eye: 0x1a1a22, ruff: 0xffffff, blade: 0xd8dde6, hilt: 0x5a3a1a },
   havarti: { wheel: 0xf3dc8a, rind: 0xd9a52b, holes: 0xd8b860, wing: 0xfff6dc, wingEdge: 0xd8c48a, halo: 0xffe29a, face: 0xfbe9b7, eyes: 0x5a3a1a, blade: 0xffe9a8, hilt: 0x8a6a1e, flame: 0xffd166 },
   paris: { jacket: 0xf2efe6, jacketShade: 0xc9c3b4, beret: 0x1d2b4a, stem: 0x0f1a30, scarf: 0xc0182b, skin: SKIN, mustache: 0x2a1a10, blade: 0xd8dde6, guard: 0xd9a52b, grip: 0x2a1a10 },
   dabber: { fur: 0x7d8a6a, hood: 0x2f4a2a, hoodEdge: 0x1f3320, eyes: 0xff4a4a, ear: 0xd89a9a, tail: 0xd89a9a, nose: 0xe07a8a, rig: 0x9fe6c8, rigEdge: 0x3d6a5a, smoke: 0xb8f07a, wood: 0x5a3a1a, string: 0xe8e0cc },
@@ -54,6 +55,11 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
     { name: 'White Lion', colors: { mane: 0xf2efe6, maneEdge: 0x9a9488, face: 0xe8e2d4, muzzle: 0xffffff, collar: 0xffd166, paw: 0xe8e2d4, eyes: 0x3d6a8a } },
     { name: 'Shadow Lion', colors: { mane: 0x2a2430, maneEdge: 0x0e0c12, face: 0x5a4a3a, muzzle: 0x8a7a6a, collar: 0xb98be0, paw: 0x5a4a3a, eyes: 0xffd166, nose: 0x1a1410 } },
   ],
+  daltonomo: [
+    { name: 'Court Jester', colors: {} },
+    { name: 'Midnight Mummer', colors: { tunicA: 0x1c1c22, tunicB: 0xc0182b, hatA: 0x1c1c22, hatB: 0xc0182b, bell: 0xc9d1dc, face: 0xe8e8e8, grin: 0x111111 } },
+    { name: 'Pastel Fool', colors: { tunicA: 0xffb6d5, tunicB: 0x9fe6c8, hatA: 0xffb6d5, hatB: 0x9fe6c8, bell: 0xffffff, grin: 0xff6b8a } },
+  ],
   havarti: [
     { name: 'The Aged One', colors: {} },
     { name: 'Blue Cheese', colors: { wheel: 0xe6ecef, rind: 0x9fb4c8, holes: 0x5a7aa8, wing: 0xe6f4ff, wingEdge: 0x9fb4c8, halo: 0xbfe0ff, blade: 0xd8ecff, flame: 0x8fd0ff } },
@@ -82,7 +88,7 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
 };
 
 /** The color that sums up each look, for the swatches in champion select. */
-const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret', havarti: 'wheel' };
+const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret', havarti: 'wheel', daltonomo: 'hatA' };
 
 export function palette(id: ChampionId, skin = 0): Palette {
   return { ...CLASSIC[id], ...(SKINS[id][skin]?.colors ?? {}) };
@@ -174,6 +180,18 @@ const WEAPONS: Record<ChampionId, (p: Palette) => Weapon> = {
       for (const side of [-1, 1]) {
         g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(p.paw).stroke({ width: 1.5, color: p.maneEdge });
         for (let i = -1; i <= 1; i++) g.circle(0.28 * r, side * 0.46 * r + i * 0.08 * r, 0.045 * r).fill(p.maneEdge);
+      }
+    },
+  }),
+  daltonomo: (p) => ({
+    // A dagger in each hand.
+    pivot: [0.5, 0],
+    draw(g, r) {
+      for (const side of [-1, 1]) {
+        const y = side * 0.45 * r;
+        g.rect(-0.14 * r, y - 0.04 * r, 0.12 * r, 0.08 * r).fill(p.hilt).stroke({ width: 1.2, color: OUTLINE.color });
+        g.moveTo(0, y - 0.1 * r).lineTo(0, y + 0.1 * r).stroke({ width: 3, color: p.bell });
+        g.poly([0.02 * r, y - 0.05 * r, 0.42 * r, y, 0.02 * r, y + 0.05 * r]).fill(p.blade).stroke({ width: 1.2, color: OUTLINE.color });
       }
     },
   }),
@@ -293,6 +311,36 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number, p: Palette) => void> 
     g.ellipse(0.35 * r, 0, 0.42 * r, 0.32 * r).fill(p.muzzle).stroke({ width: 1.5, color: p.maneEdge }); // muzzle
     for (const side of [-1, 1]) g.circle(0.2 * r, side * 0.2 * r, 0.06 * r).fill(p.eyes); // eyes
     g.poly([0.62 * r, -0.1 * r, 0.75 * r, 0, 0.62 * r, 0.1 * r]).fill(p.nose); // nose
+  },
+
+  /** A jester from above: a three-pointed belled hat, a white grinning mask, a ruff, and a harlequin tunic. */
+  daltonomo(g, r, p) {
+    g.ellipse(-0.1 * r, 0, 0.7 * r, 0.85 * r).fill(p.tunicA).stroke(OUTLINE); // tunic
+    for (const [x, y] of [[-0.35, -0.38], [-0.35, 0.38], [-0.05, 0], [-0.62, 0]]) {
+      const cx = x * r;
+      const cy = y * r;
+      const s = 0.17 * r;
+      g.poly([cx - s, cy, cx, cy - s, cx + s, cy, cx, cy + s]).fill(p.tunicB); // harlequin diamonds
+    }
+    const ruff: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const a = (i / 20) * Math.PI * 2;
+      const rr = i % 2 ? 0.32 * r : 0.43 * r;
+      ruff.push(0.1 * r + Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    g.poly(ruff).fill(p.ruff).stroke({ width: 1.5, color: OUTLINE.color }); // ruff
+    // The hat's three floppy points, falling back and to the sides, each with a bell.
+    for (const [a, color] of [[Math.PI, p.hatB], [Math.PI - 1, p.hatA], [Math.PI + 1, p.hatA]] as const) {
+      const tipX = 0.1 * r + Math.cos(a) * 0.95 * r;
+      const tipY = Math.sin(a) * 0.95 * r;
+      const nx = -Math.sin(a) * 0.17 * r;
+      const ny = Math.cos(a) * 0.17 * r;
+      g.moveTo(0.1 * r + nx, ny).quadraticCurveTo(0.1 * r + Math.cos(a) * 0.6 * r + nx * 1.4, Math.sin(a) * 0.6 * r + ny * 1.4, tipX, tipY).quadraticCurveTo(0.1 * r + Math.cos(a) * 0.6 * r - nx * 1.4, Math.sin(a) * 0.6 * r - ny * 1.4, 0.1 * r - nx, -ny).closePath().fill(color).stroke(OUTLINE);
+      g.circle(tipX, tipY, 0.09 * r).fill(p.bell).stroke({ width: 1.5, color: OUTLINE.color });
+    }
+    g.circle(0.12 * r, 0, 0.27 * r).fill(p.face).stroke(OUTLINE); // mask
+    arc(g, 0.16 * r, 0, 0.17 * r, -1.1, 1.1).stroke({ width: 2.5, color: p.grin }); // the grin
+    for (const side of [-1, 1]) g.poly([0.18 * r, side * 0.1 * r - 0.04 * r, 0.22 * r, side * 0.1 * r, 0.18 * r, side * 0.1 * r + 0.04 * r, 0.14 * r, side * 0.1 * r]).fill(p.eye); // diamond eyes
   },
 
   /** A wheel of havarti, ascended: feathered wings spread behind, a small serene face, a halo. */

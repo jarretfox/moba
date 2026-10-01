@@ -306,7 +306,7 @@ export class UnitView implements EntityView {
     // Under the ground you only show as a mound of dirt (to whoever can see you at all).
     const under = s.st?.includes('burrowed') || s.st?.includes('underground');
     // In the Dark Dabber's smoke, his own side sees him faintly.
-    this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') ? 0.45 : s.st?.includes('untargetable') ? 0.55 : 1;
+    this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') || s.st?.includes('vanished') ? 0.4 : s.st?.includes('untargetable') ? 0.55 : 1;
     this.shade.visible = !under;
     for (const foot of this.feet) foot.visible &&= !under;
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
@@ -508,6 +508,10 @@ export class ProjectileView implements EntityView {
         g.moveTo(0, 0).arc(6, 0, 10, Math.PI, Math.PI * 2.4).stroke({ width: 4, color: 0x5d636d });
         g.poly([14, 8, 20, 2, 10, 4]).fill(0x5d636d);
         break;
+      case 'knife':
+        g.rect(-10, -2.5, 6, 5).fill(0x5a3a1a);
+        g.poly([-4, -3.5, 12, 0, -4, 3.5]).fill(0xd8dde6).stroke({ width: 1, color: 0x333333 });
+        break;
       case 'cheeseWheel':
         // A whole wheel of cheese, rind and holes and all.
         g.circle(0, 0, 14).fill(0xd9a52b).stroke({ width: 2, color: 0x6a4a10 });
@@ -555,6 +559,7 @@ const TAIL_COLORS: Record<string, number> = {
   levy: 0xffd166,
   junk_sludge: 0x8fd14f,
   resinBolt: 0xffb347,
+  knife: 0xd8dde6,
   cheeseWheel: 0xffd166,
   cheeseBolt: 0xffe29a,
   smokeBolt: 0xb8f07a,
@@ -638,9 +643,18 @@ export class PickupView implements EntityView {
 
 export class TrapView implements EntityView {
   readonly container = new Graphics();
+  private vis: string | undefined;
 
-  constructor(s: EntitySnap, relation: Relation) {
-    const color = relation === 'enemy' ? PALETTE.enemy : 0xd9c27a;
+  constructor(s: EntitySnap, private readonly relation: Relation) {
+    this.draw(s);
+  }
+
+  /** A snare's spiked jaws, or Daltonomo's Surprise Box (closed, or sprung with its jester on a spring). */
+  private draw(s: EntitySnap): void {
+    this.vis = s.vis;
+    this.container.clear();
+    if (s.vis === 'jackbox' || s.vis === 'jackboxOpen') return drawJackbox(this.container, s.r, s.vis === 'jackboxOpen');
+    const color = this.relation === 'enemy' ? PALETTE.enemy : 0xd9c27a;
     const pts: number[] = [];
     const spikes = 10;
     for (let i = 0; i < spikes * 2; i++) {
@@ -653,9 +667,27 @@ export class TrapView implements EntityView {
   }
 
   update(s: EntitySnap): void {
+    if (s.vis !== this.vis) this.draw(s);
     this.container.position.set(s.x, s.y);
     this.container.alpha = s.armed ? 1 : 0.4;
   }
+}
+
+function drawJackbox(g: Graphics, r: number, open: boolean): void {
+  const s = r * 1.3;
+  g.roundRect(-s, -s, s * 2, s * 2, 5).fill(0x7a3fb0).stroke({ width: 2.5, color: PALETTE.outline });
+  for (const t of [-0.5, 0.5]) g.moveTo(-s, t * s).lineTo(s, t * s).stroke({ width: 4, color: 0xffd166 });
+  g.moveTo(s, 0).lineTo(s + 10, 0).stroke({ width: 3, color: 0xb8bec6 }); // the crank
+  g.circle(s + 12, 4, 4).fill(0xb8bec6);
+  if (!open) return;
+  // Sprung: the lid flipped back, and a grinning jester's head bobbing on its spring.
+  g.roundRect(-s - 6, -s * 2 - 4, s * 2 + 12, s * 0.9, 4).fill(0x5a2a80).stroke({ width: 2, color: PALETTE.outline });
+  g.moveTo(0, 0);
+  for (let i = 1; i <= 6; i++) g.lineTo((i % 2 ? 1 : -1) * 7, -i * 6);
+  g.stroke({ width: 2.5, color: 0xc9d1dc });
+  g.circle(0, -42, 13).fill(0xf6f0e8).stroke({ width: 2, color: PALETTE.outline });
+  arc(g, 0, -40, 8, 0.4, Math.PI - 0.4).stroke({ width: 2, color: 0xc0182b });
+  for (const side of [-1, 1]) g.circle(side * 12, -54, 4).fill(0xffd166).stroke({ width: 1.5, color: PALETTE.outline });
 }
 
 /** Shooties, Oakners and Da Base. The body is redrawn only when it changes state (standing, shielded, fallen). */

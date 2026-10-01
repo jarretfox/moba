@@ -100,6 +100,52 @@ const SKIN_TONE = 0xe2b48a;
 const SKIN_SHADE = 0xb98a62;
 
 const ART: Record<string, Draw> = {
+  // ── Daltonomo
+  '🃏': (g) => {
+    // Punchline: a joker card.
+    g.roundRect(-20, -27, 40, 54, 6).fill(WHITE).stroke(ink());
+    for (const [a, c] of [[Math.PI * 1.25, PURPLE], [Math.PI * 1.5, GOLD], [Math.PI * 1.75, PURPLE]] as const) {
+      g.moveTo(-5, -4).quadraticCurveTo(Math.cos(a) * 10, -6 + Math.sin(a) * 10, Math.cos(a) * 18, -4 + Math.sin(a) * 18).lineTo(5, -4).closePath().fill(c).stroke(ink(2));
+      g.circle(Math.cos(a) * 18, -4 + Math.sin(a) * 18, 3).fill(GOLD).stroke(ink(1.5));
+    }
+    g.circle(0, 6, 9).fill(0xf6f0e8).stroke(ink(2));
+    arc(g, 0, 7, 5, 0.3, Math.PI - 0.3).stroke({ width: 2, color: RED });
+    g.poly([-16, 18, -12, 22, -16, 26, -20, 22]).fill(RED);
+  },
+  '🎩': (g) => {
+    // Now You See Me: a magician's top hat, sparkling.
+    g.ellipse(0, 18, 26, 7).fill(0x1a1a22).stroke(ink());
+    g.roundRect(-15, -20, 30, 38, 3).fill(0x1a1a22).stroke(ink());
+    g.rect(-15, 8, 30, 6).fill(PURPLE);
+    for (const [sx, sy] of [[22, -18], [-24, -10], [20, 0]] as const) g.poly([sx, sy - 6, sx + 2, sy - 2, sx + 6, sy, sx + 2, sy + 2, sx, sy + 6, sx - 2, sy + 2, sx - 6, sy, sx - 2, sy - 2]).fill(GOLD);
+  },
+  '🎁': (g) => {
+    // Surprise Box: a purple box with a gold ribbon, something on a spring peeking out.
+    g.moveTo(0, -6);
+    for (let i = 1; i <= 4; i++) g.lineTo((i % 2 ? 1 : -1) * 6, -6 - i * 4);
+    g.stroke({ width: 2.5, color: STEEL_DARK });
+    g.circle(0, -26, 6).fill(0xf6f0e8).stroke(ink(2));
+    g.roundRect(-22, -6, 44, 32, 4).fill(PURPLE).stroke(ink());
+    g.rect(-3, -6, 6, 32).fill(GOLD);
+    g.rect(-22, 6, 44, 6).fill(GOLD);
+  },
+  '🤹': (g) => {
+    // Juggling Knives: three knives in the air.
+    for (const [a, x, y] of [[-0.6, -14, 4], [0, 0, -14], [0.6, 14, 4]] as const) {
+      g.poly(rot([-3, 10, 3, 10, 0, -14], a, x, y)).fill(STEEL).stroke(ink(2));
+      g.poly(rot([-3, 10, 3, 10, 3, 18, -3, 18], a, x, y)).fill(WOOD_DARK).stroke(ink(2));
+    }
+    arc(g, 0, 10, 24, Math.PI * 1.1, Math.PI * 1.9).stroke({ width: 2, color: WHITE, alpha: 0.5 });
+  },
+  '🎭': (g) => {
+    // Double Act: two masks, one laughing, one not.
+    g.circle(-8, -2, 16).fill(GOLD).stroke(ink());
+    arc(g, -8, 0, 8, 0.3, Math.PI - 0.3).stroke(ink(3));
+    for (const side of [-1, 1]) g.circle(-8 + side * 6, -7, 2.5).fill(INK);
+    g.circle(10, 6, 15).fill(STEEL).stroke(ink());
+    arc(g, 10, 15, 7, Math.PI + 0.4, Math.PI * 2 - 0.4).stroke(ink(3));
+    for (const side of [-1, 1]) g.circle(10 + side * 6, 1, 2.5).fill(INK);
+  },
   // ── Havarti
   '🧀': (g) => {
     // Aged to Perfection: a wedge of cheese with holes, a halo over it.

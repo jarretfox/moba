@@ -1137,6 +1137,7 @@ export class GameClient {
       warCry: { sound: 'impact', ripple: 0, duck: 0.25, punch: 0 },
       ascension: { sound: 'quake', ripple: 1, duck: 0.5, punch: 0.03 },
       fondueEruption: { sound: 'quake', ripple: 1, duck: 0.5, punch: 0.03 },
+      cloneBoom: { sound: 'impact', ripple: 0.8, duck: 0.3, punch: 0.015 },
       chinCheck: { sound: 'impact', ripple: 0, duck: 0.2, punch: 0.01 },
       decree: { sound: 'impact', ripple: 0, duck: 0.25, punch: 0.015 },
       summon: { sound: 'impact', ripple: 0, duck: 0.2, punch: 0 },

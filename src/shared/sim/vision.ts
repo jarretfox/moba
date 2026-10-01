@@ -142,7 +142,8 @@ export class Vision {
   canSee(team: Team, e: Entity): boolean {
     if (team === 0 || e.team === team) return true;
     if (e.kind === 'structure') return true; // like League's turrets, always on the map
-    if (e.kind === 'trap') return false; // hidden from the other side
+    // Traps are hidden from the other side, unless they've sprung (Daltonomo's Surprise Box).
+    if (e.kind === 'trap' && !(e as Entity & { revealed?: boolean }).revealed) return false;
     if (e instanceof Unit && e.has('decreed')) return true; // Royal Decree: revealed to everyone, wherever they are
     if (e instanceof Unit && e.isConcealed()) return false;
     // Dark Dabber's Hotbox: in the smoke he's only spotted up close, by champions and structures.

@@ -23,6 +23,7 @@ export const CAST_COLORS: Record<ChampionId, number> = {
   dabber: 0x9be15d,
   paris: 0xff8fb0,
   havarti: 0xffe29a,
+  daltonomo: 0xb98be0,
 };
 
 const GOLD = 0xffd166;
@@ -316,6 +317,52 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     }
 
     // ── Logan
+    // ── Daltonomo
+    case 'nowYouSeeMe':
+      // A puff of purple smoke and confetti where he was.
+      confetti(fx, x, y, 22, 200);
+      for (let i = 0; i < 10; i++) p.emit({ shape: 'smoke', x: x + rand(-25, 25), y: y + rand(-25, 25), vy: rand(-40, -10), life: 1, size: 24, size2: 60, color: 0xd8c8f0, color2: 0x6a3a9a, alpha: 0.5, fadeIn: 0.2 });
+      return;
+    case 'backstab': {
+      fx.flash(x, y, 40, 0xffd166, 0.2);
+      p.burst(8, { shape: 'star', x, y, life: 0.4, size: 14, size2: 2, color: 0xffffff, color2: 0xb98be0, spin: 6 }, [100, 220]);
+      const t = iconTexture('🃏');
+      if (t) fx.ghost(t, x, y - 40, { size: 30, size2: 50, dy: -40, life: 0.6, alpha: 0.9 });
+      return;
+    }
+    case 'jackbox': {
+      // Pop goes the box: a ring of fright and a shower of confetti.
+      const r = ev.r ?? 300;
+      fx.shockwave(x, y, r, 0xb98be0, 0.45);
+      fx.flash(x, y, 60, 0xffd166, 0.3);
+      confetti(fx, x, y, 34, 320);
+      const t = iconTexture('🎁');
+      if (t) fx.ghost(t, x, y - 30, { size: 40, size2: 80, dy: -50, life: 0.7, alpha: 0.9 });
+      return;
+    }
+    case 'boxShot':
+      fx.custom(0.15, (g, t) => g.moveTo(x, y).lineTo(x2, y2).stroke({ width: 5 * (1 - t) + 1, color: 0xffd166, alpha: 0.9 * (1 - t), cap: 'round' }), 'mid', true);
+      p.burst(4, { shape: 'spark', x: x2, y: y2, life: 0.25, size: 9, size2: 2, color: 0xffffff, color2: 0xb98be0 }, [80, 180]);
+      return;
+    case 'doubleAct': {
+      // Now there are two of him.
+      for (const [cx, cy] of [[x, y], [x2, y2]]) {
+        confetti(fx, cx, cy, 16, 160);
+        for (let i = 0; i < 6; i++) p.emit({ shape: 'smoke', x: cx + rand(-20, 20), y: cy + rand(-20, 20), vy: -20, life: 0.9, size: 22, size2: 50, color: 0xd8c8f0, color2: 0x6a3a9a, alpha: 0.5 });
+      }
+      const t = iconTexture('🎭');
+      if (t) fx.ghost(t, x, y - 70, { size: 50, size2: 90, dy: -40, life: 0.9, alpha: 0.85 });
+      return;
+    }
+    case 'cloneBoom': {
+      // The double bursts: confetti, smoke and knives flying out.
+      const r = ev.r ?? 250;
+      fx.flash(x, y, r * 0.6, 0xffd166, 0.35);
+      fx.shockwave(x, y, r, 0xb98be0, 0.45);
+      confetti(fx, x, y, 40, 380);
+      p.burst(10, { shape: 'shard', glow: false, x, y, life: 0.6, size: 12, size2: 6, color: 0xd8dde6, drag: 0.05, spin: 10 }, [300, 560]);
+      return;
+    }
     // ── Havarti
     case 'curdle': {
       // The wheel lands: a golden flash and a spray of crumbs.
@@ -697,6 +744,16 @@ export function castFlash(fx: FxLayer, caster: EntitySnap): void {
   fx.particles.burst(8, { shape: 'mote', x: caster.x, y: caster.y, life: 0.4, size: 8, size2: 2, color: 0xffffff, color2: color, drag: 0.1 }, [80, 180]);
 }
 
+/** A burst of jester's confetti: little paper scraps in every color, fluttering down. */
+function confetti(fx: FxLayer, x: number, y: number, count: number, speed: number): void {
+  const colors = [0xff6b8a, 0xffd166, 0x7fe3ff, 0x9be15d, 0xb98be0];
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const v = speed * (0.4 + Math.random() * 0.6);
+    fx.particles.emit({ shape: 'shard', glow: false, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60, drag: 0.08, ay: 220, life: rand(0.8, 1.3), size: 8, size2: 6, color: colors[i % colors.length], spin: 12 });
+  }
+}
+
 /** The glow around each kind of projectile's head: [color, size]. */
 const HEADS: Record<string, [number, number]> = {
   bolt: [ARCANE, 90],
@@ -707,6 +764,7 @@ const HEADS: Record<string, [number, number]> = {
   spore: [TOXIC, 55],
   junk_sludge: [TOXIC, 45],
   resinBolt: [0xffb347, 45],
+  knife: [0xd8dde6, 40],
   cheeseWheel: [GOLD, 70],
   cheeseBolt: [0xffe29a, 45],
   smokeBolt: [0xb8f07a, 90],
@@ -862,6 +920,10 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
         break;
       case 'weaken':
         for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'mote', ...around(0.8), vy: rand(20, 50), life: 0.6, size: 7, size2: 3, color: 0xd8b4ff, color2: 0x7a4ac0 });
+        break;
+      case 'vanished':
+        // His own side sees a glimmer where he is; the enemy sees nothing at all.
+        if (Math.random() < fx.dt * 5) p.emit({ shape: 'star', ...around(0.8), life: 0.4, size: 10, size2: 2, color: 0xffffff, color2: 0xb98be0, spin: 4 });
         break;
       case 'blessed':
         for (let i = 0; i < fx.rate(16); i++) p.emit({ shape: i % 4 ? 'mote' : 'star', ...around(1.3), vy: rand(-60, -20), life: 0.8, size: 10, size2: 2, color: 0xffffff, color2: GOLD, spin: 3 });

@@ -145,7 +145,7 @@ export abstract class Unit implements Entity {
 
   /** Hidden from the enemy even inside their vision: burrowed or dragged underground, unless bleeding gives them away. */
   isConcealed(): boolean {
-    return (this.has('burrowed') || this.has('underground')) && !this.has('bleed');
+    return (this.has('burrowed') || this.has('underground') || this.has('vanished')) && !this.has('bleed');
   }
 
   /** Takes part in unit collision. Dashing units pass through everyone. */

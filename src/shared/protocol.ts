@@ -118,6 +118,8 @@ export type StatusKind =
   | 'curdled'
   | 'blessed'
   | 'rindBlade'
+  /** Daltonomo, invisible after Now You See Me. */
+  | 'vanished'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -206,7 +208,14 @@ export type FxKind =
   | 'divineFondue'
   | 'fondueEruption'
   | 'cheeseWave'
-  | 'ascend';
+  | 'ascend'
+  /** Daltonomo. */
+  | 'nowYouSeeMe'
+  | 'backstab'
+  | 'jackbox'
+  | 'boxShot'
+  | 'doubleAct'
+  | 'cloneBoom';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

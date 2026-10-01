@@ -57,6 +57,8 @@ export const ATTACK: Record<ChampionId, Anim> = {
   logan: { dur: 0.28, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.2], [1, 0]] },
   // A royal flourish of the scepter.
   kingrix: { dur: 0.36, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
+  // A quick, sneaky stab.
+  daltonomo: { dur: 0.26, reach: [[0, 0], [0.3, 0.45], [1, 0]], twist: [[0, 0], [0.3, 0.2], [1, 0]], lunge: [[0, 0], [0.3, 0.15], [1, 0]] },
   // A sweep of the flaming cheese knife.
   havarti: { dur: 0.32, turn: [[0, 0], [0.3, 0.9], [0.55, -1.2], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
   // A fencer's thrust: blade and body forward together.
@@ -79,6 +81,7 @@ export const CAST: Record<ChampionId, Anim> = {
   dabber: { dur: 0.45, grow: [[0, 0], [0.3, 0.08], [1, 0]], reach: [[0, 0], [0.3, -0.2], [0.5, 0.1], [1, 0]] },
   paris: { dur: 0.4, turn: [[0, 0], [0.3, -1.2], [0.6, 0.6], [1, 0]] },
   havarti: { dur: 0.45, turn: [[0, 0], [0.35, -1.4], [0.7, -1.4], [1, 0]], grow: [[0, 0], [0.35, 0.1], [1, 0]] },
+  daltonomo: { dur: 0.45, twist: [[0, 0], [1, TAU]] },
 };
 
 /** Abilities with a move of their own. */
@@ -93,6 +96,12 @@ const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
   'logan:3': { dur: 0.55, grow: [[0, 0], [0.25, 0.28], [0.75, 0.22], [1, 0]], lunge: [[0, 0], [0.25, -0.15], [0.5, 0.15], [1, 0]] },
   // Longshot: a long, deep draw.
   'marksman:3': { dur: 0.6, reach: [[0, 0], [0.75, -0.4], [0.85, 0.1], [1, 0]], lunge: [[0, 0], [0.85, -0.15], [1, 0]] },
+  // Now You See Me: shrinks into nothing.
+  'daltonomo:0': { dur: 0.35, grow: [[0, 0], [0.4, -0.3], [1, 0]] },
+  // Juggling Knives: a flick of the wrist.
+  'daltonomo:2': { dur: 0.35, reach: [[0, 0], [0.3, -0.25], [0.5, 0.4], [1, 0]], turn: [[0, 0], [0.3, 0.4], [0.5, -0.3], [1, 0]] },
+  // Double Act: a deep, theatrical bow.
+  'daltonomo:3': { dur: 0.7, lunge: [[0, 0], [0.3, 0.25], [0.7, 0.25], [1, 0]], grow: [[0, 0], [0.3, -0.1], [0.7, -0.1], [1, 0]] },
   // Holy Wheel: wind up and hurl.
   'havarti:0': { dur: 0.4, reach: [[0, 0], [0.3, -0.25], [0.5, 0.35], [1, 0]], twist: [[0, 0], [0.3, 0.3], [0.5, -0.2], [1, 0]] },
   // Divine Fondue: blade raised to the sky.
@@ -206,6 +215,14 @@ export const FIDGETS: Record<ChampionId, readonly Anim[]> = {
     { dur: 1.8, twist: [[0, 0], [0.25, -0.5], [0.45, -0.5], [0.7, 0.5], [0.85, 0.5], [1, 0]], grow: [[0, 0], [0.25, 0.04], [0.7, 0.04], [1, 0]] },
     // Mewing: chin up, perfectly still.
     { dur: 2.0, lunge: [[0, 0], [0.2, 0.08], [0.85, 0.08], [1, 0]], grow: [[0, 0], [0.2, 0.05], [0.85, 0.05], [1, 0]] },
+  ],
+  daltonomo: [
+    // Juggles his knives.
+    { dur: 1.4, turn: [[0, 0], [0.15, -0.6], [0.3, 0.6], [0.45, -0.6], [0.6, 0.6], [0.75, -0.4], [1, 0]], grow: [[0, 0], [0.3, 0.04], [0.6, 0], [1, 0]] },
+    // Takes a bow to nobody.
+    { dur: 1.6, lunge: [[0, 0], [0.3, 0.2], [0.7, 0.2], [1, 0]], grow: [[0, 0], [0.3, -0.08], [0.7, -0.08], [1, 0]] },
+    // Shakes his hat till the bells jingle.
+    { dur: 1.0, twist: [[0, 0], [0.1, 0.25], [0.2, -0.25], [0.3, 0.25], [0.4, -0.25], [0.5, 0], [1, 0]] },
   ],
   havarti: [
     // A flutter of the wings.
