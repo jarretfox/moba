@@ -251,6 +251,7 @@ export class Beast implements Figure {
   private act: { t: number; dur: number; hop: number } | null = null;
   private nextAct = 1 + Math.random() * 2;
   private crumb: Graphics | null = null;
+  private squabbles = 0;
 
   constructor(private readonly kind: BeastKind, private readonly r: number, team = 0x8a9099) {
     const spec = SPECS[kind];
@@ -420,7 +421,8 @@ export class Beast implements Figure {
       this.tickAct(dt, idle, 1.2, 2.8, 0.35);
       if (this.act && this.act !== before) {
         // A new squabble: turn round (or not), and nip (and maybe hop).
-        if (Math.random() < 0.6) this.flip = -this.flip;
+        // Every other one turns round; the rest, now and then.
+        if (this.squabbles++ % 2 === 0 || Math.random() < 0.4) this.flip = -this.flip;
         this.act.hop = Math.random() < 0.5 ? 0.35 : 0;
       }
       if (this.act) {
