@@ -34,7 +34,7 @@ export class FxLayer {
   damageNumber(x: number, y: number, amount: number, type: DamageType): void {
     const txt = new Text({
       text: String(amount),
-      style: { fontFamily: 'system-ui, sans-serif', fontWeight: '800', fontSize: 22, fill: DAMAGE_COLORS[type], stroke: { color: 0x000000, width: 4 } },
+      style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 24, fill: DAMAGE_COLORS[type], stroke: { color: 0x000000, width: 5 } },
     });
     txt.anchor.set(0.5);
     const drift = (Math.random() - 0.5) * 36;
@@ -83,7 +83,7 @@ export class FxLayer {
   healNumber(x: number, y: number, amount: number): void {
     const txt = new Text({
       text: `+${amount}`,
-      style: { fontFamily: 'system-ui, sans-serif', fontWeight: '800', fontSize: 20, fill: 0x4ade80, stroke: { color: 0x000000, width: 4 } },
+      style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 22, fill: 0x4ade80, stroke: { color: 0x000000, width: 5 } },
     });
     txt.anchor.set(0.5);
     this.add(txt, 0.9, (t) => {
@@ -96,7 +96,7 @@ export class FxLayer {
   goldNumber(x: number, y: number, amount: number): void {
     const txt = new Text({
       text: `+${amount}g`,
-      style: { fontFamily: 'system-ui, sans-serif', fontWeight: '800', fontSize: 18, fill: 0xffd166, stroke: { color: 0x000000, width: 4 } },
+      style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 20, fill: 0xffd166, stroke: { color: 0x000000, width: 5 } },
     });
     txt.anchor.set(0.5);
     this.add(txt, 1.1, (t) => {
@@ -110,7 +110,7 @@ export class FxLayer {
     this.shockwave(x, y, r * 3, 0xffd166, 0.6);
     const txt = new Text({
       text: `LEVEL ${level}`,
-      style: { fontFamily: 'system-ui, sans-serif', fontWeight: '900', fontSize: 22, fill: 0xffe29a, stroke: { color: 0x000000, width: 5 }, letterSpacing: 2 },
+      style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 24, fill: 0xffe29a, stroke: { color: 0x000000, width: 6 }, letterSpacing: 2 },
     });
     txt.anchor.set(0.5);
     this.add(txt, 1.4, (t) => {

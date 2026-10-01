@@ -5,6 +5,7 @@ import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../sh
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
 import { PORTRAITS } from './render/champions';
+import { iconEl } from './render/icons';
 import { matchReport, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
 
@@ -169,7 +170,7 @@ export class Hud {
     this.bar.classList.toggle('nores', info.resource === 'none');
     info.abilities.forEach((a, i) => {
       (this.slots[i].root.querySelector('.name') as HTMLElement).textContent = a.name;
-      (this.slots[i].root.querySelector('.icon') as HTMLElement).textContent = a.icon;
+      (this.slots[i].root.querySelector('.icon') as HTMLElement).replaceChildren(iconEl(a.icon));
     });
   }
 
@@ -188,7 +189,7 @@ export class Hud {
     this.invItems = me.items;
     this.inv.forEach((el, i) => {
       const id = me.items[i];
-      this.set(el, 'text', id ? ITEMS[id].icon : '');
+      this.set(el, 'icon', id ? ITEMS[id].icon : '');
       this.set(el, 'class', id ? `item tier-${ITEMS[id].tier}` : 'item');
     });
     this.shop.update(me);
@@ -338,20 +339,21 @@ export class Hud {
     if (!this.info) return;
     const t = this.tooltip;
     t.replaceChildren();
-    const line = (cls: string, text: string) => {
+    const line = (cls: string, text: string, icon?: string) => {
       const d = document.createElement('div');
       d.className = cls;
-      d.textContent = text;
+      if (icon) d.append(iconEl(icon, 'tt-ico'));
+      d.append(text);
       t.appendChild(d);
     };
     if (slot < 0) {
       line('tt-name', `${this.info.name} — ${this.info.title}`);
-      line('tt-meta', `${this.info.passive.icon} Passive: ${this.info.passive.name}`);
+      line('tt-meta', `Passive: ${this.info.passive.name}`, this.info.passive.icon);
       line('tt-desc', this.info.passive.description);
     } else {
       const a = this.info.abilities[slot];
       const rank = this.ranks[slot];
-      line('tt-name', `${a.icon} ${a.name} [${SLOT_KEYS[slot]}] ${rank ? `· rank ${rank}` : '· not learned'}`);
+      line('tt-name', `${a.name} [${SLOT_KEYS[slot]}] ${rank ? `· rank ${rank}` : '· not learned'}`, a.icon);
       const cost = a.cost.some((c) => c > 0) ? `${perRank(a.cost)} ${this.info.resource}` : 'No cost';
       line('tt-meta', `${cost} · ${perRank(a.cooldown)}s cooldown${a.castTime ? ` · ${a.castTime}s cast` : ''}`);
       line('tt-desc', a.description);
@@ -369,14 +371,15 @@ export class Hud {
     const t = this.tooltip;
     t.replaceChildren();
     for (const [cls, text] of [
-      ['tt-name', `${it.icon} ${it.name}`],
+      ['tt-name', it.name],
       ['tt-meta', `${it.cost} gold · sells for ${sellPrice(id)}`],
       ['tt-desc', statLines(it.stats).join(' · ')],
       ['tt-flavor', it.flavor],
     ]) {
       const d = document.createElement('div');
       d.className = cls;
-      d.textContent = text;
+      if (cls === 'tt-name') d.append(iconEl(it.icon, 'tt-ico'));
+      d.append(text);
       t.appendChild(d);
     }
     t.hidden = false;
@@ -385,12 +388,13 @@ export class Hud {
     t.style.bottom = `${window.innerHeight - r.top + 10}px`;
   }
 
-  private set(el: HTMLElement, prop: 'text' | 'width' | 'background' | 'class', value: string): void {
+  private set(el: HTMLElement, prop: 'text' | 'icon' | 'width' | 'background' | 'class', value: string): void {
     let cache = this.written.get(el);
     if (!cache) this.written.set(el, (cache = new Map()));
     if (cache.get(prop) === value) return;
     cache.set(prop, value);
     if (prop === 'text') el.textContent = value;
+    else if (prop === 'icon') el.replaceChildren(...(value ? [iconEl(value)] : []));
     else if (prop === 'class') el.className = value;
     else el.style[prop] = value;
   }

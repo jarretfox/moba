@@ -3,6 +3,7 @@ import { TEAM, type Team } from '../shared/constants';
 import { ITEMS } from '../shared/items';
 import type { ScoreRow } from '../shared/protocol';
 import { PORTRAITS } from './render/champions';
+import { iconEl } from './render/icons';
 import { el } from './ui/dom';
 
 const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
@@ -26,7 +27,8 @@ export function scoreTables(rows: readonly ScoreRow[], myTeam: Team, meId: numbe
       who.append(el('b', '', r.name), el('span', '', `${CHAMPION_INFO[r.champ].name} · Lv ${r.lv}`));
       const items = el('div', 'score-items');
       for (const id of r.items) {
-        const it = el('span', `score-item tier-${ITEMS[id].tier}`, ITEMS[id].icon);
+        const it = el('span', `score-item tier-${ITEMS[id].tier}`);
+        it.append(iconEl(ITEMS[id].icon));
         it.title = ITEMS[id].name;
         items.append(it);
       }

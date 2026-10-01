@@ -3,6 +3,7 @@ import { CHAMPION_INFO } from '../shared/champions/registry';
 import type { ChampionId } from '../shared/champions/types';
 import { GameClient } from './game';
 import { PORTRAITS, renderPortraits } from './render/champions';
+import { renderIcons } from './render/icons';
 import type { Connection } from './net/connection';
 import { HostWorker } from './net/hostWorker';
 import { PeerHost, PeerLink, normalizeCode } from './net/peer';
@@ -10,7 +11,14 @@ import { LobbyScreen } from './ui/lobby';
 import { showMenu, type MenuChoice } from './ui/menu';
 import './style.css';
 
+/** Waits (briefly) for the game's web fonts, so text drawn on the canvas doesn't start in a fallback font. */
+async function loadFonts(): Promise<void> {
+  const wait = Promise.all(['24px "Lilita One"', '700 16px Nunito', '800 16px Nunito'].map((f) => document.fonts.load(f)));
+  await Promise.race([wait.catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 2500))]);
+}
+
 async function boot(): Promise<void> {
+  const fonts = loadFonts();
   const app = new Application();
   await app.init({
     resizeTo: window,
@@ -21,6 +29,8 @@ async function boot(): Promise<void> {
   });
   document.getElementById('stage')!.appendChild(app.canvas);
   Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));
+  renderIcons(app.renderer);
+  await fonts;
   const hudRoot = document.getElementById('hud')!;
 
   // Menu until we have a working connection: joining can fail (bad code, host gone).

@@ -3,6 +3,7 @@ import type { ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
 import type { LobbyState, MatchMode } from '../../shared/protocol';
 import { PORTRAITS } from '../render/champions';
+import { iconEl } from '../render/icons';
 import { el } from './dom';
 
 const TEAM_SIZE = 3;
@@ -120,12 +121,14 @@ export class LobbyScreen {
       card.append(
         el('div', 'select-name', info.name),
         el('div', 'select-sub', `${info.title} · ${{ rage: 'Rage', mana: 'Mana', none: 'No resource' }[info.resource]}`),
-        el('div', 'select-passive', `${info.passive.icon} ${info.passive.name}`),
       );
+      const passive = el('div', 'select-passive');
+      passive.append(iconEl(info.passive.icon, 'select-icon'), info.passive.name);
+      card.append(passive);
       const list = el('div', 'select-abilities');
       info.abilities.forEach((a, i) => {
         const row = el('div', 'select-ability');
-        row.append(el('kbd', '', SLOT_KEYS[i]), el('span', 'select-icon', a.icon), document.createTextNode(a.name));
+        row.append(el('kbd', '', SLOT_KEYS[i]), iconEl(a.icon, 'select-icon'), document.createTextNode(a.name));
         list.append(row);
       });
       card.append(list);

@@ -116,7 +116,7 @@ export class UnitView implements EntityView {
 
     this.label = new Text({
       text: s.name ?? '',
-      style: { fontFamily: 'system-ui, sans-serif', fontSize: 13, fontWeight: '600', fill: 0xffffff, stroke: { color: 0x000000, width: 3 } },
+      style: { fontFamily: 'Nunito, system-ui, sans-serif', fontSize: 13, fontWeight: '800', fill: 0xffffff, stroke: { color: 0x000000, width: 3 } },
     });
     this.label.anchor.set(0.5, 1);
     this.label.position.set(0, -r - 24);
@@ -132,7 +132,7 @@ export class UnitView implements EntityView {
     }
     this.container.addChild(this.statusRing, this.body, ...this.feet, this.facing, this.shade, this.bars, this.label);
     if (s.k === 'champion') {
-      this.levelText = new Text({ text: '', style: { fontFamily: 'system-ui, sans-serif', fontSize: 11, fontWeight: '800', fill: 0xffe29a } });
+      this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
       this.container.addChild(this.levelText);
     }
@@ -477,7 +477,7 @@ export class StructureView implements EntityView {
   constructor(s: EntitySnap, private readonly relation: Relation) {
     this.note = new Text({
       text: '',
-      style: { fontFamily: 'system-ui, sans-serif', fontSize: 15, fontWeight: '800', fill: 0xffffff, stroke: { color: 0x000000, width: 4 } },
+      style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 17, fill: 0xffffff, stroke: { color: 0x000000, width: 4 }, letterSpacing: 1 },
     });
     this.note.anchor.set(0.5, 0);
     this.note.position.set(0, s.r + 12);

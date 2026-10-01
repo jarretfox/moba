@@ -1,5 +1,6 @@
 import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, conflicts, sellPrice, statLines, type ItemId, type ItemTier } from '../shared/items';
 import type { MeSnap } from '../shared/protocol';
+import { iconEl } from './render/icons';
 
 const TIERS: [ItemTier, string][] = [
   ['basic', 'Basics'],
@@ -144,7 +145,7 @@ export class ShopPanel {
     top.className = 'card-top';
     const glyph = document.createElement('span');
     glyph.className = 'glyph';
-    glyph.textContent = it.icon;
+    glyph.append(iconEl(it.icon));
     const name = document.createElement('span');
     name.className = 'card-name';
     name.textContent = it.name;

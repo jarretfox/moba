@@ -115,7 +115,7 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
   root.addChild(brush);
 
   for (const [text, y] of [['TOP LANE', 1100], ['BOT LANE', map.height - 1100]] as const) {
-    const t = new Text({ text, style: { fontFamily: 'system-ui, sans-serif', fontSize: 56, fontWeight: '800', fill: 0xffffff, letterSpacing: 6 } });
+    const t = new Text({ text, style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 60, fill: 0xffffff, letterSpacing: 6 } });
     t.alpha = 0.06;
     t.anchor.set(0.5);
     t.position.set(map.width / 2, y);

@@ -1,6 +1,13 @@
 :root {
+  --font-display: 'Lilita One', 'Nunito', system-ui, sans-serif;
+  --font-body: 'Nunito', system-ui, 'Segoe UI', sans-serif;
   --panel: rgba(10, 14, 18, 0.88);
   --panel-edge: #2b3440;
+  /* Bronze trim on the framed panels, and its lit edge */
+  --rim: #7a6238;
+  --rim-hi: #d9b56a;
+  /* A faint grain so panels read as a material, not flat fills */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 .1 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --text: #e8edf2;
   --muted: #8b97a5;
   --hp: #4ade80;
@@ -15,8 +22,72 @@ body {
   overflow: hidden;
   background: #121811;
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
+  font-weight: 600;
   user-select: none;
+}
+
+button,
+input {
+  font-family: var(--font-body);
+}
+
+/* Framed panels: dark, faintly grainy, with a bronze rim that catches the light along the top. */
+.clock,
+.help,
+.bar,
+.shop,
+.score-team,
+.tooltip,
+.lobby-team {
+  background: var(--grain), linear-gradient(180deg, #1e252e, #0c1015 75%);
+  border: 1px solid var(--rim);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 226, 160, 0.18),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+/* Little bright brackets on the corners of the big panels. */
+.bar::after,
+.shop::after,
+.help::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  pointer-events: none;
+  --c: var(--rim-hi);
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 14px 2px,
+    linear-gradient(var(--c), var(--c)) top left / 2px 14px,
+    linear-gradient(var(--c), var(--c)) top right / 14px 2px,
+    linear-gradient(var(--c), var(--c)) top right / 2px 14px,
+    linear-gradient(var(--c), var(--c)) bottom left / 14px 2px,
+    linear-gradient(var(--c), var(--c)) bottom left / 2px 14px,
+    linear-gradient(var(--c), var(--c)) bottom right / 14px 2px,
+    linear-gradient(var(--c), var(--c)) bottom right / 2px 14px;
+  background-repeat: no-repeat;
+}
+
+/* Drawn icons (an <img>), or the emoji while the pictures aren't ready. */
+.ico {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.emoji {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  font-weight: 400;
+}
+
+.tt-ico {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
+  vertical-align: -6px;
 }
 
 #stage,
@@ -37,7 +108,7 @@ kbd {
   border-bottom-width: 2px;
   border-radius: 4px;
   background: #1b222b;
-  font: 600 11px/1.5 ui-monospace, 'Cascadia Mono', monospace;
+  font: 800 11px/1.5 var(--font-body);
   text-align: center;
   color: var(--text);
 }
@@ -59,25 +130,26 @@ kbd {
 
 .clock {
   position: absolute;
-  top: 10px;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 10px;
   align-items: baseline;
-  padding: 4px 14px;
-  background: var(--panel);
-  border: 1px solid var(--panel-edge);
-  border-radius: 8px;
+  padding: 3px 16px;
+  border-radius: 0 0 10px 10px;
+  border-top: none;
 }
 
 .clock .time {
-  font: 700 18px ui-monospace, 'Cascadia Mono', monospace;
+  font: 22px var(--font-display);
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 0 #000;
 }
 
 .clock .wave {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--gold);
 }
 
@@ -113,10 +185,11 @@ kbd {
 .warden-line {
   padding: 2px 12px;
   border-radius: 6px;
-  background: var(--panel);
+  background: linear-gradient(180deg, #1a232c, #0c1015);
   border: 1px solid #7fe3ff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   color: #bfefff;
 }
 
@@ -135,16 +208,14 @@ kbd {
   top: 10px;
   right: 12px;
   padding: 10px 12px;
-  background: var(--panel);
-  border: 1px solid var(--panel-edge);
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 12px;
   line-height: 1.9;
   color: var(--muted);
 }
 
 .help-title {
-  font-weight: 700;
+  font: 15px var(--font-display);
   color: var(--gold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -156,9 +227,9 @@ kbd {
   top: 38%;
   width: 100%;
   text-align: center;
-  font-size: 32px;
-  font-weight: 800;
-  text-shadow: 0 2px 8px #000;
+  font: 40px var(--font-display);
+  letter-spacing: 0.04em;
+  text-shadow: 0 3px 0 #000, 0 4px 18px #000;
 }
 
 .gameover {
@@ -182,15 +253,15 @@ kbd {
 }
 
 .gameover-title {
-  font-size: 88px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
+  font: 104px/1 var(--font-display);
+  letter-spacing: 0.08em;
   color: #ff5a5f;
-  text-shadow: 0 4px 24px #000;
+  text-shadow: 0 5px 0 #6b1418, 0 8px 30px #000;
 }
 
 .gameover.victory .gameover-title {
   color: var(--gold);
+  text-shadow: 0 5px 0 #6b4f16, 0 8px 30px #000;
 }
 
 .gameover-sub {
@@ -218,7 +289,7 @@ kbd {
   border-radius: 8px;
   background: #15120a;
   color: var(--gold);
-  font: 700 15px system-ui, sans-serif;
+  font: 800 15px var(--font-body);
   cursor: pointer;
 }
 
@@ -245,9 +316,7 @@ kbd {
 
 .score-team {
   padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(10, 14, 18, 0.94);
-  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
   border-left: 4px solid var(--mp);
 }
 
@@ -257,8 +326,7 @@ kbd {
 
 .score-head {
   margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 700;
+  font: 14px var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -303,13 +371,14 @@ kbd {
 }
 
 .score-kda {
-  font-weight: 800;
-  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font: 16px var(--font-display);
+  letter-spacing: 0.04em;
 }
 
 .score-num {
   color: var(--muted);
-  font-family: ui-monospace, 'Cascadia Mono', monospace;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
 }
 
@@ -323,8 +392,10 @@ kbd {
 }
 
 .score-item {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
+  padding: 2px;
+  box-sizing: border-box;
   display: grid;
   place-items: center;
   border: 1px solid #36404d;
@@ -343,7 +414,7 @@ kbd {
   border-radius: 8px;
   background: #1b222b;
   color: var(--text);
-  font: 700 15px system-ui, sans-serif;
+  font: 800 15px var(--font-body);
   cursor: pointer;
 }
 
@@ -368,11 +439,11 @@ kbd {
 
 .menu-title {
   text-align: center;
-  font-size: 54px;
-  font-weight: 900;
-  letter-spacing: 0.2em;
+  font: 76px/1 var(--font-display);
+  letter-spacing: 0.12em;
   color: var(--gold);
-  margin-bottom: 8px;
+  text-shadow: 0 4px 0 #6b4f16, 0 10px 30px rgba(0, 0, 0, 0.7);
+  margin-bottom: 14px;
 }
 
 .menu-name,
@@ -382,15 +453,17 @@ kbd {
   border-radius: 8px;
   background: #0d1217;
   color: var(--text);
-  font: 600 15px system-ui, sans-serif;
+  font: 700 15px var(--font-body);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
   user-select: text;
 }
 
 .menu-button {
   padding: 12px 16px;
   border: 2px solid var(--panel-edge);
-  border-radius: 10px;
-  background: #151c25;
+  border-radius: 8px;
+  background: var(--grain), linear-gradient(180deg, #1c242e, #10151b);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 12px rgba(0, 0, 0, 0.4);
   color: var(--text);
   font: inherit;
   text-align: left;
@@ -404,12 +477,12 @@ kbd {
 
 .menu-button.primary {
   border-color: var(--gold);
-  background: #1f2a1c;
+  background: var(--grain), linear-gradient(180deg, #2a3a22, #141d10);
 }
 
 .menu-button-label {
-  font-size: 17px;
-  font-weight: 800;
+  font: 19px var(--font-display);
+  letter-spacing: 0.03em;
 }
 
 .menu-button-hint {
@@ -442,7 +515,7 @@ kbd {
   border-radius: 8px;
   background: #151c25;
   color: var(--text);
-  font: 700 15px system-ui, sans-serif;
+  font: 800 15px var(--font-body);
   cursor: pointer;
 }
 
@@ -470,7 +543,7 @@ kbd {
 }
 
 .lobby-code-value {
-  font: 800 30px ui-monospace, 'Cascadia Mono', monospace;
+  font: 34px var(--font-display);
   letter-spacing: 0.3em;
   color: var(--gold);
   user-select: text;
@@ -483,7 +556,7 @@ kbd {
   border-radius: 6px;
   background: #151c25;
   color: var(--text);
-  font: 600 12px system-ui, sans-serif;
+  font: 700 12px var(--font-body);
   cursor: pointer;
 }
 
@@ -499,13 +572,11 @@ kbd {
   display: grid;
   gap: 6px;
   padding: 10px;
-  border-radius: 10px;
-  border: 1px solid var(--panel-edge);
-  background: #10161d;
+  border-radius: 6px;
 }
 
 .lobby-team-title {
-  font-weight: 800;
+  font: 18px var(--font-display);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -553,7 +624,8 @@ kbd {
   border-radius: 10px;
   background: #1f2a1c;
   color: var(--text);
-  font: 800 16px system-ui, sans-serif;
+  font: 18px var(--font-display);
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 
@@ -603,8 +675,8 @@ kbd {
 }
 
 .select-mode-label {
-  font-weight: 800;
-  font-size: 15px;
+  font: 16px var(--font-display);
+  letter-spacing: 0.03em;
 }
 
 .select-mode-hint {
@@ -613,10 +685,10 @@ kbd {
 }
 
 .select-title {
-  font-size: 30px;
-  font-weight: 800;
+  font: 40px var(--font-display);
   letter-spacing: 0.06em;
   color: var(--gold);
+  text-shadow: 0 3px 0 #6b4f16, 0 6px 20px rgba(0, 0, 0, 0.6);
 }
 
 .select-cards {
@@ -631,9 +703,10 @@ kbd {
   width: 188px;
   padding: 14px 14px;
   text-align: left;
-  border: 2px solid var(--panel-edge);
-  border-radius: 12px;
-  background: linear-gradient(160deg, #1f2c42, #10161f);
+  border: 2px solid var(--rim);
+  border-radius: 8px;
+  background: var(--grain), linear-gradient(160deg, #1f2c42, #10161f);
+  box-shadow: inset 0 1px 0 rgba(255, 226, 160, 0.16), 0 8px 20px rgba(0, 0, 0, 0.5);
   color: var(--text);
   font: inherit;
   cursor: pointer;
@@ -641,11 +714,11 @@ kbd {
 }
 
 .select-card.rage {
-  background: linear-gradient(160deg, #3d1f1b, #160e0c);
+  background: var(--grain), linear-gradient(160deg, #3d1f1b, #160e0c);
 }
 
 .select-card.none {
-  background: linear-gradient(160deg, #33291c, #14100b);
+  background: var(--grain), linear-gradient(160deg, #33291c, #14100b);
 }
 
 .select-card.taken {
@@ -670,13 +743,16 @@ kbd {
 
 .select-icon {
   display: inline-block;
-  width: 1.5em;
+  width: 20px;
+  height: 20px;
+  margin: 0 5px 0 4px;
+  vertical-align: -5px;
   text-align: center;
 }
 
 .select-name {
-  font-size: 19px;
-  font-weight: 800;
+  font: 21px/1.1 var(--font-display);
+  letter-spacing: 0.02em;
 }
 
 .select-sub {
@@ -687,8 +763,13 @@ kbd {
 
 .select-passive {
   font-size: 13px;
+  font-weight: 800;
   color: var(--gold);
   margin-bottom: 6px;
+}
+
+.select-passive .select-icon {
+  margin-left: 0;
 }
 
 .select-ability {
@@ -704,12 +785,10 @@ kbd {
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-end;
-  padding: 10px 14px;
-  background: var(--panel);
-  border: 1px solid var(--panel-edge);
-  border-radius: 12px;
+  padding: 12px 16px 10px;
+  border-radius: 4px;
   pointer-events: auto;
 }
 
@@ -724,10 +803,10 @@ kbd {
   border-radius: 50%;
   border: 3px solid var(--gold);
   background: radial-gradient(circle at 35% 30%, #4d79c7, #1b2f55);
+  box-shadow: 0 0 0 2px #1a1408, 0 0 0 3px var(--rim), 0 4px 12px rgba(0, 0, 0, 0.6);
   display: grid;
   place-items: center;
-  font-weight: 800;
-  font-size: 22px;
+  font: 22px var(--font-display);
   transition: box-shadow 0.15s;
 }
 
@@ -775,7 +854,7 @@ kbd {
   border: 2px solid var(--gold);
   background: #10151c;
   color: #ffe29a;
-  font-size: 13px;
+  font: 14px var(--font-display);
   display: grid;
   place-items: center;
 }
@@ -797,9 +876,12 @@ kbd {
 .inv .item {
   width: 34px;
   height: 34px;
-  border-radius: 6px;
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: 5px;
   border: 1px solid #36404d;
   background: #0b1016;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
   display: grid;
   place-items: center;
   font-size: 18px;
@@ -830,8 +912,9 @@ kbd {
   padding: 3px 8px;
   border: 1px solid #5a4a22;
   border-radius: 6px;
-  background: #15120a;
-  font: 800 16px ui-monospace, 'Cascadia Mono', monospace;
+  background: linear-gradient(180deg, #221b0c, #110d05);
+  font: 18px var(--font-display);
+  letter-spacing: 0.03em;
   color: var(--gold);
   cursor: pointer;
 }
@@ -866,14 +949,15 @@ kbd {
   align-items: center;
   padding: 3px 10px;
   border-radius: 12px;
-  background: var(--panel);
+  background: linear-gradient(180deg, #1a232c, #0c1015);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
   border: 1px solid;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .buff b {
-  font: 800 12px ui-monospace, 'Cascadia Mono', monospace;
+  font: 14px var(--font-display);
 }
 
 .buff-ember {
@@ -900,8 +984,9 @@ kbd {
 
 .feed-line {
   padding: 3px 10px;
-  border-radius: 6px;
-  background: var(--panel);
+  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(14, 19, 25, 0.95), rgba(14, 19, 25, 0.7));
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
   border-left: 3px solid var(--muted);
   font-size: 13px;
   animation: feed-in 0.2s ease-out;
@@ -940,56 +1025,75 @@ kbd {
 
 .slots {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  padding-bottom: 15px;
 }
 
 .slot {
   position: relative;
-  width: 64px;
-  height: 64px;
-  border-radius: 8px;
-  border: 2px solid #56657a;
-  background: linear-gradient(160deg, #2a3a52, #141c28);
+  width: 62px;
+  height: 62px;
+  border-radius: 6px;
+  border: 2px solid #8a6f3e;
+  background: radial-gradient(circle at 50% 35%, #33465f, #111925 75%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 2px 8px rgba(255, 255, 255, 0.07), 0 3px 6px rgba(0, 0, 0, 0.6);
+}
+
+.bar.rage .slot {
+  background: radial-gradient(circle at 50% 35%, #5a2c24, #1c0d0b 75%);
+}
+
+.bar.nores .slot {
+  background: radial-gradient(circle at 50% 35%, #4a3c26, #17110a 75%);
 }
 
 .slot .icon {
   position: absolute;
-  inset: 0;
+  inset: 5px;
   display: grid;
   place-items: center;
-  padding-top: 10px;
   font-size: 30px;
-  opacity: 0.4;
-  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 .slot.unlearned .icon {
-  opacity: 0.15;
+  opacity: 0.3;
   filter: grayscale(1);
 }
 
+/* The ability's name, as a caption under its slot */
 .slot .name {
   position: absolute;
-  inset: 11px 4px auto;
-  text-shadow: 0 1px 3px #000, 0 0 2px #000;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.15;
+  top: calc(100% + 3px);
+  left: -5px;
+  right: -5px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #c7d0da;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .slot .cd {
   position: absolute;
   inset: 0;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .slot .pips {
   position: absolute;
-  inset: 1px 0 auto;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #0c1015;
   font-size: 7px;
+  line-height: 10px;
   letter-spacing: 2px;
-  text-align: center;
+  white-space: nowrap;
   color: var(--gold);
 }
 
@@ -1005,7 +1109,7 @@ kbd {
   border-radius: 6px;
   background: linear-gradient(#e8c46a, #9a7428);
   color: #1a1408;
-  font: 900 18px/18px system-ui, sans-serif;
+  font: 900 18px/18px var(--font-body);
   cursor: pointer;
   box-shadow: 0 0 10px rgba(255, 209, 102, 0.7);
   animation: bob 1s ease-in-out infinite alternate;
@@ -1023,11 +1127,11 @@ kbd {
 
 .slot.unlearned .name,
 .slot.unlearned kbd {
-  opacity: 0.35;
+  opacity: 0.45;
 }
 
 .slot.unlearned {
-  background: #141a22;
+  border-color: #4a4232;
 }
 
 .slot.levelable {
@@ -1039,9 +1143,8 @@ kbd {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: 22px;
-  font-weight: 800;
-  text-shadow: 0 1px 4px #000;
+  font: 26px var(--font-display);
+  text-shadow: 0 2px 0 #000, 0 0 8px #000;
 }
 
 .slot kbd {
@@ -1053,10 +1156,11 @@ kbd {
 .slot .cost {
   position: absolute;
   right: 4px;
-  bottom: 3px;
+  bottom: 2px;
   font-size: 11px;
-  font-weight: 700;
-  color: var(--mp);
+  font-weight: 900;
+  color: #9fd0ff;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
 }
 
 .slot .cost.note {
@@ -1094,18 +1198,22 @@ kbd {
 
 .res {
   position: relative;
-  height: 14px;
-  border-radius: 4px;
-  background: #06090c;
+  height: 15px;
+  border-radius: 3px;
+  background: #05080b;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(138, 111, 62, 0.55);
   overflow: hidden;
 }
 
+/* A glossy top and a shaded bottom, so the bars look like tubes rather than flat stripes */
 .res .fill {
   height: 100%;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.28));
+  transition: width 0.12s;
 }
 
 .res.hp .fill {
-  background: var(--hp);
+  background-color: #3fbf6a;
 }
 
 .res.mp {
@@ -1113,7 +1221,7 @@ kbd {
 }
 
 .res.mp .fill {
-  background: var(--mp);
+  background-color: #3f8ee8;
 }
 
 .res.xp {
@@ -1121,7 +1229,7 @@ kbd {
 }
 
 .res.xp .fill {
-  background: #b57bff;
+  background-color: #a46cf0;
 }
 
 .res.xp span {
@@ -1135,7 +1243,7 @@ kbd {
 }
 
 .bar.rage .res.mp .fill {
-  background: #ff6b3d;
+  background-color: #f0602f;
 }
 
 .bar.rage .portrait {
@@ -1150,8 +1258,8 @@ kbd {
   position: absolute;
   inset: 0;
   font-size: 10px;
-  font-weight: 700;
-  line-height: 14px;
+  font-weight: 900;
+  line-height: 15px;
   text-align: center;
   text-shadow: 0 1px 2px #000;
 }
@@ -1165,9 +1273,7 @@ kbd {
   position: absolute;
   width: 320px;
   padding: 10px 12px;
-  background: rgba(8, 11, 15, 0.96);
-  border: 1px solid var(--gold);
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 13px;
   line-height: 1.45;
 }
@@ -1190,9 +1296,7 @@ kbd {
   max-height: calc(100vh - 250px);
   display: flex;
   flex-direction: column;
-  background: rgba(10, 14, 18, 0.96);
-  border: 1px solid var(--gold);
-  border-radius: 12px;
+  border-radius: 4px;
   pointer-events: auto;
   z-index: 5;
 }
@@ -1210,15 +1314,14 @@ kbd {
 }
 
 .shop-title {
-  font-size: 16px;
-  font-weight: 800;
+  font: 20px var(--font-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gold);
 }
 
 .shop-gold {
-  font: 800 15px ui-monospace, 'Cascadia Mono', monospace;
+  font: 18px var(--font-display);
   color: var(--gold);
 }
 
@@ -1309,8 +1412,10 @@ kbd {
 
 .shop-card .glyph {
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  box-sizing: border-box;
   border: 1px solid;
   border-radius: 5px;
   display: grid;
@@ -1321,12 +1426,12 @@ kbd {
 .card-name {
   flex: 1;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.15;
 }
 
 .card-cost {
-  font: 800 12px ui-monospace, 'Cascadia Mono', monospace;
+  font: 15px var(--font-display);
   color: var(--gold);
 }
 
@@ -1382,7 +1487,7 @@ kbd {
   border-radius: 5px;
   background: #15120a;
   color: var(--gold);
-  font: 700 11px system-ui, sans-serif;
+  font: 800 11px var(--font-body);
   cursor: pointer;
 }
 
@@ -1404,7 +1509,8 @@ kbd {
 }
 
 .tt-name {
-  font-weight: 800;
+  font: 17px var(--font-display);
+  letter-spacing: 0.02em;
   color: var(--gold);
 }
 
