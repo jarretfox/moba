@@ -99,18 +99,34 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Uprising:** if Willmore or HunnaG lands the kill, Unchained becomes an Uprising, and every wave also brings a Chud Brute.
   - **HUD and kill feed:** the HUD shows who's Unchained and for how long. The kill feed announces the kill, and names the Warden (or a Shootie) when it kills a champion.
   - **Old Grudge** applies to Willmore and HunnaG by champion id.
-- **Shop** (items in `src/shared/items.ts`): 17 items, 4 inventory slots. Press P or click your gold.
+- **Shop** (items in `src/shared/items.ts`): 17 items, 4 inventory slots. Press P, click your gold, or click Old Wick (either button; if you're away from the fountain you walk over to him).
   - You can buy and sell only in your own fountain, or while dead. Selling returns 70% of the price.
-  - No recipes: each item is bought whole.
+  - **Build paths** (`RECIPES`): the big items are built from the basics.
+    - Owning the parts knocks their price off, and they're used up when you buy it, freeing their slots.
+    - Parts can have parts: two Rusty Shivs make most of a Bloodreaver (one into the Vampiric Fang, one beside it).
+    - Tunnel Treads upgrade into Swiftstriders.
+    - Cards show your price beside the full one, and what each item is made from or goes into.
     - **Basics** (300–435) stack.
     - **Boots**: one pair at a time.
     - **Core items** (1000–3000): one of each.
+  - **Undo** takes back the last purchase (every coin and part) or sale, while you're still at the shop.
+  - **Wick suggests:** along the top of the shop, your champion's build (the bots' build for them) is ticked off as you go. It offers the next thing to buy, or the dearest part of it you can afford.
+  - **Item actives** (`ACTIVES`), on **D** and **F** (the first two in your inventory) or by clicking the slot. The slot shades over as it cools down.
+    - **Glowworm Lantern, Light the Way** (60s): throws light up to 1400 away. Your team sees everything within 550 of it, brush and over walls, for 6s. It works as a "ward" only your team knows about (`sim/ward.ts`).
+    - **Deepstone Aegis, Deepstone Ward** (75s): a shield of 120 plus 10% of max health for 3s, on you and allies within 600.
+    - **War Drum, War Beat** (45s): you and allies within 700 run 30% faster for 3s.
   - Items add stats, including two that only come from items:
     - **Ability haste:** 100 haste halves cooldowns.
     - **Lifesteal:** heals a share of basic-attack damage, but not against structures.
   - Health and mana from a new item come already filled. Mana items don't raise the Barbarian's Rage cap.
   - Names lean into the lore: Pride Longbow (Logan wants his mane back), Royal Plate (King Rix had it let out twice), Warden's Link, Glowworm Lantern (HunnaG's design).
   - No Flash-style summoner spells in v1. Everyone gets Recall and one shared blink on a long cooldown.
+- **Bounties:** killing a champion pays 300 gold, plus 75 for each kill past two in their streak (up to 750). From three kills without dying they're **WANTED**: a poster over their head shows the gold. Ending the spree is announced as BOUNTY CLAIMED, with the amount.
+- **The Sewer Crab** (`sim/crab.ts`): a river objective.
+  - From 2:30 a crab scuttles up and down each half of the river. It never fights back, and scurries off when hit.
+  - Whoever takes it gets 70 gold, 90 experience and 30% speed for 5s.
+  - Their team also gets vision of that stretch of the river (radius 900) for 90s, from a crab-shell lookout only they can see.
+  - Another comes 2:30 later.
 - **Bots** ("decent new player"; numbers at the top of `src/shared/bots/bot.ts`, each champion's habits in `profiles.ts`):
   - They play through the same commands a human sends, rethinking about 5 times a second.
   - **Lineup per team:** a solo top lane and a duo bot lane. Each slot has champions that suit it: top Barbarian, Willmore or Logan; carry Marksman, King Rix or HunnaG; partner HunnaG, Logan, King Rix or Willmore. Bots pick at random among those their team doesn't have yet, after the humans' picks. Champions are one per team for humans too: a teammate's pick is greyed out in the lobby.
@@ -118,12 +134,34 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Safety:** they won't walk under an enemy Shootie unless at least 2 of their Chuds are tanking it, and they leave immediately if it targets them.
   - **Fighting:** they engage enemy champions within 700 when they're at least as healthy, or the enemy is below 35%. They avoid trading into a crowd of enemy Chuds, never dive towers, and give ground when hit by someone they won't fight. Each champion uses its kit in fights: for example the Marksman rolls away from melee champions and fires Longshot at low targets, and the Barbarian leaps in and uses Berserk when things get close.
   - **Going home:** below 25% health (35% with an enemy near), they recall if it's safe, or run home using escape abilities. They come back at 90%.
-  - **Shopping:** each champion has a fixed build (in `profiles.ts`). They buy the next item whenever they're in the shop and can afford it, selling basics to make room. With 900+ gold that buys the next item and no enemy around, they go home to spend it.
+  - **Shopping:** each champion has a fixed build (in `profiles.ts`). They buy the next item whenever they're in the shop and can afford it, building up from parts they own and selling leftover basics to make room. With 900+ gold that buys the next item and no enemy around, they go home to spend it.
+  - **Items and the crab:** they use the Aegis when a fight turns against them, and the Drum to chase or run. They take a Sewer Crab when one's close and nobody's there to contest it.
   - **Grouping up:** from 18:00 a team's bots leave their own lanes and push one lane together: the one where the enemy has the least left standing. They switch lanes only once the other one is better by a whole structure.
   - **Fair ticks:** every bot decides from the same world state before any of their orders go in, and which team's orders go first alternates each tick. Before this, the team whose bots acted first lost every bots-only match, because casts land the moment they're applied and the other team's bots reacted within the same tick.
   - **What they don't do:** dodge skillshots, plan ganks, defend as a group, or take camps and the Warden.
   - **Match length:** with random six-champion lineups, a bots-only match ends in 11–31 minutes (median about 16). Wins split 17–13 between the sides over 30 games. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items.
   - **Bot win rates by champion** over those 30 games: HunnaG 68%, Barbarian 62%, Marksman 61%, Willmore 45%, Logan 41%, King Rix 33%. That's noisy (about ±10%) and mixes kit strength with how well each bot plays its kit, so it's a starting point for M5 balance, not a verdict.
+
+## Playing with friends
+
+- **Chat:** Enter talks to your team, Shift+Enter to everyone (Tab switches while typing).
+  - Lines show bottom left with name and champion, and fade after a while.
+  - It works in the lobby too.
+  - The host sends team lines to the team only, trims them to 140 characters, and allows five lines per six seconds each.
+- **Lobby settings** (the host's; everyone sees them; solo, they're above the champions):
+  - **Weather:** random or any of the six.
+  - **Time:** evening, or night. Night only changes the look (sky, lanterns, moon); the clock still starts at zero.
+  - **Starting gold:** 500, 1500 or 3000, for the bots too.
+  - **Pace:** normal, or fast (50% more gold and experience, half the death timers).
+- **Rematch** from the end screen.
+  - The host's click starts it, or "swap sides" to change ends. Anyone else's click is counted, and everyone sees who wants one.
+  - Everyone goes back to the lobby with their picks, looks and the settings, on a fresh match.
+  - The old match's screen is taken down and a new one built; the chat carries on.
+- **Profile and titles** (`client/profile.ts`, `shared/titles.ts`): your record is kept in your browser.
+  - It tracks matches, wins, kills, deaths, assists, last hits, MVPs, and per-champion games and wins. Practice doesn't count.
+  - Milestones unlock titles: Winner, Da Base Breaker, Legend of Da Base, Slayer, Wingman, Chud Botherer, Untouchable, MVP, "<Champion> Main" after ten games, and more.
+  - Pick one in the menu's Profile, and it shows in gold over your name in matches and beside it in the lobby. The host only checks that it's a real title.
+  - New ones are announced on the end screen.
 
 ## Lore
 
