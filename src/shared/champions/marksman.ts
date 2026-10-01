@@ -50,11 +50,13 @@ export const MARKSMAN_INFO: ChampionInfo = {
   resource: 'mana',
   passive: {
     name: 'Steady Rhythm',
+    icon: '🎵',
     description: `Each basic attack on the same target grants ${pct(STEADY_RHYTHM.attackSpeedPerStack)} attack speed (max ${STEADY_RHYTHM.maxStacks} stacks, ${STEADY_RHYTHM.duration}s). Switching targets starts the rhythm over.`,
   },
   abilities: [
     {
       name: 'Piercing Bolt',
+      icon: '🏹',
       description: `Fire a bolt through every enemy in a line for ${perRank(PIERCING_BOLT.damage)} (+${pct(PIERCING_BOLT.adRatio)} AD) physical damage. Each enemy after the first takes ${pct(PIERCING_BOLT.falloffPerHit)} less, down to ${pct(PIERCING_BOLT.minMultiplier)}.`,
       cost: PIERCING_BOLT.cost,
       cooldown: PIERCING_BOLT.cooldown,
@@ -63,6 +65,7 @@ export const MARKSMAN_INFO: ChampionInfo = {
     },
     {
       name: 'Snare Trap',
+      icon: '🕸️',
       description: `Place a trap that arms after ${SNARE_TRAP.armTime}s and is hidden from enemies. The first enemy champion to step on it is rooted for ${perRank(SNARE_TRAP.rootDuration)}s. Up to ${perRank(SNARE_TRAP.maxActive)} traps at once.`,
       cost: SNARE_TRAP.cost,
       cooldown: SNARE_TRAP.cooldown,
@@ -71,6 +74,7 @@ export const MARKSMAN_INFO: ChampionInfo = {
     },
     {
       name: 'Roll',
+      icon: '💨',
       description: `Roll a short distance. Your next basic attack within ${ROLL.empowerWindow}s is ready instantly and deals ${perRank(ROLL.bonusDamage)} (+${pct(ROLL.adRatio)} AD) bonus physical damage.`,
       cost: ROLL.cost,
       cooldown: ROLL.cooldown,
@@ -79,6 +83,7 @@ export const MARKSMAN_INFO: ChampionInfo = {
     },
     {
       name: 'Longshot',
+      icon: '🎯',
       description: `Aim for ${LONGSHOT.castTime}s, then fire a huge shot across the map. The first enemy champion hit takes ${perRank(LONGSHOT.damage)} (+${pct(LONGSHOT.adRatio)} AD) physical damage, up to ${pct(LONGSHOT.missingHpBonus)} more the more health they're missing.`,
       cost: LONGSHOT.cost,
       cooldown: LONGSHOT.cooldown,

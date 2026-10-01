@@ -231,6 +231,17 @@ The numbers live at the top of `src/shared/champions/kingrix.ts`. Mid-range (400
 - **Uneasy Alliance:** Logan's Lionheart triggers for Rix only below 15% health.
 - **Two Crowns:** on opposite teams, killing the rival pays double the bounty. Logan then wears the crown (👑 over his head); Rix hangs a lion banner over his own Da Base (🦁 DA BASE 🦁).
 
+## Art and sound
+
+- **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.
+  - Champions are top-down figures facing where they move, standing on a ring in their team's color (white edge for you): a hooded archer, a horned barbarian, a goggled Chud with a junk sack, a mushroom-capped Chud with a spore staff, a maned lion with a broken collar, a crowned king in a red cape. The art is in `src/client/render/champions.ts`.
+  - The same drawings become the HUD portrait and the champion-select pictures: they're rendered to images once at startup.
+  - Abilities, passives and items use emoji icons. Only emoji up to version 12 are used, so they show on Windows 10 too.
+- **Sound is synthesized** with Web Audio (`src/client/audio.ts`): every effect is a few oscillators, filtered noise and envelopes, so there are no audio files either.
+  - Which event makes which sound is in `src/client/sfx.ts`: attacks (swings, shots, Shootie zaps), hits on you or by you, deaths, casts, the big moments (slams, roars, digging, telegraph warnings), level-ups, gold, the kill feed, and a victory or defeat jingle.
+  - Sounds play where they happen: quieter the further from the middle of your screen, and panned left or right. Chuds are much quieter than champions, and repeats are rate-limited so a big fight stays readable.
+  - **M** (or the speaker by the clock) mutes; the setting is remembered.
+
 ## Architecture
 
 ```
@@ -288,12 +299,11 @@ src/
 | M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | ✅ done (plus Recall, fountain, champion select, growing death timers and Chuds) |
 | M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | ✅ done — live at https://jarretfox.github.io/moba/ |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | ✅ done (plus kill feed, structure retune, bots that group up late, fair bot ticks) |
-| M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | 🟡 all four champions and their lore mechanics done; art and sound pass still to do |
+| M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | ✅ done (plus one-champion-per-team picks) |
 | M5 | Balance tools, playtests | |
 
 ### Known gaps
-- **No art or sound pass yet:** champions are team-colored circles told apart by name, portrait initials and their spells' effects.
 - **Bots don't jungle or fight the Warden.** All three per side lane; the camps and the Warden are there for humans.
 - Bots don't dodge skillshots or defend as a group. Late in the game both teams often push different lanes and race each other's bases.
 - No minimap, scoreboard, or camp respawn timers yet.
-- No item art: items show as two-letter glyphs, colored by tier.
+- **Art is a first pass:** figures don't animate beyond turning, a pulse when attacking, and swelling when airborne. No music.

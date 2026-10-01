@@ -56,11 +56,13 @@ export const WILLMORE_INFO: ChampionInfo = {
   resource: 'none',
   passive: {
     name: 'Scavenger',
+    icon: '🔩',
     description: `Chuds and monsters he kills drop scrap for ${SCAVENGER.lifetime}s. Walking over it heals ${SCAVENGER.healFlat} + ${pct(SCAVENGER.healMaxHp)} max health and gives +${SCAVENGER.armorPerStack} armor, stacking ${SCAVENGER.maxStacks} times (stacks last ${SCAVENGER.stackDuration}s).`,
   },
   abilities: [
     {
       name: 'Junk Toss',
+      icon: '🥫',
       description: `Throw the next piece of junk for ${perRank(JUNK_TOSS.damage)} (+${pct(JUNK_TOSS.adRatio)} AD) physical damage to the first enemy hit. It cycles: a Can hits ${pct(JUNK_TOSS.canMult - 1)} harder, Sludge slows ${pct(JUNK_TOSS.sludgeSlow)} for ${JUNK_TOSS.sludgeFor}s, a Boot stuns for ${JUNK_TOSS.bootStun}s. Everyone can see what's next.`,
       cost: FREE,
       cooldown: JUNK_TOSS.cooldown,
@@ -69,6 +71,7 @@ export const WILLMORE_INFO: ChampionInfo = {
     },
     {
       name: 'Burrow',
+      icon: '🕳️',
       description: `Dig in for up to ${BURROW.maxDuration}s: hidden from enemies and ${pct(BURROW.speedBonus)} faster, but you can't attack. Press again (or cast anything) to surface, knocking nearby enemies into the air for ${BURROW.knockUp}s and dealing ${perRank(BURROW.damage)} (+${pct(BURROW.adRatio)} AD) physical damage.`,
       cost: FREE,
       cooldown: BURROW.cooldown,
@@ -77,6 +80,7 @@ export const WILLMORE_INFO: ChampionInfo = {
     },
     {
       name: 'Sewer Hook',
+      icon: '🎣',
       description: `Throw a hook. The first enemy hit takes ${perRank(SEWER_HOOK.damage)} (+${pct(SEWER_HOOK.adRatio)} AD) physical damage and is dragged to you. If it catches a wall instead, it pulls you to the wall.`,
       cost: FREE,
       cooldown: SEWER_HOOK.cooldown,
@@ -85,6 +89,7 @@ export const WILLMORE_INFO: ChampionInfo = {
     },
     {
       name: 'Down Below',
+      icon: '⛏️',
       description: `Grab the nearest enemy champion beside you and drag them underground for ${DOWN_BELOW.time}s, through walls if you like, coming up where you aimed (up to ${DOWN_BELOW.tunnel} away). They take ${perRank(DOWN_BELOW.damage)} (+${pct(DOWN_BELOW.adRatio)} AD) physical damage and are knocked up as you surface.`,
       cost: FREE,
       cooldown: DOWN_BELOW.cooldown,

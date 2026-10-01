@@ -26,6 +26,7 @@ export type ItemTier = 'basic' | 'boots' | 'core';
 export interface ItemInfo {
   id: ItemId;
   name: string;
+  icon: string;
   cost: number;
   tier: ItemTier;
   stats: ItemStats;
@@ -51,7 +52,27 @@ export type ItemId =
   | 'lantern'
   | 'staff';
 
-const item = (id: ItemId, name: string, cost: number, tier: ItemTier, stats: ItemStats, flavor: string): ItemInfo => ({ id, name, cost, tier, stats, flavor });
+const item = (id: ItemId, name: string, cost: number, tier: ItemTier, stats: ItemStats, flavor: string): ItemInfo => ({ id, name, icon: ICONS[id], cost, tier, stats, flavor });
+
+const ICONS: Record<ItemId, string> = {
+  shiv: '🗡️',
+  quickstring: '🧵',
+  loaf: '🍞',
+  leather: '🧥',
+  bark: '🌳',
+  sagestone: '🔮',
+  treads: '🥾',
+  striders: '👟',
+  fang: '🦷',
+  drum: '🥁',
+  longbow: '🏹',
+  reaver: '⚔️',
+  link: '⛓️',
+  plate: '🛡️',
+  aegis: '💠',
+  lantern: '🏮',
+  staff: '🌿',
+};
 
 export const ITEMS: Record<ItemId, ItemInfo> = {
   shiv: item('shiv', 'Rusty Shiv', 350, 'basic', { ad: 10 }, "Every Chud's first weapon. Most never find a second."),

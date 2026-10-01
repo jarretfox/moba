@@ -50,11 +50,13 @@ export const LOGAN_INFO: ChampionInfo = {
   resource: 'none',
   passive: {
     name: 'Lionheart',
+    icon: '❤️',
     description: `When an allied champion within ${LIONHEART.range} drops below ${pct(LIONHEART.threshold)} health (King Rix: only below ${pct(LIONHEART.rixThreshold)}), Logan gets a shield and ${pct(LIONHEART.speed)} speed for ${LIONHEART.speedFor}s to get to them. Once every ${LIONHEART.cooldown}s.`,
   },
   abilities: [
     {
       name: 'Pounce',
+      icon: '🐾',
       description: `Leap onto an enemy near the target spot. Your next basic attack within ${POUNCE.empowerWindow}s stuns for ${POUNCE.stun}s and deals ${perRank(POUNCE.bonus)} (+${pct(POUNCE.adRatio)} AD) bonus physical damage.`,
       cost: FREE,
       cooldown: POUNCE.cooldown,
@@ -63,6 +65,7 @@ export const LOGAN_INFO: ChampionInfo = {
     },
     {
       name: 'Thick Mane',
+      icon: '🛡️',
       description: `Gain a shield of ${perRank(THICK_MANE.shield)} (+${pct(THICK_MANE.bonusHpRatio)} bonus health) for ${THICK_MANE.duration}s. While it holds, your basic attacks slow by ${pct(THICK_MANE.slow)}.`,
       cost: FREE,
       cooldown: THICK_MANE.cooldown,
@@ -71,6 +74,7 @@ export const LOGAN_INFO: ChampionInfo = {
     },
     {
       name: 'Maul',
+      icon: '🩸',
       description: `Swipe in front of you for ${perRank(MAUL.damage)} (+${pct(MAUL.adRatio)} AD) physical damage. Enemies hit bleed for ${perRank(MAUL.bleed)} more over ${MAUL.bleedFor}s, and bleeding enemies can't hide (it even reveals a burrowed Willmore).`,
       cost: FREE,
       cooldown: MAUL.cooldown,
@@ -79,6 +83,7 @@ export const LOGAN_INFO: ChampionInfo = {
     },
     {
       name: "Pride's Roar",
+      icon: '🦁',
       description: `Roar: enemies in front of you flee in fear for ${PRIDES_ROAR.fear}s (King Rix's guards for twice as long). Allies near you gain a shield of ${perRank(PRIDES_ROAR.shield)} (+${pct(PRIDES_ROAR.bonusHpRatio)} of your bonus health) and ${pct(PRIDES_ROAR.speed)} speed for ${PRIDES_ROAR.speedFor}s.`,
       cost: FREE,
       cooldown: PRIDES_ROAR.cooldown,

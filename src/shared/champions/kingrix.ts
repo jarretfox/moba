@@ -56,11 +56,13 @@ export const KING_RIX_INFO: ChampionInfo = {
   resource: 'mana',
   passive: {
     name: 'Royal Tax',
+    icon: '💰',
     description: `Allied Chuds within ${ROYAL_TAX.auraRange} of him deal ${pct(ROYAL_TAX.chudDamage)} more damage. When an ally near him last-hits a Chud, he takes ${ROYAL_TAX.gold} gold.`,
   },
   abilities: [
     {
       name: 'Levy',
+      icon: '💸',
       description: `A scepter bolt: ${perRank(LEVY.damage)} (+${pct(LEVY.apRatio)} AP) magic damage to the first enemy hit. If it kills, he collects ${perRank(LEVY.killGold)} extra gold and gets the mana back.`,
       cost: LEVY.cost,
       cooldown: LEVY.cooldown,
@@ -69,6 +71,7 @@ export const KING_RIX_INFO: ChampionInfo = {
     },
     {
       name: 'Call the Guard',
+      icon: '💂',
       description: `Summon ${CALL_THE_GUARD.count} royal guards for ${CALL_THE_GUARD.lifetime}s. They follow him and attack whatever he attacks, for ${perRank(CALL_THE_GUARD.damage)} (+${pct(CALL_THE_GUARD.apRatio)} AP) a hit. They're terrified of Logan.`,
       cost: CALL_THE_GUARD.cost,
       cooldown: CALL_THE_GUARD.cooldown,
@@ -77,6 +80,7 @@ export const KING_RIX_INFO: ChampionInfo = {
     },
     {
       name: 'KNEEL!',
+      icon: '🙇',
       description: `Enemies in a short cone in front of him kneel: ${perRank(KNEEL.damage)} (+${pct(KNEEL.apRatio)} AP) magic damage and a ${perRank(KNEEL.stun)}s stun. Logan only kneels half as long, and roars back.`,
       cost: KNEEL.cost,
       cooldown: KNEEL.cooldown,
@@ -85,6 +89,7 @@ export const KING_RIX_INFO: ChampionInfo = {
     },
     {
       name: 'Royal Decree',
+      icon: '📜',
       description: `Anywhere on the map: mark the visible enemy champion nearest the target spot. For ${ROYAL_DECREE.duration}s they're revealed to everyone and take ${pct(ROYAL_DECREE.damageTaken)} more damage. If they die while marked, everyone on his team gets ${perRank(ROYAL_DECREE.teamGold)} gold.`,
       cost: ROYAL_DECREE.cost,
       cooldown: ROYAL_DECREE.cooldown,

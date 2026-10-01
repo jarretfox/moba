@@ -39,6 +39,7 @@ Friends just open that link. Whoever clicks **Host a Lobby** runs the match in t
 | S | Stop |
 | B | Recall home (4s channel, breaks if you take damage) |
 | P | Shop (buy and sell in your fountain, or while dead) |
+| M | Mute / unmute sound |
 | Space | Center camera (hold) |
 | Y | Lock / unlock camera (unlocked: pan at screen edges) |
 | Wheel | Zoom |

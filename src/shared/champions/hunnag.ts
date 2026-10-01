@@ -55,11 +55,13 @@ export const HUNNAG_INFO: ChampionInfo = {
   resource: 'mana',
   passive: {
     name: 'Rot',
+    icon: '☣️',
     description: `Her spells stack Rot on enemies (up to ${ROT.maxStacks}), dealing magic damage every ${ROT.tickEvery}s for ${ROT.duration}s. The ${ROT.maxStacks}th stack bursts for extra magic damage and slows by ${pct(ROT.burstSlow)} for ${ROT.burstSlowFor}s.`,
   },
   abilities: [
     {
       name: 'Sludge Lob',
+      icon: '🧪',
       description: `Lob a glob of sludge. It lands after ${SLUDGE_LOB.flightTime}s, dealing ${perRank(SLUDGE_LOB.damage)} (+${pct(SLUDGE_LOB.apRatio)} AP) magic damage and 1 Rot, and leaves a puddle that slows by ${pct(SLUDGE_LOB.puddleSlow)} for ${SLUDGE_LOB.puddleTime}s.`,
       cost: SLUDGE_LOB.cost,
       cooldown: SLUDGE_LOB.cooldown,
@@ -68,6 +70,7 @@ export const HUNNAG_INFO: ChampionInfo = {
     },
     {
       name: 'Mushroom Totem',
+      icon: '🍄',
       description: `Plant a totem for ${perRank(MUSHROOM_TOTEM.lifetime)}s that gives vision. Every ${MUSHROOM_TOTEM.pulseEvery}s it heals nearby allied champions for ${perRank(MUSHROOM_TOTEM.heal)} (+${pct(MUSHROOM_TOTEM.apRatio)} AP) and adds 1 Rot to nearby enemies. Enemies can destroy it.`,
       cost: MUSHROOM_TOTEM.cost,
       cooldown: MUSHROOM_TOTEM.cooldown,
@@ -76,6 +79,7 @@ export const HUNNAG_INFO: ChampionInfo = {
     },
     {
       name: 'Mole Hole',
+      icon: '🌀',
       description: `Dig down and pop up at the target spot. Both holes stay open for ${MOLE_HOLE.open}s, and allied champions can hop between them by walking in. Willmore can use them too, from either team, while he's burrowed.`,
       cost: MOLE_HOLE.cost,
       cooldown: MOLE_HOLE.cooldown,
@@ -84,6 +88,7 @@ export const HUNNAG_INFO: ChampionInfo = {
     },
     {
       name: 'The Deep Calls',
+      icon: '✋',
       description: `Mark a large area. After ${THE_DEEP_CALLS.delay}s, hands burst out of the ground: every enemy inside takes ${perRank(THE_DEEP_CALLS.damage)} (+${pct(THE_DEEP_CALLS.apRatio)} AP) magic damage, is rooted for ${perRank(THE_DEEP_CALLS.root)}s, and gets full Rot (which bursts).`,
       cost: THE_DEEP_CALLS.cost,
       cooldown: THE_DEEP_CALLS.cooldown,

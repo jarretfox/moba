@@ -16,6 +16,8 @@ export type Targeting =
 /** Static ability facts shared by the sim (validation) and the client (HUD, aim indicators). */
 export interface AbilityInfo {
   name: string;
+  /** Shown on the ability's slot and in champion select. */
+  icon: string;
   description: string;
   /** Per rank: index 0 is rank 1. */
   cost: number[];
@@ -42,7 +44,7 @@ export interface ChampionInfo {
   name: string;
   title: string;
   resource: Resource;
-  passive: { name: string; description: string };
+  passive: { name: string; icon: string; description: string };
   abilities: [AbilityInfo, AbilityInfo, AbilityInfo, AbilityInfo];
 }
 

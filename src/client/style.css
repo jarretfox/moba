@@ -78,6 +78,20 @@ kbd {
   display: none;
 }
 
+.clock .mute {
+  padding: 0 2px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0.8;
+}
+
+.clock .mute.off {
+  opacity: 0.5;
+}
+
 .warden {
   position: absolute;
   top: 48px;
@@ -500,6 +514,21 @@ kbd {
   transform: translateY(-3px);
 }
 
+.select-face {
+  float: right;
+  width: 54px;
+  height: 54px;
+  margin: -4px -4px 4px 6px;
+  border-radius: 50%;
+  border: 2px solid var(--panel-edge);
+}
+
+.select-icon {
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+}
+
 .select-name {
   font-size: 19px;
   font-weight: 800;
@@ -555,6 +584,18 @@ kbd {
   font-weight: 800;
   font-size: 22px;
   transition: box-shadow 0.15s;
+}
+
+.portrait .face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.portrait .face:not([src]) {
+  display: none;
 }
 
 .portrait.empowered {
@@ -616,8 +657,7 @@ kbd {
   background: #0b1016;
   display: grid;
   place-items: center;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 18px;
 }
 
 .item.tier-basic,
@@ -767,9 +807,26 @@ kbd {
   background: linear-gradient(160deg, #2a3a52, #141c28);
 }
 
+.slot .icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-top: 10px;
+  font-size: 30px;
+  opacity: 0.4;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+}
+
+.slot.unlearned .icon {
+  opacity: 0.15;
+  filter: grayscale(1);
+}
+
 .slot .name {
   position: absolute;
   inset: 11px 4px auto;
+  text-shadow: 0 1px 3px #000, 0 0 2px #000;
   font-size: 11px;
   font-weight: 700;
   line-height: 1.15;
@@ -1107,14 +1164,13 @@ kbd {
 
 .shop-card .glyph {
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 1px solid;
   border-radius: 5px;
   display: grid;
   place-items: center;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 16px;
 }
 
 .card-name {

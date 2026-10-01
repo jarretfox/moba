@@ -4,7 +4,8 @@ import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type Ite
 import type { BuffKind, EntitySnap, MeSnap, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
-import { ShopPanel, itemGlyph } from './shop';
+import { PORTRAITS } from './render/champions';
+import { ShopPanel } from './shop';
 
 interface SlotEls {
   root: HTMLElement;
@@ -27,6 +28,7 @@ const HELP = [
   ['S', 'stop'],
   ['B', 'recall home (4s, breaks if hit)'],
   ['P', 'shop (at your fountain)'],
+  ['M', 'mute sound'],
   ['Space', 'center camera (hold)'],
   ['Y', 'lock / unlock camera'],
   ['Wheel', 'zoom'],
@@ -47,6 +49,8 @@ export class Hud {
   onLevelUp: ((slot: Slot) => void) | null = null;
   onBuy: ((id: ItemId) => void) | null = null;
   onSell: ((slot: number) => void) | null = null;
+  onMute: (() => void) | null = null;
+  private readonly muteButton: HTMLButtonElement;
   readonly shop: ShopPanel;
   private readonly inv: HTMLElement[] = [];
   private invItems: (ItemId | undefined)[] = [];
@@ -76,18 +80,18 @@ export class Hud {
     root.innerHTML = `
       <div class="debug"></div>
       <div class="feed"></div>
-      <div class="clock"><span class="time">0:00</span><span class="wave"></span></div>
+      <div class="clock"><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
       <div class="warden"></div>
       <div class="help"><div class="help-title"></div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
       <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Back to menu</button></div>
       <div class="buffs"></div>
       <div class="bar" hidden>
-        <div class="portrait"><span class="initial"></span><span class="stacks"></span><span class="lvl">1</span></div>
+        <div class="portrait"><img class="face" alt="" /><span class="initial"></span><span class="stacks"></span><span class="lvl">1</span></div>
         <div class="center">
           <div class="slots">${SLOT_KEYS.map(
             (k) =>
-              `<div class="slot"><button class="up" hidden>+</button><div class="name"></div><div class="cd"></div><div class="cdtext"></div><kbd>${k}</kbd><div class="cost"></div><div class="pips"></div></div>`,
+              `<div class="slot"><button class="up" hidden>+</button><div class="icon"></div><div class="name"></div><div class="cd"></div><div class="cdtext"></div><kbd>${k}</kbd><div class="cost"></div><div class="pips"></div></div>`,
           ).join('')}</div>
           <div class="res hp"><div class="fill"></div><span></span></div>
           <div class="res mp"><div class="fill"></div><span></span></div>
@@ -105,6 +109,8 @@ export class Hud {
     this.buffBar = q('.buffs');
     this.clockTime = q('.clock .time');
     this.clockWave = q('.clock .wave');
+    this.muteButton = q('.mute') as HTMLButtonElement;
+    this.muteButton.addEventListener('click', () => this.onMute?.());
     this.warden = q('.warden');
     this.bar = q('.bar');
     this.portrait = q('.portrait');
@@ -143,11 +149,14 @@ export class Hud {
   setChampion(info: ChampionInfo): void {
     this.info = info;
     this.bar.hidden = false;
-    (this.portrait.querySelector('.initial') as HTMLElement).textContent = info.name.slice(0, 2).toUpperCase();
+    const face = PORTRAITS[info.id];
+    (this.portrait.querySelector('.initial') as HTMLElement).textContent = face ? '' : info.name.slice(0, 2).toUpperCase();
+    if (face) (this.portrait.querySelector('.face') as HTMLImageElement).src = face;
     this.bar.classList.toggle('rage', info.resource === 'rage');
     this.bar.classList.toggle('nores', info.resource === 'none');
     info.abilities.forEach((a, i) => {
       (this.slots[i].root.querySelector('.name') as HTMLElement).textContent = a.name;
+      (this.slots[i].root.querySelector('.icon') as HTMLElement).textContent = a.icon;
     });
   }
 
@@ -166,7 +175,7 @@ export class Hud {
     this.invItems = me.items;
     this.inv.forEach((el, i) => {
       const id = me.items[i];
-      this.set(el, 'text', id ? itemGlyph(id) : '');
+      this.set(el, 'text', id ? ITEMS[id].icon : '');
       this.set(el, 'class', id ? `item tier-${ITEMS[id].tier}` : 'item');
     });
     this.shop.update(me);
@@ -258,6 +267,11 @@ export class Hud {
     this.set(this.clockWave, 'text', nextWave !== undefined && nextWave <= 10 ? `Chuds in ${nextWave}` : '');
   }
 
+  setMuted(muted: boolean): void {
+    this.muteButton.textContent = muted ? '🔇' : '🔊';
+    this.muteButton.classList.toggle('off', muted);
+  }
+
   /** Under the clock: when the Warden wakes (the last two minutes), and who's Unchained. */
   setWarden(w: WardenStatus | undefined, myTeam: Team): void {
     const lines: [string, string][] = [];
@@ -300,12 +314,12 @@ export class Hud {
     };
     if (slot < 0) {
       line('tt-name', `${this.info.name} — ${this.info.title}`);
-      line('tt-meta', `Passive: ${this.info.passive.name}`);
+      line('tt-meta', `${this.info.passive.icon} Passive: ${this.info.passive.name}`);
       line('tt-desc', this.info.passive.description);
     } else {
       const a = this.info.abilities[slot];
       const rank = this.ranks[slot];
-      line('tt-name', `${a.name} [${SLOT_KEYS[slot]}] ${rank ? `· rank ${rank}` : '· not learned'}`);
+      line('tt-name', `${a.icon} ${a.name} [${SLOT_KEYS[slot]}] ${rank ? `· rank ${rank}` : '· not learned'}`);
       const cost = a.cost.some((c) => c > 0) ? `${perRank(a.cost)} ${this.info.resource}` : 'No cost';
       line('tt-meta', `${cost} · ${perRank(a.cooldown)}s cooldown${a.castTime ? ` · ${a.castTime}s cast` : ''}`);
       line('tt-desc', a.description);
@@ -323,7 +337,7 @@ export class Hud {
     const t = this.tooltip;
     t.replaceChildren();
     for (const [cls, text] of [
-      ['tt-name', it.name],
+      ['tt-name', `${it.icon} ${it.name}`],
       ['tt-meta', `${it.cost} gold · sells for ${sellPrice(id)}`],
       ['tt-desc', statLines(it.stats).join(' · ')],
       ['tt-flavor', it.flavor],

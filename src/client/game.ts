@@ -7,7 +7,9 @@ import { NavGrid } from '../shared/map/navGrid';
 import { VisionGrid } from '../shared/sim/vision';
 import { dist, type Vec2 } from '../shared/math';
 import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/protocol';
+import { Sound } from './audio';
 import { Camera } from './camera';
+import { cueFor, type SoundCue } from './sfx';
 import type { Connection } from './net/connection';
 import { Hud } from './hud';
 import { FogLayer } from './render/fog';
@@ -44,6 +46,8 @@ export class GameClient {
   private readonly decoder = new SnapshotDecoder();
   private readonly views = new Map<number, EntityView>();
   private readonly hud: Hud;
+  private readonly sound = new Sound();
+  private gameOverPlayed = false;
 
   private myId = -1;
   private myTeam: Team = TEAM.blue;
@@ -63,9 +67,20 @@ export class GameClient {
     hudRoot: HTMLElement,
   ) {
     this.hud = new Hud(hudRoot);
-    this.hud.onLevelUp = (slot) => this.send({ k: 'levelUp', slot });
-    this.hud.onBuy = (item) => this.send({ k: 'buy', item });
-    this.hud.onSell = (slot) => this.send({ k: 'sell', slot });
+    this.hud.onLevelUp = (slot) => {
+      this.sound.play('click', 0.6);
+      this.send({ k: 'levelUp', slot });
+    };
+    this.hud.onBuy = (item) => {
+      this.sound.play('buy', 0.6);
+      this.send({ k: 'buy', item });
+    };
+    this.hud.onSell = (slot) => {
+      this.sound.play('buy', 0.4);
+      this.send({ k: 'sell', slot });
+    };
+    this.hud.onMute = () => this.hud.setMuted(this.sound.toggleMute());
+    this.hud.setMuted(this.sound.muted);
     this.buffer = new SnapshotBuffer(conn.interpDelay);
     this.groundLayer.addChild(buildMap(MAP));
     this.worldLayer.addChild(this.groundLayer, this.underLayer, this.structureLayer, this.fog.sprite, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
@@ -99,7 +114,11 @@ export class GameClient {
     const { ents, events } = this.buffer.sample(performance.now() / 1000);
     this.ents = new Map(ents.map((e) => [e.id, e]));
     this.syncViews(dt);
-    for (const ev of events) this.playEvent(ev);
+    for (const ev of events) {
+      this.playEvent(ev);
+      const cue = cueFor(ev, this.ents, this.myId);
+      if (cue) this.playCue(cue);
+    }
     this.fx.update(dt);
     this.fog.update(this.ents.values(), this.myTeam, performance.now() / 1000);
 
@@ -123,7 +142,11 @@ export class GameClient {
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
     this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
     this.hud.setWarden(latest?.warden, this.myTeam);
-    if (latest?.winner) this.hud.showGameOver(latest.winner === this.myTeam);
+    if (latest?.winner) {
+      this.hud.showGameOver(latest.winner === this.myTeam);
+      if (!this.gameOverPlayed) this.sound.play(latest.winner === this.myTeam ? 'victory' : 'defeat', 0.8);
+      this.gameOverPlayed = true;
+    }
   }
 
   private syncViews(dt: number): void {
@@ -223,6 +246,16 @@ export class GameClient {
       case 'cast':
         return;
     }
+  }
+
+  /** Plays a cue where it happened: quieter the further it is from the middle of the screen, panned left or right. */
+  private playCue(cue: SoundCue): void {
+    if (!cue.at) return this.sound.play(cue.name, cue.gain);
+    const halfView = this.app.screen.width / 2 / this.camera.zoom;
+    const d = Math.hypot(cue.at.x - this.camera.x, cue.at.y - this.camera.y);
+    const falloff = Math.max(0, Math.min(1, 1 - (d - halfView * 0.6) / (halfView * 1.4)));
+    const pan = Math.max(-1, Math.min(1, (cue.at.x - this.camera.x) / halfView)) * 0.6;
+    this.sound.play(cue.name, cue.gain * falloff, pan);
   }
 
   private playFx(ev: Extract<GameEvent, { e: 'fx' }>): void {
@@ -366,6 +399,9 @@ export class GameClient {
         break;
       case 'Backquote':
         this.toggleNavOverlay();
+        break;
+      case 'KeyM':
+        this.hud.setMuted(this.sound.toggleMute());
         break;
       case 'KeyP':
         this.hud.shop.toggle();

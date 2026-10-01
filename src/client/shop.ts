@@ -18,16 +18,6 @@ const STAT_ROWS: [keyof MeSnap['stats'], string, (v: number) => string][] = [
   ['ls', 'Lifesteal', (v) => `${v}%`],
 ];
 
-/** Short label for an item's slot, since there's no item art yet: "Rusty Shiv" → "RS". */
-export const itemGlyph = (id: ItemId): string =>
-  ITEMS[id].name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join('')
-    .replace(/[^A-Za-z]/g, '')
-    .slice(0, 2)
-    .toUpperCase();
-
 /** Why the shop would refuse `id`, judged from this client's copy of the state (the host checks again). */
 export function cantBuy(me: MeSnap, id: ItemId): string | null {
   if (!me.inShop) return 'Shop at your fountain';
@@ -154,7 +144,7 @@ export class ShopPanel {
     top.className = 'card-top';
     const glyph = document.createElement('span');
     glyph.className = 'glyph';
-    glyph.textContent = itemGlyph(id);
+    glyph.textContent = it.icon;
     const name = document.createElement('span');
     name.className = 'card-name';
     name.textContent = it.name;

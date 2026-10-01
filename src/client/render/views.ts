@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChudType, EntitySnap, MonsterKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
+import { drawChampionBase, drawChampionFigure } from './champions';
 
 export type Relation = 'self' | 'ally' | 'enemy' | 'neutral';
 
@@ -85,6 +86,10 @@ export class UnitView implements EntityView {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: PALETTE.outline });
       this.body.circle(0, 0, r * 0.62).stroke({ width: 5, color: PALETTE.enemy });
       this.body.circle(0, 0, r * 0.24).fill(PALETTE.enemy);
+    } else if (s.k === 'champion' && s.champ) {
+      this.body.clear();
+      drawChampionBase(this.body, r, color, relation === 'self');
+      drawChampionFigure(this.facing, s.champ, r);
     } else {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: relation === 'self' ? 0xffffff : PALETTE.outline });
       this.body.circle(0, 0, r * 0.55).fill({ color: 0xffffff, alpha: 0.12 });

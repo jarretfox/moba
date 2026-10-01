@@ -51,11 +51,13 @@ export const BARBARIAN_INFO: ChampionInfo = {
   resource: 'rage',
   passive: {
     name: 'Blood Rage',
+    icon: '🔥',
     description: `Hitting and getting hit builds Rage, which burns off after ${RAGE.decayAfter}s out of combat. At ${RAGE.max} Rage his next ability is Brutal: stronger, and it spends all his Rage.`,
   },
   abilities: [
     {
       name: 'Cleave',
+      icon: '🪓',
       description: `Swing through everything in front of you for ${perRank(CLEAVE.damage)} (+${pct(CLEAVE.adRatio)} AD) physical damage, healing ${CLEAVE.healPerEnemy} per enemy hit and ${perRank(CLEAVE.healPerChampion)} per champion. Brutal: longer reach, ${pct(CLEAVE.brutal.damageMult - 1)} more damage, double healing.`,
       cost: FREE,
       cooldown: CLEAVE.cooldown,
@@ -64,6 +66,7 @@ export const BARBARIAN_INFO: ChampionInfo = {
     },
     {
       name: 'War Cry',
+      icon: '📣',
       description: `Nearby enemies are slowed by ${perRank(WAR_CRY.slow, pct)} for ${WAR_CRY.slowDuration}s and deal ${pct(WAR_CRY.weaken)} less damage for ${WAR_CRY.weakenDuration}s. Brutal: ${pct(WAR_CRY.brutal.slow)} slow for ${WAR_CRY.brutal.slowDuration}s, ${pct(WAR_CRY.brutal.weaken)} less damage.`,
       cost: FREE,
       cooldown: WAR_CRY.cooldown,
@@ -72,6 +75,7 @@ export const BARBARIAN_INFO: ChampionInfo = {
     },
     {
       name: 'Leap',
+      icon: '🦘',
       description: `Leap to a spot (even over walls), dealing ${perRank(LEAP.damage)} (+${pct(LEAP.adRatio)} AD) physical damage where you land and slowing by ${pct(LEAP.slow)}. Brutal: a wider landing that stuns for ${LEAP.brutal.stun}s instead.`,
       cost: FREE,
       cooldown: LEAP.cooldown,
@@ -80,6 +84,7 @@ export const BARBARIAN_INFO: ChampionInfo = {
     },
     {
       name: 'Berserk',
+      icon: '😡',
       description: `For ${perRank(BERSERK.duration)}s: grow bigger, gain ${perRank(BERSERK.attackSpeed, pct)} attack speed and ${pct(BERSERK.tenacity)} shorter crowd control, and your attacks splash ${pct(BERSERK.cleaveShare)} damage around your target. Gain ${BERSERK.rageOnCast} Rage. Takedowns add ${BERSERK.takedownExtend}s. Brutal: lasts ${BERSERK.brutal.extraDuration}s longer.`,
       cost: FREE,
       cooldown: BERSERK.cooldown,

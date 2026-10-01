@@ -1,5 +1,8 @@
 import { Application } from 'pixi.js';
+import { CHAMPION_INFO } from '../shared/champions/registry';
+import type { ChampionId } from '../shared/champions/types';
 import { GameClient } from './game';
+import { PORTRAITS, renderPortraits } from './render/champions';
 import type { Connection } from './net/connection';
 import { HostWorker } from './net/hostWorker';
 import { PeerHost, PeerLink, normalizeCode } from './net/peer';
@@ -17,6 +20,7 @@ async function boot(): Promise<void> {
     resolution: Math.min(window.devicePixelRatio || 1, 2),
   });
   document.getElementById('stage')!.appendChild(app.canvas);
+  Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));
   const hudRoot = document.getElementById('hud')!;
 
   // Menu until we have a working connection: joining can fail (bad code, host gone).
