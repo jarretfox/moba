@@ -8,7 +8,7 @@ import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './ani
 import { drawChampionBase, palette } from './champions';
 import { Beast } from './beasts';
 import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
-import { Rig, type Figure } from './rig';
+import { Rig, type Expression, type Figure, type Posture } from './rig';
 import { flightHeight } from './stature';
 import { BUILDING, buildingHeight, drawCrystal, drawFort, drawFortRuin, drawOak, drawOakStump, drawTower, drawTowerRuin } from './structures';
 import { RECALLS, type RecallRoutine, type Say } from './recalls';
@@ -195,8 +195,6 @@ export class UnitView implements EntityView {
 
     this.recallOver.addChild(this.recallOverG);
     this.container.addChild(this.statusRing, this.recallUnder, this.body, this.facing, ...(this.rig ? [this.rig.root] : []), this.recallOver, this.bars, this.label);
-    // Recall props sit round the body, not the feet.
-    if (this.rig) this.recallOver.y = -this.rig.height * 0.45;
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -257,6 +255,8 @@ export class UnitView implements EntityView {
     }
 
     // Recalling: the champion's own routine (push-ups, a throne, a nap...).
+    let posture: Posture | undefined;
+    let recallFace: Expression | undefined;
     if (this.champ && s.st?.includes('recall') && !s.dead) {
       this.recallT += dt;
       const routine = RECALLS[this.champ];
@@ -268,12 +268,19 @@ export class UnitView implements EntityView {
       twist += (pose.twist ?? 0) * ease;
       lungeBy += (pose.lunge ?? 0) * ease;
       grow += (pose.grow ?? 0) * ease;
+      posture = { sit: pose.sit, lie: pose.lie, bow: pose.bow, look: pose.look, armF: pose.armF, armB: pose.armB, weight: ease };
+      recallFace = pose.face;
       this.drawRecall(routine);
     } else if (this.recallT > 0) {
       this.recallT = 0;
       this.recallUnder.clear();
       this.recallOverG.clear();
       for (const t of this.recallTexts) t.visible = false;
+      if (this.rig instanceof Rig) {
+        this.rig.part.handProp.clear();
+        this.rig.part.headProp.clear();
+        if (!s.dead) this.rig.part.weapon.visible = true;
+      }
     }
 
     // How fast it's going drives the walk (in the figure), and stills the breathing here.
@@ -324,7 +331,8 @@ export class UnitView implements EntityView {
         dead: s.dead ? this.dying : 0,
         // They glance where they're heading: up the screen, or down it.
         look: Math.sin(s.f) * 0.3,
-        expression: this.hurtT > 0 ? 'hurt' : this.grinT > 0 ? 'grin' : null,
+        expression: recallFace !== undefined ? recallFace : this.hurtT > 0 ? 'hurt' : this.grinT > 0 ? 'grin' : null,
+        posture,
       });
       this.recoil = 0;
     }
@@ -374,8 +382,17 @@ export class UnitView implements EntityView {
   private drawRecall(routine: RecallRoutine): void {
     const t = this.recallT;
     const r = this.baseR;
+    // Props are drawn facing right; mirror them when the champion faces left (words stay readable).
+    this.recallUnder.scale.x = this.recallOver.scale.x = this.side;
     this.recallUnder.clear();
     routine.under?.(this.recallUnder, t, r, this.pal);
+    if (this.rig instanceof Rig) {
+      this.rig.part.handProp.clear();
+      this.rig.part.headProp.clear();
+      routine.held?.(this.rig.part.handProp, t, r, this.pal);
+      if (routine.stow) this.rig.part.weapon.visible = false;
+      routine.worn?.(this.rig.part.headProp, t, r, this.pal);
+    }
     this.recallOverG.clear();
     let used = 0;
     const say: Say = (text, x, y, size, color, alpha = 1) => {
@@ -390,6 +407,7 @@ export class UnitView implements EntityView {
       if (label.style.fontSize !== size) label.style.fontSize = size;
       if (label.style.fill !== color) label.style.fill = color;
       label.alpha = alpha;
+      label.scale.x = this.side;
       label.position.set(x, y);
       label.visible = true;
       used++;
