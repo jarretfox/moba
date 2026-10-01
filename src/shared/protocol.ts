@@ -62,7 +62,22 @@ export type HostMessage =
 
 export type DamageType = 'physical' | 'magic' | 'true';
 /** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk, recall (channeling home). */
-export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk' | 'recall' | 'unchained' | BuffKind;
+export type StatusKind =
+  | 'root'
+  | 'stun'
+  | 'slow'
+  | 'weaken'
+  | 'airborne'
+  | 'berserk'
+  | 'recall'
+  | 'unchained'
+  /** Willmore's Burrow: fast, can't attack, hidden from enemies. */
+  | 'burrowed'
+  /** Dragged under by Down Below (or Willmore doing the dragging): can't act or be hit, hidden. */
+  | 'underground'
+  /** Logan's Maul: reveals the target, even burrowed. */
+  | 'bleed'
+  | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
 export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'warden';
@@ -75,10 +90,24 @@ export interface WardenStatus {
   unchained?: { team: PlayerTeam; left: number; uprising: boolean }[];
 }
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
-export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'projectile' | 'trap';
+export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'projectile' | 'trap' | 'pickup';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
-export type FxKind = 'aimLine' | 'trapSnap' | 'roll' | 'cleave' | 'warCry' | 'slam' | 'berserk' | 'recall' | 'wardenMark' | 'wardenSlam';
+export type FxKind =
+  | 'aimLine'
+  | 'trapSnap'
+  | 'roll'
+  | 'cleave'
+  | 'warCry'
+  | 'slam'
+  | 'berserk'
+  | 'recall'
+  | 'wardenMark'
+  | 'wardenSlam'
+  | 'burrow'
+  | 'surface'
+  | 'hookPull'
+  | 'tunnel';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
@@ -117,6 +146,8 @@ export interface EntitySnap {
   role?: StructureRole;
   chud?: ChudType;
   mon?: MonsterKind;
+  /** A little icon over a champion's head that everyone can see, e.g. Willmore's next piece of junk. */
+  badge?: string;
   /** Structure can't be damaged yet (the ones in front of it are still standing). */
   inv?: boolean;
   /** Seconds until a destroyed Oakner regrows. */
@@ -127,6 +158,8 @@ export interface AbilitySnap {
   rank: number;
   /** Seconds of cooldown remaining. */
   cd: number;
+  /** A word for the slot right now, e.g. "Boot" or "Surface". */
+  note?: string;
 }
 
 /** Private state only the owning player receives. */

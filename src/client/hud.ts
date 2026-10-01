@@ -145,6 +145,7 @@ export class Hud {
     this.bar.hidden = false;
     (this.portrait.querySelector('.initial') as HTMLElement).textContent = info.name.slice(0, 2).toUpperCase();
     this.bar.classList.toggle('rage', info.resource === 'rage');
+    this.bar.classList.toggle('nores', info.resource === 'none');
     info.abilities.forEach((a, i) => {
       (this.slots[i].root.querySelector('.name') as HTMLElement).textContent = a.name;
     });
@@ -183,7 +184,8 @@ export class Hud {
       const canLevel = me.points > 0 && canRankUp(i as Slot, a.rank, me.level);
       this.set(el.cd, 'background', a.cd > 0 ? `conic-gradient(rgba(4,7,10,.78) ${(a.cd / cdMax) * 360}deg, transparent 0)` : 'none');
       this.set(el.cdText, 'text', a.cd > 0 ? (a.cd < 1 ? a.cd.toFixed(1) : String(Math.ceil(a.cd))) : '');
-      this.set(el.cost, 'text', cost ? String(cost) : '');
+      this.set(el.cost, 'text', a.note ?? (cost ? String(cost) : ''));
+      this.set(el.cost, 'class', a.note ? 'cost note' : 'cost');
       const maxRank = i === 3 ? MAX_ULT_RANK : MAX_BASIC_RANK;
       this.set(el.pips, 'text', '●'.repeat(a.rank) + '○'.repeat(maxRank - a.rank));
       this.set(el.root, 'class', `slot${a.rank === 0 ? ' unlearned' : ''}${a.cd > 0 ? ' cooling' : ''}${noMana ? ' nomana' : ''}${canLevel ? ' levelable' : ''}`);

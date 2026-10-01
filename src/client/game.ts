@@ -14,7 +14,7 @@ import { FogLayer } from './render/fog';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
 import { buildMap, buildNavOverlay } from './render/mapView';
-import { PALETTE, ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
+import { PALETTE, PickupView, ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
 
@@ -161,6 +161,10 @@ export class GameClient {
         view = new StructureView(s, rel);
         layer = this.structureLayer;
         break;
+      case 'pickup':
+        view = new PickupView(s);
+        layer = this.underLayer;
+        break;
       default:
         view = new UnitView(s, rel);
         layer = this.unitLayer;
@@ -243,6 +247,14 @@ export class GameClient {
         return this.fx.telegraph(ev.x, ev.y, ev.r ?? 200, ev.dur ?? 1);
       case 'wardenSlam':
         return this.fx.chainSlam(ev.x, ev.y, ev.r ?? 200, x2, y2);
+      case 'burrow':
+        return this.fx.dirt(ev.x, ev.y, 90);
+      case 'surface':
+        return this.fx.dirt(ev.x, ev.y, ev.r ?? 200);
+      case 'hookPull':
+        return this.fx.chain(ev.x, ev.y, x2, y2, ev.dur ?? 0.3);
+      case 'tunnel':
+        return this.fx.tunnel(ev.x, ev.y, x2, y2, ev.dur ?? 1.5);
     }
   }
 

@@ -847,6 +847,15 @@ kbd {
   color: var(--mp);
 }
 
+.slot .cost.note {
+  color: var(--gold);
+  font-size: 10px;
+}
+
+.bar.nores .res.mp {
+  display: none;
+}
+
 .slot.cooling .name {
   opacity: 0.45;
 }

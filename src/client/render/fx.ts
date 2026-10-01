@@ -142,6 +142,42 @@ export class FxLayer {
     this.burst(x, y, 0xffffff);
   }
 
+  /** Dirt thrown up where something digs in or bursts out. */
+  dirt(x: number, y: number, r: number): void {
+    this.shockwave(x, y, r, 0x8a6a44, 0.45);
+    const g = new Graphics();
+    const clods = Array.from({ length: 10 }, (_, i) => ({ a: (i / 10) * Math.PI * 2 + (i % 3) * 0.3, d: r * (0.4 + (i % 4) * 0.15) }));
+    this.add(g, 0.5, (t) => {
+      g.clear();
+      for (const c of clods) g.circle(x + Math.cos(c.a) * c.d * t, y + Math.sin(c.a) * c.d * t, 7 * (1 - t) + 2).fill({ color: 0x6b4f2e, alpha: 1 - t });
+    });
+  }
+
+  /** A mound of dirt racing along under the ground. */
+  tunnel(x: number, y: number, x2: number, y2: number, dur: number): void {
+    const g = new Graphics();
+    this.add(g, dur + 0.6, (t) => {
+      const k = Math.min(1, (t * (dur + 0.6)) / dur);
+      const mx = x + (x2 - x) * k;
+      const my = y + (y2 - y) * k;
+      const fade = k < 1 ? 1 : 1 - (t * (dur + 0.6) - dur) / 0.6;
+      g.clear()
+        .moveTo(x, y)
+        .lineTo(mx, my)
+        .stroke({ width: 16, color: 0x5a4127, alpha: 0.45 * fade })
+        .ellipse(mx, my, 34, 26)
+        .fill({ color: 0x6b4f2e, alpha: 0.9 * fade });
+    });
+  }
+
+  /** A chain snapping taut between two points: Sewer Hook reeling in. */
+  chain(x: number, y: number, x2: number, y2: number, dur: number): void {
+    const g = new Graphics();
+    this.add(g, Math.max(0.2, dur), (t) => {
+      g.clear().moveTo(x, y).lineTo(x2, y2).stroke({ width: 4, color: 0x8a9099, alpha: 1 - t * 0.7 });
+    });
+  }
+
   /** A wedge that flashes and fades: Cleave. (x2, y2) is the tip of the swing; spread is in degrees. */
   wedge(x: number, y: number, x2: number, y2: number, spreadDeg: number, color: number): void {
     const g = new Graphics();

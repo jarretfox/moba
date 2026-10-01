@@ -105,7 +105,7 @@ export class LobbyScreen {
       const card = el('button', `select-card ${info.resource}`);
       card.append(
         el('div', 'select-name', info.name),
-        el('div', 'select-sub', `${info.title} · ${info.resource === 'rage' ? 'Rage' : 'Mana'}`),
+        el('div', 'select-sub', `${info.title} · ${{ rage: 'Rage', mana: 'Mana', none: 'No resource' }[info.resource]}`),
         el('div', 'select-passive', `Passive — ${info.passive.name}`),
       );
       const list = el('div', 'select-abilities');

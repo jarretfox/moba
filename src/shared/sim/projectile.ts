@@ -65,6 +65,8 @@ export interface LineShot {
   canHit?: (u: Unit) => boolean;
   /** hitIndex counts up from 0 in the order targets were struck. */
   onHit: (world: World, target: Unit, hitIndex: number) => void;
+  /** Reached the end of its range without hitting anything (non-piercing shots only). */
+  onMiss?: (world: World, at: Vec2) => void;
 }
 
 /** A skillshot: flies in a straight line and hits whatever enemy it passes through. */
@@ -110,7 +112,10 @@ export class LineProjectile implements Entity {
 
     this.pos = to;
     this.traveled += step;
-    if (this.traveled >= s.range - 1e-6) this.removed = true;
+    if (this.traveled >= s.range - 1e-6) {
+      this.removed = true;
+      if (!s.pierce && this.hit.size === 0) s.onMiss?.(world, this.pos);
+    }
   }
 
   snapshot(): EntitySnap {

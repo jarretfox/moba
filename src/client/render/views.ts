@@ -46,6 +46,8 @@ export class UnitView implements EntityView {
   private readonly label: Text;
   /** Champion level, in a box left of the health bar. */
   private readonly levelText: Text | null = null;
+  /** An icon everyone can see over the head (Willmore's next junk). Made the first time one shows up. */
+  private badge: Text | null = null;
   private barKey = '';
   private statusKey = '';
   private pulse = 0;
@@ -104,6 +106,10 @@ export class UnitView implements EntityView {
     const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3);
     this.body.scale.set(size);
     this.facing.scale.set(size);
+    // Under the ground you only show as a mound of dirt (to whoever can see you at all).
+    const under = s.st?.includes('burrowed') || s.st?.includes('underground');
+    this.body.alpha = this.facing.alpha = under ? 0.22 : 1;
+    if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
 
     const barKey = `${s.hp}|${s.mhp}|${s.mp}|${s.mmp}|${s.lv}`;
     if (barKey !== this.barKey) {
@@ -119,6 +125,16 @@ export class UnitView implements EntityView {
 
   onAttack(): void {
     this.pulse = 1;
+  }
+
+  private setBadge(text: string, r: number): void {
+    if (!this.badge) {
+      this.badge = new Text({ text, style: { fontFamily: 'Segoe UI Emoji, Apple Color Emoji, system-ui, sans-serif', fontSize: 20 } });
+      this.badge.anchor.set(0.5, 1);
+      this.container.addChild(this.badge);
+    }
+    if (this.badge.text !== text) this.badge.text = text;
+    this.badge.position.set(0, -r - 44);
   }
 
   private drawBars(s: EntitySnap): void {
@@ -158,6 +174,13 @@ export class UnitView implements EntityView {
     if (st.includes('ember')) g.circle(0, 0, r + 12).stroke({ width: 3, color: 0xff7a2f, alpha: 0.85 });
     if (st.includes('glowcap')) g.circle(0, 0, r + 15).stroke({ width: 3, color: 0x6fd6ff, alpha: 0.85 });
     if (st.includes('unchained')) g.circle(0, 0, r + 6).stroke({ width: 3, color: 0x7fe3ff, alpha: 0.9 });
+    if (st.includes('burrowed') || st.includes('underground')) {
+      g.ellipse(0, 4, r * 1.25, r * 0.95).fill({ color: 0x5a4127, alpha: 0.9 }).stroke({ width: 3, color: 0x3a2a18 });
+      for (const [x, y, rr] of [[-0.6, -0.2, 0.16], [0.35, 0.3, 0.2], [0.1, -0.45, 0.12], [-0.25, 0.45, 0.1], [0.65, -0.15, 0.13]]) {
+        g.circle(x * r, y * r + 4, rr * r).fill(0x7a5a38);
+      }
+    }
+    if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }
 }
@@ -191,6 +214,23 @@ export class ProjectileView implements EntityView {
         g.rect(-52, -9, 72, 18).fill({ color: 0x7fe3ff, alpha: 0.28 });
         g.rect(-44, -4, 60, 8).fill(0xe8fbff);
         break;
+      case 'junk_can':
+        g.roundRect(-10, -7, 20, 14, 3).fill(0xb8bec6).stroke({ width: 2, color: 0x4a4f58 });
+        g.rect(-3, -7, 7, 14).fill(0xd9483b);
+        break;
+      case 'junk_sludge':
+        g.circle(0, 0, 11).fill({ color: 0x6fae2e, alpha: 0.9 }).stroke({ width: 2, color: 0x3d6a14 });
+        g.circle(-12, 3, 5).fill({ color: 0x6fae2e, alpha: 0.7 });
+        g.circle(-20, -2, 3).fill({ color: 0x6fae2e, alpha: 0.5 });
+        break;
+      case 'junk_boot':
+        g.poly([-10, -10, 2, -10, 2, 2, 12, 4, 12, 10, -10, 10]).fill(0x6b4a2b).stroke({ width: 2, color: 0x2e1f10 });
+        break;
+      case 'hook':
+        for (let i = 1; i <= 6; i++) g.ellipse(-i * 11, 0, 5, 3).stroke({ width: 2, color: 0x8a9099 }); // the chain behind it
+        g.moveTo(0, 0).arc(6, 0, 10, Math.PI, Math.PI * 2.4).stroke({ width: 4, color: 0x5d636d });
+        g.poly([14, 8, 20, 2, 10, 4]).fill(0x5d636d);
+        break;
       case 'longshot':
         g.ellipse(-20, 0, 110, s.r).fill({ color: 0xff8a3d, alpha: 0.3 });
         g.ellipse(0, 0, 70, s.r * 0.45).fill({ color: 0xffb070, alpha: 0.8 });
@@ -205,6 +245,27 @@ export class ProjectileView implements EntityView {
   update(s: EntitySnap): void {
     this.container.position.set(s.x, s.y);
     this.container.rotation = s.f;
+  }
+}
+
+/** Something to pick up: Willmore's scrap. */
+export class PickupView implements EntityView {
+  readonly container = new Graphics();
+  private age = 0;
+
+  constructor(s: EntitySnap) {
+    const g = this.container;
+    // A little pile: a bolt, a bent plate and a cog.
+    g.circle(0, 0, s.r * 0.7).fill({ color: 0x000000, alpha: 0.25 });
+    g.roundRect(-14, -4, 18, 8, 2).fill(0x9aa1ab).stroke({ width: 1.5, color: 0x3a3f48 });
+    g.poly([-2, 4, 12, 0, 16, 10, 2, 12]).fill(0x7c838d).stroke({ width: 1.5, color: 0x3a3f48 });
+    g.circle(6, -8, 6).fill(0xb8a46a).stroke({ width: 1.5, color: 0x5a4a22 });
+    g.circle(6, -8, 2).fill(0x5a4a22);
+  }
+
+  update(s: EntitySnap, dt: number): void {
+    this.age += dt;
+    this.container.position.set(s.x, s.y - 3 * Math.sin(this.age * 4));
   }
 }
 

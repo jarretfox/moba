@@ -1,7 +1,7 @@
-export type ChampionId = 'marksman' | 'barbarian';
+export type ChampionId = 'marksman' | 'barbarian' | 'willmore';
 
-/** What a champion's second bar holds. Rage starts empty and is earned in combat; mana starts full and regenerates. */
-export type Resource = 'mana' | 'rage';
+/** What a champion's second bar holds. Rage starts empty and is earned in combat; mana starts full and regenerates. Some have none. */
+export type Resource = 'mana' | 'rage' | 'none';
 
 export type Targeting =
   /** Skillshot fired toward the cursor. */

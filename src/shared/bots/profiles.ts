@@ -90,4 +90,26 @@ const barbarian: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian };
+const willmore: BotProfile = {
+  skillOrder: [0, 2, 1],
+  build: ['shiv', 'treads', 'fang', 'drum', 'link', 'reaver', 'plate'],
+  fight(ctx, foe) {
+    const { me, home } = ctx;
+    const d = dist(me.pos, foe.pos);
+    const burrowed = me.has('burrowed');
+    // Burrowed: close in unseen, then pop up underneath them.
+    if (burrowed) return d < 160 ? cast(1, me.pos) : null;
+    // Drag them home: toward our own base, where our Shooties are.
+    if (ready(ctx, 3) && d < 300 && hpPct(foe) < 0.6) return cast(3, add(me.pos, scale(dirTo(me.pos, home), 600)));
+    if (ready(ctx, 2) && d > 280 && d < 650) return cast(2, lead(foe, 0.25));
+    if (ready(ctx, 0) && d < 800) return cast(0, lead(foe, 0.3));
+    if (ready(ctx, 1) && d > 350 && d < 700) return cast(1, me.pos);
+    return null;
+  },
+  escape(ctx) {
+    const { me } = ctx;
+    return ready(ctx, 1) && !me.has('burrowed') ? cast(1, me.pos) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore };

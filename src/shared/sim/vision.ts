@@ -140,6 +140,7 @@ export class Vision {
     if (team === 0 || e.team === team) return true;
     if (e.kind === 'structure') return true; // like League's turrets, always on the map
     if (e.kind === 'trap') return false; // hidden from the other side
+    if (e instanceof Unit && e.isConcealed()) return false;
     if (this.computedTick === -Infinity) this.update(true);
     if (this.visible[team][this.grid.cellOf(e.pos)]) return true;
     // Attacking or casting from brush gives your position away for a moment.

@@ -82,6 +82,11 @@ export class World {
     return e instanceof Unit ? e : undefined;
   }
 
+  /** Every entity: units, projectiles, traps, pickups and the rest. */
+  all(): Entity[] {
+    return [...this.entities.values()];
+  }
+
   units(): Unit[] {
     const out: Unit[] = [];
     for (const e of this.entities.values()) if (e instanceof Unit) out.push(e);
@@ -129,6 +134,7 @@ export class World {
         .filter((u): u is Unit => u !== undefined);
       target.die(this, source);
       rewardDeath(this, target, source, helpers);
+      source?.onKill(this, target);
     }
     if (opts.basic && source) source.onBasicHit(this, target, dealt);
     return dealt;

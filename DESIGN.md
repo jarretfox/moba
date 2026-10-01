@@ -187,12 +187,15 @@ The numbers live at the top of `src/shared/champions/barbarian.ts`. Resource: Ra
 - **E, Leap:** jumps to a spot, even over walls, and slows enemies where he lands. Brutal: a wider landing that stuns instead.
 - **R, Berserk:** for 6s he grows bigger, gains +30% attack speed and 40% tenacity, and his basic attacks splash half damage around the target. Gives 50 Rage. Takedowns (kills and assists) add 2s, up to 12s. Brutal: 9s.
 
-### Willmore (M4)
-- **Passive, Scavenger:** minions and monsters he kills drop scrap. Picking it up heals him and grants stacking armor.
-- **Q, Junk Toss:** cycles through Can (damage), then Sludge (slow), then Boot (short stun). Everyone can see which item is next.
-- **W, Burrow:** he goes underground, invisible and fast, but can't attack. Surfacing knocks nearby enemies into the air.
-- **E, Sewer Hook:** pulls an enemy to him, or pulls him to a wall.
-- **R, Down Below:** drags an enemy champion underground for 1.5s, then resurfaces up to 600 units away in a direction he chooses.
+### Willmore ✅ implemented
+
+The numbers live at the top of `src/shared/champions/willmore.ts`. No resource: cooldowns only.
+- **Passive, Scavenger:** Chuds and monsters he kills drop scrap for 10s, which only he can pick up. Each piece heals 10 + 2% max health and gives +2 armor, stacking 10 times (stacks last 30s).
+- **Q, Junk Toss:** a skillshot that cycles Can (40% more damage), Sludge (40% slow for 2s), Boot (0.8s stun). An icon over his head shows everyone what's next, and the slot says it too.
+- **W, Burrow:** up to 4s underground: hidden from enemies (Chuds, Shooties and bots can't see him either) and 40% faster, but he can't attack. Skillshots and area spells still hit him. Press W again (or cast anything else) to surface, knocking nearby enemies up for 0.75s. Bleeding (Logan's Maul) gives him away.
+- **E, Sewer Hook:** the first enemy hit is dragged to him. If the hook catches a wall instead, it pulls him to the wall. Immovable things (the Warden, training dummies' bases) take the damage but don't move.
+- **R, Down Below:** grabs the nearest enemy champion beside him (within 275) and drags them underground for 1.5s, through walls if he likes, to where he aimed (up to 600 away). Both are untouchable and hidden on the way. They come up knocked into the air and take damage. No victim, no cast (and no cooldown).
+- **Kin of the Deep** comes with HunnaG's Mole Holes.
 
 ### HunnaG (M4)
 - **Passive, Rot:** her spells stack Rot, which deals damage over time. The 4th stack bursts for extra damage and a slow.

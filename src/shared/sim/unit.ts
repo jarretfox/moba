@@ -121,7 +121,12 @@ export abstract class Unit implements Entity {
   }
 
   isTargetable(): boolean {
-    return !this.dead;
+    return !this.dead && !this.has('underground');
+  }
+
+  /** Hidden from the enemy even inside their vision: burrowed or dragged underground, unless bleeding gives them away. */
+  isConcealed(): boolean {
+    return (this.has('burrowed') || this.has('underground')) && !this.has('bleed');
   }
 
   /** Takes part in unit collision. Dashing units pass through everyone. */
@@ -159,6 +164,10 @@ export abstract class Unit implements Entity {
     return 0;
   }
 
+  clearStatus(kind: StatusKind): void {
+    this.statuses = this.statuses.filter((s) => s.kind !== kind);
+  }
+
   addStatus(world: World, kind: StatusKind, duration: number, amount = 0): void {
     if (this.dead) return;
     if (kind === 'stun' || kind === 'root' || kind === 'slow') duration *= 1 - this.tenacity(world);
@@ -188,6 +197,9 @@ export abstract class Unit implements Entity {
 
   /** Called on every champion who got a kill or assist on a champion (or training dummy). */
   onTakedown(_world: World, _victim: Unit): void {}
+
+  /** Called on whoever landed the killing blow, after the victim dies. */
+  onKill(_world: World, _victim: Unit): void {}
 
   // ─── Orders (from player commands or AI) ───────────────────────────────────
 
@@ -251,7 +263,7 @@ export abstract class Unit implements Entity {
       return;
     }
     this.path = [];
-    if (world.time >= this.attackReadyAt && this.canAct(world)) {
+    if (world.time >= this.attackReadyAt && this.canAct(world) && !this.has('burrowed')) {
       const attackTime = 1 / this.stats.attackSpeed;
       this.windup = { targetId: target.id, fireAt: world.time + attackTime * WINDUP_FRACTION, prevReadyAt: this.attackReadyAt };
       this.attackReadyAt = world.time + attackTime;

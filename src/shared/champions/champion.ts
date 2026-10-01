@@ -1,7 +1,7 @@
 import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
 import { INVENTORY_SLOTS, ITEMS, conflicts, hasteMultiplier, sellPrice, sumItemStats, type ItemId } from '../items';
-import type { BuffKind, EntitySnap, MeSnap } from '../protocol';
+import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { BUFFS, EMBER, GLOWCAP } from '../sim/jungle';
 import { MAX_LEVEL, PASSIVE_GOLD, STARTING_GOLD, canRankUp, xpToNext } from '../sim/progression';
@@ -238,7 +238,9 @@ export abstract class Champion extends Unit {
   // ─── Casting ──────────────────────────────────────────────────────────────
 
   tryCast(world: World, slot: Slot, aim: Vec2): boolean {
-    if (this.dead || !this.canAct(world)) return false;
+    if (this.dead) return false;
+    if (this.recast(world, slot, aim)) return true;
+    if (!this.canAct(world)) return false;
     const info = this.info.abilities[slot];
     const state = this.abilities[slot];
     if (state.rank <= 0 || world.time < state.readyAt) return false;
@@ -246,6 +248,7 @@ export abstract class Champion extends Unit {
     if (this.mana < cost) return false;
 
     const target = this.resolveAim(info.targeting, aim);
+    if (!this.canCastAt(world, slot, target)) return false;
     this.mana -= cost;
     state.readyAt = world.time + this.byRank(slot, info.cooldown) * hasteMultiplier(this.haste);
     this.cancelWindup();
@@ -274,6 +277,21 @@ export abstract class Champion extends Unit {
     return { x: aim.x, y: aim.y };
   }
 
+  /** A second press of an ability that's still active (e.g. surfacing from Burrow). True if it was handled. */
+  protected recast(_world: World, _slot: Slot, _aim: Vec2): boolean {
+    return false;
+  }
+
+  /** Whether the ability has something to work on at this spot (e.g. Down Below needs a victim). */
+  protected canCastAt(_world: World, _slot: Slot, _aim: Vec2): boolean {
+    return true;
+  }
+
+  /** A word shown on the ability's slot right now. */
+  protected abilityNote(_world: World, _slot: Slot): string | undefined {
+    return undefined;
+  }
+
   /** Fires the moment a cast begins — telegraphs, wind-up effects. */
   protected onCastStart(_world: World, _slot: Slot, _aim: Vec2): void {}
 
@@ -295,7 +313,12 @@ export abstract class Champion extends Unit {
   meSnapshot(world: World): MeSnap {
     return {
       id: this.id,
-      abilities: this.abilities.map((a) => ({ rank: a.rank, cd: Math.max(0, Math.round((a.readyAt - world.time) * 10) / 10) })),
+      abilities: this.abilities.map((a, i) => {
+        const snap: AbilitySnap = { rank: a.rank, cd: Math.max(0, Math.round((a.readyAt - world.time) * 10) / 10) };
+        const note = this.abilityNote(world, i as Slot);
+        if (note) snap.note = note;
+        return snap;
+      }),
       passiveStacks: 0,
       empowered: false,
       respawnIn: this.dead ? Math.max(0, this.respawnAt - world.time) : 0,
