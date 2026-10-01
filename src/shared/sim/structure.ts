@@ -111,7 +111,7 @@ export class Structure extends Unit {
   }
 
   private canShoot(world: World, u: Unit): boolean {
-    return u.team !== this.team && u.team !== TEAM.neutral && u.kind !== 'structure' && u.isTargetable() && this.inReach(u) && world.vision.canSee(this.team, u);
+    return u.team !== this.team && u.team !== TEAM.neutral && u.kind !== 'structure' && u.kind !== 'totem' && u.isTargetable() && this.inReach(u) && world.vision.canSee(this.team, u);
   }
 
   private inReach(u: Unit): boolean {

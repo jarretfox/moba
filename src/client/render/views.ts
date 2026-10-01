@@ -68,6 +68,12 @@ export class UnitView implements EntityView {
       drawChud(this.facing, s.chud ?? 'melee', r, color);
     } else if (s.k === 'monster') {
       drawMonster(this.facing, s.mon ?? 'rat', r);
+    } else if (s.k === 'totem') {
+      // A squat glowing mushroom with a team-colored ring around its stalk.
+      this.body.circle(0, 0, r).fill({ color: 0x6fd6ff, alpha: 0.12 });
+      this.body.ellipse(0, -r * 0.2, r * 0.95, r * 0.75).fill(0x7a3fb0).stroke({ width: 2, color: PALETTE.outline });
+      for (const [x, y, rr] of [[-0.4, -0.35, 0.16], [0.35, -0.4, 0.13], [0.05, -0.05, 0.12]]) this.body.circle(x * r, y * r, rr * r).fill(0xe8d7ff);
+      this.body.circle(0, r * 0.45, r * 0.35).fill(color).stroke({ width: 2, color: PALETTE.outline });
     } else if (s.k === 'dummy') {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: PALETTE.outline });
       this.body.circle(0, 0, r * 0.62).stroke({ width: 5, color: PALETTE.enemy });
@@ -180,6 +186,10 @@ export class UnitView implements EntityView {
         g.circle(x * r, y * r + 4, rr * r).fill(0x7a5a38);
       }
     }
+    if (st.includes('rot')) {
+      g.circle(0, 0, r + 7).stroke({ width: 3, color: 0x8fd14f, alpha: 0.8 });
+      for (let i = 0; i < 5; i++) g.circle(Math.cos(i * 1.3) * (r + 7), Math.sin(i * 1.3) * (r + 7), 3).fill(0xb8f07a);
+    }
     if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }
@@ -214,6 +224,11 @@ export class ProjectileView implements EntityView {
         g.rect(-52, -9, 72, 18).fill({ color: 0x7fe3ff, alpha: 0.28 });
         g.rect(-44, -4, 60, 8).fill(0xe8fbff);
         break;
+      case 'spore':
+        g.circle(0, 0, 9).fill({ color: 0x8fd14f, alpha: 0.35 });
+        g.circle(0, 0, 5).fill(0xc9f59a);
+        g.circle(-8, 0, 3).fill({ color: 0x8fd14f, alpha: 0.6 });
+        break;
       case 'junk_can':
         g.roundRect(-10, -7, 20, 14, 3).fill(0xb8bec6).stroke({ width: 2, color: 0x4a4f58 });
         g.rect(-3, -7, 7, 14).fill(0xd9483b);
@@ -245,6 +260,39 @@ export class ProjectileView implements EntityView {
   update(s: EntitySnap): void {
     this.container.position.set(s.x, s.y);
     this.container.rotation = s.f;
+  }
+}
+
+/** A patch of ground with an effect: HunnaG's sludge puddle or a Mole Hole. */
+export class ZoneView implements EntityView {
+  readonly container = new Graphics();
+  private age = 0;
+
+  constructor(private readonly s: EntitySnap) {
+    this.draw(0);
+  }
+
+  private draw(t: number): void {
+    const g = this.container.clear();
+    const r = this.s.r;
+    if (this.s.vis === 'molehole') {
+      g.circle(0, 0, r * 1.25).fill({ color: 0x6b4f2e, alpha: 0.9 });
+      g.circle(0, 0, r * 0.85).fill(0x120c06);
+      g.circle(0, 0, r * (0.5 + 0.1 * Math.sin(t * 6))).stroke({ width: 2, color: 0x8fd14f, alpha: 0.6 });
+      return;
+    }
+    // sludge
+    g.circle(0, 0, r).fill({ color: 0x5e8f23, alpha: 0.35 }).stroke({ width: 3, color: 0x8fd14f, alpha: 0.6 });
+    for (let i = 0; i < 6; i++) {
+      const a = i * 1.05 + t * 0.6;
+      g.circle(Math.cos(a) * r * 0.55, Math.sin(a) * r * 0.55, 6 + 3 * Math.sin(t * 3 + i)).fill({ color: 0x8fd14f, alpha: 0.5 });
+    }
+  }
+
+  update(s: EntitySnap, dt: number): void {
+    this.age += dt;
+    this.container.position.set(s.x, s.y);
+    this.draw(this.age);
   }
 }
 

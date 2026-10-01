@@ -48,7 +48,8 @@ export type ItemId =
   | 'link'
   | 'plate'
   | 'aegis'
-  | 'lantern';
+  | 'lantern'
+  | 'staff';
 
 const item = (id: ItemId, name: string, cost: number, tier: ItemTier, stats: ItemStats, flavor: string): ItemInfo => ({ id, name, cost, tier, stats, flavor });
 
@@ -69,6 +70,7 @@ export const ITEMS: Record<ItemId, ItemInfo> = {
   plate: item('plate', 'Royal Plate', 2400, 'core', { armor: 60, maxHp: 300 }, 'Forged for King Rix. He had it let out twice.'),
   aegis: item('aegis', 'Deepstone Aegis', 2400, 'core', { mr: 55, maxHp: 300, hpRegen: 2 }, 'Cut from the Deep, where spells go quiet.'),
   lantern: item('lantern', 'Glowworm Lantern', 2700, 'core', { ap: 75, maxMana: 300, haste: 20 }, "HunnaG's own design. Please return it lit."),
+  staff: item('staff', 'Rotroot Staff', 2700, 'core', { ap: 90, maxHp: 200 }, 'Grown in the Deep from a single cursed seed. Still growing.'),
 };
 
 export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];

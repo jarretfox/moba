@@ -49,7 +49,7 @@ const STUCK_NEAR = 120;
 
 /** Anything with health that moves, attacks, and gets crowd-controlled: champions, dummies, later chuds and jungle mobs. */
 export abstract class Unit implements Entity {
-  abstract readonly kind: 'champion' | 'dummy' | 'chud' | 'structure' | 'monster';
+  abstract readonly kind: 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem';
   removed = false;
   pos: Vec2;
   facing = 0;

@@ -178,6 +178,51 @@ export class FxLayer {
     });
   }
 
+  /** A glob arcing through the air to where it'll land, with a shadow marking the spot. */
+  lob(x: number, y: number, x2: number, y2: number, dur: number): void {
+    const g = new Graphics();
+    const height = Math.min(220, Math.hypot(x2 - x, y2 - y) * 0.35);
+    this.add(g, dur, (t) => {
+      const px = x + (x2 - x) * t;
+      const py = y + (y2 - y) * t - Math.sin(t * Math.PI) * height;
+      g.clear()
+        .circle(x2, y2, 30 + 30 * t)
+        .fill({ color: 0x000000, alpha: 0.15 + 0.15 * t })
+        .circle(px, py, 16)
+        .fill(0x6fae2e)
+        .stroke({ width: 2, color: 0x3d6a14 });
+    });
+  }
+
+  /** A telegraph for HunnaG's ultimate: a sickly circle that fills in before the hands come up. */
+  deepMark(x: number, y: number, r: number, dur: number): void {
+    const g = new Graphics();
+    this.add(g, dur, (t) => {
+      g.clear()
+        .circle(x, y, r)
+        .fill({ color: 0x5b2a86, alpha: 0.15 })
+        .stroke({ width: 3, color: 0x8fd14f, alpha: 0.8 })
+        .circle(x, y, r * t)
+        .fill({ color: 0x8fd14f, alpha: 0.18 });
+    });
+  }
+
+  /** Hands bursting up out of the ground all over an area. */
+  hands(x: number, y: number, r: number): void {
+    const g = new Graphics();
+    const spots = Array.from({ length: 12 }, (_, i) => ({ a: i * 2.4, d: r * (0.25 + ((i * 37) % 70) / 100) }));
+    this.add(g, 0.7, (t) => {
+      g.clear();
+      const rise = t < 0.3 ? t / 0.3 : 1;
+      for (const s of spots) {
+        const hx = x + Math.cos(s.a) * s.d;
+        const hy = y + Math.sin(s.a) * s.d;
+        g.ellipse(hx, hy, 12, 18 * rise).fill({ color: 0x4f6b3a, alpha: 1 - t * 0.8 }).stroke({ width: 2, color: 0x23301a, alpha: 1 - t });
+      }
+    });
+    this.shockwave(x, y, r, 0x8fd14f, 0.5);
+  }
+
   /** A wedge that flashes and fades: Cleave. (x2, y2) is the tip of the swing; spread is in degrees. */
   wedge(x: number, y: number, x2: number, y2: number, spreadDeg: number, color: number): void {
     const g = new Graphics();

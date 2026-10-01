@@ -5,6 +5,8 @@ import type { EntityKind } from '../protocol';
 export const SIGHT = {
   champion: 1100,
   chud: 800,
+  /** HunnaG's Mushroom Totem. */
+  totem: 700,
   structure: { outerShootie: 1100, innerShootie: 1100, baseShootie: 1100, oakner: 700, daBase: 900 } satisfies Record<StructureRole, number>,
 } as const;
 
@@ -15,6 +17,8 @@ export function sightOf(kind: EntityKind, role?: StructureRole): number {
       return SIGHT.champion;
     case 'chud':
       return SIGHT.chud;
+    case 'totem':
+      return SIGHT.totem;
     case 'structure':
       return role ? SIGHT.structure[role] : 0;
     default:

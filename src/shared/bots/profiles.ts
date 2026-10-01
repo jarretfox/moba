@@ -4,7 +4,7 @@ import type { Slot } from '../constants';
 import type { ItemId } from '../items';
 import { add, dirTo, dist, lerpVec, scale, type Vec2 } from '../math';
 import type { Command } from '../protocol';
-import { enemiesInCone } from '../sim/query';
+import { enemiesInCone, enemiesInRadius } from '../sim/query';
 import type { Unit } from '../sim/unit';
 import type { World } from '../sim/world';
 
@@ -112,4 +112,32 @@ const willmore: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore };
+const hunnag: BotProfile = {
+  skillOrder: [0, 1, 2],
+  build: ['sagestone', 'treads', 'lantern', 'staff', 'aegis', 'drum'],
+  fight(ctx, foe) {
+    const { me, world } = ctx;
+    const d = dist(me.pos, foe.pos);
+    if (ready(ctx, 3) && d < 900) {
+      const caught = enemiesInRadius(world, me.team, foe.pos, 350).filter((u) => u.kind === 'champion').length;
+      if (caught >= 2 || hpPct(foe) < 0.5) return cast(3, lead(foe, 0.5));
+    }
+    if (ready(ctx, 0) && d < 850) return cast(0, lead(foe, 0.5));
+    if (ready(ctx, 1) && d < 700) return cast(1, lerpVec(me.pos, foe.pos, 0.3));
+    return null;
+  },
+  escape(ctx) {
+    const { me, home } = ctx;
+    return ready(ctx, 2) ? cast(2, add(me.pos, scale(dirTo(me.pos, home), 700))) : null;
+  },
+  farm(ctx, chuds) {
+    if (!ready(ctx, 0) || ctx.me.mana < ctx.me.stats.maxMana * 0.6) return null;
+    const { me, world } = ctx;
+    const near = chuds.filter((c) => dist(c.pos, me.pos) < 800);
+    if (near.length < 3) return null;
+    const centroid = near.reduce((s, c) => ({ x: s.x + c.pos.x / near.length, y: s.y + c.pos.y / near.length }), { x: 0, y: 0 });
+    return enemiesInRadius(world, me.team, centroid, 160).length >= 3 ? cast(0, centroid) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag };

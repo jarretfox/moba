@@ -77,6 +77,8 @@ export type StatusKind =
   | 'underground'
   /** Logan's Maul: reveals the target, even burrowed. */
   | 'bleed'
+  /** HunnaG's Rot (amount = stacks). */
+  | 'rot'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -90,7 +92,7 @@ export interface WardenStatus {
   unchained?: { team: PlayerTeam; left: number; uprising: boolean }[];
 }
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
-export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'projectile' | 'trap' | 'pickup';
+export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'totem' | 'projectile' | 'trap' | 'pickup' | 'zone';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind =
@@ -107,7 +109,13 @@ export type FxKind =
   | 'burrow'
   | 'surface'
   | 'hookPull'
-  | 'tunnel';
+  | 'tunnel'
+  | 'lob'
+  | 'rotBurst'
+  | 'pulse'
+  | 'hop'
+  | 'deepMark'
+  | 'deepHands';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

@@ -99,7 +99,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Uprising:** if Willmore or HunnaG lands the kill, Unchained becomes an Uprising, and every wave also brings a Chud Brute.
   - **HUD and kill feed:** the HUD shows who's Unchained and for how long. The kill feed announces the kill, and names the Warden (or a Shootie) when it kills a champion.
   - **Old Grudge** is coded for Willmore and HunnaG by champion id, so it works once they exist (M4).
-- **Shop** (items in `src/shared/items.ts`): 16 items, 4 inventory slots. Press P or click your gold.
+- **Shop** (items in `src/shared/items.ts`): 17 items, 4 inventory slots. Press P or click your gold.
   - You can buy and sell only in your own fountain, or while dead. Selling returns 70% of the price.
   - No recipes: each item is bought whole.
     - **Basics** (300–435) stack.
@@ -193,16 +193,18 @@ The numbers live at the top of `src/shared/champions/willmore.ts`. No resource: 
 - **Passive, Scavenger:** Chuds and monsters he kills drop scrap for 10s, which only he can pick up. Each piece heals 10 + 2% max health and gives +2 armor, stacking 10 times (stacks last 30s).
 - **Q, Junk Toss:** a skillshot that cycles Can (40% more damage), Sludge (40% slow for 2s), Boot (0.8s stun). An icon over his head shows everyone what's next, and the slot says it too.
 - **W, Burrow:** up to 4s underground: hidden from enemies (Chuds, Shooties and bots can't see him either) and 40% faster, but he can't attack. Skillshots and area spells still hit him. Press W again (or cast anything else) to surface, knocking nearby enemies up for 0.75s. Bleeding (Logan's Maul) gives him away.
-- **E, Sewer Hook:** the first enemy hit is dragged to him. If the hook catches a wall instead, it pulls him to the wall. Immovable things (the Warden, training dummies' bases) take the damage but don't move.
+- **E, Sewer Hook:** the first enemy hit is dragged to him. If the hook catches a wall instead, it pulls him to the wall. Immovable things (the Warden, training dummies) take the damage but don't move.
 - **R, Down Below:** grabs the nearest enemy champion beside him (within 275) and drags them underground for 1.5s, through walls if he likes, to where he aimed (up to 600 away). Both are untouchable and hidden on the way. They come up knocked into the air and take damage. No victim, no cast (and no cooldown).
-- **Kin of the Deep** comes with HunnaG's Mole Holes.
+- **Kin of the Deep:** while burrowed he can use any HunnaG's Mole Holes, even the enemy's.
 
-### HunnaG (M4)
-- **Passive, Rot:** her spells stack Rot, which deals damage over time. The 4th stack bursts for extra damage and a slow.
-- **Q, Sludge Lob:** a lobbed shot that leaves a slowing puddle.
-- **W, Mushroom Totem:** grants vision and pulses, healing allies and adding Rot to enemies. Enemies can destroy it.
-- **E, Mole Hole:** two linked holes that allies can hop through for 5s.
-- **R, The Deep Calls:** a large area. After 0.75s, hands burst out and root every enemy inside, applying maximum Rot.
+### HunnaG ✅ implemented
+
+The numbers live at the top of `src/shared/champions/hunnag.ts`. Her spells scale with ability power; the Glowworm Lantern and the new Rotroot Staff (2700: +90 AP, +200 health) are the core AP items.
+- **Passive, Rot:** her spells stack Rot on enemies (up to 4): magic damage every 0.5s for 4s, per stack. The 4th stack bursts for extra magic damage and a 30% slow for 1.5s, and Rot starts over. Rot keeps ticking if she dies.
+- **Q, Sludge Lob:** lobbed at a spot; it lands 0.5s later for magic damage and 1 Rot, and leaves a puddle that slows 30% for 2.5s.
+- **W, Mushroom Totem:** a little mushroom (one at a time, 16–22s) that sees like a ward. Every 1.5s it heals allied champions nearby and adds 1 Rot to nearby enemies. It has health; enemies can knock it down for 25 gold. Chuds and Shooties ignore it.
+- **E, Mole Hole:** she digs down and pops up at the target spot straight away. Both holes stay open for 5s: allied champions hop between them by walking in. Coming out next to (or on) the other hole, you have to step off before it takes you back.
+- **R, The Deep Calls:** marks a big circle; 0.75s later hands burst out, dealing magic damage, rooting everyone inside, and giving them full Rot (which bursts at once).
 
 ### Logan Lionheart (M4)
 - **Passive, Lionheart:** when a nearby ally drops to low health, he gets a burst of speed toward them and a shield (see Uneasy Alliance above).

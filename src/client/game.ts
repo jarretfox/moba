@@ -14,7 +14,7 @@ import { FogLayer } from './render/fog';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
 import { buildMap, buildNavOverlay } from './render/mapView';
-import { PALETTE, PickupView, ProjectileView, StructureView, TrapView, UnitView, type EntityView, type Relation, type ViewContext } from './render/views';
+import { PALETTE, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
 
@@ -165,6 +165,10 @@ export class GameClient {
         view = new PickupView(s);
         layer = this.underLayer;
         break;
+      case 'zone':
+        view = new ZoneView(s);
+        layer = this.underLayer;
+        break;
       default:
         view = new UnitView(s, rel);
         layer = this.unitLayer;
@@ -255,6 +259,19 @@ export class GameClient {
         return this.fx.chain(ev.x, ev.y, x2, y2, ev.dur ?? 0.3);
       case 'tunnel':
         return this.fx.tunnel(ev.x, ev.y, x2, y2, ev.dur ?? 1.5);
+      case 'lob':
+        return this.fx.lob(ev.x, ev.y, x2, y2, ev.dur ?? 0.5);
+      case 'rotBurst':
+        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 80, 0x8fd14f, 0.4);
+      case 'pulse':
+        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 400, 0xb98be0, 0.6);
+      case 'hop':
+        this.fx.dirt(ev.x, ev.y, 70);
+        return this.fx.dirt(x2, y2, 70);
+      case 'deepMark':
+        return this.fx.deepMark(ev.x, ev.y, ev.r ?? 350, ev.dur ?? 0.75);
+      case 'deepHands':
+        return this.fx.hands(ev.x, ev.y, ev.r ?? 350);
     }
   }
 
@@ -380,7 +397,7 @@ export class GameClient {
     let best: EntitySnap | null = null;
     let bestD = Infinity;
     for (const e of this.ents.values()) {
-      const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || e.k === 'monster' || (e.k === 'structure' && !e.inv);
+      const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || e.k === 'monster' || e.k === 'totem' || (e.k === 'structure' && !e.inv);
       if (!attackable || e.dead || e.tm === this.myTeam) continue;
       const d = dist(p, e);
       if (d <= e.r + CLICK_SLOP && d < bestD) {

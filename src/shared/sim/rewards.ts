@@ -1,6 +1,7 @@
 import type { PlayerTeam } from '../constants';
 import { Champion } from '../champions/champion';
 import { dist } from '../math';
+import { MushroomTotem, TOTEM_BOUNTY } from '../champions/hunnag';
 import { Chud } from './chud';
 import { CAMPS, MONSTERS, Monster } from './jungle';
 import { UNCHAINED, WARDEN, Warden, holdsGrudge } from './warden';
@@ -17,6 +18,10 @@ export function rewardDeath(world: World, victim: Unit, source: Unit | null, hel
   if (victim instanceof Chud) return rewardChud(world, victim, source);
   if (victim instanceof Monster) return rewardMonster(world, victim, source, helpers);
   if (victim instanceof Warden) return rewardWarden(world, source, helpers);
+  if (victim instanceof MushroomTotem) {
+    if (source instanceof Champion && source.team !== victim.team) source.gainGold(world, TOTEM_BOUNTY);
+    return;
+  }
   if (victim instanceof Structure) return rewardStructure(world, victim, source);
   if (victim.isChampionLike()) rewardTakedown(world, victim, source, helpers);
 }
