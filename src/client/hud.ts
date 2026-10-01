@@ -33,6 +33,9 @@ const HELP = [
   ['M', 'mute sound'],
   ['Tab', 'scoreboard (hold)'],
   ['Space', 'center camera (hold)'],
+  ['Alt / G + click', 'ping (drag to pick one)'],
+  ['Minimap', 'click to look, right-click to walk'],
+  ['H', 'hide / show this'],
   ['Y', 'lock / unlock camera'],
   ['Wheel', 'zoom'],
   ['`', 'nav grid overlay'],
@@ -42,6 +45,8 @@ const BUFF_TEXT: Record<BuffKind, string> = {
   ember: `Basic attacks burn for ${EMBER.damage(1)} + 2 per level true damage and slow ${EMBER.slow * 100}% for ${EMBER.slowFor}s.`,
   glowcap: `+${GLOWCAP.haste} ability haste, and ${GLOWCAP.manaRegenPct * 100}% of max mana back each second.`,
 };
+
+const HELP_KEY = 'moba.helpFolded';
 
 /** Seconds a kill-feed line stays up. */
 const FEED_TIME = 7;
@@ -97,7 +102,7 @@ export class Hud {
       <div class="feed"></div>
       <div class="clock"><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
       <div class="warden"></div>
-      <div class="help"><div class="help-title"></div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
+      <div class="help"><div class="help-title"></div><div class="help-keys">${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div><div class="help-hint"><kbd>H</kbd> controls</div></div>
       <div class="respawn"></div>
       <div class="scoreboard" hidden></div>
       <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-again">Back to menu</button></div></div>
@@ -121,6 +126,11 @@ export class Hud {
       <div class="tooltip" hidden></div>`;
     const q = (sel: string, parent: ParentNode = root) => parent.querySelector(sel) as HTMLElement;
     this.debug = q('.debug');
+    try {
+      if (localStorage.getItem(HELP_KEY) === '1') q('.help').classList.add('folded');
+    } catch {
+      // private mode: start unfolded
+    }
     this.announceEl = q('.announce');
     this.dangerEl = q('.danger');
     this.feed = q('.feed');
@@ -315,6 +325,18 @@ export class Hud {
       (this.gameOver.querySelector('.gameover-copy') as HTMLElement).hidden = false;
     } else {
       this.scoreboard.replaceChildren(tables);
+    }
+  }
+
+  /** Folds the controls panel down to its title (H), remembered for next time. */
+  toggleHelp(): void {
+    const help = this.debug.parentElement?.querySelector('.help') as HTMLElement | null;
+    if (!help) return;
+    const folded = help.classList.toggle('folded');
+    try {
+      localStorage.setItem(HELP_KEY, folded ? '1' : '0');
+    } catch {
+      // private mode: just don't remember
     }
   }
 

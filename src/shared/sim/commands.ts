@@ -1,7 +1,8 @@
 import type { Champion } from '../champions/champion';
 import { clamp, type Vec2 } from '../math';
 import { isItemId } from '../items';
-import type { Command } from '../protocol';
+import type { PlayerTeam } from '../constants';
+import { PING_KINDS, type Command } from '../protocol';
 import type { World } from './world';
 
 /**
@@ -21,6 +22,14 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
   }
   if (cmd.k === 'sell') {
     if (typeof cmd.slot === 'number') unit.sell(world, cmd.slot);
+    return;
+  }
+  // Pings work dead or alive and don't interrupt anything, but only a few at a time.
+  if (cmd.k === 'ping') {
+    const p = toPoint(world, cmd.x, cmd.y);
+    if (p && PING_KINDS.includes(cmd.kind) && allowPing(world, unit)) {
+      world.emit({ e: 'ping', kind: cmd.kind, x: Math.round(p.x), y: Math.round(p.y), from: unit.id, name: unit.name, team: unit.team as PlayerTeam });
+    }
     return;
   }
   if (unit.dead) return;
@@ -48,6 +57,22 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
       unit.startRecall(world);
       return;
   }
+}
+
+/** At most this many pings per champion in any PING_WINDOW seconds, so nobody can spam their team. */
+export const PING_LIMIT = 4;
+export const PING_WINDOW = 4;
+const pingTimes = new WeakMap<Champion, number[]>();
+
+function allowPing(world: World, unit: Champion): boolean {
+  const recent = (pingTimes.get(unit) ?? []).filter((t) => world.time - t < PING_WINDOW);
+  if (recent.length >= PING_LIMIT) {
+    pingTimes.set(unit, recent);
+    return false;
+  }
+  recent.push(world.time);
+  pingTimes.set(unit, recent);
+  return true;
 }
 
 function toPoint(world: World, x: unknown, y: unknown): Vec2 | null {

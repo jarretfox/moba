@@ -10,6 +10,10 @@ import type { SnapshotDelta } from './snapshotCodec';
 /** Connection id of the hosting player's own client. Remote players get `peer:`-prefixed ids, so nobody else can claim it. */
 export const LOCAL_CONN = 'local';
 
+/** Map pings, which only the pinger's team sees: look here, danger, on my way, enemy missing, need help. */
+export type PingKind = 'look' | 'danger' | 'omw' | 'missing' | 'assist';
+export const PING_KINDS: readonly PingKind[] = ['look', 'danger', 'omw', 'missing', 'assist'];
+
 export type Command =
   | { k: 'move'; x: number; y: number }
   | { k: 'attack'; target: number }
@@ -21,7 +25,9 @@ export type Command =
   /** Shop, only in your fountain or while dead. */
   | { k: 'buy'; item: ItemId }
   /** Sell the item in this inventory slot. */
-  | { k: 'sell'; slot: number };
+  | { k: 'sell'; slot: number }
+  /** Mark a spot on the map for your team. */
+  | { k: 'ping'; kind: PingKind; x: number; y: number };
 
 export type ClientMessage =
   /** Enter the lobby. */
@@ -166,7 +172,9 @@ export type GameEvent =
    * the victim's streak (3 or more), and whether the victim's whole team is now dead.
    */
   | { e: 'kill'; killer: string; victim: string; team: Team; what?: 'champion' | 'warden' | StructureRole; streak?: number; shutdown?: boolean; ace?: boolean }
-  | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team };
+  | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team }
+  /** A teammate's ping (only their team is told). */
+  | { e: 'ping'; kind: PingKind; x: number; y: number; from: number; name: string; team: PlayerTeam };
 
 export interface EntitySnap {
   id: number;

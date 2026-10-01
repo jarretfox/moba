@@ -36,6 +36,7 @@ input {
 .clock,
 .help,
 .bar,
+.minimap,
 .shop,
 .score-team,
 .tooltip,
@@ -51,6 +52,7 @@ input {
 /* Little bright brackets on the corners of the big panels. */
 .bar::after,
 .shop::after,
+.minimap::after,
 .help::after {
   content: '';
   position: absolute;
@@ -142,6 +144,74 @@ kbd {
   50% {
     opacity: 1;
   }
+}
+
+/* ─── Minimap and pings ─────────────────────────────────────────────── */
+
+.minimap {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 4px;
+  border-radius: 4px;
+  pointer-events: auto;
+}
+
+.minimap[hidden] {
+  display: none;
+}
+
+.minimap canvas {
+  display: block;
+  border-radius: 2px;
+  cursor: crosshair;
+}
+
+@media (max-width: 1180px) {
+  .minimap canvas {
+    width: 190px !important;
+    height: auto !important;
+  }
+}
+
+.ping-wheel {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.ping-wheel[hidden] {
+  display: none;
+}
+
+.ping-item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 9px 5px;
+  border: 2px solid #3a4452;
+  border-radius: 8px;
+  background: rgba(10, 14, 18, 0.88);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.ping-item b {
+  font: 22px/1.1 var(--font-display);
+  color: var(--c);
+}
+
+.ping-item.on {
+  opacity: 1;
+  border-color: var(--c);
+  box-shadow: 0 0 16px var(--c);
 }
 
 /* ─── Announcer ─────────────────────────────────────────────────────── */
@@ -305,6 +375,15 @@ kbd {
   font-size: 12px;
   line-height: 1.9;
   color: var(--muted);
+}
+
+.help.folded .help-keys,
+.help:not(.folded) .help-hint {
+  display: none;
+}
+
+.help-hint {
+  line-height: 1.6;
 }
 
 .help-title {

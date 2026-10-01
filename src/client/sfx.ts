@@ -95,5 +95,7 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
     }
     case 'heal':
       return null;
+    case 'ping':
+      return { name: ev.kind === 'danger' ? 'pingDanger' : ev.kind === 'missing' ? 'pingMissing' : 'ping', gain: 0.6 };
   }
 }

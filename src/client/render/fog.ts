@@ -44,6 +44,11 @@ export class FogLayer {
     this.sprite.position.set(-PAD * grid.cellSize, -PAD * grid.cellSize);
   }
 
+  /** Paints the fog (without its padding) into another canvas, scaled to w × h: the minimap. */
+  drawOn(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    ctx.drawImage(this.ctx.canvas, PAD, PAD, this.grid.cols, this.grid.rows, 0, 0, w, h);
+  }
+
   update(ents: Iterable<EntitySnap>, team: Team, now: number): void {
     if (now < this.nextAt) return;
     this.nextAt = now + REFRESH;

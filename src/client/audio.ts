@@ -26,7 +26,11 @@ export type SoundName =
   | 'defeat'
   /** The announcer: good news for your side, and bad. */
   | 'fanfare'
-  | 'toll';
+  | 'toll'
+  /** Map pings from your team. */
+  | 'ping'
+  | 'pingDanger'
+  | 'pingMissing';
 
 /** The same sound won't restart sooner than this, so a lane full of Chuds doesn't become a buzz. */
 const MIN_GAP: Partial<Record<SoundName, number>> = { swing: 0.06, shoot: 0.06, hit: 0.07, smallDeath: 0.09, gold: 0.12, tower: 0.1, cast: 0.05 };
@@ -239,6 +243,17 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
     v.tone(t, 'sine', 110, 108, 1.6, 0.32, 0.005);
     v.tone(t, 'triangle', 220, 216, 0.9, 0.12, 0.005);
     v.tone(t, 'sine', 297, 294, 0.7, 0.08, 0.005);
+  },
+  ping: (v, t) => {
+    v.tone(t, 'sine', 880, 880, 0.08, 0.25);
+    v.tone(t + 0.07, 'sine', 1320, 1320, 0.14, 0.22);
+  },
+  pingDanger: (v, t) => {
+    for (let i = 0; i < 3; i++) v.tone(t + i * 0.11, 'square', 1400, 1100, 0.08, 0.08, 0.004);
+  },
+  pingMissing: (v, t) => {
+    v.tone(t, 'triangle', 660, 520, 0.16, 0.25);
+    v.tone(t + 0.16, 'triangle', 520, 780, 0.22, 0.25);
   },
   defeat: (v, t) => {
     const tune = [NOTE.A4, NOTE.F4, NOTE.D4];

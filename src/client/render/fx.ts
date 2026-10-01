@@ -62,7 +62,7 @@ export class FxLayer {
     }
     const done = this.effects.filter((e) => e.age >= e.life);
     if (done.length) {
-      for (const e of done) e.obj.destroy();
+      for (const e of done) e.obj.destroy({ children: true });
       this.effects = this.effects.filter((e) => e.age < e.life);
     }
     this.particles.update(dt);
@@ -146,6 +146,33 @@ export class FxLayer {
       txt.position.set(x, y - r - 40 - t * 30);
       txt.scale.set(t < 0.15 ? 0.6 + (t / 0.15) * 0.4 : 1);
       txt.alpha = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+    }, 'top');
+  }
+
+  /** A teammate's ping: a marker drops in with rings pulsing under it and who pinged above it. */
+  ping(x: number, y: number, color: number, glyph: string, label: string): void {
+    const c = new Container();
+    const g = new Graphics();
+    const mark = new Text({ text: glyph, style: { fontFamily: FONT, fontSize: 28, fill: 0xffffff, stroke: { color: 0x000000, width: 5 } } });
+    const name = new Text({ text: label, style: { fontFamily: FONT, fontSize: 17, fill: color, stroke: { color: 0x000000, width: 5 } } });
+    mark.anchor.set(0.5);
+    name.anchor.set(0.5);
+    c.addChild(g, mark, name);
+    this.light(x, y, 260, color, 3, 0.55);
+    this.add(c, 3, (t) => {
+      const drop = t < 0.1 ? (1 - t / 0.1) * 70 : Math.abs(Math.sin(t * 30)) * 6 * Math.max(0, 1 - t * 4);
+      const top = y - 46 - drop;
+      g.clear();
+      for (const k of [0, 0.33, 0.66]) {
+        const p = (t * 3 + k) % 1;
+        g.ellipse(x, y, 20 + p * 90, (20 + p * 90) * 0.6).stroke({ width: 4, color, alpha: (1 - p) * 0.9 });
+      }
+      g.moveTo(x, y).lineTo(x, top + 16).stroke({ width: 4, color: 0x000000, alpha: 0.6 });
+      g.moveTo(x, y).lineTo(x, top + 16).stroke({ width: 2, color });
+      g.circle(x, top, 20).fill(color).stroke({ width: 3, color: 0x000000 });
+      mark.position.set(x, top);
+      name.position.set(x, top - 36);
+      c.alpha = t > 0.8 ? (1 - t) / 0.2 : 1;
     }, 'top');
   }
 

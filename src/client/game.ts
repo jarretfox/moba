@@ -17,6 +17,8 @@ import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { castFlash, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { Lighting } from './render/lighting';
+import { Minimap, type MinimapPing } from './minimap';
+import { PINGS, PingWheel } from './pings';
 import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
 import { HEIGHT, buildMap, buildNavOverlay, elevate } from './render/mapView';
@@ -68,6 +70,15 @@ export class GameClient {
   /** For the announcer: has anyone drawn first blood, and who's on a multi-kill. */
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
+  private readonly minimap: Minimap;
+  private readonly pingWheel: PingWheel;
+  /** Where the ping being picked on the wheel will go. */
+  private pingAt: Vec2 | null = null;
+  private pingKeyHeld = false;
+  private pings: (MinimapPing & { at: number })[] = [];
+  /** Held on the minimap: the camera looks there. */
+  private peek: Vec2 | null = null;
+  private frameCount = 0;
   /** When the match ends: where Da Base fell, and when, so the camera can go and watch before the scores. */
   private finale: { x: number; y: number; at: number } | null = null;
 
@@ -103,6 +114,15 @@ export class GameClient {
       this.send({ k: 'sell', slot });
     };
     this.hud.onMute = () => this.hud.setMuted(this.sound.toggleMute());
+    this.minimap = new Minimap(hudRoot, MAP);
+    this.minimap.setTeam(TEAM.blue);
+    this.minimap.onPeek = (p) => (this.peek = p);
+    this.minimap.onMove = (p) => {
+      this.send({ k: 'move', x: Math.round(p.x), y: Math.round(p.y) });
+      this.fx.clickMarker(p.x, p.y, false);
+    };
+    this.minimap.onPingStart = (e, p) => this.startPing(e, p);
+    this.pingWheel = new PingWheel(hudRoot);
     this.hud.setMuted(this.sound.muted);
     this.buffer = new SnapshotBuffer(conn.interpDelay);
     this.setMap(TEAM.blue);
@@ -136,6 +156,7 @@ export class GameClient {
         this.myTeam = msg.team;
         // Repaint the ground so your own base is the blue one.
         this.setMap(msg.team);
+        this.minimap.setTeam(msg.team);
       }
     } else if (msg.t === 'snap') {
       this.buffer.push(this.decoder.decode(msg.snap), performance.now() / 1000);
@@ -182,6 +203,10 @@ export class GameClient {
 
     const { width: w, height: h } = this.app.screen;
     this.camera.update(dt, me && !me.dead ? me : null, this.mouse.inside ? this.mouse : null, w, h, this.centerHeld);
+    if (this.peek) {
+      this.camera.x = this.peek.x;
+      this.camera.y = this.peek.y;
+    }
     if (this.finale) {
       // Glide over to watch Da Base fall.
       const k = Math.min(1, dt * 2.5);
@@ -206,6 +231,8 @@ export class GameClient {
     this.setCursor(this.enemyAt(mouseWorld) ? 'crosshair' : 'default');
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
+
+    this.drawMinimap(w, h);
 
     const latest = this.buffer.latest;
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
@@ -343,6 +370,12 @@ export class GameClient {
         if (t) this.fx.levelUp(t.x, t.y, t.r, ev.level);
         return;
       }
+      case 'ping': {
+        const info = PINGS[ev.kind];
+        this.pings.push({ x: ev.x, y: ev.y, kind: ev.kind, age: 0, at: performance.now() / 1000 });
+        this.fx.ping(ev.x, ev.y, info.color, info.glyph, `${ev.name}: ${info.label}`);
+        return;
+      }
       case 'kill':
         this.hud.pushFeed(ev.killer, ev.victim, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
         this.announceKill(ev);
@@ -356,6 +389,34 @@ export class GameClient {
         return;
       }
     }
+  }
+
+  /** The minimap, a few times a second is plenty. */
+  private drawMinimap(w: number, h: number): void {
+    const now = performance.now() / 1000;
+    this.pings = this.pings.filter((p) => now - p.at < 3);
+    if (this.myId < 0 || this.frameCount++ % 3 !== 0) return;
+    this.minimap.root.hidden = false;
+    for (const p of this.pings) p.age = now - p.at;
+    const vw = w / this.camera.zoom;
+    const vh = h / this.camera.zoom;
+    this.minimap.draw({
+      ents: this.ents.values(),
+      myTeam: this.myTeam,
+      myId: this.myId,
+      view: { x: this.camera.x - vw / 2, y: this.camera.y - vh / 2, w: vw, h: vh },
+      drawFog: (ctx, fw, fh) => this.fog.drawOn(ctx, fw, fh),
+      pings: this.pings,
+    });
+  }
+
+  /** Alt or G held: the button opens the ping wheel instead of doing anything else. */
+  private startPing(e: PointerEvent, at: Vec2): boolean {
+    if (!e.altKey && !this.pingKeyHeld) return false;
+    e.preventDefault();
+    this.pingAt = at;
+    this.pingWheel.start(e.clientX, e.clientY);
+    return true;
   }
 
   /** The announcer: a banner (and a fanfare or a toll) for kills, sprees, structures and the Warden. */
@@ -440,6 +501,7 @@ export class GameClient {
 
     canvas.addEventListener('pointerdown', (e) => {
       track(e);
+      if (e.button === 0 && this.startPing(e, this.mouseWorld())) return;
       if (e.button === 2) {
         this.aiming = null;
         this.rightHeld = true;
@@ -450,6 +512,16 @@ export class GameClient {
     });
     window.addEventListener('pointerup', (e) => {
       if (e.button === 2) this.rightHeld = false;
+      if (e.button === 0 && this.pingWheel.open) {
+        const kind = this.pingWheel.finish(e.clientX, e.clientY);
+        if (kind && this.pingAt) this.send({ k: 'ping', kind, x: Math.round(this.pingAt.x), y: Math.round(this.pingAt.y) });
+        this.pingAt = null;
+      }
+    });
+    window.addEventListener('pointermove', (e) => this.pingWheel.move(e.clientX, e.clientY));
+    // Alt on its own can pull focus to the browser's menu bar; it's the ping key here.
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Alt') e.preventDefault();
     });
     canvas.addEventListener(
       'wheel',
@@ -468,10 +540,12 @@ export class GameClient {
       this.rightHeld = false;
       this.aiming = null;
       this.centerHeld = false;
+      this.pingKeyHeld = false;
     });
   }
 
   private onKey(e: KeyboardEvent, down: boolean): void {
+    if (e.code === 'KeyG') this.pingKeyHeld = down;
     // Leave browser shortcuts alone — Ctrl+W closes the tab and can't be intercepted anyway.
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const slot = SLOT_BY_CODE[e.code];
@@ -511,6 +585,9 @@ export class GameClient {
         break;
       case 'KeyM':
         this.hud.setMuted(this.sound.toggleMute());
+        break;
+      case 'KeyH':
+        this.hud.toggleHelp();
         break;
       case 'KeyP':
         this.hud.shop.toggle();
