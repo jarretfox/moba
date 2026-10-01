@@ -31,6 +31,7 @@ const HELP = [
   ['B', 'recall home (4s, breaks if hit)'],
   ['P', 'shop (at your fountain)'],
   ['M', 'mute sound'],
+  ['N', 'music on / off'],
   ['Tab', 'scoreboard (hold)'],
   ['Space', 'center camera (hold)'],
   ['Alt / G + click', 'ping (drag to pick one)'],

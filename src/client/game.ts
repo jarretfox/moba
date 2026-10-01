@@ -4,6 +4,7 @@ import { atRank, type ChampionInfo } from '../shared/champions/types';
 import { TEAM, type Slot, type Team } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { NavGrid } from '../shared/map/navGrid';
+import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
 import { dist, type Vec2 } from '../shared/math';
 import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/protocol';
@@ -79,6 +80,9 @@ export class GameClient {
   /** Held on the minimap: the camera looks there. */
   private peek: Vec2 | null = null;
   private frameCount = 0;
+  /** When you last traded hits with a champion, for the music. */
+  private lastFight = -Infinity;
+  private nextPlaceCheck = 0;
   /** When the match ends: where Da Base fell, and when, so the camera can go and watch before the scores. */
   private finale: { x: number; y: number; at: number } | null = null;
 
@@ -233,6 +237,7 @@ export class GameClient {
     else this.indicator.clear();
 
     this.drawMinimap(w, h);
+    this.updateSoundscape();
 
     const latest = this.buffer.latest;
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
@@ -337,6 +342,8 @@ export class GameClient {
           if (ev.target === this.myId && heavy) this.camera.shake(Math.min(18, 6 + (ev.amount / (hit.mhp ?? 1000)) * 60));
         }
         if (ev.src !== this.myId && ev.target !== this.myId) return;
+        const other = this.ents.get(ev.src === this.myId ? ev.target : (ev.src ?? -1));
+        if (other?.k === 'champion' && ev.amount >= 1) this.lastFight = performance.now() / 1000;
         const t = this.ents.get(ev.target);
         if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);
         return;
@@ -389,6 +396,25 @@ export class GameClient {
         return;
       }
     }
+  }
+
+  /** Feeds the music how much of a fight you're in, and the soundscape what's around the camera. */
+  private updateSoundscape(): void {
+    const now = performance.now() / 1000;
+    this.sound.setIntensity(now - this.lastFight < 6 ? 1 : 0);
+    if (now < this.nextPlaceCheck) return;
+    this.nextPlaceCheck = now + 0.4;
+    let jungle = 0;
+    let river = 0;
+    const spots = [[0, 0], [-500, 0], [500, 0], [0, -350], [0, 350]];
+    for (const [dx, dy] of spots) {
+      const x = this.camera.x + dx;
+      const y = this.camera.y + dy;
+      const style = MAP.ground.find((p) => shapeContains(p.shape, x, y))?.style;
+      if (style === 'river') river++;
+      else if (style !== 'lane' && style !== 'base') jungle++; // jungle paths and the woods off them
+    }
+    this.sound.setPlace(jungle / spots.length, river / spots.length);
   }
 
   /** The minimap, a few times a second is plenty. */
@@ -585,6 +611,9 @@ export class GameClient {
         break;
       case 'KeyM':
         this.hud.setMuted(this.sound.toggleMute());
+        break;
+      case 'KeyN':
+        this.sound.toggleMusic();
         break;
       case 'KeyH':
         this.hud.toggleHelp();

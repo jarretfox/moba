@@ -1,5 +1,7 @@
 // Sound effects, synthesized on the fly with Web Audio: no files to load or license, and every sound is
-// a few lines of oscillators, noise and envelopes below.
+// a few lines of oscillators, noise and envelopes below. Music and the ambient soundscape are in music.ts.
+
+import { Music, Soundscape } from './music';
 
 export type SoundName =
   | 'swing'
@@ -37,25 +39,29 @@ const MIN_GAP: Partial<Record<SoundName, number>> = { swing: 0.06, shoot: 0.06, 
 /** At most this many sounds start in any quarter second. */
 const VOICE_CAP = 14;
 const MUTE_KEY = 'moba.muted';
+const MUSIC_KEY = 'moba.musicOff';
 
-function loadMuted(): boolean {
+function loadFlag(key: string): boolean {
   try {
-    return localStorage.getItem(MUTE_KEY) === '1';
+    return localStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 }
 
-function saveMuted(muted: boolean): void {
+function saveFlag(key: string, on: boolean): void {
   try {
-    localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
+    localStorage.setItem(key, on ? '1' : '0');
   } catch {
     // storage blocked: the setting just won't stick
   }
 }
 
 export class Sound {
-  muted = loadMuted();
+  muted = loadFlag(MUTE_KEY);
+  musicOn = !loadFlag(MUSIC_KEY);
+  private music: Music | null = null;
+  private scape: Soundscape | null = null;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private noise: AudioBuffer | null = null;
@@ -71,9 +77,26 @@ export class Sound {
 
   toggleMute(): boolean {
     this.muted = !this.muted;
-    saveMuted(this.muted);
+    saveFlag(MUTE_KEY, this.muted);
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.55, this.ctx.currentTime, 0.02);
     return this.muted;
+  }
+
+  /** Music on or off (N); sound effects carry on. */
+  toggleMusic(): boolean {
+    this.musicOn = this.music ? this.music.toggle() : !this.musicOn;
+    saveFlag(MUSIC_KEY, !this.musicOn);
+    return this.musicOn;
+  }
+
+  /** How much of a fight you're in, 0–1: brings the drums in. */
+  setIntensity(v: number): void {
+    this.music?.setIntensity(v);
+  }
+
+  /** How much jungle and river is around the camera, 0–1 each: crickets and water. */
+  setPlace(jungle: number, river: number): void {
+    this.scape?.setPlace(jungle, river);
   }
 
   /** Play a sound at `gain` (0..1), panned left/right by `pan` (-1..1). */
@@ -111,6 +134,8 @@ export class Sound {
       this.noise = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      this.music = new Music(this.ctx, this.master, this.noise, this.musicOn);
+      this.scape = new Soundscape(this.ctx, this.master);
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
     return this.ctx;
