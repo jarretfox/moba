@@ -122,6 +122,7 @@ export class GameClient {
     const latest = this.buffer.latest;
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
     this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
+    this.hud.setWarden(latest?.warden, this.myTeam);
     if (latest?.winner) this.hud.showGameOver(latest.winner === this.myTeam);
   }
 
@@ -238,6 +239,10 @@ export class GameClient {
       case 'recall':
         this.fx.shockwave(ev.x, ev.y, 120, 0x7cc4ff, 0.5);
         return this.fx.shockwave(x2, y2, 120, 0x7cc4ff, 0.5);
+      case 'wardenMark':
+        return this.fx.telegraph(ev.x, ev.y, ev.r ?? 200, ev.dur ?? 1);
+      case 'wardenSlam':
+        return this.fx.chainSlam(ev.x, ev.y, ev.r ?? 200, x2, y2);
     }
   }
 

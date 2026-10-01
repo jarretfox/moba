@@ -62,15 +62,23 @@ export type HostMessage =
 
 export type DamageType = 'physical' | 'magic' | 'true';
 /** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk, recall (channeling home). */
-export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk' | 'recall' | BuffKind;
+export type StatusKind = 'root' | 'stun' | 'slow' | 'weaken' | 'airborne' | 'berserk' | 'recall' | 'unchained' | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
-export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap';
+export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'warden';
+
+/** Everyone's view of the Warden: when it wakes, and which team is Unchained (Uprising if Willmore or HunnaG took it). */
+export interface WardenStatus {
+  alive: boolean;
+  /** Seconds until it wakes, while it's not around. */
+  wakesIn?: number;
+  unchained?: { team: PlayerTeam; left: number; uprising: boolean }[];
+}
 export type ChudType = 'melee' | 'ranged' | 'siege' | 'brute';
 export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster' | 'projectile' | 'trap';
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
-export type FxKind = 'aimLine' | 'trapSnap' | 'roll' | 'cleave' | 'warCry' | 'slam' | 'berserk' | 'recall';
+export type FxKind = 'aimLine' | 'trapSnap' | 'roll' | 'cleave' | 'warCry' | 'slam' | 'berserk' | 'recall' | 'wardenMark' | 'wardenSlam';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
@@ -155,4 +163,5 @@ export interface Snapshot {
   nextWave?: number;
   /** Set on the final snapshot, once a Da Base has fallen. */
   winner?: Team;
+  warden?: WardenStatus;
 }

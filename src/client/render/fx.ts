@@ -119,6 +119,29 @@ export class FxLayer {
     });
   }
 
+  /** The Warden's slam warning: a red circle that fills in over the wind-up. Get out before it's full. */
+  telegraph(x: number, y: number, r: number, dur: number): void {
+    const g = new Graphics();
+    this.add(g, dur, (t) => {
+      g.clear()
+        .circle(x, y, r)
+        .fill({ color: 0xff3b30, alpha: 0.12 })
+        .stroke({ width: 3, color: 0xff3b30, alpha: 0.8 })
+        .circle(x, y, r * t)
+        .fill({ color: 0xff3b30, alpha: 0.22 });
+    });
+  }
+
+  /** The chain coming down: a line from the Warden to the spot, and a heavy shockwave. */
+  chainSlam(x: number, y: number, r: number, fromX: number, fromY: number): void {
+    const g = new Graphics();
+    this.add(g, 0.35, (t) => {
+      g.clear().moveTo(fromX, fromY).lineTo(x, y).stroke({ width: 10 * (1 - t), color: 0x9aa1ab, alpha: 1 - t });
+    });
+    this.shockwave(x, y, r, 0xc9d1dc, 0.4);
+    this.burst(x, y, 0xffffff);
+  }
+
   /** A wedge that flashes and fades: Cleave. (x2, y2) is the tip of the swing; spread is in degrees. */
   wedge(x: number, y: number, x2: number, y2: number, spreadDeg: number, color: number): void {
     const g = new Graphics();

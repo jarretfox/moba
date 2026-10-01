@@ -1,7 +1,7 @@
 import { atRank, perRank, type ChampionInfo } from '../shared/champions/types';
-import { SLOT_KEYS, type Slot } from '../shared/constants';
+import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
 import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
-import type { BuffKind, EntitySnap, MeSnap } from '../shared/protocol';
+import type { BuffKind, EntitySnap, MeSnap, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
 import { ShopPanel, itemGlyph } from './shop';
@@ -53,6 +53,7 @@ export class Hud {
   private readonly debug: HTMLElement;
   private readonly clockTime: HTMLElement;
   private readonly clockWave: HTMLElement;
+  private readonly warden: HTMLElement;
   private readonly feed: HTMLElement;
   private readonly bar: HTMLElement;
   private readonly portrait: HTMLElement;
@@ -76,6 +77,7 @@ export class Hud {
       <div class="debug"></div>
       <div class="feed"></div>
       <div class="clock"><span class="time">0:00</span><span class="wave"></span></div>
+      <div class="warden"></div>
       <div class="help"><div class="help-title"></div>${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div>
       <div class="respawn"></div>
       <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><button class="gameover-again">Back to menu</button></div>
@@ -103,6 +105,7 @@ export class Hud {
     this.buffBar = q('.buffs');
     this.clockTime = q('.clock .time');
     this.clockWave = q('.clock .wave');
+    this.warden = q('.warden');
     this.bar = q('.bar');
     this.portrait = q('.portrait');
     this.stacks = q('.stacks');
@@ -251,6 +254,27 @@ export class Hud {
   setClock(gameTime: number, nextWave: number | undefined): void {
     this.set(this.clockTime, 'text', mmss(gameTime));
     this.set(this.clockWave, 'text', nextWave !== undefined && nextWave <= 10 ? `Chuds in ${nextWave}` : '');
+  }
+
+  /** Under the clock: when the Warden wakes (the last two minutes), and who's Unchained. */
+  setWarden(w: WardenStatus | undefined, myTeam: Team): void {
+    const lines: [string, string][] = [];
+    if (w && !w.alive && w.wakesIn !== undefined && w.wakesIn <= 120) lines.push(['', `The Warden wakes in ${mmss(w.wakesIn)}`]);
+    for (const u of w?.unchained ?? []) {
+      const who = u.team === myTeam ? 'We are' : 'They are';
+      lines.push([u.team === myTeam ? 'ours' : 'theirs', `${who} ${u.uprising ? 'in Uprising' : 'Unchained'} · ${mmss(u.left)}`]);
+    }
+    const key = JSON.stringify(lines);
+    if (this.warden.dataset.key === key) return;
+    this.warden.dataset.key = key;
+    this.warden.replaceChildren(
+      ...lines.map(([cls, text]) => {
+        const d = document.createElement('div');
+        d.className = `warden-line ${cls}`;
+        d.textContent = text;
+        return d;
+      }),
+    );
   }
 
   /** Brief red flash when you press an ability that isn't ready. */

@@ -39,6 +39,11 @@ export class World {
   winner: PlayerTeam | null = null;
   readonly grid: NavGrid;
   readonly vision: Vision;
+  /** Each team's Unchained from killing the Warden: until when, and whether it's an Uprising. */
+  readonly unchained: Record<PlayerTeam, { until: number; uprising: boolean }> = {
+    1: { until: -Infinity, uprising: false },
+    2: { until: -Infinity, uprising: false },
+  };
   private readonly pathfinder: Pathfinder;
   private readonly entities = new Map<number, Entity>();
   private events: GameEvent[] = [];

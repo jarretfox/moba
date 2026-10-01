@@ -78,6 +78,37 @@ kbd {
   display: none;
 }
 
+.warden {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.warden-line {
+  padding: 2px 12px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid #7fe3ff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #bfefff;
+}
+
+.warden-line.ours {
+  border-color: var(--mp);
+  color: #9fd0ff;
+}
+
+.warden-line.theirs {
+  border-color: #ff5a5f;
+  color: #ff9ea1;
+}
+
 .help {
   position: absolute;
   top: 10px;

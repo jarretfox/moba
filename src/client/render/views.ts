@@ -157,6 +157,7 @@ export class UnitView implements EntityView {
     if (st.includes('berserk')) g.circle(0, 0, r + 8).fill({ color: 0xff3b30, alpha: 0.18 }).stroke({ width: 5, color: 0xff3b30, alpha: 0.75 });
     if (st.includes('ember')) g.circle(0, 0, r + 12).stroke({ width: 3, color: 0xff7a2f, alpha: 0.85 });
     if (st.includes('glowcap')) g.circle(0, 0, r + 15).stroke({ width: 3, color: 0x6fd6ff, alpha: 0.85 });
+    if (st.includes('unchained')) g.circle(0, 0, r + 6).stroke({ width: 3, color: 0x7fe3ff, alpha: 0.9 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }
 }
@@ -378,6 +379,27 @@ function drawMonster(g: Graphics, kind: MonsterKind, r: number): void {
       g.circle(r * 0.55, r * 0.45, r * 0.24).fill(0xfff1c1).stroke(o);
       g.circle(r * 0.62, -r * 0.45, r * 0.1).fill(0x1a0d05);
       g.circle(r * 0.62, r * 0.45, r * 0.1).fill(0x1a0d05);
+      return;
+    }
+    case 'warden': {
+      // The iron jailer from above: a riveted steel body wrapped in a ring of chain, a visor slit glowing
+      // toward whatever it's fighting, and a shackle held out in front.
+      g.circle(0, 0, r * 1.08).fill({ color: 0x000000, alpha: 0.25 });
+      g.circle(0, 0, r).fill(0x4a4f58).stroke({ width: 4, color: PALETTE.outline });
+      g.circle(0, 0, r * 0.72).fill(0x5d636d).stroke({ width: 3, color: 0x2c3038 });
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2;
+        const along = i % 2 === 0;
+        g.ellipse(Math.cos(a) * r * 0.86, Math.sin(a) * r * 0.86, along ? r * 0.1 : r * 0.05, along ? r * 0.05 : r * 0.1)
+          .stroke({ width: 3, color: 0x8a9099 });
+      }
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+        g.circle(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6, r * 0.04).fill(0x9aa1ab);
+      }
+      g.roundRect(r * 0.3, -r * 0.28, r * 0.16, r * 0.56, 4).fill(0x1a1d22);
+      g.roundRect(r * 0.33, -r * 0.22, r * 0.1, r * 0.44, 3).fill(0x7fe3ff);
+      g.circle(r * 1.05, 0, r * 0.22).stroke({ width: 6, color: 0x8a9099 });
       return;
     }
     case 'glowcap': {

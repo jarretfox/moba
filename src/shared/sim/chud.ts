@@ -4,6 +4,7 @@ import { dist, segmentDistance, type Vec2 } from '../math';
 import type { ChudType, EntitySnap } from '../protocol';
 import { HomingProjectile } from './projectile';
 import { Unit, type Stats } from './unit';
+import { UNCHAINED } from './warden';
 import type { World } from './world';
 
 // ─── Tuning ──────────────────────────────────────────────────────────────────
@@ -48,11 +49,19 @@ export class Chud extends Unit {
     readonly chudType: ChudType,
     readonly lane: Lane,
     private readonly route: Vec2[],
+    /** Spawned while its team is Unchained (killed the Warden). */
+    unchained = false,
   ) {
     const def = CHUD_DEFS[chudType];
     const minutes = world.time / 60;
-    const stats = { ...def.stats, maxHp: def.stats.maxHp * (1 + GROWTH_PER_MINUTE.hp * minutes), ad: def.stats.ad * (1 + GROWTH_PER_MINUTE.ad * minutes) };
+    const boost = unchained ? { hp: 1 + UNCHAINED.hpBonus, ad: 1 + UNCHAINED.adBonus } : { hp: 1, ad: 1 };
+    const stats = {
+      ...def.stats,
+      maxHp: def.stats.maxHp * (1 + GROWTH_PER_MINUTE.hp * minutes) * boost.hp,
+      ad: def.stats.ad * (1 + GROWTH_PER_MINUTE.ad * minutes) * boost.ad,
+    };
     super(world.newId(), team, route[0], def.radius, stats, def.name);
+    if (unchained) this.statuses.push({ kind: 'unchained', until: Infinity, amount: 0 });
   }
 
   protected think(world: World): void {

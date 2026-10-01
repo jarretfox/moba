@@ -19,6 +19,8 @@ export interface SnapshotDelta {
   me?: MeSnap | null;
   nextWave?: number;
   winner?: Snapshot['winner'];
+  /** Present when it changed. */
+  warden?: Snapshot['warden'];
 }
 
 /** Host side, one per player. */
@@ -26,6 +28,7 @@ export class SnapshotEncoder {
   private readonly known = new Map<number, EntitySnap>();
   private lastMe: string | undefined;
   private lastWave: number | undefined;
+  private lastWarden: string | undefined;
 
   encode(snap: Snapshot): SnapshotDelta {
     const out: SnapshotDelta = { tick: snap.tick };
@@ -55,6 +58,11 @@ export class SnapshotEncoder {
       out.nextWave = snap.nextWave;
       this.lastWave = snap.nextWave;
     }
+    const warden = JSON.stringify(snap.warden ?? null);
+    if (warden !== this.lastWarden) {
+      out.warden = snap.warden;
+      this.lastWarden = warden;
+    }
     if (snap.winner) out.winner = snap.winner;
     return out;
   }
@@ -65,6 +73,7 @@ export class SnapshotDecoder {
   private readonly ents = new Map<number, EntitySnap>();
   private me: MeSnap | undefined;
   private nextWave: number | undefined;
+  private warden: Snapshot['warden'];
 
   decode(d: SnapshotDelta): Snapshot {
     for (const id of d.del ?? []) this.ents.delete(id);
@@ -81,6 +90,7 @@ export class SnapshotDecoder {
     }
     if (d.me !== undefined) this.me = d.me ?? undefined;
     if (d.nextWave !== undefined) this.nextWave = d.nextWave;
+    if ('warden' in d) this.warden = d.warden;
     return {
       tick: d.tick,
       time: d.tick * DT,
@@ -89,6 +99,7 @@ export class SnapshotDecoder {
       me: this.me,
       nextWave: this.nextWave,
       winner: d.winner,
+      warden: this.warden,
     };
   }
 }

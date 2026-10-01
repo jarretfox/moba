@@ -9,6 +9,7 @@ import { Chud } from '../sim/chud';
 import { applyCommand } from '../sim/commands';
 import { Fountain } from '../sim/fountain';
 import { Jungle } from '../sim/jungle';
+import { WardenLair } from '../sim/warden';
 import { Structure, spawnStructures } from '../sim/structure';
 import { WaveSpawner } from '../sim/waves';
 import { World } from '../sim/world';
@@ -22,6 +23,7 @@ function match(opts: { waves?: boolean } = {}) {
   if (opts.waves) {
     world.addSystem(new WaveSpawner());
     world.addSystem(new Jungle(world));
+    world.addSystem(new WardenLair());
   }
   world.addSystem(new Fountain());
   return { world, structures };

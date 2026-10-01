@@ -86,6 +86,15 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
     - **Ember Toad's Heat:** basic attacks burn for 8 + 2 per level bonus true damage and slow 20% for 1s.
     - **Glowcap's Glow:** +20 ability haste, and 1% of max mana back per second.
   - Bots don't take camps yet.
+- **The Warden** (numbers in `src/shared/sim/warden.ts`; lore below):
+  - **Timing:** wakes at 8:00 in the pit at the center of the map, and comes back 6 minutes after it falls. The HUD counts down its last 2 minutes.
+  - **Stats:** 5000 health, 60 armor, 50 magic resist, and +3% per minute of match time. It never moves.
+  - **Who it fights:** leaves passers-by alone, and fights champions in its pit who've hit it in the last 6s. It ignores anyone outside the pit, even if they hit it. Left alone, it heals back to full.
+  - **Chain slam:** every 7s it marks a champion's spot with a red circle that fills in over 1.2s, then smashes it. The slam deals 150 + 12 per minute physical damage and stuns for 0.75s; step out in time to dodge it.
+  - **Reward:** every champion on the killing team gets 300 gold and 300 experience. The team is then **Unchained** for 90s: its Chuds spawn with +50% health and damage, and are drawn with a pale blue ring.
+  - **Uprising:** if Willmore or HunnaG lands the kill, Unchained becomes an Uprising, and every wave also brings a Chud Brute.
+  - **HUD and kill feed:** the HUD shows who's Unchained and for how long. The kill feed announces the kill, and names the Warden (or a Shootie) when it kills a champion.
+  - **Old Grudge** is coded for Willmore and HunnaG by champion id, so it works once they exist (M4).
 - **Shop** (items in `src/shared/items.ts`): 16 items, 4 inventory slots. Press P or click your gold.
   - You can buy and sell only in your own fountain, or while dead. Selling returns 70% of the price.
   - No recipes: each item is bought whole.
@@ -263,5 +272,5 @@ src/
 ### Known gaps after M1
 - **Structure health is still tuned down** for level-1 champions (outer Shootie 1800). M3 will raise it again now that champions level and buy items.
 - **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster).
-- **Bots don't jungle.** All three per side lane; the camps are there for humans. No Warden yet (M3).
+- **Bots don't jungle or fight the Warden.** All three per side lane; the camps and the Warden are there for humans.
 - Bots don't dodge skillshots or coordinate as a team.

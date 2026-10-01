@@ -7,6 +7,9 @@ import type { World, WorldSystem } from './world';
 
 // ─── Tuning: jungle camps ─────────────────────────────────────────────────────
 
+/** Camp monsters (the Warden has its own file). */
+export type CampMonsterKind = Exclude<MonsterKind, 'warden'>;
+
 interface MonsterDef {
   name: string;
   radius: number;
@@ -20,7 +23,7 @@ function monsterStats(maxHp: number, ad: number, armor: number, mr: number, atta
   return { maxHp, hpRegen: 0, maxMana: 0, manaRegen: 0, ad, ap: 0, armor, mr, attackSpeed, attackRange, moveSpeed };
 }
 
-export const MONSTERS: Record<MonsterKind, MonsterDef> = {
+export const MONSTERS: Record<CampMonsterKind, MonsterDef> = {
   ratKing: { name: 'Rat King', radius: 40, stats: monsterStats(800, 28, 12, 8, 0.8), gold: 40, xp: 60 },
   rat: { name: 'Gutter Rat', radius: 24, stats: monsterStats(320, 12, 5, 5, 1.0), gold: 16, xp: 25 },
   mossback: { name: 'Mossback', radius: 60, stats: monsterStats(1400, 40, 20, 15, 0.55, 110, 300), gold: 95, xp: 140 },
@@ -30,7 +33,7 @@ export const MONSTERS: Record<MonsterKind, MonsterDef> = {
 
 interface CampDef {
   /** Monsters and where they stand relative to the camp's center. */
-  members: [MonsterKind, Vec2][];
+  members: [CampMonsterKind, Vec2][];
   /** Seconds after the camp is cleared. */
   respawn: number;
   /** The buff whoever kills the camp's big monster gets. */
@@ -80,7 +83,7 @@ export class Monster extends Unit {
   constructor(
     world: World,
     readonly camp: Camp,
-    readonly monster: MonsterKind,
+    readonly monster: CampMonsterKind,
     pos: Vec2,
   ) {
     const def = MONSTERS[monster];

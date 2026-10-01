@@ -129,6 +129,16 @@ describe('gold and experience', () => {
     expect(chaser.gold).toBeGreaterThanOrEqual(STARTING_GOLD + killBounty(0));
   });
 
+  it("names what got the kill in the feed when no champion did", () => {
+    const world = new World(MAP);
+    const structures = spawnStructures(world);
+    const victim = champ(world, TEAM.red, LANE.x, LANE.y);
+    const shootie = structures.find((s) => s.team === TEAM.blue && s.role === 'outerShootie')!;
+    world.drainEvents();
+    world.damage(shootie, victim, 1e6, 'true');
+    expect(world.drainEvents().find((e) => e.e === 'kill')).toMatchObject({ killer: shootie.name, victim: victim.name, team: TEAM.blue });
+  });
+
   it('trickles in passive gold after the first minute', () => {
     const world = new World(MAP);
     const m = champ(world, TEAM.blue, 3300, 3500);

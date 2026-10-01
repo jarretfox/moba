@@ -10,6 +10,7 @@ import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
 import { Jungle } from '../shared/sim/jungle';
+import { WardenLair } from '../shared/sim/warden';
 import { spawnStructures } from '../shared/sim/structure';
 import { WaveSpawner } from '../shared/sim/waves';
 import { World } from '../shared/sim/world';
@@ -44,6 +45,7 @@ export class HostCore {
   private readonly lobby = new Map<string, LobbyPlayer>();
   private readonly players = new Map<string, Player>();
   private readonly waves = this.world.addSystem(new WaveSpawner());
+  private readonly lair = this.world.addSystem(new WardenLair());
   private phase: LobbyState['phase'] = 'lobby';
 
   constructor(private readonly send: (connId: string, msg: HostMessage) => void) {
@@ -159,6 +161,7 @@ export class HostCore {
     const ev = this.world.drainEvents();
     const sendRemote = this.world.tick % REMOTE_SEND_EVERY === 0 || this.world.winner !== null;
     const views = new Map<PlayerTeam, EntitySnap[]>();
+    const warden = this.lair.status(this.world);
     for (const [connId, p] of this.players) {
       for (const e of ev) if (this.world.vision.canSeeEvent(p.team, e)) p.pendingEv.push(e);
       if (p.remote && !sendRemote) continue;
@@ -172,6 +175,7 @@ export class HostCore {
         me: me instanceof Champion ? me.meSnapshot(this.world) : undefined,
         nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
         winner: this.world.winner ?? undefined,
+        warden,
       });
       p.pendingEv = [];
       this.send(connId, { t: 'snap', snap });

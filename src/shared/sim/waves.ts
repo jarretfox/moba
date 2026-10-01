@@ -40,8 +40,10 @@ export class WaveSpawner implements WorldSystem {
     for (const team of this.teams) {
       for (const lane of this.lanes) {
         const route = lanePath(world.map, team, lane);
-        const types = waveComposition(this.waveNumber, enemyOaknerDown(world, team, lane));
-        types.forEach((type, i) => world.schedule(i * SPAWN_STAGGER, () => world.add(new Chud(world, team, type, lane, route))));
+        const buff = world.unchained[team];
+        const unchained = world.time < buff.until;
+        const types = waveComposition(this.waveNumber, enemyOaknerDown(world, team, lane) || (unchained && buff.uprising));
+        types.forEach((type, i) => world.schedule(i * SPAWN_STAGGER, () => world.add(new Chud(world, team, type, lane, route, unchained))));
       }
     }
   }
