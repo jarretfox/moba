@@ -4,8 +4,8 @@ import type { ChudType, EntitySnap, MonsterKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
-import { ATTACK, castAnim, sample, type Anim } from './animation';
-import { drawChampionBase, drawChampionFigure, drawChampionWeapon } from './champions';
+import { ATTACK, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
+import { championWeapon, drawChampionBase, drawChampionFigure, type Weapon } from './champions';
 import { arc } from './draw';
 
 export type Relation = 'self' | 'ally' | 'enemy' | 'neutral';
@@ -57,10 +57,13 @@ export class UnitView implements EntityView {
   /** Everything that turns to face where the unit's going: the figure, and a champion's weapon. */
   private readonly facing = new Container();
   private readonly figure = new Graphics();
-  /** A champion's weapon, drawn around its grip so it can swing on its own. */
+  /** The part that moves on its own (a weapon, a tail, a tongue), drawn around its pivot. */
   private readonly weapon: Graphics | null = null;
   private readonly weaponRest = { x: 0, y: 0 };
+  private readonly weaponSpec: Weapon | null = null;
   private readonly champ: ChampionId | null = null;
+  /** What this unit does when it attacks. */
+  private readonly attackAnim: Anim | null = null;
   /** The move playing right now (attack or cast), t from 0 to 1. */
   private anim: { a: Anim; t: number } | null = null;
   /** Knocked back by a big hit; settles back to 0. */
@@ -101,8 +104,12 @@ export class UnitView implements EntityView {
     if (s.k === 'chud') {
       // Chuds turn to face what they're fighting, so the whole figure lives on the rotating layer.
       drawChud(this.figure, s.chud ?? 'melee', r, color);
+      this.weaponSpec = CHUD_PARTS[s.chud ?? 'melee'];
+      this.attackAnim = UNIT_ATTACK[`chud:${s.chud ?? 'melee'}`] ?? null;
     } else if (s.k === 'monster') {
       drawMonster(this.figure, s.mon ?? 'rat', r);
+      this.weaponSpec = MONSTER_PARTS[s.mon ?? 'rat'] ?? null;
+      this.attackAnim = UNIT_ATTACK[`monster:${s.mon ?? 'rat'}`] ?? null;
     } else if (s.k === 'guard') {
       // A royal guard from above: team-colored tabard, a steel helmet, a round shield and a spear.
       this.figure.circle(0, 0, r).fill(color).stroke({ width: 2, color: PALETTE.outline });
@@ -125,16 +132,22 @@ export class UnitView implements EntityView {
       drawChampionBase(this.body, r, color, relation === 'self');
       drawChampionFigure(this.figure, s.champ, r);
       this.champ = s.champ;
-      this.weapon = new Graphics();
-      Object.assign(this.weaponRest, drawChampionWeapon(this.weapon, s.champ, r));
-      this.weapon.position.copyFrom(this.weaponRest);
+      this.weaponSpec = championWeapon(s.champ);
+      this.attackAnim = ATTACK[s.champ];
     } else {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: relation === 'self' ? 0xffffff : PALETTE.outline });
       this.body.circle(0, 0, r * 0.55).fill({ color: 0xffffff, alpha: 0.12 });
       this.figure.poly([r - 6, -10, r + 12, 0, r - 6, 10]).fill(0xffffff).stroke({ width: 2, color: PALETTE.outline });
     }
-    // Logan's paws tuck under his mane; everyone else holds their weapon in front.
-    if (this.weapon && s.champ === 'logan') this.facing.addChild(this.weapon, this.figure);
+    if (this.weaponSpec) {
+      this.weapon = new Graphics();
+      this.weaponSpec.draw(this.weapon, r);
+      this.weaponRest.x = this.weaponSpec.pivot[0] * r;
+      this.weaponRest.y = this.weaponSpec.pivot[1] * r;
+      this.weapon.position.copyFrom(this.weaponRest);
+    }
+    // Some parts tuck under the body (paws under a mane, a head inside a shell); most are held in front.
+    if (this.weapon && this.weaponSpec?.behind) this.facing.addChild(this.weapon, this.figure);
     else if (this.weapon) this.facing.addChild(this.figure, this.weapon);
     else this.facing.addChild(this.figure);
 
@@ -181,6 +194,7 @@ export class UnitView implements EntityView {
     let twist = 0;
     let lungeBy = 0;
     let grow = 0;
+    let stretch = 0;
     if (this.anim) {
       this.anim.t += dt / this.anim.a.dur;
       if (this.anim.t >= 1 || s.dead) this.anim = null;
@@ -191,6 +205,7 @@ export class UnitView implements EntityView {
         twist = sample(a.twist, t);
         lungeBy = sample(a.lunge, t);
         grow = sample(a.grow, t);
+        stretch = sample(a.stretch, t);
       }
     }
 
@@ -204,10 +219,12 @@ export class UnitView implements EntityView {
     const step = Math.sin(this.walk) * this.stride;
     const breathe = 1 + Math.sin(this.clock * 2.4) * 0.015 * (1 - this.stride);
     this.facing.rotation = s.f + step * 0.08 + twist;
-    if (this.weapon) {
-      // At rest the weapon sways a little with the walk and the breath.
-      this.weapon.rotation = turn + Math.sin(this.clock * 1.7) * 0.04 + step * 0.1;
+    if (this.weapon && this.weaponSpec) {
+      // At rest it sways a little with the walk and the breath (a rat's tail rather more).
+      const [amp, hz] = this.weaponSpec.sway ?? [0.04, 0.27];
+      this.weapon.rotation = turn + Math.sin(this.clock * hz * Math.PI * 2) * amp + step * 0.1;
       this.weapon.position.set(this.weaponRest.x + reach * this.baseR, this.weaponRest.y);
+      this.weapon.scale.x = (this.weaponSpec.rest ?? 1) * (1 + stretch);
     }
 
     this.pulse = Math.max(0, this.pulse - dt * 6);
@@ -219,8 +236,8 @@ export class UnitView implements EntityView {
     this.body.scale.set(size);
     this.facing.scale.set(size);
     this.shade.scale.set(size);
-    // A swing lunges the figure forward a little (champions follow their move instead).
-    const lunge = this.champ ? lungeBy * s.r : this.pulse * 7;
+    // A swing lunges the figure forward a little (units with their own moves follow those instead).
+    const lunge = this.attackAnim ? lungeBy * s.r : this.pulse * 7;
     this.facing.position.set(Math.cos(s.f) * lunge, Math.sin(s.f) * lunge);
     this.facing.tint = this.flash > 0 ? 0xff9a9a : 0xffffff;
     // Feet sit under the figure and step in turn while it walks.
@@ -255,7 +272,12 @@ export class UnitView implements EntityView {
 
   onAttack(): void {
     this.pulse = 1;
-    if (this.champ) this.anim = { a: ATTACK[this.champ], t: 0 };
+    if (this.attackAnim) this.anim = { a: this.attackAnim, t: 0 };
+  }
+
+  /** Play a move (the Warden winding up a slam). */
+  play(a: Anim): void {
+    this.anim = { a, t: 0 };
   }
 
   onCast(slot: Slot): void {
@@ -632,7 +654,6 @@ function drawChud(g: Graphics, type: ChudType, r: number, team: number): void {
     // A rickety cart with a boulder loaded up front and the team's banner at the back.
     g.roundRect(-r, -r * 0.75, r * 1.8, r * 1.5, 6).fill(PALETTE.bark).stroke(outline);
     g.rect(-r * 0.95, -r * 0.8, r * 0.45, r * 1.6).fill(team);
-    g.circle(r * 0.35, 0, r * 0.45).fill(0x8d8d8d).stroke(outline);
     return;
   }
   if (type === 'brute') {
@@ -649,9 +670,54 @@ function drawChud(g: Graphics, type: ChudType, r: number, team: number): void {
   g.moveTo(0, 0).arc(0, 0, r, Math.PI / 2, Math.PI * 1.5).closePath().fill(team); // hood over the back
   g.circle(r * 0.45, -r * 0.28, r * 0.14).fill(CHUD_EYES);
   g.circle(r * 0.45, r * 0.28, r * 0.14).fill(CHUD_EYES);
-  if (type === 'melee' || type === 'brute') g.roundRect(r * 0.25, r * 0.55, r * 1.0, r * 0.3, 3).fill(PALETTE.bark).stroke(outline); // club
-  else g.circle(r * 1.05, 0, r * 0.3).fill(0x6e6e6e).stroke(outline); // stone ready in the sling
 }
+
+const PART_OUTLINE = { width: 2, color: 0x0b0f14 };
+
+/** What Chuds hold: a club, a bigger club, a sling, the cart's boulder. */
+const CHUD_PARTS: Record<ChudType, Weapon> = {
+  melee: { pivot: [0.3, 0.7], draw: (g, r) => void g.roundRect(-0.05 * r, -0.15 * r, r, r * 0.3, 3).fill(PALETTE.bark).stroke(PART_OUTLINE) },
+  brute: {
+    pivot: [0.3, 0.75],
+    draw(g, r) {
+      g.roundRect(-0.05 * r, -0.17 * r, r * 1.25, r * 0.34, 4).fill(PALETTE.bark).stroke(PART_OUTLINE);
+      for (const x of [0.75, 0.95, 1.1]) g.poly([x * r, -0.17 * r, (x + 0.06) * r, -0.32 * r, (x + 0.12) * r, -0.17 * r]).fill(0xb8bec6);
+    },
+  },
+  ranged: {
+    pivot: [0.6, 0.3],
+    draw(g, r) {
+      g.moveTo(0, 0).lineTo(0.45 * r, -0.3 * r).stroke({ width: 2, color: 0x8a6a44 });
+      g.circle(0.45 * r, -0.3 * r, 0.3 * r).fill(0x6e6e6e).stroke(PART_OUTLINE); // stone ready in the sling
+    },
+  },
+  siege: { pivot: [0.35, 0], draw: (g, r) => void g.circle(0, 0, r * 0.45).fill(0x8d8d8d).stroke(PART_OUTLINE) },
+};
+
+/** Monsters' moving parts: tails, a head, a tongue, the Warden's shackle on its chain. */
+const MONSTER_PARTS: Partial<Record<MonsterKind, Weapon>> = {
+  rat: { pivot: [-0.8, 0], behind: true, sway: [0.35, 0.9], draw: (g, r) => void g.moveTo(0, 0).bezierCurveTo(-r * 0.8, -r * 0.2, -r * 0.9, r * 0.6, -r * 1.3, r * 0.3).stroke({ width: 3, color: 0xd99a9a }) },
+  ratKing: { pivot: [-0.8, 0], behind: true, sway: [0.3, 0.7], draw: (g, r) => void g.moveTo(0, 0).bezierCurveTo(-r * 0.8, -r * 0.2, -r * 0.9, r * 0.6, -r * 1.3, r * 0.3).stroke({ width: 4, color: 0xd99a9a }) },
+  mossback: { pivot: [0.7, 0], behind: true, sway: [0.12, 0.3], draw: (g, r) => void g.circle(0.25 * r, 0, r * 0.32).fill(0x7c8a5a).stroke(MONSTER_OUTLINE) },
+  emberToad: {
+    pivot: [0.85, 0],
+    rest: 0.25,
+    sway: [0.02, 0.5],
+    draw(g, r) {
+      g.moveTo(0, 0).lineTo(0.5 * r, 0).stroke({ width: 6, color: 0xe86a8a, cap: 'round' });
+      g.circle(0.5 * r, 0, 0.1 * r).fill(0xff8fa8);
+    },
+  },
+  warden: {
+    pivot: [0.7, 0],
+    sway: [0.1, 0.2],
+    draw(g, r) {
+      for (let i = 0; i < 3; i++) g.ellipse(0.06 * r + i * 0.1 * r, 0, i % 2 ? 0.04 * r : 0.07 * r, i % 2 ? 0.07 * r : 0.04 * r).stroke({ width: 3, color: 0x8a9099 });
+      g.circle(0.35 * r, 0, r * 0.22).stroke({ width: 6, color: 0x8a9099 });
+      g.circle(0.35 * r, 0, r * 0.22).stroke({ width: 2, color: 0xc9d1dc, alpha: 0.6 });
+    },
+  },
+};
 
 const MONSTER_OUTLINE = { width: 2, color: PALETTE.outline };
 
@@ -662,7 +728,6 @@ function drawMonster(g: Graphics, kind: MonsterKind, r: number): void {
     case 'rat':
     case 'ratKing': {
       // A tail curling out the back, a pointed snout, round ears and beady red eyes.
-      g.moveTo(-r * 0.8, 0).bezierCurveTo(-r * 1.6, -r * 0.2, -r * 1.7, r * 0.6, -r * 2.1, r * 0.3).stroke({ width: 3, color: 0xd99a9a });
       g.ellipse(0, 0, r * 1.05, r * 0.85).fill(kind === 'ratKing' ? 0x6b5f55 : 0x7d7268).stroke(o);
       g.poly([r * 0.7, -r * 0.45, r * 1.35, 0, r * 0.7, r * 0.45]).fill(0x8e8278).stroke(o);
       g.circle(r * 0.2, -r * 0.7, r * 0.3).fill(0xd99a9a).stroke(o);
@@ -674,7 +739,6 @@ function drawMonster(g: Graphics, kind: MonsterKind, r: number): void {
     }
     case 'mossback': {
       // A great mossy shell with a blunt head poking out the front.
-      g.circle(r * 0.95, 0, r * 0.32).fill(0x7c8a5a).stroke(o);
       g.circle(0, 0, r).fill(0x3d5a2e).stroke(o);
       g.poly(regularPolygon(6, r * 0.5)).fill(0x557a3b).stroke({ width: 2, color: 0x2a3f20 });
       for (let i = 0; i < 6; i++) {
@@ -711,7 +775,6 @@ function drawMonster(g: Graphics, kind: MonsterKind, r: number): void {
       }
       g.roundRect(r * 0.3, -r * 0.28, r * 0.16, r * 0.56, 4).fill(0x1a1d22);
       g.roundRect(r * 0.33, -r * 0.22, r * 0.1, r * 0.44, 3).fill(0x7fe3ff);
-      g.circle(r * 1.05, 0, r * 0.22).stroke({ width: 6, color: 0x8a9099 });
       return;
     }
     case 'glowcap': {

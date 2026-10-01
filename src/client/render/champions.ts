@@ -32,11 +32,22 @@ export function drawChampionWeapon(g: Graphics, id: ChampionId, r: number): { x:
   return { x: w.pivot[0] * r, y: w.pivot[1] * r };
 }
 
-interface Weapon {
-  /** Where the weapon is held, in units of the champion's radius. */
+/** A part that moves on its own: a weapon, a tail, a head, a tongue. */
+export interface Weapon {
+  /** Where it's held, in units of the unit's radius. */
   pivot: [number, number];
   /** Draws it with the pivot at (0, 0). */
   draw(g: Graphics, r: number): void;
+  /** Drawn under the body instead of on top (paws, a head inside a shell). */
+  behind?: boolean;
+  /** Idle sway: [radians, times per second]. Default a gentle breath. */
+  sway?: [number, number];
+  /** How long it is at rest, along its length (1 = as drawn). */
+  rest?: number;
+}
+
+export function championWeapon(id: ChampionId): Weapon {
+  return WEAPONS[id];
 }
 
 const WEAPONS: Record<ChampionId, Weapon> = {
@@ -76,6 +87,7 @@ const WEAPONS: Record<ChampionId, Weapon> = {
   logan: {
     // Two front paws, reaching out from under the mane.
     pivot: [0.45, 0],
+    behind: true,
     draw(g, r) {
       for (const side of [-1, 1]) {
         g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(0xe8a33d).stroke({ width: 1.5, color: 0x8a4f12 });

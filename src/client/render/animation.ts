@@ -21,6 +21,8 @@ export interface Anim {
   lunge?: readonly Key[];
   /** The figure growing (0.1 = 10% bigger): rearing up for a big cast. */
   grow?: readonly Key[];
+  /** The weapon stretching out along its length (1 = twice as long): a toad's tongue. */
+  stretch?: readonly Key[];
 }
 
 /** The value of a track at time t, eased between keys (0 if there's no track). */
@@ -82,6 +84,42 @@ const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
   // KNEEL!: the scepter raised high, then brought down.
   'kingrix:2': { dur: 0.5, turn: [[0, 0], [0.4, -1.6], [0.6, 0.4], [1, 0]], grow: [[0, 0], [0.4, 0.15], [0.6, -0.05], [1, 0]] },
 };
+
+/** Chuds' and monsters' attacks, keyed "chud:melee", "monster:rat" and so on. */
+export const UNIT_ATTACK: Record<string, Anim> = {
+  // A whack with the club.
+  'chud:melee': { dur: 0.3, turn: [[0, 0], [0.35, 0.9], [0.6, -0.9], [1, 0]], lunge: [[0, 0], [0.55, 0.15], [1, 0]] },
+  // The Brute winds right back and brings it down hard.
+  'chud:brute': { dur: 0.45, turn: [[0, 0], [0.45, 1.3], [0.65, -1.1], [1, 0]], lunge: [[0, 0], [0.45, -0.1], [0.65, 0.2], [1, 0]], grow: [[0, 0], [0.45, 0.08], [0.65, -0.03], [1, 0]] },
+  // Whirl the sling once and let go.
+  'chud:ranged': { dur: 0.32, turn: [[0, 0], [1, -TAU]], lunge: [[0, 0], [0.7, 0.06], [1, 0]] },
+  // The cart's arm rocks back, then throws.
+  'chud:siege': { dur: 0.45, reach: [[0, 0], [0.4, -0.35], [0.55, 0.25], [1, 0]], lunge: [[0, 0], [0.55, -0.08], [1, 0]] },
+  'monster:rat': { dur: 0.26, lunge: [[0, 0], [0.4, 0.4], [1, 0]], twist: [[0, 0], [0.4, 0.15], [1, 0]] },
+  'monster:ratKing': { dur: 0.3, lunge: [[0, 0], [0.4, 0.35], [1, 0]], twist: [[0, 0], [0.4, -0.15], [1, 0]] },
+  // The head snaps out of the shell.
+  'monster:mossback': { dur: 0.4, reach: [[0, 0], [0.35, 0.5], [1, 0]], lunge: [[0, 0], [0.35, 0.08], [1, 0]] },
+  // Out shoots the tongue.
+  'monster:emberToad': { dur: 0.36, stretch: [[0, 0], [0.3, 7], [0.65, 0], [1, 0]], grow: [[0, 0], [0.25, 0.06], [1, 0]] },
+  // Puffs up, spores everywhere.
+  'monster:glowcap': { dur: 0.4, grow: [[0, 0], [0.3, 0.15], [1, 0]] },
+  // Swings its shackle round on the chain.
+  'monster:warden': { dur: 0.5, turn: [[0, 0], [0.35, -1.2], [0.6, 0.8], [1, 0]], reach: [[0, 0], [0.55, 0.4], [1, 0]], lunge: [[0, 0], [0.55, 0.1], [1, 0]] },
+};
+
+/** The Warden rearing back through its slam warning, then crashing down as it ends. */
+export function wardenWindup(telegraph: number): Anim {
+  const dur = telegraph + 0.35;
+  const hit = telegraph / dur;
+  const after = hit + (1 - hit) * 0.35;
+  return {
+    dur,
+    grow: [[0, 0], [hit * 0.9, 0.18], [after, -0.06], [1, 0]],
+    lunge: [[0, 0], [hit * 0.9, -0.18], [after, 0.25], [1, 0]],
+    turn: [[0, 0], [hit * 0.9, -2.4], [after, 0.5], [1, 0]],
+    reach: [[0, 0], [hit * 0.9, -0.2], [after, 0.45], [1, 0]],
+  };
+}
 
 export function castAnim(champ: ChampionId, slot: Slot): Anim {
   return SLOT_MOVES[`${champ}:${slot}`] ?? CAST[champ];

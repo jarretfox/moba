@@ -514,6 +514,33 @@ export function projectileTrail(fx: FxLayer, s: EntitySnap, friendly: boolean): 
   }
 }
 
+/** The glowing monsters give off their own: embers off the Ember Toad, spores off the Glowcap, cold light from the Warden's visor. */
+export function monsterAura(fx: FxLayer, s: EntitySnap): void {
+  const p = fx.particles;
+  const r = s.r;
+  switch (s.mon) {
+    case 'emberToad':
+      for (let i = 0; i < fx.rate(16); i++) p.emit({ shape: 'glow', x: s.x + rand(-r, r) * 0.7, y: s.y + rand(-r, r) * 0.6, vy: rand(-70, -30), drag: 0.6, life: rand(0.6, 1.1), size: 12, size2: 3, color: 0xffd9a8, color2: 0xff5a1f, alpha: 0.8 });
+      return;
+    case 'glowcap':
+      for (let i = 0; i < fx.rate(12); i++) {
+        const a = Math.random() * Math.PI * 2;
+        p.emit({ shape: 'mote', x: s.x + Math.cos(a) * r * 0.8, y: s.y + Math.sin(a) * r * 0.8, vx: Math.cos(a) * 20, vy: rand(-30, -10), life: rand(1, 1.8), size: 7, size2: 2, color: 0xdff7ff, color2: 0x6fd6ff, fadeIn: 0.3 });
+      }
+      return;
+    case 'warden': {
+      const fx2 = s.x + Math.cos(s.f) * r * 0.4;
+      const fy = s.y + Math.sin(s.f) * r * 0.4;
+      for (let i = 0; i < fx.rate(18); i++) p.emit({ shape: 'glow', x: fx2 + rand(-8, 8), y: fy + rand(-8, 8), vx: rand(-15, 15), vy: rand(-50, -20), drag: 0.5, life: 0.9, size: 18, size2: 4, color: 0xe6fbff, color2: ARCANE, alpha: 0.6, fadeIn: 0.2 });
+      if (Math.random() < fx.dt * 2) {
+        const a = Math.random() * Math.PI * 2;
+        p.emit({ shape: 'star', x: s.x + Math.cos(a) * r * 0.86, y: s.y + Math.sin(a) * r * 0.86, life: 0.4, size: 16, size2: 2, color: 0xffffff, color2: ARCANE, spin: 5 });
+      }
+      return;
+    }
+  }
+}
+
 /** Particles that hang around a unit while it has a status: flames for berserk, bubbles for rot, and so on. */
 export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
   const st = s.st;

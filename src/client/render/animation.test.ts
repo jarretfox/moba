@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChampionId } from '../../shared/champions/types';
 import type { Slot } from '../../shared/constants';
-import { ATTACK, castAnim, sample, type Anim } from './animation';
+import { ATTACK, UNIT_ATTACK, castAnim, sample, wardenWindup, type Anim } from './animation';
 
 describe('champion animations', () => {
   it('ease between keyframes and hold the ends', () => {
@@ -21,8 +21,9 @@ describe('champion animations', () => {
       moves.push(ATTACK[id]);
       for (const slot of [0, 1, 2, 3] as Slot[]) moves.push(castAnim(id, slot));
     }
+    moves.push(...Object.values(UNIT_ATTACK), wardenWindup(1.2));
     for (const m of moves) {
-      for (const track of [m.turn, m.reach, m.twist, m.lunge, m.grow]) {
+      for (const track of [m.turn, m.reach, m.twist, m.lunge, m.grow, m.stretch]) {
         if (!track) continue;
         expect(sample(track, 0)).toBeCloseTo(0);
         // A full turn ends where it started.

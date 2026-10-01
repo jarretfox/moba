@@ -11,12 +11,13 @@ import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/prot
 import { Sound } from './audio';
 import { Camera } from './camera';
 import { MELEE, cueFor, type SoundCue } from './sfx';
+import { wardenWindup } from './render/animation';
 import type { Connection } from './net/connection';
 import { Hud } from './hud';
 import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
-import { castFlash, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
+import { castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { Lighting } from './render/lighting';
 import { Water } from './render/water';
 import { Minimap, type MinimapPing } from './minimap';
@@ -290,7 +291,10 @@ export class GameClient {
     for (const s of this.ents.values()) {
       if (Math.abs(s.x - this.camera.x) > halfW || Math.abs(s.y - this.camera.y) > halfH) continue;
       if (s.k === 'projectile') projectileTrail(this.fx, s, s.tm === this.myTeam);
-      else if (s.st || s.sh) statusAura(this.fx, s, time);
+      else {
+        if (s.k === 'monster' && !s.dead) monsterAura(this.fx, s);
+        if (s.st || s.sh) statusAura(this.fx, s, time);
+      }
     }
   }
 
@@ -525,6 +529,11 @@ export class GameClient {
     const SHAKES: Partial<Record<typeof ev.fx, number>> = { wardenSlam: 18, slam: 8, surface: 10, deepHands: 12, roar: 6, kneel: 7, berserk: 5, pounce: 4 };
     const kick = SHAKES[ev.fx];
     if (kick) this.shakeNear(ev, kick);
+    if (ev.fx === 'wardenMark') {
+      // The Warden rears back for the whole warning, then brings it down.
+      const warden = [...this.ents.values()].find((e) => e.k === 'monster' && e.mon === 'warden');
+      if (warden) (this.views.get(warden.id) as UnitView | undefined)?.play?.(wardenWindup(ev.dur ?? 1));
+    }
     playSpell(this.fx, ev, ev.team === this.myTeam);
   }
 
