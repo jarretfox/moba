@@ -520,7 +520,7 @@ export class UnitView implements EntityView {
     this.cast.visible = !s.dead && !this.air;
     this.cast.rotation = Math.atan2(-light.dy, -light.dx);
     this.cast.scale.set(stretch, 1);
-    this.cast.position.set(-light.dx * s.r * stretch * 0.8, -light.dy * s.r * stretch * 0.5);
+    this.cast.position.set(this.paceX - light.dx * s.r * stretch * 0.8, -light.dy * s.r * stretch * 0.5);
     this.cast.alpha = 0.6 + 0.4 * Math.min(1, k + night);
     if (this.flash <= 0) rig.root.tint = mix(0xffffff, light.color, Math.min(0.35, k * 0.3));
     if (this.backlight) {
