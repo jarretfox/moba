@@ -43,8 +43,13 @@ export type ClientMessage =
   /** Host only: start the match once everyone has picked. */
   | { t: 'start'; mode: MatchMode }
   | { t: 'cmd'; cmd: Command }
+  /** Say something: to your team, or to everyone (`all`). */
+  | { t: 'chat'; text: string; all: boolean }
   /** Keep-alive, handled by the network layer; never reaches the game. */
   | { t: 'ping' };
+
+/** Longest chat line, in characters. */
+export const MAX_CHAT = 140;
 
 /** 'bots': 3v3, with bots in every slot no human takes. 'practice': no bots — the Chud waves and training dummies. */
 export type MatchMode = 'bots' | 'practice';
@@ -71,6 +76,8 @@ export type HostMessage =
   | { t: 'welcome'; unitId: number; team: Team; weather?: Weather }
   | { t: 'snap'; snap: SnapshotDelta }
   | { t: 'refused'; reason: string }
+  /** A chat line, from a player by name (and champion, once the match is on). */
+  | { t: 'chat'; from: string; team: PlayerTeam; all: boolean; text: string; champ?: ChampionId }
   /** Keep-alive, handled by the network layer. */
   | { t: 'ping' };
 

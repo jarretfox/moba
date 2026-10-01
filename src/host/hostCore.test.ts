@@ -219,3 +219,40 @@ describe('the lobby', () => {
     expect(me.abilities.every((a) => a.readyAt === 0)).toBe(true);
   });
 });
+
+describe('chat', () => {
+  const chats = (sent: { to: string; msg: HostMessage }[], to: string) => sent.filter((s) => s.to === to && s.msg.t === 'chat').map((s) => s.msg as Extract<HostMessage, { t: 'chat' }>);
+
+  it('sends team chat to your team only, and all chat to everyone, from your name', () => {
+    const { core, sent } = host();
+    for (const [id, name] of [[LOCAL_CONN, 'Jo'], ['peer:a', 'Al'], ['peer:b', 'Bea']] as const) core.receive(id, { t: 'hello', name });
+    // Jo and Bea on blue, Al on red.
+    core.receive('peer:a', { t: 'pick', team: TEAM.red });
+    core.receive('peer:b', { t: 'pick', team: TEAM.blue });
+    core.receive(LOCAL_CONN, { t: 'chat', text: '  gank   top? ', all: false });
+    expect(chats(sent, 'peer:b').map((c) => [c.from, c.text, c.all])).toEqual([['Jo', 'gank top?', false]]);
+    expect(chats(sent, LOCAL_CONN)).toHaveLength(1); // you see your own line
+    expect(chats(sent, 'peer:a')).toHaveLength(0);
+    core.receive('peer:a', { t: 'chat', text: 'gl hf', all: true });
+    expect(chats(sent, LOCAL_CONN).at(-1)).toMatchObject({ from: 'Al', text: 'gl hf', all: true, team: TEAM.red });
+    expect(chats(sent, 'peer:b').at(-1)?.text).toBe('gl hf');
+  });
+
+  it('names your champion once the match is on, and keeps lines short, clean and not too many', () => {
+    let clock = 0;
+    const sent: { to: string; msg: HostMessage }[] = [];
+    const core = new HostCore((to, msg) => sent.push({ to, msg }), () => clock);
+    core.quickStart(LOCAL_CONN, 'Jo', 'logan', 'practice');
+    core.receive(LOCAL_CONN, { t: 'chat', text: 'x'.repeat(500), all: true });
+    const first = chats(sent, LOCAL_CONN)[0];
+    expect(first.champ).toBe('logan');
+    expect(first.text.length).toBe(140);
+    for (const text of ['', '   ', 42, null]) core.receive(LOCAL_CONN, { t: 'chat', text, all: true } as never);
+    expect(chats(sent, LOCAL_CONN)).toHaveLength(1);
+    for (let i = 0; i < 10; i++) core.receive(LOCAL_CONN, { t: 'chat', text: `spam ${i}`, all: true });
+    expect(chats(sent, LOCAL_CONN)).toHaveLength(5);
+    clock = 10;
+    core.receive(LOCAL_CONN, { t: 'chat', text: 'later', all: true });
+    expect(chats(sent, LOCAL_CONN).at(-1)?.text).toBe('later');
+  });
+});

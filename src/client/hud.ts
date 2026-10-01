@@ -39,6 +39,7 @@ const HELP = [
   ['S', 'stop'],
   ['B', 'recall home (4s, breaks if hit)'],
   ['P', 'shop (or click Old Wick)'],
+  ['Enter', 'team chat (Shift+Enter: all)'],
   ['M', 'mute sound'],
   ['N', 'music on / off'],
   ['1 2 3 4', 'taunt, laugh, cheer, say a line'],

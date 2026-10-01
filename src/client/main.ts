@@ -11,6 +11,7 @@ import { onSettings } from './settings';
 import type { Connection } from './net/connection';
 import { HostWorker } from './net/hostWorker';
 import { PeerHost, PeerLink, normalizeCode } from './net/peer';
+import { ChatBox } from './ui/chat';
 import { LobbyScreen } from './ui/lobby';
 import { showMenu, type MenuChoice } from './ui/menu';
 import './style.css';
@@ -97,14 +98,25 @@ async function boot(): Promise<void> {
     onStart: (mode) => conn.send({ t: 'start', mode }),
   });
 
+  // Team and all chat, for the whole session (over the HUD, so it outlasts the match screens).
+  const chat = new ChatBox(document.body, (text, all) => conn.send({ t: 'chat', text, all }));
+  chat.onLine = () => getSound().playIfReady('click', 0.35);
+
   conn.listen((msg) => {
-    if (msg.t === 'lobby') {
+    if (msg.t === 'chat') {
+      chat.add(msg);
+    } else if (msg.t === 'lobby') {
+      const me = msg.lobby.players.find((p) => p.id === msg.you);
+      if (me) chat.setTeam(me.team);
       if (msg.lobby.phase === 'lobby') lobby.update(msg.lobby, msg.you);
     } else if (msg.t === 'refused') {
       lobby.close();
       game.showNotice("Couldn't join", msg.reason);
     } else {
-      if (msg.t === 'welcome') lobby.close();
+      if (msg.t === 'welcome') {
+        lobby.close();
+        if (msg.team === 1 || msg.team === 2) chat.setTeam(msg.team);
+      }
       game.handle(msg);
     }
   });

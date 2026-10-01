@@ -2184,6 +2184,106 @@ html.colorblind .gold-peak.theirs {
 
 /* ─── Kill feed ──────────────────────────────────────────────────────── */
 
+/* Chat: bottom left, over everything (it carries on over the end screen). See ui/chat.ts. */
+.chat {
+  position: fixed;
+  left: 14px;
+  bottom: 190px;
+  width: min(340px, calc(100vw - 28px));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  font: 700 14px/1.35 Nunito, system-ui, sans-serif;
+}
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow: hidden;
+  justify-content: flex-end;
+}
+
+.chat-line {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(10, 8, 6, 0.55);
+  color: #f2ead8;
+  text-shadow: 0 1px 2px #000;
+  transition: opacity 0.6s;
+  overflow-wrap: anywhere;
+}
+
+.chat-line.old {
+  opacity: 0;
+}
+
+.chat.typing .chat-line {
+  opacity: 1;
+}
+
+.chat-tag {
+  margin-right: 5px;
+  color: #8fb8ff;
+}
+
+.chat-line.all .chat-tag {
+  color: #ffb35c;
+}
+
+.chat-name.ally {
+  color: #7cc4ff;
+}
+
+.chat-name.enemy {
+  color: #ff8a8a;
+}
+
+.chat-input {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.chat-input[hidden] {
+  display: none;
+}
+
+.chat-scope {
+  min-width: 56px;
+  padding: 6px 10px;
+  border: 1px solid #3f5f8f;
+  border-radius: 4px;
+  background: #142033;
+  color: #8fb8ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chat-scope.all {
+  border-color: #8f5f2f;
+  background: #2b1a0c;
+  color: #ffb35c;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #5a4a30;
+  border-radius: 4px;
+  background: rgba(14, 11, 8, 0.92);
+  color: #f2ead8;
+  font: inherit;
+  outline: none;
+}
+
+.chat-input input:focus {
+  border-color: #c9a05a;
+}
+
 .feed {
   position: absolute;
   top: 34px;

@@ -5,7 +5,7 @@ import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
 import { SKIN_COUNT, type ChampionId } from '../shared/champions/types';
 import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
-import { LOCAL_CONN, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
+import { LOCAL_CONN, MAX_CHAT, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { pickWeather } from '../shared/weather';
 import { applyCommand } from '../shared/sim/commands';
@@ -37,6 +37,9 @@ const SCORES_EVERY = 60;
 /** Cap on commands buffered per player per tick, so one client can't flood the host. */
 const MAX_QUEUED = 32;
 const MAX_NAME = 16;
+/** At most this many chat lines per player in any CHAT_WINDOW seconds. */
+export const CHAT_LIMIT = 5;
+const CHAT_WINDOW = 6;
 
 /**
  * The authoritative game. Runs wherever the host is — a Web Worker in the hosting player's tab — and
@@ -52,8 +55,14 @@ export class HostCore {
   private readonly lair = this.world.addSystem(new WardenLair());
   private scores: ScoreRow[] | null = null;
   private phase: LobbyState['phase'] = 'lobby';
+  /** When each connection last chatted (seconds), for the rate limit. */
+  private readonly chatTimes = new Map<string, number[]>();
 
-  constructor(private readonly send: (connId: string, msg: HostMessage) => void) {
+  constructor(
+    private readonly send: (connId: string, msg: HostMessage) => void,
+    /** Wall-clock seconds (the match clock stands still in the lobby). */
+    private readonly now: () => number = () => Date.now() / 1000,
+  ) {
     spawnStructures(this.world);
     this.world.addSystem(new Fountain());
     this.world.addSystem(new Jungle(this.world));
@@ -74,7 +83,26 @@ export class HostCore {
         if (p && p.queue.length < MAX_QUEUED && msg.cmd && typeof msg.cmd === 'object') p.queue.push(msg.cmd);
         return;
       }
+      case 'chat':
+        return this.chat(connId, msg.text, msg.all);
     }
+  }
+
+  /** A chat line: to the sender's team, or (`all`) to everyone. Cleaned up, cut short, and rate limited. */
+  private chat(connId: string, text: unknown, all: unknown): void {
+    const me = this.lobby.get(connId);
+    if (!me || typeof text !== 'string') return;
+    const clean = text.replace(/\s+/g, ' ').trim().slice(0, MAX_CHAT);
+    if (!clean) return;
+    const now = this.now();
+    const recent = (this.chatTimes.get(connId) ?? []).filter((t) => now - t < CHAT_WINDOW);
+    if (recent.length >= CHAT_LIMIT) return;
+    this.chatTimes.set(connId, [...recent, now]);
+    const teamOf = (id: string) => this.players.get(id)?.team ?? this.lobby.get(id)?.team;
+    const team = teamOf(connId)!;
+    const unit = this.players.has(connId) ? this.world.getUnit(this.players.get(connId)!.unitId) : undefined;
+    const msg: HostMessage = { t: 'chat', from: me.name, team, all: all === true, text: clean, ...(unit instanceof Champion ? { champ: unit.info.id } : {}) };
+    for (const id of this.lobby.keys()) if (msg.all || teamOf(id) === team) this.send(id, msg);
   }
 
   /** A connection went away: leave the lobby, or hand their champion to a bot mid-match. */

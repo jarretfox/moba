@@ -14,6 +14,7 @@ import { Camera } from './camera';
 import { MELEE, cueFor, type SoundCue } from './sfx';
 import { EMOTE_ANIM, wardenWindup } from './render/animation';
 import { Bubbles } from './render/bubbles';
+import { typing } from './ui/chat';
 import { BICKER, CHEERS } from './render/chudLife';
 import { emoteLine } from './emotes';
 import type { Connection } from './net/connection';
@@ -1410,6 +1411,8 @@ export class GameClient {
   }
 
   private onKey(e: KeyboardEvent, down: boolean): void {
+    // Typing (in the chat) isn't playing.
+    if (typing(e.target)) return;
     if (e.code === 'KeyG') this.pingKeyHeld = down;
     // Leave browser shortcuts alone — Ctrl+W closes the tab and can't be intercepted anyway.
     if (e.ctrlKey || e.metaKey || e.altKey) return;
