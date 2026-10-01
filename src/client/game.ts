@@ -16,7 +16,7 @@ import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { drawIndicator } from './render/indicator';
-import { buildMap, buildNavOverlay } from './render/mapView';
+import { HEIGHT, buildMap, buildNavOverlay, elevate } from './render/mapView';
 import { PALETTE, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
@@ -33,6 +33,10 @@ export class GameClient {
   private readonly groundLayer = new Container();
   private readonly underLayer = new Container();
   private readonly structureLayer = new Container();
+  /** Raised layers for the tops of tall things: cliffs, structures, trees. */
+  private readonly wallTops = new Container();
+  private readonly structureTops = new Container();
+  private readonly canopy = new Container();
   private readonly unitLayer = new Container();
   private readonly projectileLayer = new Container();
   private readonly indicator = new Graphics();
@@ -85,8 +89,21 @@ export class GameClient {
     this.hud.onMute = () => this.hud.setMuted(this.sound.toggleMute());
     this.hud.setMuted(this.sound.muted);
     this.buffer = new SnapshotBuffer(conn.interpDelay);
-    this.groundLayer.addChild(buildMap(MAP));
-    this.worldLayer.addChild(this.groundLayer, this.ambience.container, this.underLayer, this.structureLayer, this.fog.sprite, this.indicator, this.unitLayer, this.projectileLayer, this.fx.container);
+    this.setMap(TEAM.blue);
+    this.worldLayer.addChild(
+      this.groundLayer,
+      this.ambience.container,
+      this.underLayer,
+      this.structureLayer,
+      this.wallTops,
+      this.structureTops,
+      this.canopy,
+      this.fog.sprite,
+      this.indicator,
+      this.unitLayer,
+      this.projectileLayer,
+      this.fx.container,
+    );
     app.stage.addChild(this.worldLayer);
     this.bindInput();
     app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
@@ -99,12 +116,23 @@ export class GameClient {
       if (msg.team !== this.myTeam) {
         this.myTeam = msg.team;
         // Repaint the ground so your own base is the blue one.
-        this.groundLayer.removeChildAt(0).destroy({ children: true });
-        this.groundLayer.addChildAt(buildMap(MAP, msg.team), 0);
+        this.setMap(msg.team);
       }
     } else if (msg.t === 'snap') {
       this.buffer.push(this.decoder.decode(msg.snap), performance.now() / 1000);
     }
+  }
+
+  /** (Re)paints the map, tinted for the viewer's team. */
+  private setMap(team: Team): void {
+    const layers = buildMap(MAP, team);
+    const replace = (parent: Container, child: Container) => {
+      if (parent.children.length) parent.removeChildAt(0).destroy({ children: true });
+      parent.addChildAt(child, 0);
+    };
+    replace(this.groundLayer, layers.ground);
+    replace(this.wallTops, layers.wallTops);
+    replace(this.canopy, layers.canopy);
   }
 
   showNotice(title: string, detail: string): void {
@@ -134,7 +162,10 @@ export class GameClient {
 
     const { width: w, height: h } = this.app.screen;
     this.camera.update(dt, me && !me.dead ? me : null, this.mouse.inside ? this.mouse : null, w, h, this.centerHeld);
-    this.camera.apply(this.worldLayer, w, h);
+    this.camera.apply(this.worldLayer, w, h, dt);
+    elevate(this.wallTops, HEIGHT.wall, this.camera.x, this.camera.y);
+    elevate(this.structureTops, HEIGHT.structure, this.camera.x, this.camera.y);
+    elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
 
     const mouseWorld = this.mouseWorld();
     if (this.rightHeld && (this.holdTimer -= dt) <= 0) this.rightClick(false);
@@ -158,6 +189,7 @@ export class GameClient {
     for (const [id, view] of this.views) {
       if (this.ents.has(id)) continue;
       view.container.destroy({ children: true });
+      view.top?.destroy({ children: true });
       this.views.delete(id);
     }
     const me = this.ents.get(this.myId);
@@ -185,10 +217,13 @@ export class GameClient {
         view = new TrapView(s, rel);
         layer = this.underLayer;
         break;
-      case 'structure':
-        view = new StructureView(s, rel);
+      case 'structure': {
+        const sv = new StructureView(s, rel);
+        this.structureTops.addChild(sv.top);
+        view = sv;
         layer = this.structureLayer;
         break;
+      }
       case 'pickup':
         view = new PickupView(s);
         layer = this.underLayer;
@@ -214,6 +249,12 @@ export class GameClient {
       case 'dmg': {
         // Like League, only damage you deal or take gets a number; a lane full of Chuds would be unreadable otherwise.
         if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.();
+        const hit = this.ents.get(ev.target);
+        if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
+          const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
+          this.fx.impact(hit.x, hit.y, hit.r, ev.type, heavy);
+          if (ev.target === this.myId && heavy) this.camera.shake(Math.min(18, 6 + (ev.amount / (hit.mhp ?? 1000)) * 60));
+        }
         if (ev.src !== this.myId && ev.target !== this.myId) return;
         const t = this.ents.get(ev.target);
         if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);
@@ -224,7 +265,10 @@ export class GameClient {
         return;
       case 'death': {
         const t = this.ents.get(ev.id);
-        if (t) this.fx.death(t.x, t.y, t.r);
+        if (!t) return;
+        this.fx.death(t.x, t.y, t.r);
+        if (ev.id === this.myId) this.camera.shake(16);
+        else if (t.k === 'structure' || (t.k === 'monster' && t.mon === 'warden')) this.shakeNear(t, 20);
         return;
       }
       case 'heal': {
@@ -264,9 +308,20 @@ export class GameClient {
     this.sound.play(cue.name, cue.gain * falloff, pan);
   }
 
+  /** Shake the camera for something big, less the further it is from the middle of the screen. */
+  private shakeNear(at: { x: number; y: number }, amount: number): void {
+    const halfView = this.app.screen.width / 2 / this.camera.zoom;
+    const d = Math.hypot(at.x - this.camera.x, at.y - this.camera.y);
+    const k = Math.max(0, 1 - d / (halfView * 1.5));
+    if (k > 0.05) this.camera.shake(amount * k);
+  }
+
   private playFx(ev: Extract<GameEvent, { e: 'fx' }>): void {
     const x2 = ev.x2 ?? ev.x;
     const y2 = ev.y2 ?? ev.y;
+    const SHAKES: Partial<Record<typeof ev.fx, number>> = { wardenSlam: 18, slam: 8, surface: 10, deepHands: 12, roar: 6, kneel: 5, berserk: 5 };
+    const kick = SHAKES[ev.fx];
+    if (kick) this.shakeNear(ev, kick);
     const teamColor = ev.team === this.myTeam ? PALETTE.ally : PALETTE.enemy;
     switch (ev.fx) {
       case 'aimLine':

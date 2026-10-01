@@ -8,6 +8,8 @@ import type { VisionGrid, VisionSource } from '../../shared/sim/vision';
 const FOG_ALPHA = 150;
 /** Seconds between fog redraws. */
 const REFRESH = 0.1;
+/** Always-fogged cells around the map, so the fog fades out past the edge instead of stopping in a hard line. */
+const PAD = 8;
 
 /**
  * Darkens what your team can't see. The client works this out itself from your team's own units
@@ -24,10 +26,10 @@ export class FogLayer {
 
   constructor(private readonly grid: VisionGrid) {
     const canvas = document.createElement('canvas');
-    canvas.width = grid.cols;
-    canvas.height = grid.rows;
+    canvas.width = grid.cols + PAD * 2;
+    canvas.height = grid.rows + PAD * 2;
     this.ctx = canvas.getContext('2d')!;
-    this.image = this.ctx.createImageData(grid.cols, grid.rows);
+    this.image = this.ctx.createImageData(canvas.width, canvas.height);
     for (let i = 0; i < this.image.data.length; i += 4) {
       this.image.data[i] = 4;
       this.image.data[i + 1] = 7;
@@ -39,6 +41,7 @@ export class FogLayer {
     this.texture.source.scaleMode = 'linear'; // smooth the 100×-stretched pixels into soft fog edges
     this.sprite = new Sprite(this.texture);
     this.sprite.scale.set(grid.cellSize);
+    this.sprite.position.set(-PAD * grid.cellSize, -PAD * grid.cellSize);
   }
 
   update(ents: Iterable<EntitySnap>, team: Team, now: number): void {
@@ -52,7 +55,11 @@ export class FogLayer {
     }
     this.grid.compute(sources, this.visible);
     const data = this.image.data;
-    for (let i = 0; i < this.visible.length; i++) data[i * 4 + 3] = this.visible[i] ? 0 : FOG_ALPHA;
+    const { cols, rows } = this.grid;
+    const stride = cols + PAD * 2;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) data[((r + PAD) * stride + c + PAD) * 4 + 3] = this.visible[r * cols + c] ? 0 : FOG_ALPHA;
+    }
     this.ctx.putImageData(this.image, 0, 0);
     this.texture.source.update();
   }

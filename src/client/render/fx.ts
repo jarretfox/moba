@@ -67,6 +67,7 @@ export class FxLayer {
 
   burst(x: number, y: number, color: number): void {
     const g = new Graphics();
+    g.blendMode = 'add';
     this.add(g, 0.4, (t) => {
       g.clear().circle(x, y, 20 + 70 * t).stroke({ width: 6 * (1 - t) + 1, color, alpha: 1 - t });
     });
@@ -250,6 +251,7 @@ export class FxLayer {
   /** A ring that sweeps out to `radius`: War Cry, landings. */
   shockwave(x: number, y: number, radius: number, color: number, life = 0.4): void {
     const g = new Graphics();
+    g.blendMode = 'add';
     this.add(g, life, (t) => {
       g.clear()
         .circle(x, y, radius * (0.3 + 0.7 * t))
@@ -258,10 +260,32 @@ export class FxLayer {
     });
   }
 
+  /** A puff of dust and a few chunks thrown outward where something died. */
   death(x: number, y: number, r: number): void {
     const g = new Graphics();
-    this.add(g, 0.6, (t) => {
-      g.clear().circle(x, y, r + 50 * t).fill({ color: 0xffffff, alpha: 0.25 * (1 - t) });
+    const bits = Array.from({ length: 8 }, (_, i) => ({ a: (i / 8) * Math.PI * 2 + Math.random() * 0.5, v: 40 + Math.random() * 70 }));
+    this.add(g, 0.7, (t) => {
+      g.clear().circle(x, y, r + 50 * t).fill({ color: 0xd8cfc0, alpha: 0.22 * (1 - t) });
+      for (const b of bits) g.circle(x + Math.cos(b.a) * b.v * t, y + Math.sin(b.a) * b.v * t, 4 * (1 - t) + 1).fill({ color: 0x6b5a42, alpha: 1 - t });
+    });
+  }
+
+  /** Sparks flying off whatever just got hit, in the damage type's color. */
+  impact(x: number, y: number, r: number, type: DamageType, heavy: boolean): void {
+    const g = new Graphics();
+    g.blendMode = 'add';
+    const color = DAMAGE_COLORS[type];
+    const n = heavy ? 9 : 5;
+    const sparks = Array.from({ length: n }, () => ({ a: Math.random() * Math.PI * 2, v: 60 + Math.random() * (heavy ? 140 : 80) }));
+    this.add(g, heavy ? 0.35 : 0.25, (t) => {
+      g.clear();
+      g.circle(x, y, r * (0.6 + t * 0.6)).fill({ color, alpha: (heavy ? 0.35 : 0.2) * (1 - t) });
+      for (const s of sparks) {
+        const d = r * 0.6 + s.v * t;
+        const px = x + Math.cos(s.a) * d;
+        const py = y + Math.sin(s.a) * d;
+        g.moveTo(px, py).lineTo(px - Math.cos(s.a) * 10, py - Math.sin(s.a) * 10).stroke({ width: 3, color, alpha: 1 - t });
+      }
     });
   }
 

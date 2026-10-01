@@ -38,7 +38,12 @@ export interface EntityView {
   onAttack?(): void;
   /** Took a hit: a quick flash. */
   onHit?(): void;
+  /** The tall part of the view, drawn on a raised layer (structures). */
+  readonly top?: Container;
 }
+
+/** Seconds a unit takes to slump and fade when it dies. */
+const DEATH_TIME = 0.55;
 
 export class UnitView implements EntityView {
   readonly container = new Container();
@@ -61,6 +66,8 @@ export class UnitView implements EntityView {
   private readonly shade = new Graphics();
   private walk = 0;
   private stride = 0;
+  /** Seconds since death, for the fall-and-fade. */
+  private dying = 0;
   private clock = Math.random() * 10;
   private flash = 0;
   private last: { x: number; y: number } | null = null;
@@ -132,8 +139,12 @@ export class UnitView implements EntityView {
   }
 
   update(s: EntitySnap, dt: number, ctx: ViewContext): void {
-    this.container.visible = !s.dead;
-    this.container.alpha = ctx.inBrush(s.x, s.y) ? 0.55 : 1; // hidden in brush, like League
+    this.dying = s.dead ? this.dying + dt : 0;
+    const fall = Math.min(1, this.dying / DEATH_TIME);
+    this.container.visible = !s.dead || fall < 1;
+    this.container.alpha = (ctx.inBrush(s.x, s.y) ? 0.55 : 1) * (1 - fall);
+    this.container.rotation = fall * 0.6;
+    this.bars.visible = this.label.visible = !s.dead;
     this.container.position.set(s.x, s.y);
 
     // Walking: how far it moved since last frame drives the step cycle.
@@ -152,7 +163,7 @@ export class UnitView implements EntityView {
     // Leaping units swell toward the camera and settle back as they land.
     const airborne = s.st?.includes('airborne') ?? false;
     this.air = airborne ? Math.min(1, this.air + dt * 8) : Math.max(0, this.air - dt * 8);
-    const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3) * breathe;
+    const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3) * breathe * (1 - fall * 0.35);
     this.body.scale.set(size);
     this.facing.scale.set(size);
     this.shade.scale.set(size);
@@ -276,6 +287,7 @@ export class ProjectileView implements EntityView {
 
   constructor(s: EntitySnap, relation: Relation) {
     const g = this.container;
+    drawTail(g, s.vis ?? 'arrow', relation);
     switch (s.vis) {
       case 'shootie': {
         const color = relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
@@ -345,6 +357,29 @@ export class ProjectileView implements EntityView {
   update(s: EntitySnap): void {
     this.container.position.set(s.x, s.y);
     this.container.rotation = s.f;
+  }
+}
+
+const TAIL_COLORS: Record<string, number> = {
+  arrow: 0xf3e2b3,
+  arrowHeavy: 0xffd166,
+  bolt: 0x7fe3ff,
+  longshot: 0xff8a3d,
+  spore: 0x8fd14f,
+  scepter: 0xffd166,
+  levy: 0xffd166,
+  junk_sludge: 0x8fd14f,
+};
+
+/** A soft streak behind a projectile (it points along +x, so the tail runs back along -x). */
+function drawTail(g: Graphics, vis: string, relation: Relation): void {
+  const color = vis === 'shootie' ? (relation === 'enemy' ? PALETTE.enemy : PALETTE.ally) : TAIL_COLORS[vis];
+  if (color === undefined) return;
+  const len = vis === 'longshot' ? 220 : vis === 'shootie' ? 90 : 60;
+  const w = vis === 'longshot' ? 40 : vis === 'shootie' ? 16 : 8;
+  for (let i = 0; i < 4; i++) {
+    const f = (i + 1) / 4;
+    g.poly([0, -w * f * 0.5, -len * f, 0, 0, w * f * 0.5]).fill({ color, alpha: 0.12 });
   }
 }
 
@@ -427,8 +462,12 @@ export class TrapView implements EntityView {
 /** Shooties, Oakners and Da Base. The body is redrawn only when it changes state (standing, shielded, fallen). */
 export class StructureView implements EntityView {
   readonly container = new Container();
+  /** The tall part: everything above the footprint, drawn on a raised layer. */
+  readonly top = new Container();
   private readonly range = new Graphics();
   private readonly body = new Graphics();
+  private readonly light = new Graphics();
+  private readonly upper = new Graphics();
   private readonly bars = new Graphics();
   private readonly note: Text;
   private bodyKey = '';
@@ -442,8 +481,11 @@ export class StructureView implements EntityView {
     });
     this.note.anchor.set(0.5, 0);
     this.note.position.set(0, s.r + 12);
-    this.container.addChild(this.range, this.body, this.bars, this.note);
+    this.light.blendMode = 'add';
+    this.container.addChild(this.light, this.range, this.body);
+    this.top.addChild(this.upper, this.bars, this.note);
     this.container.position.set(s.x, s.y);
+    this.top.position.set(s.x, s.y);
   }
 
   update(s: EntitySnap, _dt: number, ctx: ViewContext): void {
@@ -475,6 +517,8 @@ export class StructureView implements EntityView {
 
   private drawBody(s: EntitySnap): void {
     const g = this.body.clear();
+    const up = this.upper.clear();
+    const light = this.light.clear();
     const r = s.r;
     const team = this.relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
     if (s.dead) {
@@ -482,10 +526,21 @@ export class StructureView implements EntityView {
       else drawRubble(g, r);
       return;
     }
-    if (s.role === 'oakner') drawOakner(g, r, team);
-    else if (s.role === 'daBase') drawDaBase(g, r, team);
-    else drawShootie(g, r, team);
-    if (s.inv) g.circle(0, 0, r + 12).stroke({ width: 5, color: 0xdfe6ee, alpha: 0.35 });
+    // On the ground: a shadow, the footprint (which shows as the structure's side once the top is raised),
+    // and a pool of team-colored light.
+    drawShadow(g, r);
+    if (s.role === 'oakner') {
+      g.circle(0, 0, r * 0.34).fill(0x4a321c).stroke({ width: 3, color: 0x24180c });
+    } else if (s.role === 'daBase') {
+      g.poly(regularPolygon(6, r)).fill(0x2a2e35).stroke({ width: 5, color: PALETTE.outline });
+    } else {
+      g.circle(0, 0, r).fill(0x30343c).stroke({ width: 4, color: PALETTE.outline });
+    }
+    for (let i = 1; i <= 5; i++) light.circle(0, 0, r * (0.6 + i * 0.45)).fill({ color: team, alpha: 0.035 });
+    if (s.role === 'oakner') drawOakner(up, r, team);
+    else if (s.role === 'daBase') drawDaBase(up, r, team);
+    else drawShootie(up, r, team);
+    if (s.inv) up.circle(0, 0, r + 12).stroke({ width: 5, color: 0xdfe6ee, alpha: 0.35 });
   }
 
   private drawBars(s: EntitySnap): void {
@@ -626,7 +681,6 @@ function drawShadow(g: Graphics, r: number): void {
 
 /** A stone watchtower from above: battlements round a wooden deck, and a glowing crystal in the team's color. */
 function drawShootie(g: Graphics, r: number, team: number): void {
-  drawShadow(g, r);
   g.circle(0, 0, r).fill(PALETTE.stone).stroke({ width: 4, color: PALETTE.outline });
   // Stone blocks around the wall.
   for (let i = 0; i < 16; i++) {
@@ -649,7 +703,6 @@ function drawShootie(g: Graphics, r: number, team: number): void {
 
 /** A great oak from above: layered foliage lit from the top-left, ringed in the team's color, a ribbon on top. */
 function drawOakner(g: Graphics, r: number, team: number): void {
-  drawShadow(g, r);
   g.circle(0, 0, r + 8).fill({ color: team, alpha: 0.15 }).stroke({ width: 5, color: team });
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
@@ -676,7 +729,6 @@ function drawStump(g: Graphics, r: number): void {
 
 /** Da Base: a walled fort over the Chud burrow, banners at the corners and a huge crystal in the middle. */
 function drawDaBase(g: Graphics, r: number, team: number): void {
-  drawShadow(g, r);
   g.poly(regularPolygon(6, r)).fill(PALETTE.stone).stroke({ width: 6, color: PALETTE.outline });
   g.poly(regularPolygon(6, r * 0.82)).fill(PALETTE.stoneDark);
   // Battlements along the walls.

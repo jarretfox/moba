@@ -46,9 +46,31 @@ function rng(seed: number): () => number {
   };
 }
 
+/**
+ * The map in three layers. `ground` lies flat; `wallTops` and `canopy` are the tops of tall things
+ * (cliffs, trees). The game draws those slightly spread away from the middle of the screen, so trunks and
+ * cliff faces peek out from under them and the map reads as having height.
+ */
+export interface MapLayers {
+  ground: Container;
+  wallTops: Container;
+  canopy: Container;
+}
+
+/** How far each kind of tall thing leans out from the middle of the screen (share of its distance). */
+export const HEIGHT = { wall: 0.04, structure: 0.045, tree: 0.065 } as const;
+
+/** Places a tall layer: everything in it is pushed out from the camera's center by `k` of its distance. */
+export function elevate(layer: Container, k: number, cameraX: number, cameraY: number): void {
+  layer.scale.set(1 + k);
+  layer.position.set(-k * cameraX, -k * cameraY);
+}
+
 /** The static map. Bases are tinted from the viewer's side: yours blue, theirs red, like every unit color. */
-export function buildMap(map: MapData, myTeam: Team = TEAM.blue): Container {
+export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
   const root = new Container();
+  const wallTops = new Graphics();
+  const canopy = new Graphics();
   const random = rng(1337);
   const terrain = new Terrain(map);
 
@@ -71,12 +93,22 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): Container {
   root.addChild(detail);
 
   const forest = new Graphics();
-  paintForest(forest, map, terrain, random);
+  paintForest(forest, canopy, map, terrain, random);
   root.addChild(forest);
 
   const walls = new Graphics();
-  for (const b of map.blockers) paintRock(walls, b, random);
+  for (const b of map.blockers) paintRock(walls, wallTops, b, random);
   root.addChild(walls);
+
+  // Warm light pooled on the Warden's seal and the base plazas.
+  const lights = new Graphics();
+  lights.blendMode = 'add';
+  glow(lights, map.width / 2, map.height / 2, 420, 0x8fd14f, 0.05);
+  for (const piece of map.ground) {
+    if (piece.style !== 'base' || piece.shape.type !== 'circle') continue;
+    glow(lights, piece.shape.x, piece.shape.y, piece.shape.r * 0.9, groundColor('base', piece.shape, map, myTeam) === PAL.allyBase ? 0x3d8bfd : 0xe5484d, 0.045);
+  }
+  root.addChild(lights);
 
   const brush = new Graphics();
   for (const b of map.brush) paintBrush(brush, b, random);
@@ -89,7 +121,12 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): Container {
     t.position.set(map.width / 2, y);
     root.addChild(t);
   }
-  return root;
+  return { ground: root, wallTops, canopy };
+}
+
+/** A soft round light: stacked circles fading outward (drawn on an additive layer). */
+export function glow(g: Graphics, x: number, y: number, r: number, color: number, alpha: number): void {
+  for (let i = 1; i <= 5; i++) g.circle(x, y, (r * i) / 5).fill({ color, alpha });
 }
 
 /** Debug overlay: green where units can walk, amber where the clearance margin trims the ground. */
@@ -359,8 +396,8 @@ function paintNest(g: Graphics, x: number, y: number, random: () => number): voi
   }
 }
 
-/** Tree canopies everywhere off the ground, densest near the edges you can see from the paths. */
-function paintForest(g: Graphics, map: MapData, t: Terrain, random: () => number): void {
+/** Trees everywhere off the ground: shadows and trunks on the ground, crowns on the tall layer above. */
+function paintForest(g: Graphics, top: Graphics, map: MapData, t: Terrain, random: () => number): void {
   const step = 130;
   const trees: { x: number; y: number; r: number; c: number }[] = [];
   for (let y = -500; y < map.height + 500; y += step) {
@@ -369,35 +406,37 @@ function paintForest(g: Graphics, map: MapData, t: Terrain, random: () => number
       const py = y + (random() - 0.5) * step * 0.9;
       const d = t.distanceToGround(px, py);
       if (d === 0 || d > 9) continue;
-      if (t.styleAt(px, py) && !t.blocked(px, py)) continue; // never paint over somewhere you can walk
+      if (t.styleAt(px, py) || t.blocked(px, py)) continue; // never over somewhere you can walk, or over the rocks
       trees.push({ x: px, y: py, r: 70 + random() * 55 + (d > 4 ? 20 : 0), c: Math.floor(random() * PAL.canopy.length) });
     }
   }
-  // Shadows on the ground first, then trunks' crowns from back to front.
-  for (const tr of trees) g.circle(tr.x + 18, tr.y + 24, tr.r).fill({ color: 0x000000, alpha: 0.28 });
+  // Shadows and trunks on the ground, then crowns from back to front on the tall layer.
+  for (const tr of trees) g.circle(tr.x + 18, tr.y + 24, tr.r).fill({ color: 0x000000, alpha: 0.32 });
+  for (const tr of trees) g.circle(tr.x, tr.y, tr.r * 0.22).fill(0x3d2a18).stroke({ width: 2, color: 0x1d140b });
   trees.sort((a, b) => a.y - b.y);
   for (const tr of trees) {
-    g.circle(tr.x, tr.y, tr.r).fill(PAL.canopy[tr.c]);
-    g.circle(tr.x - tr.r * 0.3, tr.y - tr.r * 0.3, tr.r * 0.55).fill({ color: PAL.canopyLight, alpha: 0.35 });
-    g.circle(tr.x + tr.r * 0.35, tr.y + tr.r * 0.2, tr.r * 0.35).fill({ color: 0x000000, alpha: 0.12 });
+    top.circle(tr.x, tr.y, tr.r).fill(PAL.canopy[tr.c]).stroke({ width: 2, color: 0x0c180b, alpha: 0.5 });
+    top.circle(tr.x - tr.r * 0.3, tr.y - tr.r * 0.3, tr.r * 0.55).fill({ color: PAL.canopyLight, alpha: 0.35 });
+    top.circle(tr.x + tr.r * 0.35, tr.y + tr.r * 0.2, tr.r * 0.35).fill({ color: 0x000000, alpha: 0.12 });
   }
 }
 
-/** Walls inside the map: rocky outcrops with a lit top, a cast shadow, cracks and moss. */
-function paintRock(g: Graphics, s: Shape, random: () => number): void {
+/** Walls inside the map: a dark cliff base and cast shadow on the ground, a lit top with cracks and moss up high. */
+function paintRock(g: Graphics, top: Graphics, s: Shape, random: () => number): void {
   const outline = rockOutline(s, random, 0);
-  const top = rockOutline(s, random, -16);
-  g.poly(outline.map((v, i) => v + (i % 2 ? 22 : 16))).fill({ color: 0x000000, alpha: 0.35 }); // shadow
-  g.poly(outline).fill(PAL.rockDark).stroke({ width: 3, color: 0x161814 });
-  g.poly(top).fill(PAL.rock);
-  g.poly(rockOutline(s, random, -40)).fill({ color: PAL.rockTop, alpha: 0.7 });
+  const upper = rockOutline(s, random, -6);
+  g.poly(outline.map((v, i) => v + (i % 2 ? 26 : 18))).fill({ color: 0x000000, alpha: 0.38 }); // shadow
+  g.poly(outline).fill(0x23261f).stroke({ width: 3, color: 0x111310 }); // the cliff face, seen from the side
+  top.poly(upper).fill(PAL.rockDark).stroke({ width: 3, color: 0x161814 });
+  top.poly(rockOutline(s, random, -18)).fill(PAL.rock);
+  top.poly(rockOutline(s, random, -40)).fill({ color: PAL.rockTop, alpha: 0.7 });
   const box = bounds(s);
   for (let i = 0; i < Math.max(3, (box.w * box.h) / 40000); i++) {
     const x = box.x + random() * box.w;
     const y = box.y + random() * box.h;
     if (!shapeContains(s, x, y)) continue;
-    if (random() < 0.5) g.ellipse(x, y, 18 + random() * 22, 10 + random() * 12).fill({ color: PAL.moss, alpha: 0.6 });
-    else crack(g, x, y, random);
+    if (random() < 0.5) top.ellipse(x, y, 18 + random() * 22, 10 + random() * 12).fill({ color: PAL.moss, alpha: 0.6 });
+    else crack(top, x, y, random);
   }
 }
 

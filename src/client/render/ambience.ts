@@ -25,6 +25,7 @@ export class Ambience {
   private readonly motes: Mote[] = [];
 
   constructor(private readonly map: MapData) {
+    this.container.blendMode = 'add';
     for (const kind of Object.keys(COUNTS) as Kind[]) {
       for (let i = 0; i < COUNTS[kind]; i++) {
         const m = this.spawn(kind);
