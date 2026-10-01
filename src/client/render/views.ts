@@ -117,7 +117,7 @@ export class UnitView implements EntityView {
     this.body.alpha = this.facing.alpha = under ? 0.22 : 1;
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
 
-    const barKey = `${s.hp}|${s.mhp}|${s.mp}|${s.mmp}|${s.lv}`;
+    const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
     if (barKey !== this.barKey) {
       this.barKey = barKey;
       this.drawBars(s);
@@ -154,7 +154,11 @@ export class UnitView implements EntityView {
     const mhp = s.mhp ?? 1;
 
     g.rect(x - 2, y - 2, w + 4, h + 4 + (showMana ? 6 : 0)).fill({ color: 0x000000, alpha: 0.75 });
-    g.rect(x, y, (w * Math.max(0, s.hp ?? 0)) / mhp, h).fill(hpColor);
+    // A shield gets a white stretch after the health; if both don't fit, the bar rescales to hold them.
+    const hp = Math.max(0, s.hp ?? 0);
+    const full = Math.max(mhp, hp + (s.sh ?? 0));
+    g.rect(x, y, (w * hp) / full, h).fill(hpColor);
+    if (s.sh) g.rect(x + (w * hp) / full, y, (w * s.sh) / full, h).fill(0xf2f4f7);
     // A notch every 100 health so big and small health pools read differently at a glance.
     for (let v = 100; s.k !== 'chud' && v < mhp; v += 100) {
       g.rect(x + (w * v) / mhp, y, 1, v % 1000 === 0 ? h : h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
@@ -190,6 +194,8 @@ export class UnitView implements EntityView {
       g.circle(0, 0, r + 7).stroke({ width: 3, color: 0x8fd14f, alpha: 0.8 });
       for (let i = 0; i < 5; i++) g.circle(Math.cos(i * 1.3) * (r + 7), Math.sin(i * 1.3) * (r + 7), 3).fill(0xb8f07a);
     }
+    if (st.includes('fear')) g.circle(0, 0, r + 10).stroke({ width: 4, color: 0x9b59d0, alpha: 0.9 });
+    if (st.includes('speed')) g.circle(0, 0, r + 3).stroke({ width: 2, color: 0xfff3b0, alpha: 0.7 });
     if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
     if (st.includes('recall')) g.circle(0, 0, r + 22).fill({ color: 0x7cc4ff, alpha: 0.12 }).stroke({ width: 4, color: 0x7cc4ff, alpha: 0.8 });
   }

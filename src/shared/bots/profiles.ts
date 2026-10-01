@@ -140,4 +140,24 @@ const hunnag: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag };
+const logan: BotProfile = {
+  skillOrder: [0, 2, 1],
+  build: ['shiv', 'treads', 'leather', 'drum', 'plate', 'link', 'aegis'],
+  fight(ctx, foe) {
+    const { me, world } = ctx;
+    const d = dist(me.pos, foe.pos);
+    const crowd = enemiesInCone(world, me.team, me.pos, dirTo(me.pos, foe.pos), 450, (50 * Math.PI) / 180).filter((u) => u.kind === 'champion').length;
+    if (ready(ctx, 3) && d < 400 && (crowd >= 2 || hpPct(me) < 0.4)) return cast(3, foe.pos);
+    if (ready(ctx, 0) && d > 200 && d < 600) return cast(0, foe.pos);
+    if (ready(ctx, 2) && d < 300) return cast(2, foe.pos);
+    if (ready(ctx, 1) && d < 400 && hpPct(me) < 0.75) return cast(1, me.pos);
+    return null;
+  },
+  escape(ctx, threat) {
+    const { me } = ctx;
+    if (ready(ctx, 3) && dist(me.pos, threat.pos) < 400) return cast(3, threat.pos);
+    return ready(ctx, 1) ? cast(1, me.pos) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan };

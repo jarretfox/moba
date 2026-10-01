@@ -187,7 +187,7 @@ export class GameClient {
         // Like League, only damage you deal or take gets a number; a lane full of Chuds would be unreadable otherwise.
         if (ev.src !== this.myId && ev.target !== this.myId) return;
         const t = this.ents.get(ev.target);
-        if (t) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);
+        if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);
         return;
       }
       case 'attack':
@@ -272,6 +272,13 @@ export class GameClient {
         return this.fx.deepMark(ev.x, ev.y, ev.r ?? 350, ev.dur ?? 0.75);
       case 'deepHands':
         return this.fx.hands(ev.x, ev.y, ev.r ?? 350);
+      case 'lionheart':
+        return this.fx.lionheart(ev.x, ev.y, x2, y2);
+      case 'mane':
+        return this.fx.shockwave(ev.x, ev.y, ev.r ?? 60, 0xffd166, 0.5);
+      case 'roar':
+        this.fx.wedge(ev.x, ev.y, x2, y2, ev.r ?? 100, 0xff9f43);
+        return this.fx.shockwave(ev.x, ev.y, 120, 0xff9f43, 0.4);
     }
   }
 

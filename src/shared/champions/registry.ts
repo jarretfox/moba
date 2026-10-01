@@ -5,6 +5,7 @@ import type { Champion } from './champion';
 import { MARKSMAN_INFO, Marksman } from './marksman';
 import type { ChampionId, ChampionInfo } from './types';
 import { HUNNAG_INFO, HunnaG } from './hunnag';
+import { LOGAN_INFO, Logan } from './logan';
 import { WILLMORE_INFO, Willmore } from './willmore';
 
 export const CHAMPION_INFO: Record<ChampionId, ChampionInfo> = {
@@ -12,6 +13,7 @@ export const CHAMPION_INFO: Record<ChampionId, ChampionInfo> = {
   barbarian: BARBARIAN_INFO,
   willmore: WILLMORE_INFO,
   hunnag: HUNNAG_INFO,
+  logan: LOGAN_INFO,
 };
 
 const CONSTRUCTORS: Record<ChampionId, new (world: World, team: PlayerTeam) => Champion> = {
@@ -19,6 +21,7 @@ const CONSTRUCTORS: Record<ChampionId, new (world: World, team: PlayerTeam) => C
   barbarian: Barbarian,
   willmore: Willmore,
   hunnag: HunnaG,
+  logan: Logan,
 };
 
 export function createChampion(id: ChampionId, world: World, team: PlayerTeam): Champion {

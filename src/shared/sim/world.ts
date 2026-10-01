@@ -117,7 +117,7 @@ export class World {
     if (!target.isTargetable() || amount <= 0) return 0;
     if (source) amount *= 1 - source.strongest('weaken');
     const resist = type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0;
-    const dealt = type === 'true' ? amount : mitigate(amount, resist);
+    const dealt = target.absorb(type === 'true' ? amount : mitigate(amount, resist));
     target.hp -= dealt;
     target.lastDamagedAt = this.time;
     this.emit({ e: 'dmg', src: source?.id, target: target.id, amount: Math.round(dealt), type });

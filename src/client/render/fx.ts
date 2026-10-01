@@ -223,6 +223,15 @@ export class FxLayer {
     this.shockwave(x, y, r, 0x8fd14f, 0.5);
   }
 
+  /** A golden streak from Logan toward the ally he's running to save. */
+  lionheart(x: number, y: number, x2: number, y2: number): void {
+    const g = new Graphics();
+    this.add(g, 0.6, (t) => {
+      g.clear().moveTo(x, y).lineTo(x + (x2 - x) * Math.min(1, t * 2), y + (y2 - y) * Math.min(1, t * 2)).stroke({ width: 6 * (1 - t) + 1, color: 0xffd166, alpha: 1 - t });
+    });
+    this.shockwave(x, y, 80, 0xffd166, 0.5);
+  }
+
   /** A wedge that flashes and fades: Cleave. (x2, y2) is the tip of the swing; spread is in degrees. */
   wedge(x: number, y: number, x2: number, y2: number, spreadDeg: number, color: number): void {
     const g = new Graphics();

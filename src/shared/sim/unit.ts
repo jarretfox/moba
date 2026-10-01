@@ -63,11 +63,17 @@ export abstract class Unit implements Entity {
   lastDamagedAt = -Infinity;
   /** Attacking or casting reveals you (even in brush) until this time. */
   revealedUntil = -Infinity;
+  /** King Rix's royal guards: Logan's roar scares them twice as long (the Royal Menagerie). */
+  readonly fearsLions: boolean = false;
   /** Can't be shoved by other units (training dummies now; structures later). */
   readonly immovable: boolean = false;
   /** Direction walked this tick, or null if the unit stood still. Collision uses it to decide who gives way. */
   moveDir: Vec2 | null = null;
   protected statuses: Status[] = [];
+  /** Damage shields, each soaking up to `amount` until it expires. */
+  protected shields: { amount: number; until: number }[] = [];
+  /** Where a fear is chasing this unit away from. */
+  private fearFrom: Vec2 | null = null;
   protected attackReadyAt = 0;
   protected windup: { targetId: number; fireAt: number; prevReadyAt: number } | null = null;
   /** While casting, the unit can't move or attack until this time. */
@@ -98,6 +104,7 @@ export abstract class Unit implements Entity {
       return;
     }
     this.statuses = this.statuses.filter((s) => s.until > world.time);
+    this.shields = this.shields.filter((s) => s.amount > 0 && s.until > world.time);
     this.stats = this.computeStats(world);
     this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.hpRegen * DT);
     this.mana = Math.min(this.stats.maxMana, this.mana + this.stats.manaRegen * DT);
@@ -140,7 +147,7 @@ export abstract class Unit implements Entity {
 
   /** Can start an attack or a cast. */
   canAct(world: World): boolean {
-    return !this.has('stun') && world.time >= this.lockedUntil && !this.dash;
+    return !this.has('stun') && !this.has('fear') && world.time >= this.lockedUntil && !this.dash;
   }
 
   /** Champions and training dummies (which stand in for champions in practice). */
@@ -156,12 +163,47 @@ export abstract class Unit implements Entity {
   }
 
   get moveSpeed(): number {
-    return this.stats.moveSpeed * (1 - this.strongest('slow'));
+    return this.stats.moveSpeed * (1 - this.strongest('slow')) * (1 + this.strongest('speed'));
   }
 
   /** Share (0..1) knocked off the length of incoming stuns, roots and slows. */
   protected tenacity(_world: World): number {
     return 0;
+  }
+
+  // ─── Shields and fear ─────────────────────────────────────────────────────
+
+  addShield(world: World, amount: number, duration: number): { amount: number; until: number } {
+    const s = { amount, until: world.time + duration };
+    if (!this.dead && amount > 0) this.shields.push(s);
+    return s;
+  }
+
+  /** Total shield up right now. */
+  get shield(): number {
+    return this.shields.reduce((sum, s) => sum + s.amount, 0);
+  }
+
+  /** Lets shields soak up incoming damage (the soonest to expire goes first). Returns what gets through. */
+  absorb(damage: number): number {
+    this.shields.sort((a, b) => a.until - b.until);
+    for (const s of this.shields) {
+      const taken = Math.min(s.amount, damage);
+      s.amount -= taken;
+      damage -= taken;
+      if (damage <= 0) break;
+    }
+    this.shields = this.shields.filter((s) => s.amount > 0);
+    return damage;
+  }
+
+  /** Makes the unit run away from `from`, unable to act, for a while. */
+  fear(world: World, from: Vec2, duration: number): void {
+    if (this.dead) return;
+    this.fearFrom = { ...from };
+    this.addStatus(world, 'fear', duration);
+    this.cancelWindup();
+    this.path = [];
   }
 
   clearStatus(kind: StatusKind): void {
@@ -170,7 +212,7 @@ export abstract class Unit implements Entity {
 
   addStatus(world: World, kind: StatusKind, duration: number, amount = 0): void {
     if (this.dead) return;
-    if (kind === 'stun' || kind === 'root' || kind === 'slow') duration *= 1 - this.tenacity(world);
+    if (kind === 'stun' || kind === 'root' || kind === 'slow' || kind === 'fear') duration *= 1 - this.tenacity(world);
     this.statuses.push({ kind, until: world.time + duration, amount });
     if (kind === 'stun') this.cancelWindup();
   }
@@ -303,6 +345,7 @@ export abstract class Unit implements Entity {
       }
       return;
     }
+    if (this.has('fear') && this.fearFrom) return this.flee(world, this.fearFrom);
     if (!this.canMove(world)) return;
     if (this.path.length > 0) this.giveUpIfBlocked();
 
@@ -324,6 +367,16 @@ export abstract class Unit implements Entity {
       }
     }
     if (this.path.length === 0 && this.order.kind === 'move') this.order = { kind: 'idle' };
+  }
+
+  /** Feared: scramble straight away from the source, as far as the ground allows. */
+  private flee(world: World, from: Vec2): void {
+    if (this.has('root') || this.has('stun')) return;
+    const away = dist(this.pos, from) > 1 ? dirTo(from, this.pos) : { x: 1, y: 0 };
+    const next = add(this.pos, scale(away, this.moveSpeed * DT));
+    if (world.grid.isWalkable(next)) this.pos = next;
+    this.facing = angleOf(away);
+    this.moveDir = away;
   }
 
   /**
@@ -359,6 +412,7 @@ export abstract class Unit implements Entity {
     this.windup = null;
     this.dash = null;
     this.statuses = [];
+    this.shields = [];
     this.championHits.clear();
     this.respawnAt = world.time + this.respawnDelay(world);
     world.emit({ e: 'death', id: this.id });
@@ -388,6 +442,7 @@ export abstract class Unit implements Entity {
       f: Math.round(this.facing * 100) / 100,
       r: Math.round(this.radius),
       hp: Math.ceil(this.hp),
+      sh: this.shields.length ? Math.round(this.shield) : undefined,
       mhp: Math.round(this.stats.maxHp),
       name: this.name,
       st: this.statuses.length ? [...new Set(this.statuses.map((s) => s.kind))] : undefined,

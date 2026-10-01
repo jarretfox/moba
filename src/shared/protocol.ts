@@ -79,6 +79,10 @@ export type StatusKind =
   | 'bleed'
   /** HunnaG's Rot (amount = stacks). */
   | 'rot'
+  /** Faster movement (amount = bonus share). */
+  | 'speed'
+  /** Running away in terror, can't act. */
+  | 'fear'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -115,7 +119,10 @@ export type FxKind =
   | 'pulse'
   | 'hop'
   | 'deepMark'
-  | 'deepHands';
+  | 'deepHands'
+  | 'lionheart'
+  | 'mane'
+  | 'roar';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
@@ -140,6 +147,8 @@ export interface EntitySnap {
   r: number;
   hp?: number;
   mhp?: number;
+  /** Shield soaking damage on top of health. */
+  sh?: number;
   mp?: number;
   mmp?: number;
   name?: string;

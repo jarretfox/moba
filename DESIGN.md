@@ -206,12 +206,14 @@ The numbers live at the top of `src/shared/champions/hunnag.ts`. Her spells scal
 - **E, Mole Hole:** she digs down and pops up at the target spot straight away. Both holes stay open for 5s: allied champions hop between them by walking in. Coming out next to (or on) the other hole, you have to step off before it takes you back.
 - **R, The Deep Calls:** marks a big circle; 0.75s later hands burst out, dealing magic damage, rooting everyone inside, and giving them full Rot (which bursts at once).
 
-### Logan Lionheart (M4)
-- **Passive, Lionheart:** when a nearby ally drops to low health, he gets a burst of speed toward them and a shield (see Uneasy Alliance above).
-- **Q, Pounce:** leaps to an enemy. His first basic attack after landing briefly stuns.
-- **W, Thick Mane:** a shield that grows with his bonus health. While it's up, his basic attacks slow.
-- **E, Maul:** a cone swipe that makes enemies bleed. Bleeding enemies are revealed, which counters Willmore's Burrow.
-- **R, Pride's Roar:** enemies in front of him are feared for 1.25s. Nearby allies gain a shield and speed.
+### Logan Lionheart ✅ implemented
+
+The numbers live at the top of `src/shared/champions/logan.ts`. No resource: cooldowns only. Shields and fear are new engine features: shields soak damage before health (white on the health bar), and fear makes you run straight away from its source, unable to act (tenacity shortens it).
+- **Passive, Lionheart:** when an allied champion within 1000 drops below 30% health, he gets a shield (80 + 20 per level) and 40% speed for 2s to get to them. Once every 20s. Uneasy Alliance: for King Rix, only below 15%.
+- **Q, Pounce:** leaps onto the visible enemy nearest where he aimed (champions, Chuds, monsters). His next basic attack within 3s stuns for 0.75s and hits harder. No enemy there, no cast.
+- **W, Thick Mane:** a 4s shield that grows with his bonus health (health from items). While it holds, his basic attacks slow 30%.
+- **E, Maul:** a cone swipe that makes enemies bleed for 3s: extra damage each second, and bleeding enemies can't hide (it reveals a burrowed Willmore).
+- **R, Pride's Roar:** enemies in front of him are feared for 1.25s (King Rix's guards for 2.5s: the Royal Menagerie). Allies near him get a shield and 30% speed for 3s.
 
 ### King Rix (M4)
 - **Passive, Royal Tax:** allied Chuds near him hit harder, and he gets bonus gold when allies nearby last-hit.
