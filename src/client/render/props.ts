@@ -21,6 +21,8 @@ export interface FlickerLight extends Light {
   flicker: number;
   phase: number;
   speed: number;
+  /** Lit or not (0–1): lanterns are dark until dusk (see nightlife.ts). */
+  lit?: number;
 }
 
 function rng(seed: number): () => number {
@@ -113,18 +115,10 @@ export function propLights(s: PropSpots): FlickerLight[] {
 export const LAMP_HEIGHT = 62;
 export const FIRE_HEIGHT = 40;
 
-/** The lamps themselves, glowing above the dark (drawn on the glowing layer, up on their posts). */
-export function paintLampGlows(g: Graphics, s: PropSpots): void {
-  for (const p of s.lanterns) {
-    g.circle(p.x, p.y - LAMP_HEIGHT, 26).fill({ color: 0xffc070, alpha: 0.18 });
-    g.circle(p.x, p.y - LAMP_HEIGHT, 12).fill({ color: 0xffe2a8, alpha: 0.5 });
-  }
-}
-
-/** How bright a wavering light is right now. */
+/** How bright a wavering light is right now (nothing, if it isn't lit). */
 export function flickerAt(l: FlickerLight, time: number): number {
   const wobble = Math.sin(time * l.speed + l.phase) * 0.5 + Math.sin(time * l.speed * 2.3 + l.phase * 1.7) * 0.3 + Math.sin(time * l.speed * 0.37 + l.phase) * 0.2;
-  return l.base * (1 - l.flicker * (0.5 + 0.5 * wobble));
+  return l.base * (1 - l.flicker * (0.5 + 0.5 * wobble)) * (l.lit ?? 1);
 }
 
 const IRON = 0x3a3f48;
@@ -154,7 +148,7 @@ export function paintProps(ground: Graphics, s: PropSpots): Graphics[] {
     const y = -LAMP_HEIGHT;
     inked(g, [-11, y + 11, 11, y + 11, 9, y + 15, -9, y + 15], 0x2a2018, 1.5);
     inked(g, smooth([-9, y + 11, -10, y - 7, 10, y - 7, 9, y + 11], true, 1), 0x2a2018, 2);
-    g.roundRect(-6.5, y - 4, 13, 13, 3).fill(0xffd27a);
+    g.roundRect(-6.5, y - 4, 13, 13, 3).fill(0x5a4a30);
     g.moveTo(0, y - 4).lineTo(0, y + 9).stroke({ width: 1.5, color: 0x2a2018 });
     inked(g, [-15, y - 6, 0, y - 18, 15, y - 6, 11, y - 4, -11, y - 4], 0x3a2a1c, 2);
   }

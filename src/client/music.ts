@@ -251,6 +251,7 @@ export class Soundscape {
   private readonly riverGain: GainNode;
   private readonly rainGain: GainNode;
   private rain = 0;
+  private cold = false;
   private readonly bus: GainNode;
   private jungle = 0;
   private river = 0;
@@ -311,6 +312,12 @@ export class Soundscape {
     this.rainGain.gain.setTargetAtTime(v * 0.05, this.ctx.currentTime, 1);
   }
 
+  /** A stronger or weaker wind than usual (1 = ordinary), and in the cold, no crickets. */
+  setWind(k: number, cold: boolean): void {
+    this.windGain.gain.setTargetAtTime(0.05 * k, this.ctx.currentTime, 1);
+    this.cold = cold;
+  }
+
   /** How much of the view is jungle and river (0–1 each). */
   setPlace(jungle: number, river: number): void {
     this.jungle += (jungle - this.jungle) * 0.3;
@@ -322,7 +329,7 @@ export class Soundscape {
     const now = this.ctx.currentTime;
     // The river burbles: its level jitters.
     this.riverGain.gain.setTargetAtTime(this.river * (0.07 + Math.random() * 0.05), now, 0.08);
-    if (Math.random() < this.jungle * 0.3) this.cricket(now + Math.random() * 0.1);
+    if (!this.cold && Math.random() < this.jungle * 0.3) this.cricket(now + Math.random() * 0.1);
     if (Math.random() < this.jungle * 0.004) this.owl(now);
   }
 

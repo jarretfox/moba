@@ -64,6 +64,8 @@ export interface ViewContext {
   light?(x: number, y: number): FigureLight;
   /** How far into the night it is (0–1): shadows lengthen. */
   night?: number;
+  /** How far into dusk (0–1): the lanterns are lit, and so are the Shooties' windows. */
+  dusk?: number;
 }
 
 /** A soft round glow, shared by every figure's back light. */
@@ -1013,6 +1015,8 @@ export class StructureView implements EntityView {
   private clock = 0;
   /** A red glow under Da Base that beats when it's in danger. */
   private readonly danger = new Graphics();
+  /** Candlelight in a Shootie's arrow slit and round its door, as dusk falls. */
+  private readonly windows = new Graphics();
 
   constructor(s: EntitySnap, private readonly relation: Relation) {
     this.note = new Text({
@@ -1028,7 +1032,9 @@ export class StructureView implements EntityView {
       this.danger.alpha = 0;
     }
     this.container.addChild(this.light, this.danger, this.range, this.body);
-    this.top.addChild(this.upper, this.crystal, this.bars, this.note);
+    this.windows.blendMode = 'add';
+    this.windows.alpha = 0;
+    this.top.addChild(this.upper, this.windows, this.crystal, this.bars, this.note);
     this.container.position.set(s.x, s.y);
     this.top.position.set(s.x, s.y);
   }
@@ -1042,6 +1048,9 @@ export class StructureView implements EntityView {
     const behind = !!me && !s.dead && me.y < s.y && me.y > s.y - tall - me.r && Math.abs(me.x - s.x) < s.r * 1.1 + me.r;
     this.fade += ((behind ? 0.4 : 1) - this.fade) * Math.min(1, dt * 10);
     this.upper.alpha = this.crystal.alpha = this.fade;
+    // Someone inside lights a candle as the evening draws in; it gutters now and then.
+    const candle = Math.min(1, (ctx.dusk ?? 0) * 1.6) * (0.85 + 0.15 * Math.sin(this.clock * 7.3 + s.x));
+    this.windows.alpha = s.dead ? 0 : candle * this.fade;
     this.flags.forEach((f, i) => {
       const w = ctx.wind;
       f.alpha = this.fade;
@@ -1110,6 +1119,14 @@ export class StructureView implements EntityView {
     if (role === 'oakner') drawOak(up, r, team);
     else if (role === 'daBase') drawFort(up, r, team);
     else drawTower(up, r);
+    this.windows.clear();
+    if (role !== 'oakner' && role !== 'daBase') {
+      // The arrow slit (see drawTower), and the gaps round the door.
+      this.windows.ellipse(0.12 * r, -1.35 * r, 0.24 * r, 0.38 * r).fill({ color: 0xffa040, alpha: 0.22 });
+      this.windows.roundRect(0.085 * r, -1.53 * r, 0.07 * r, 0.36 * r, 0.03 * r).fill({ color: 0xffc46a, alpha: 0.9 });
+      this.windows.moveTo(-0.17 * r, 0.27 * r).lineTo(0.17 * r, 0.27 * r).stroke({ width: 2.5, color: 0xffb050, alpha: 0.7 });
+      this.windows.moveTo(-0.17 * r, 0.26 * r).lineTo(-0.17 * r, -0.42 * r).stroke({ width: 1.5, color: 0xffb050, alpha: 0.45 });
+    }
     for (const f of this.flags) f.destroy();
     this.flags = flagSpots(role, r).map((spot) => {
       const f = new Graphics();

@@ -173,6 +173,11 @@ export class Sound {
     this.scape?.setRain(v);
   }
 
+  /** How hard the wind blows (1 = an ordinary evening), and whether it's cold (snow: no crickets). */
+  setWind(k: number, cold: boolean): void {
+    this.scape?.setWind(k, cold);
+  }
+
   /** How much jungle and river is around the camera, 0–1 each: crickets and water. */
   setPlace(jungle: number, river: number): void {
     this.scape?.setPlace(jungle, river);

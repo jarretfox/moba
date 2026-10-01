@@ -83,6 +83,8 @@ export interface MapLayers {
   canopy: Container;
   /** Patches of tall grass, each pivoted at its foot, for the wind to lean. */
   sway: Container[];
+  /** Where the tree crowns are (for weather that settles on them: snow). */
+  crowns: { x: number; y: number; r: number; deep: boolean }[];
   /** Things standing up off the ground (lantern posts, braziers, toadstools): sort them in with the units. */
   standing: Container[];
 }
@@ -162,7 +164,8 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
     t.position.set(map.width / 2, y);
     root.addChild(t);
   }
-  return { ground: root, wallTops, canopy, sway, standing };
+  const crowns = trees.filter((t) => !t.shrub).map(({ x, y, r, deep }) => ({ x, y, r, deep }));
+  return { ground: root, wallTops, canopy, sway, standing, crowns };
 }
 
 /** A soft round pool of light, fading smoothly to nothing at radius `r` (added over what's under it). */

@@ -22,7 +22,8 @@ import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { brazierFire, championDeath, footstep, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
-import { FIRE_HEIGHT, paintLampGlows, propSpots } from './render/props';
+import { FIRE_HEIGHT, propSpots } from './render/props';
+import { NightLife, duskAt } from './render/nightlife';
 import { Lighting, nightAt, skyAt } from './render/lighting';
 import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
@@ -40,7 +41,7 @@ import { Minimap, type MinimapPing } from './minimap';
 import { PINGS, PingWheel } from './pings';
 import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
-import { HEIGHT, buildMap, buildNavOverlay, destroyMapLayer, elevate } from './render/mapView';
+import { HEIGHT, buildMap, buildNavOverlay, destroyMapLayer, elevate, type MapLayers } from './render/mapView';
 import { lanePath } from '../shared/map/mapData';
 import { PALETTE, enemyLight, setColorblind, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
@@ -120,6 +121,10 @@ export class GameClient {
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
   private readonly bubbles = new Bubbles();
+  /** Where the treetops are, for snow to settle on. */
+  private crowns: MapLayers['crowns'] = [];
+  /** In the snow: when each champion next breathes out a little cloud. */
+  private readonly breaths = new Map<number, number>();
   /** Chuds bickering on the march: seconds until the next squabble, and the replies still to come. */
   private bickerIn = 6;
   private replies: { id: number; text: string; at: number }[] = [];
@@ -128,8 +133,8 @@ export class GameClient {
   /** Which champion each Shootie is shooting at, so a beam can show it. */
   private readonly towerShots = new Map<number, { target: number; until: number }>();
   private readonly beams = new Graphics();
-  /** Lantern lamps glowing in the dark, up on their posts. */
-  private readonly lamps = new Graphics();
+  /** The lanterns lit one by one as dusk falls, and the moon in the river. */
+  private readonly nightLife: NightLife;
   /** Glow bleeding off spells: the glowing layer, blurred and added back over the view. */
   private readonly bloomRt = RenderTexture.create({ width: 16, height: 16, resolution: 0.35 });
   private readonly bloom = new Sprite(this.bloomRt);
@@ -278,9 +283,8 @@ export class GameClient {
     this.wallTops.addChild(landmarks.tall);
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
-    paintLampGlows(this.lamps, propSpots(MAP));
-    this.lamps.blendMode = 'add';
-    this.emissive.addChild(this.lamps, ...this.wicks.map((w) => w.glow), this.beams, this.fx.container, this.bubbles.container);
+    this.nightLife = new NightLife(MAP, this.lighting.lanterns);
+    this.emissive.addChild(this.nightLife.glow, ...this.wicks.map((w) => w.glow), this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
     this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35 })];
@@ -327,14 +331,19 @@ export class GameClient {
     this.weather = w;
     this.wind.setWeather(w.kind);
     w.density = settings.quality === 'high' ? 1 : 0.4;
-    // Mist and splashes sit over the trees; rain and lightning over everything.
+    // Mist and splashes sit over the trees; rain and lightning over everything; frost and fallen leaves on
+    // the ground; snow on the treetops.
     this.worldLayer.addChildAt(w.world, this.worldLayer.getChildIndex(this.canopy) + 1);
+    this.worldLayer.addChildAt(w.ground, this.worldLayer.getChildIndex(this.groundLayer) + 1);
+    w.dustTrees(this.crowns);
+    this.canopy.addChild(w.treetops);
     this.view.addChild(w.screen);
     w.onBolt = () => {
       this.camera.shake(4);
       setTimeout(() => this.sound.play('thunder', 0.8), 300 + Math.random() * 1200);
     };
     this.sound.setRain(w.wetness);
+    this.sound.setWind(this.wind.strength / 0.55, w.snowy);
   }
 
   /** Throws away every unit and structure view so they're drawn again (after the enemy color changes). */
@@ -357,6 +366,7 @@ export class GameClient {
     replace(this.wallTops, layers.wallTops);
     replace(this.canopy, layers.canopy);
     this.sway = layers.sway;
+    this.crowns = layers.crowns;
     for (const s of this.standing) s.destroy({ children: true });
     this.standing = layers.standing;
     for (const s of this.standing) this.unitLayer.addChild(s);
@@ -425,10 +435,12 @@ export class GameClient {
     this.emissive.position.copyFrom(this.worldLayer.position);
     this.emissive.scale.copyFrom(this.worldLayer.scale);
     const matchTime = this.buffer.latest?.time ?? 0;
-    this.weather?.update(dt, w, h, this.camera);
+    this.weather?.update(dt, w, h, this.camera, this.wind);
+    if (this.weather?.snowy) this.breathe();
     const sky = this.weather ? this.weather.sky(skyAt(matchTime)) : skyAt(matchTime);
-    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, sky);
+    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, sky, duskAt(matchTime));
     this.ambience.setNight(nightAt(matchTime));
+    this.nightLife.update(dt, matchTime, nightAt(matchTime), { x: this.camera.x, y: this.camera.y, w: w / this.camera.zoom, h: h / this.camera.zoom });
     this.critters.setNight(nightAt(matchTime));
     this.critters.update(dt, this.ents.values(), { x: this.camera.x, y: this.camera.y, w: w / this.camera.zoom, h: h / this.camera.zoom });
     // The world drains of color while you wait to respawn.
@@ -517,6 +529,7 @@ export class GameClient {
       wind: this.wind,
       light: (x, y) => this.lighting.lightAt(x, y, nightAt(this.buffer.latest?.time ?? 0)),
       night: nightAt(this.buffer.latest?.time ?? 0),
+      dusk: duskAt(this.buffer.latest?.time ?? 0),
     };
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);
@@ -976,11 +989,27 @@ export class GameClient {
     if (style === 'river') return; // the water has its own ripples
     const inBrush = this.visionGrid.brushAt({ x: s.x, y: s.y }) > 0;
     footstep(this.fx, s.x, s.y, s.r, inBrush ? 'brush' : style === 'lane' || style === 'base' ? 'dust' : 'grass');
-    // Champions leave footprints in the dirt, left and right in turn (paws for the lion and the rat).
-    if (s.k === 'champion' && !inBrush && (style === 'lane' || style === 'jungle')) {
+    // Champions leave footprints in the dirt, left and right in turn (paws for the lion and the rat). In
+    // the snow everyone sinks in, everywhere, Chuds too.
+    const snow = !!this.weather?.snowy;
+    if ((s.k === 'champion' || (snow && s.k === 'chud')) && !inBrush && (snow || style === 'lane' || style === 'jungle')) {
       last.left = !last.left;
       const side = (last.left ? 1 : -1) * s.r * 0.16;
-      this.fx.footprint(s.x - Math.sin(heading) * side, s.y + Math.cos(heading) * side, heading, s.r * 0.42, s.champ === 'logan' || s.champ === 'dabber');
+      this.fx.footprint(s.x - Math.sin(heading) * side, s.y + Math.cos(heading) * side, heading, s.r * 0.42, s.champ === 'logan' || s.champ === 'dabber', snow);
+    }
+  }
+
+  /** In the snow, every champion's breath shows: a little white cloud now and then, out in front. */
+  private breathe(): void {
+    const now = performance.now() / 1000;
+    for (const e of this.ents.values()) {
+      if (e.k !== 'champion' || e.dead) continue;
+      const next = this.breaths.get(e.id) ?? now + Math.random() * 2;
+      if (now >= next) {
+        const facing = Math.cos(e.f) < 0 ? -1 : 1;
+        this.fx.particles.emit({ shape: 'puff', x: e.x + facing * e.r * 0.4, y: e.y - standHeight(e) * 0.8, vx: facing * 30, vy: -10, drag: 0.4, life: 1.1, size: 5, size2: 16, color: 0xffffff, color2: 0xdfe8f2, alpha: 0.5, glow: false });
+      }
+      this.breaths.set(e.id, now >= next ? now + 1.8 + Math.random() * 1.2 : next);
     }
   }
 
@@ -994,7 +1023,9 @@ export class GameClient {
       this.leafNoise.scale.set(6);
       this.worldLayer.addChild(this.leafNoise);
     }
-    this.canopy.filters = stir ? [this.leaves] : [];
+    // Autumn turns the leaves.
+    const turned = this.weather?.canopyFilter;
+    this.canopy.filters = [...(stir ? [this.leaves] : []), ...(turned ? [turned] : [])];
     if (stir) {
       this.leafNoise.x += dt * 30 * this.wind.strength * this.wind.gust();
       this.leafNoise.y += dt * 9 * this.wind.strength;

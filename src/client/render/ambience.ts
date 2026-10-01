@@ -1,9 +1,11 @@
 import { Graphics } from 'pixi.js';
 import type { MapData } from '../../shared/map/mapData';
 import { shapeContains } from '../../shared/map/shapes';
+import { propSpots } from './props';
 
-// Life in the background: fireflies drifting over the jungle, glints on the river, and rot spores rising
-// from the Warden's seal. Pure decoration; one Graphics redrawn each frame.
+// Life in the background: fireflies drifting over the jungle (and, as the night deepens, gathering round
+// the lanterns and braziers), glints on the river, and rot spores rising from the Warden's seal. Pure
+// decoration; one Graphics redrawn each frame.
 
 type Kind = 'firefly' | 'glint' | 'spore';
 
@@ -16,6 +18,8 @@ interface Mote {
   age: number;
   life: number;
   phase: number;
+  /** A light it's drawn to, circling round it. */
+  home?: { x: number; y: number };
 }
 
 const COUNTS: Record<Kind, number> = { firefly: 90, glint: 70, spore: 24 };
@@ -25,8 +29,12 @@ export class Ambience {
   private readonly motes: Mote[] = [];
   /** 0 in the evening, 1 at night: the fireflies come out. */
   private night = 0;
+  /** The lanterns and braziers, for the fireflies to gather round at night. */
+  private readonly lights: { x: number; y: number }[];
 
   constructor(private readonly map: MapData) {
+    const spots = propSpots(map);
+    this.lights = [...spots.lanterns, ...spots.braziers];
     this.container.blendMode = 'add';
     for (const kind of Object.keys(COUNTS) as Kind[]) {
       for (let i = 0; i < COUNTS[kind]; i++) {
@@ -48,6 +56,11 @@ export class Ambience {
       m.age += dt;
       if (m.age >= m.life) m = this.motes[i] = this.spawn(m.kind);
       m.phase += dt;
+      if (m.home) {
+        // Drawn toward the light, overshooting: they circle it.
+        m.vx += ((m.home.x - m.x) * 0.9 - m.vx * 0.25) * dt;
+        m.vy += ((m.home.y - m.y) * 0.9 - m.vy * 0.25) * dt;
+      }
       m.x += (m.vx + Math.sin(m.phase * 1.3) * 12) * dt;
       m.y += (m.vy + Math.cos(m.phase * 0.9) * 10) * dt;
       const t = m.age / m.life;
@@ -71,6 +84,14 @@ export class Ambience {
 
   private spawn(kind: Kind): Mote {
     const map = this.map;
+    // At night, many of the fireflies are round the lights (the lamps up on their posts).
+    if (kind === 'firefly' && this.lights.length && Math.random() < this.night * 0.55) {
+      const l = this.lights[Math.floor(Math.random() * this.lights.length)];
+      const home = { x: l.x, y: l.y - 50 };
+      const a = Math.random() * Math.PI * 2;
+      const d = 40 + Math.random() * 110;
+      return { kind, x: home.x + Math.cos(a) * d, y: home.y + Math.sin(a) * d * 0.7, vx: -Math.sin(a) * 40, vy: Math.cos(a) * 30, age: 0, life: 4 + Math.random() * 5, phase: Math.random() * 10, home };
+    }
     for (let tries = 0; tries < 40; tries++) {
       let x: number;
       let y: number;

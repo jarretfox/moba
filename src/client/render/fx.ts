@@ -234,9 +234,14 @@ export class FxLayer {
   }
 
   /** A footprint pressed into the dirt, pointing along `angle`, fading after a few seconds. */
-  footprint(x: number, y: number, angle: number, size: number, paw = false): void {
+  /** A footprint (or a paw print); `deep` sunk into snow, rimmed white where it's pushed up, and lasting. */
+  footprint(x: number, y: number, angle: number, size: number, paw = false, deep = false): void {
     const g = new Graphics();
-    const color = { color: 0x241a10, alpha: 0.4 };
+    const color = deep ? { color: 0x56677e, alpha: 0.5 } : { color: 0x241a10, alpha: 0.4 };
+    if (deep) {
+      size *= 1.15;
+      g.ellipse(-size * 0.02, -size * 0.06, size * 0.75, size * 0.36).fill({ color: 0xffffff, alpha: 0.35 });
+    }
     if (paw) {
       g.circle(0, 0, size * 0.32).fill(color);
       for (const k of [-1, 0, 1]) g.circle(size * 0.45, k * size * 0.28, size * 0.14).fill(color);
@@ -246,10 +251,10 @@ export class FxLayer {
     }
     g.position.set(x, y);
     g.rotation = angle;
-    this.add(g, 6, (t) => (g.alpha = t < 0.6 ? 1 : (1 - t) / 0.4), 'under');
+    this.add(g, deep ? 12 : 6, (t) => (g.alpha = t < 0.6 ? 1 : (1 - t) / 0.4), 'under');
     this.prints.push(this.effects[this.effects.length - 1]);
     this.prints = this.prints.filter((p) => p.age < p.life);
-    if (this.prints.length > 90) this.prints.shift()!.age = Infinity;
+    if (this.prints.length > (deep ? 160 : 90)) this.prints.shift()!.age = Infinity;
   }
 
   healNumber(x: number, y: number, amount: number): void {

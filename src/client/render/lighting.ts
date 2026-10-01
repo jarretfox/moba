@@ -133,6 +133,8 @@ export class Lighting {
   private readonly fixed: Light[];
   /** Lanterns, braziers and mushrooms: lights that waver. */
   private readonly flickering: FlickerLight[];
+  /** The lanterns' lights (first among the wavering ones), for the night to light one by one. */
+  readonly lanterns: readonly FlickerLight[];
   private clock = 0;
   private ambientKey = '';
 
@@ -156,6 +158,7 @@ export class Lighting {
     this.world.addChild(this.lights);
     // Lights that never move: the bases glow, and so does the Warden's seal.
     this.flickering = propLights(propSpots(map));
+    this.lanterns = this.flickering.slice(0, propSpots(map).lanterns.length);
     this.fixed = [
       ...map.ground.flatMap((p) => (p.style === 'base' && p.shape.type === 'circle' ? [{ x: p.shape.x, y: p.shape.y, r: p.shape.r * 1.6, color: WARM, alpha: 0.55 }] : [])),
       { x: map.width / 2, y: map.height / 2, r: 700, color: 0x8fd14f, alpha: 0.3 },
@@ -176,7 +179,8 @@ export class Lighting {
   }
 
   /** Redraws the light map for this frame. `world` is the game's world layer (for the camera transform). */
-  update(renderer: Renderer, world: Container, screenW: number, screenH: number, dt: number, ents: Iterable<EntitySnap>, myTeam: number, extra: readonly Light[], sky: number): void {
+  /** `dusk` (0–1) lights the candles in the Shooties' windows. */
+  update(renderer: Renderer, world: Container, screenW: number, screenH: number, dt: number, ents: Iterable<EntitySnap>, myTeam: number, extra: readonly Light[], sky: number, dusk = 0): void {
     if (this.rt.width !== screenW || this.rt.height !== screenH) this.rt.resize(screenW, screenH);
     const key = `${screenW}x${screenH}:${sky}`;
     if (key !== this.ambientKey) {
@@ -239,6 +243,8 @@ export class Lighting {
           break;
         case 'structure':
           put({ x: e.x, y: e.y, r: e.r * 3.4, color: side, alpha: 0.5 });
+          // Candlelight from the arrow slit, up the tower (see drawTower), as the evening draws in.
+          if (dusk > 0 && e.role && e.role !== 'oakner' && e.role !== 'daBase') put({ x: e.x + 0.12 * e.r, y: e.y - 1.35 * e.r, r: e.r * 0.9, color: 0xffc070, alpha: Math.min(1, dusk * 1.6) * 0.75 });
           break;
         case 'monster': {
           const m = MONSTER_LIGHT[e.mon ?? ''];

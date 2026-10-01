@@ -1,11 +1,12 @@
 import type { Weather } from '../../shared/weather';
 
 // The wind over the map: what makes the brush lean, the banners flap, the leaves stir and the grass round
-// a champion's legs sway. A gentle breeze on a clear evening, next to nothing in the mist, more in the
-// rain, and in a storm a strong wind that comes in gusts. Everywhere sways a little out of step, so a
-// field of grass ripples rather than tilting all at once.
+// a champion's legs sway. A gentle breeze on a clear evening, next to nothing in the mist or the still of
+// falling snow, more in the rain, a blustery autumn wind that sends the leaves flying, and in a storm a
+// strong wind that comes in gusts. Everywhere sways a little out of step, so a field of grass ripples
+// rather than tilting all at once.
 
-const STRENGTH: Record<Weather, number> = { clear: 0.55, mist: 0.3, rain: 1, storm: 1.7 };
+const STRENGTH: Record<Weather, number> = { clear: 0.55, mist: 0.3, snow: 0.4, rain: 1, autumn: 1.35, storm: 1.7 };
 
 export class Wind {
   private time = Math.random() * 100;
