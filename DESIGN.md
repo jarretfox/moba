@@ -298,21 +298,25 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
 ## Art and sound
 
 - **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.
+  - **The style is painterly and hand-inked** (chosen 2026-10-01 to get away from flat, perfectly round shapes): soft painted ground, and everything with an edge outlined in wobbly ink lines that swell and taper, darker shades of the fill rather than black, with hatching and stipple for shade. Light comes from the top-left. The toolkit is `render/organic.ts`: seeded noise, roughened outlines, ink strokes, hatching.
   - **The map** (`src/client/render/mapView.ts`) is painted once at load from MapData, with decoration placed by a seeded random generator so it looks the same for everyone:
-    - Forest canopies fill everything off the paths.
-    - The jungle is mottled grass with tufts, flowers, mushrooms and pebbles.
-    - Lanes are worn dirt with pebbles and cracks, with soft edges.
-    - Bases are paved plazas in the team tint.
+    - The ground is painted onto a canvas at a quarter of world size (`render/groundTexture.ts`): wobbly soft-edged ground shapes, brush dabs that pick up the color under them, soft shadows under cliffs and trees, mottling and paper grain. It's stretched over the map as one sprite.
+    - Forest canopies fill everything off the paths: lumpy inked crowns, with gaps and shrubs along the treeline so it isn't a wall.
+    - The jungle has clumps of grass, flowers, mushrooms, pebbles and twigs; lanes are worn dirt with pebbles and cracks.
+    - Bases are plazas of irregular flagstones in the team tint.
     - The river has a deeper channel and ripples.
-    - Walls are rocky outcrops with shadows and moss.
-    - Brush is dense tall grass.
+    - Walls are craggy outcrops: slabs and boulders on top, hatched in the shade, moss and cracks.
+    - Brush is clumps of tall grass blades.
     - Camps are trampled nests with bones.
-    - The Warden's pit is a cracked, glowing seal over the Deep.
+    - The Warden's pit is a ring of cracked stone over the Deep, with runes and rot seeping up.
   - **Atmosphere** (`ambience.ts`): fireflies over the jungle, glints on the river, rot spores rising from the seal, and a soft vignette.
-  - **Animation:** units that walk step their feet in turn and sway a little; everyone breathes when idle, lunges forward on an attack, and flashes red when hit. Light comes from the top-left of the screen and stays put as figures turn.
-  - **Structures:** Shooties are stone watchtowers with a glowing crystal, Oakners are great oaks with a team ribbon, and Da Base is a walled fort over the Chud burrow with banners and a big crystal.
-  - Champions are top-down figures facing where they move, standing on a ring in their team's color (white edge for you): a hooded archer, a horned barbarian, a goggled Chud with a junk sack, a mushroom-capped Chud with a spore staff, a maned lion with a broken collar, a crowned king in a red cape. The art is in `src/client/render/champions.ts`.
-  - The same drawings become the HUD portrait and the champion-select pictures: they're rendered to images once at startup.
+  - **Everyone stands up.** Units are upright figures seen side-on from a little above, facing left or right (they mirror when they turn), standing on their spot on the ground. They're depth-sorted, so nearer the bottom of the screen draws in front.
+    - Champions, Chuds, King Rix's guards and The Warden are jointed rigs (`render/rig.ts`): a torso, head, two-part arms and legs, feet and a held weapon, drawn once and posed every frame. Legs swing with bending knees in a walk cycle, arms swing against them, the chest breathes. The animation tracks drive the joints: turn raises the arm (negative is up), reach pushes it out in front, lunge leans and steps in, twist spins the figure, grow rears up.
+    - Each one's look and proportions are a build (`render/builds.ts`). Champions: Jordini's hood and bow, The Oak's horns and axe, Willmore's sack and bin lid, HunnaG's cap, Logan the lion on his hind legs, King Rix's cape and crown, Dongmaster's jaw and fists, the Dabber's hoodie and tail, Paris's beret and épée, Havarti the winged wheel of cheese, Daltonomo's belled hat and two knives. Chuds wear hoods in their team's color.
+    - Creatures that aren't on two legs (`render/beasts.ts`): scurrying rats (the Rat King in a stolen crown), the Mossback with a garden on its shell, the Ember Toad and its tongue, the swaying Glowcap, the siege cart on turning wheels, and a straw practice dummy.
+    - Hits, numbers, words and auras happen on the body (`render/stature.ts` knows how tall everything stands), arrows fly at chest height with a shadow below, and units can be clicked anywhere from feet to head.
+  - **Structures** stand up too (`render/structures.ts`): Shooties are round stone watchtowers with ivy and a crystal floating over the battlements (beams and shots start there), Oakners are great oaks with a team ribbon round the trunk, and Da Base is a walled fort over the Chud burrow with towers, banners and a big floating crystal.
+  - Champions stand on a ring in their team's color (white edge for you). The HUD portrait and the champion-select pictures are busts of the same figures, rendered to images once at startup.
   - Abilities, passives and items use emoji icons. Only emoji up to version 12 are used, so they show on Windows 10 too.
   - **Character:** champions fidget when they stand still (`FIDGETS` in `render/animation.ts`) and talk in synthesized gibberish voices on emotes, ultimates, big hits and deaths (`src/client/voices.ts`).
   - **Story landmarks** (`render/landmarks.ts`): Logan's broken Royal Cage, the Fallen King statue, the Warden's chains in the pit, Willmore's sewer (the Deep) and HunnaG's Rot; and round the pit, Master Paris's Le Petit Café, Dongmaster's Iron Paradise, Havarti's Royal Cellar and the Dark Dabber's Hotbox. They're decoration only (no collision), kept clear of brush.
