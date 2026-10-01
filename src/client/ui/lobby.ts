@@ -1,7 +1,8 @@
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
-import type { LobbyState, MatchMode } from '../../shared/protocol';
+import { START_GOLD_OPTIONS, type LobbyState, type MatchMode, type MatchSettings } from '../../shared/protocol';
+import { WEATHER_CHANCES } from '../../shared/weather';
 import { SKINS, portraitOf, swatchColor } from '../render/champions';
 import { CAST_COLORS } from '../render/spells';
 import { getSound } from '../audio';
@@ -20,7 +21,11 @@ export interface LobbyOptions {
   code?: string;
   onPick(pick: { team?: PlayerTeam; champion?: ChampionId; skin?: number }): void;
   onStart(mode: MatchMode): void;
+  /** The host changed a match setting. */
+  onSettings?(settings: Partial<MatchSettings>): void;
 }
+
+const WEATHER_NAMES: Record<string, string> = { random: 'Random', clear: 'Clear', rain: 'Rain', storm: 'Storm', mist: 'Mist', snow: 'Snow', autumn: 'Autumn wind' };
 
 /** Pre-match screen: teams, champion picks, and (for the host) mode and Start. */
 export class LobbyScreen {
@@ -28,6 +33,8 @@ export class LobbyScreen {
   private readonly teams = el('div', 'lobby-teams');
   private readonly cards = new Map<ChampionId, HTMLButtonElement>();
   private readonly footer = el('div', 'lobby-footer');
+  /** The match settings: the host's to change, everyone else's to see. */
+  private readonly settingsBar = el('div', 'lobby-settings');
   private mode: MatchMode = 'bots';
   /** The look chosen on each card (0 is the classic one). */
   private readonly skins = new Map<ChampionId, number>();
@@ -53,13 +60,17 @@ export class LobbyScreen {
       this.screen.append(code);
     }
     if (!opts.solo) this.screen.append(this.teams);
-    this.screen.append(el('div', 'select-title', 'Choose your champion'), this.championCards());
-    if (!opts.solo) this.screen.append(this.footer);
+    this.screen.append(el('div', 'select-title', 'Choose your champion'));
+    // Solo, the match starts as soon as you pick, so the settings come first.
+    if (opts.solo) this.screen.append(this.settingsBar);
+    this.screen.append(this.championCards());
+    if (!opts.solo) this.screen.append(this.settingsBar, this.footer);
     root.append(this.screen);
   }
 
   update(lobby: LobbyState, you: string): void {
     const me = lobby.players.find((p) => p.id === you);
+    this.drawSettings(lobby.settings, !!me?.host);
     this.picked = me?.champion ?? null;
     for (const [id, card] of this.cards) {
       card.classList.toggle('picked', me?.champion === id);
@@ -112,6 +123,45 @@ export class LobbyScreen {
     } else {
       this.footer.append(el('div', 'lobby-wait', me?.champion ? 'Waiting for the host to start…' : 'Pick a champion'));
     }
+  }
+
+  /** Weather, time of day, starting gold and pace: buttons for the host, the same buttons greyed out for everyone else. */
+  private drawSettings(s: MatchSettings | undefined, host: boolean): void {
+    if (!s) return;
+    const bar = this.settingsBar;
+    bar.replaceChildren();
+    bar.classList.toggle('readonly', !host);
+    const change = (patch: Partial<MatchSettings>) => this.opts.onSettings?.(patch);
+    const group = <T>(label: string, options: readonly (readonly [T, string])[], current: T, pick: (v: T) => void) => {
+      const g = el('div', 'set-group');
+      g.append(el('span', 'set-label', label));
+      for (const [value, text] of options) {
+        const b = el('button', `set-opt${value === current ? ' on' : ''}`, text);
+        b.disabled = !host;
+        b.addEventListener('click', () => pick(value));
+        g.append(b);
+      }
+      return g;
+    };
+    const weather = el('div', 'set-group');
+    weather.append(el('span', 'set-label', 'Weather'));
+    const select = el('select', 'set-select');
+    for (const w of ['random', ...WEATHER_CHANCES.map(([k]) => k)]) {
+      const o = el('option', '', WEATHER_NAMES[w] ?? w);
+      o.value = w;
+      o.selected = w === s.weather;
+      select.append(o);
+    }
+    select.disabled = !host;
+    select.addEventListener('change', () => change({ weather: select.value as MatchSettings['weather'] }));
+    weather.append(select);
+    bar.append(
+      weather,
+      group('Time', [[false, 'Evening'], [true, 'Night']] as const, s.night, (night) => change({ night })),
+      group('Starting gold', START_GOLD_OPTIONS.map((g) => [g, String(g)] as const), s.gold, (gold) => change({ gold })),
+      group('Pace', [[false, 'Normal'], [true, 'Fast']] as const, s.fast, (fast) => change({ fast })),
+    );
+    bar.title = host ? '' : 'The host picks these';
   }
 
   showError(message: string): void {

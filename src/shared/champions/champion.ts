@@ -68,8 +68,8 @@ export abstract class Champion extends Unit {
     super.update(world);
     if (this.undoLog.length && !this.inShop()) this.undoLog = [];
     if (!this.dead && world.time >= PASSIVE_GOLD.from) {
-      this.gold += PASSIVE_GOLD.perSecond * DT;
-      this.score.goldEarned += PASSIVE_GOLD.perSecond * DT;
+      this.gold += PASSIVE_GOLD.perSecond * DT * world.rates.gold;
+      this.score.goldEarned += PASSIVE_GOLD.perSecond * DT * world.rates.gold;
     }
     if (this.recallStartedAt === null) return;
     if (this.dead || this.has('stun') || this.lastDamagedAt >= this.recallStartedAt) {
@@ -117,7 +117,7 @@ export abstract class Champion extends Unit {
 
   gainXp(world: World, amount: number): void {
     if (this.level >= MAX_LEVEL) return;
-    this.xp += amount;
+    this.xp += amount * world.rates.xp;
     while (this.level < MAX_LEVEL && this.xp >= xpToNext(this.level)) {
       this.xp -= xpToNext(this.level);
       const before = this.computeStats(world);
@@ -135,6 +135,7 @@ export abstract class Champion extends Unit {
 
   gainGold(world: World, amount: number): void {
     if (amount <= 0) return;
+    amount *= world.rates.gold;
     this.gold += amount;
     this.score.goldEarned += amount;
     world.emit({ e: 'gold', id: this.id, amount: Math.round(amount) });
@@ -313,8 +314,8 @@ export abstract class Champion extends Unit {
     this.recallStartedAt = null;
   }
 
-  protected respawnDelay(): number {
-    return RESPAWN.base + RESPAWN.perLevel * (this.level - 1);
+  protected respawnDelay(world: World): number {
+    return (RESPAWN.base + RESPAWN.perLevel * (this.level - 1)) * world.rates.respawn;
   }
 
   // ─── Casting ──────────────────────────────────────────────────────────────

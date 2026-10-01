@@ -96,6 +96,7 @@ async function boot(): Promise<void> {
     code: choice.kind === 'host' ? code : undefined,
     onPick: (pick) => conn.send({ t: 'pick', ...pick }),
     onStart: (mode) => conn.send({ t: 'start', mode }),
+    onSettings: (settings) => conn.send({ t: 'settings', settings }),
   });
 
   // Team and all chat, for the whole session (over the HUD, so it outlasts the match screens).

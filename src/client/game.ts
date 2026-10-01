@@ -122,6 +122,8 @@ export class GameClient {
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
   private readonly bubbles = new Bubbles();
+  /** Seconds added to the match clock for the look of the sky (a match that starts at night). */
+  private clockOffset = 0;
   /** When you last pressed Undo in the shop (what comes back then isn't celebrated as a purchase). */
   private undoneAt = -Infinity;
   /** Where the treetops are, for snow to settle on. */
@@ -324,6 +326,7 @@ export class GameClient {
       this.myId = msg.unitId;
       this.hud.fadeIn();
       if (msg.weather && msg.weather !== 'clear' && !this.weather) this.setWeather(new WeatherView(msg.weather, MAP));
+      this.clockOffset = msg.clock ?? 0;
       if (msg.team !== this.myTeam) {
         this.myTeam = msg.team;
         // Repaint the ground so your own base is the blue one.
@@ -380,6 +383,11 @@ export class GameClient {
     for (const s of this.standing) s.destroy({ children: true });
     this.standing = layers.standing;
     for (const s of this.standing) this.unitLayer.addChild(s);
+  }
+
+  /** The hour for the look of things: the match clock, plus the head start if the match began at night. */
+  private lookTime(): number {
+    return (this.replay?.time ?? this.buffer.latest?.time ?? 0) + this.clockOffset;
   }
 
   showNotice(title: string, detail: string): void {
@@ -444,7 +452,8 @@ export class GameClient {
     elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
     this.emissive.position.copyFrom(this.worldLayer.position);
     this.emissive.scale.copyFrom(this.worldLayer.scale);
-    const matchTime = this.buffer.latest?.time ?? 0;
+    // The look of the hour (starting at night pushes it on), not the match clock.
+    const matchTime = this.lookTime();
     this.weather?.update(dt, w, h, this.camera, this.wind);
     if (this.weather?.snowy) this.breathe();
     const sky = this.weather ? this.weather.sky(skyAt(matchTime)) : skyAt(matchTime);
@@ -537,9 +546,9 @@ export class GameClient {
       inBrush: (x, y) => this.visionGrid.brushAt({ x, y }) > 0,
       inWater: (x, y) => MAP.ground.some((p) => p.style === 'river' && shapeContains(p.shape, x, y)),
       wind: this.wind,
-      light: (x, y) => this.lighting.lightAt(x, y, nightAt(this.buffer.latest?.time ?? 0)),
-      night: nightAt(this.buffer.latest?.time ?? 0),
-      dusk: duskAt(this.buffer.latest?.time ?? 0),
+      light: (x, y) => this.lighting.lightAt(x, y, nightAt(this.lookTime())),
+      night: nightAt(this.lookTime()),
+      dusk: duskAt(this.lookTime()),
     };
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);

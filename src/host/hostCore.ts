@@ -5,9 +5,9 @@ import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
 import { SKIN_COUNT, type ChampionId } from '../shared/champions/types';
 import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
-import { LOCAL_CONN, MAX_CHAT, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
+import { DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, MAX_CHAT, NIGHT_CLOCK, START_GOLD_OPTIONS, type MatchSettings, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
-import { pickWeather } from '../shared/weather';
+import { WEATHER_CHANCES, pickWeather } from '../shared/weather';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
 import { Jungle } from '../shared/sim/jungle';
@@ -56,6 +56,8 @@ export class HostCore {
   private readonly lair = this.world.addSystem(new WardenLair());
   private scores: ScoreRow[] | null = null;
   private phase: LobbyState['phase'] = 'lobby';
+  /** The host's choices for the match. */
+  private settings: MatchSettings = { ...DEFAULT_SETTINGS };
   /** When each connection last chatted (seconds), for the rate limit. */
   private readonly chatTimes = new Map<string, number[]>();
 
@@ -87,7 +89,22 @@ export class HostCore {
       }
       case 'chat':
         return this.chat(connId, msg.text, msg.all);
+      case 'settings':
+        return this.changeSettings(connId, msg.settings);
     }
+  }
+
+  /** The host changing the match settings in the lobby; anything that isn't one of the choices is ignored. */
+  private changeSettings(connId: string, raw: unknown): void {
+    if (this.phase !== 'lobby' || !this.lobby.get(connId)?.host || !raw || typeof raw !== 'object') return;
+    const s = raw as Partial<Record<keyof MatchSettings, unknown>>;
+    const next = { ...this.settings };
+    if (s.weather === 'random' || WEATHER_CHANCES.some(([w]) => w === s.weather)) next.weather = s.weather as MatchSettings['weather'];
+    if (typeof s.night === 'boolean') next.night = s.night;
+    if ((START_GOLD_OPTIONS as readonly unknown[]).includes(s.gold)) next.gold = s.gold as number;
+    if (typeof s.fast === 'boolean') next.fast = s.fast;
+    this.settings = next;
+    this.broadcastLobby();
   }
 
   /** A chat line: to the sender's team, or (`all`) to everyone. Cleaned up, cut short, and rate limited. */
@@ -160,14 +177,17 @@ export class HostCore {
     const everyone = [...this.lobby.values()];
     if (everyone.some((p) => !p.champion)) return;
     this.phase = 'playing';
-    const weather = pickWeather(Math.random);
+    const { settings } = this;
+    const weather = settings.weather === 'random' ? pickWeather(Math.random) : settings.weather;
+    if (settings.fast) this.world.rates = { ...FAST_RATES };
 
     for (const p of everyone) {
       const champ = this.world.add(createChampion(p.champion!, this.world, p.team));
       champ.name = p.name;
       champ.skin = p.skin;
+      champ.gold = settings.gold;
       this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
-      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather });
+      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather, ...(settings.night ? { clock: NIGHT_CLOCK } : {}) });
     }
     if (mode === 'practice') {
       setupPracticeRange(this.world);
@@ -175,7 +195,10 @@ export class HostCore {
       for (const team of [TEAM.blue, TEAM.red] as const) {
         const taken = everyone.filter((p) => p.team === team).map((p) => p.champion!);
         const bots = addBots(this.world, team, TEAM_SIZE - this.humansOn(team), taken, Math.random);
-        for (const b of bots) b.champion.skin = Math.floor(Math.random() * SKIN_COUNT); // bots dress up too
+        for (const b of bots) {
+          b.champion.skin = Math.floor(Math.random() * SKIN_COUNT); // bots dress up too
+          b.champion.gold = settings.gold;
+        }
         this.bots.push(...bots);
       }
     }
@@ -187,7 +210,7 @@ export class HostCore {
   }
 
   private broadcastLobby(): void {
-    const lobby: LobbyState = { players: [...this.lobby.values()], phase: this.phase };
+    const lobby: LobbyState = { players: [...this.lobby.values()], phase: this.phase, settings: this.settings };
     for (const id of this.lobby.keys()) this.send(id, { t: 'lobby', lobby, you: id });
   }
 

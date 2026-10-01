@@ -2284,6 +2284,62 @@ html.colorblind .gold-peak.theirs {
   border-color: #c9a05a;
 }
 
+/* The lobby's match settings: the host's to change. */
+.lobby-settings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+  margin: 6px auto 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(10, 8, 6, 0.55);
+  pointer-events: auto;
+}
+
+.lobby-settings:empty {
+  display: none;
+}
+
+.set-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.set-label {
+  margin-right: 4px;
+  font: 13px var(--font-display);
+  letter-spacing: 0.04em;
+  color: #c9a05a;
+}
+
+.set-opt,
+.set-select {
+  padding: 4px 10px;
+  border: 1px solid #4a3f30;
+  border-radius: 4px;
+  background: #1a1510;
+  color: #e8dcc0;
+  font: 800 13px Nunito, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.set-opt.on {
+  border-color: #ffd166;
+  background: #3a2c12;
+  color: #ffe29a;
+}
+
+.set-opt:disabled,
+.set-select:disabled {
+  cursor: default;
+}
+
+.lobby-settings.readonly .set-opt:not(.on) {
+  opacity: 0.45;
+}
+
 /* The shop: Wick's suggested build along the top, what each item is made from, and Undo. */
 .shop-advice {
   display: flex;

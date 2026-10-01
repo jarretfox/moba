@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Champion } from '../shared/champions/champion';
 import { TEAM } from '../shared/constants';
-import { LOCAL_CONN, type HostMessage, type LobbyState } from '../shared/protocol';
+import { DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, NIGHT_CLOCK, type HostMessage, type LobbyState } from '../shared/protocol';
 import { HostCore } from './hostCore';
 
 function host() {
@@ -254,5 +254,38 @@ describe('chat', () => {
     clock = 10;
     core.receive(LOCAL_CONN, { t: 'chat', text: 'later', all: true });
     expect(chats(sent, LOCAL_CONN).at(-1)?.text).toBe('later');
+  });
+});
+
+describe('match settings', () => {
+  it("are the host's to change, are shown to everyone, and ignore anything that isn't a choice", () => {
+    const { core, lastLobby } = host();
+    core.receive(LOCAL_CONN, { t: 'hello', name: 'Jo' });
+    core.receive('peer:a', { t: 'hello', name: 'Al' });
+    expect(lastLobby('peer:a')?.settings).toEqual(DEFAULT_SETTINGS);
+    core.receive(LOCAL_CONN, { t: 'settings', settings: { weather: 'snow', night: true, gold: 1500, fast: true } });
+    expect(lastLobby('peer:a')?.settings).toEqual({ weather: 'snow', night: true, gold: 1500, fast: true });
+    // Not the host: nothing.
+    core.receive('peer:a', { t: 'settings', settings: { weather: 'rain' } });
+    expect(lastLobby('peer:a')?.settings.weather).toBe('snow');
+    // Nonsense: nothing.
+    core.receive(LOCAL_CONN, { t: 'settings', settings: { weather: 'lava', gold: 99999, night: 'yes', fast: 1 } as never });
+    expect(lastLobby(LOCAL_CONN)?.settings).toEqual({ weather: 'snow', night: true, gold: 1500, fast: true });
+  });
+
+  it('start the match with them: the weather, the clock at night, everyone\'s gold, the pace', () => {
+    const { core, sent } = host();
+    core.receive(LOCAL_CONN, { t: 'hello', name: 'Jo' });
+    core.receive(LOCAL_CONN, { t: 'settings', settings: { weather: 'autumn', night: true, gold: 3000, fast: true } });
+    core.receive(LOCAL_CONN, { t: 'pick', champion: 'logan' });
+    core.receive(LOCAL_CONN, { t: 'start', mode: 'bots' });
+    const welcome = sent.find((s) => s.msg.t === 'welcome')!.msg as Extract<HostMessage, { t: 'welcome' }>;
+    expect(welcome.weather).toBe('autumn');
+    expect(welcome.clock).toBe(NIGHT_CLOCK);
+    expect(champions(core).every((c) => c.gold === 3000)).toBe(true);
+    expect(core.world.rates).toEqual(FAST_RATES);
+    const jo = champions(core).find((c) => c.name === 'Jo')!;
+    jo.gainGold(core.world, 100);
+    expect(jo.gold).toBe(3000 + 100 * FAST_RATES.gold);
   });
 });

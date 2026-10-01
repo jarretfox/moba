@@ -46,6 +46,8 @@ export type ClientMessage =
   | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId; skin?: number }
   /** Host only: start the match once everyone has picked. */
   | { t: 'start'; mode: MatchMode }
+  /** Host only, in the lobby: change the match settings. */
+  | { t: 'settings'; settings: Partial<MatchSettings> }
   | { t: 'cmd'; cmd: Command }
   /** Say something: to your team, or to everyone (`all`). */
   | { t: 'chat'; text: string; all: boolean }
@@ -57,6 +59,25 @@ export const MAX_CHAT = 140;
 
 /** 'bots': 3v3, with bots in every slot no human takes. 'practice': no bots — the Chud waves and training dummies. */
 export type MatchMode = 'bots' | 'practice';
+
+/** The host's choices for the match, shown to everyone in the lobby. */
+export interface MatchSettings {
+  /** The weather, or 'random' to roll it. */
+  weather: Weather | 'random';
+  /** Start at night (only the look: the sky, the lanterns, the moon). */
+  night: boolean;
+  /** Gold everyone starts with. */
+  gold: number;
+  /** A quicker game: more gold and experience, shorter death timers. */
+  fast: boolean;
+}
+
+export const START_GOLD_OPTIONS = [500, 1500, 3000] as const;
+export const DEFAULT_SETTINGS: MatchSettings = { weather: 'random', night: false, gold: START_GOLD_OPTIONS[0], fast: false };
+/** How much a fast game speeds things up. */
+export const FAST_RATES = { gold: 1.5, xp: 1.5, respawn: 0.5 };
+/** Starting at night: how far into the evening the look starts (deep night, the moon up). */
+export const NIGHT_CLOCK = 1080;
 
 export interface LobbyPlayer {
   id: string;
@@ -71,13 +92,14 @@ export interface LobbyPlayer {
 export interface LobbyState {
   players: LobbyPlayer[];
   phase: 'lobby' | 'playing';
+  settings: MatchSettings;
 }
 
 export type HostMessage =
   /** The lobby changed. `you` is the recipient's own player id. */
   | { t: 'lobby'; lobby: LobbyState; you: string }
   /** The match started; this is your champion. */
-  | { t: 'welcome'; unitId: number; team: Team; weather?: Weather }
+  | { t: 'welcome'; unitId: number; team: Team; weather?: Weather; /** Seconds to add to the match clock for the look of the sky (starting at night). */ clock?: number }
   | { t: 'snap'; snap: SnapshotDelta }
   | { t: 'refused'; reason: string }
   /** A chat line, from a player by name (and champion, once the match is on). */

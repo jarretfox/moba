@@ -38,6 +38,8 @@ export class World {
   time = 0;
   /** Set once a Da Base falls. The host stops the match there. */
   winner: PlayerTeam | null = null;
+  /** How fast gold and experience come, and how long death lasts (a fast game raises and shortens them). */
+  rates = { gold: 1, xp: 1, respawn: 1 };
   readonly grid: NavGrid;
   readonly vision: Vision;
   /** Each team's Unchained from killing the Warden: until when, and whether it's an Uprising. */
