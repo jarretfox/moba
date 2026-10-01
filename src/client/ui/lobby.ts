@@ -9,6 +9,7 @@ import { emoteLine } from '../emotes';
 import { LORE } from './lore';
 import { iconEl } from '../render/icons';
 import { el } from './dom';
+import { ChampionStage } from './stage';
 
 const TEAM_SIZE = 3;
 
@@ -35,6 +36,8 @@ export class LobbyScreen {
   private readonly showcase = el('div', 'showcase');
   private shown: ChampionId | null = null;
   private readonly cardFaces = new Map<ChampionId, HTMLImageElement>();
+  /** The champion you're looking at, standing in the showcase. */
+  private readonly stage = new ChampionStage(200);
 
   constructor(
     root: HTMLElement,
@@ -116,6 +119,7 @@ export class LobbyScreen {
   }
 
   close(): void {
+    this.stage.destroy();
     this.screen.remove();
   }
 
@@ -154,10 +158,8 @@ export class LobbyScreen {
     s.classList.remove('locked');
 
     const art = el('div', 'showcase-art');
-    const face = el('img', 'showcase-face');
-    face.src = portraitOf(id, skin) ?? '';
-    face.alt = '';
-    art.append(el('div', 'showcase-ring'), face, el('div', 'showcase-quote'));
+    art.append(el('div', 'showcase-ring'), this.stage.canvas, el('div', 'showcase-quote'));
+    this.stage.show(id, skin);
 
     const text = el('div', 'showcase-info');
     text.append(
@@ -176,7 +178,7 @@ export class LobbyScreen {
       dot.title = SKINS[id][k].name;
       dot.addEventListener('click', () => {
         this.skins.set(id, k);
-        face.src = portraitOf(id, k) ?? '';
+        this.stage.show(id, k, true);
         const card = this.cardFaces.get(id);
         if (card) card.src = portraitOf(id, k) ?? '';
         lookName.textContent = SKINS[id][k].name;
@@ -216,6 +218,7 @@ export class LobbyScreen {
     this.showcase.classList.remove('locked');
     void this.showcase.offsetWidth;
     this.showcase.classList.add('locked');
+    this.stage.cheer();
     const quote = this.showcase.querySelector('.showcase-quote') as HTMLElement | null;
     if (quote) quote.textContent = `“${emoteLine(id, 'line', Math.floor(Math.random() * 99))}”`;
     getSound().play('fanfare', 0.6);

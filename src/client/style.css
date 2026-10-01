@@ -1759,23 +1759,16 @@ html.colorblind .gold-peak.theirs {
   filter: drop-shadow(0 0 12px var(--champ));
 }
 
-.showcase-face {
-  width: 168px;
-  height: 168px;
-  border-radius: 50%;
-  border: 3px solid var(--champ);
-  box-shadow: 0 0 30px color-mix(in srgb, var(--champ) 60%, transparent);
-  animation: float 3.2s ease-in-out infinite;
+/* The champion standing in the showcase (drawn live, so they idle, fidget and show off their looks). */
+.showcase-figure {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--champ) 45%, transparent));
 }
 
-.showcase.locked .showcase-face {
-  animation: float 3.2s ease-in-out infinite, lock-face 0.6s ease-out;
-}
-
-@keyframes float {
-  50% {
-    transform: translateY(-7px) rotate(1.5deg);
-  }
+.showcase.locked .showcase-figure {
+  animation: lock-face 0.6s ease-out;
 }
 
 @keyframes lock-face {
