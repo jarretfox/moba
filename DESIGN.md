@@ -315,6 +315,22 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
     - Each one's look and proportions are a build (`render/builds.ts`). Champions: Jordini's hood and bow, The Oak's horns and axe, Willmore's sack and bin lid, HunnaG's cap, Logan the lion on his hind legs, King Rix's cape and crown, Dongmaster's jaw and fists, the Dabber's hoodie and tail, Paris's beret and épée, Havarti the winged wheel of cheese, Daltonomo's belled hat and two knives. Chuds wear hoods in their team's color.
     - Creatures that aren't on two legs (`render/beasts.ts`): scurrying rats (the Rat King in a stolen crown), the Mossback with a garden on its shell, the Ember Toad and its tongue, the swaying Glowcap, the siege cart on turning wheels, and a straw practice dummy.
     - Hits, numbers, words and auras happen on the body (`render/stature.ts` knows how tall everything stands), arrows fly at chest height with a shadow below, and units can be clicked anywhere from feet to head.
+    - **They're alive** (all in the rig):
+      - Capes, tails, sacks and wings swing behind the movement, and hats wobble.
+      - Champions blink and glance where they're heading. They wince when hit, grin after a kill, an ultimate or a cheery emote, and sleep with their eyes closed.
+      - They flinch from hits, reel when stunned, and backflip when knocked up.
+      - They topple over dead with X-ed eyes, the weapon clattering down and the hat flying off (Havarti's halo floats away).
+      - Fast swings and thrusts leave a swoosh.
+    - **Recalls** (`render/recalls.ts`) pose the whole body: sitting, lying down, bowing, holding up their arms. They draw props in the hands, on the head and round the figure.
+    - **The world reacts:**
+      - Figures wade in the river, shin-deep with ripples.
+      - Tall grass closes round their legs in the brush.
+      - Champions leave footprints in the dirt.
+      - The wind (`render/wind.ts`, stronger in rain and gusting in storms) leans the brush, flaps the banners and stirs the tree crowns.
+    - **Light falls on them** (`Lighting.lightAt`):
+      - Champions glow on the side of the nearest lantern, brazier or base light, and every figure takes a little of its color.
+      - Shadows fall away from the light, longer at night under the moon.
+    - In **champion select** the showcase shows the champion live (`ui/stage.ts`): idling, fidgeting, spinning into a new skin, and striking their ultimate's pose when locked in.
   - **Structures** stand up too (`render/structures.ts`): Shooties are round stone watchtowers with ivy and a crystal floating over the battlements (beams and shots start there), Oakners are great oaks with a team ribbon round the trunk, and Da Base is a walled fort over the Chud burrow with towers, banners and a big floating crystal.
   - Champions stand on a ring in their team's color (white edge for you). The HUD portrait and the champion-select pictures are busts of the same figures, rendered to images once at startup.
   - Abilities, passives and items use emoji icons. Only emoji up to version 12 are used, so they show on Windows 10 too.
