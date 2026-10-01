@@ -136,12 +136,14 @@ const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
 /** Chuds' and monsters' attacks, keyed "chud:melee", "monster:rat" and so on. */
 export const UNIT_ATTACK: Record<string, Anim> = {
   // A whack with the club.
-  'chud:melee': { dur: 0.3, turn: [[0, 0], [0.35, 0.9], [0.6, -0.9], [1, 0]], lunge: [[0, 0], [0.55, 0.15], [1, 0]] },
+  'chud:melee': { dur: 0.3, turn: [[0, 0], [0.35, -1.2], [0.6, 0.8], [1, 0]], lunge: [[0, 0], [0.6, 0.15], [1, 0]] },
   // The Brute winds right back and brings it down hard.
-  'chud:brute': { dur: 0.45, turn: [[0, 0], [0.45, 1.3], [0.65, -1.1], [1, 0]], lunge: [[0, 0], [0.45, -0.1], [0.65, 0.2], [1, 0]], grow: [[0, 0], [0.45, 0.08], [0.65, -0.03], [1, 0]] },
+  'chud:brute': { dur: 0.45, turn: [[0, 0], [0.45, -1.7], [0.65, 1.0], [1, 0]], lunge: [[0, 0], [0.45, -0.1], [0.65, 0.2], [1, 0]], grow: [[0, 0], [0.45, 0.08], [0.65, -0.03], [1, 0]] },
+  // A royal guard's spear thrust.
+  guard: { dur: 0.32, reach: [[0, 0], [0.35, 0.5], [1, 0]], lunge: [[0, 0], [0.35, 0.18], [1, 0]] },
   // Whirl the sling once and let go.
   'chud:ranged': { dur: 0.32, turn: [[0, 0], [1, -TAU]], lunge: [[0, 0], [0.7, 0.06], [1, 0]] },
-  // The cart's arm rocks back, then throws.
+  // The cart's arm rocks back, then throws (and the cart bucks).
   'chud:siege': { dur: 0.45, reach: [[0, 0], [0.4, -0.35], [0.55, 0.25], [1, 0]], lunge: [[0, 0], [0.55, -0.08], [1, 0]] },
   'monster:rat': { dur: 0.26, lunge: [[0, 0], [0.4, 0.4], [1, 0]], twist: [[0, 0], [0.4, 0.15], [1, 0]] },
   'monster:ratKing': { dur: 0.3, lunge: [[0, 0], [0.4, 0.35], [1, 0]], twist: [[0, 0], [0.4, -0.15], [1, 0]] },

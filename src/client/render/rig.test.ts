@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChampionId } from '../../shared/champions/types';
-import { BUILDS } from './builds';
+import { Beast } from './beasts';
+import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
 import { SKINS, palette } from './champions';
-import { Rig, type RigInput } from './rig';
+import { Rig, type Figure, type RigInput } from './rig';
 import { chestHeight, standHeight } from './stature';
 
 const IDS = Object.keys(CHAMPION_INFO) as ChampionId[];
@@ -30,8 +31,26 @@ describe('champion rigs', () => {
       }
     }
     // Flat things stay flat.
-    expect(standHeight({ k: 'chud', r: 28 })).toBe(28);
-    expect(chestHeight({ k: 'chud', r: 28 })).toBe(0);
+    expect(standHeight({ k: 'structure', r: 120 })).toBe(120);
+    expect(chestHeight({ k: 'structure', r: 120 })).toBe(0);
+    expect(chestHeight({ k: 'totem', r: 30 })).toBe(0);
+  });
+
+  it('stand everything else that walks up too, as tall as the figure drawn for it', () => {
+    const figures: [Figure, Parameters<typeof standHeight>[0]][] = [
+      ...(['melee', 'ranged', 'brute'] as const).map((chud): [Figure, Parameters<typeof standHeight>[0]] => [new Rig(UNIT_BUILDS[`chud:${chud}`], 28, unitPalette(0x3d8bfd)), { k: 'chud', r: 28, chud }]),
+      [new Beast('siege', 38, 0x3d8bfd), { k: 'chud', r: 38, chud: 'siege' }],
+      [new Rig(UNIT_BUILDS.guard, 30, unitPalette(0xe5484d)), { k: 'guard', r: 30 }],
+      [new Rig(UNIT_BUILDS['monster:warden'], 110, unitPalette(0xe8a33d)), { k: 'monster', r: 110, mon: 'warden' }],
+      ...(['rat', 'ratKing', 'mossback', 'emberToad', 'glowcap'] as const).map((mon): [Figure, Parameters<typeof standHeight>[0]] => [new Beast(mon, 50), { k: 'monster', r: 50, mon }]),
+      [new Beast('dummy', 40), { k: 'dummy', r: 40 }],
+    ];
+    for (const [fig, snap] of figures) {
+      fig.update({ ...still, speed: 300 });
+      expect(fig.height).toBeCloseTo(standHeight(snap), 6);
+      expect(chestHeight(snap)).toBeGreaterThan(0);
+      expect(fig.height).toBeGreaterThan(0.8 * snap.r);
+    }
   });
 
   it('stand with their feet on the spot and their head above it', () => {
@@ -81,6 +100,20 @@ describe('champion rigs', () => {
     run(rig, { reach: 0.7 }, 1);
     expect(Math.abs(rig.part.frontUpper.rotation)).toBeLessThan(0.3);
     expect(rig.part.frontHand.x).toBeGreaterThan(0.6 * R);
+  });
+
+  it('draw a shared look once, and keep it when one of them goes', () => {
+    const a = new Rig(UNIT_BUILDS['chud:melee'], 28, unitPalette(0x3d8bfd), 'test:chud');
+    const b = new Rig(UNIT_BUILDS['chud:melee'], 28, unitPalette(0x3d8bfd), 'test:chud');
+    const c = new Rig(UNIT_BUILDS['chud:melee'], 28, unitPalette(0x3d8bfd));
+    expect(b.part.head.context).toBe(a.part.head.context);
+    expect(c.part.head.context).not.toBe(a.part.head.context);
+    expect(a.part.torso.context.instructions.length).toBeGreaterThan(0);
+    a.root.destroy({ children: true });
+    expect(b.part.torso.context.destroyed).toBe(false);
+    expect(b.part.torso.context.instructions.length).toBeGreaterThan(0);
+    const d = new Rig(UNIT_BUILDS['chud:melee'], 28, unitPalette(0x3d8bfd), 'test:chud');
+    expect(d.part.torso.context).toBe(b.part.torso.context);
   });
 
   it('leave the ground in a leap', () => {

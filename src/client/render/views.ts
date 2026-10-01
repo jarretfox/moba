@@ -1,13 +1,14 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
-import type { ChudType, EntitySnap, MonsterKind, StatusKind } from '../../shared/protocol';
+import type { EntitySnap, StatusKind } from '../../shared/protocol';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
 import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
-import { drawChampionBase, palette, type Weapon } from './champions';
-import { BUILDS } from './builds';
-import { Rig } from './rig';
+import { drawChampionBase, palette } from './champions';
+import { Beast } from './beasts';
+import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
+import { Rig, type Figure } from './rig';
 import { flightHeight } from './stature';
 import { RECALLS, type RecallRoutine, type Say } from './recalls';
 import { arc } from './draw';
@@ -73,13 +74,9 @@ const DEATH_TIME = 0.55;
 export class UnitView implements EntityView {
   readonly container = new Container();
   private readonly body = new Graphics();
-  /** Everything that turns to face where the unit's going: the figure, and a champion's weapon. */
+  /** Flat things that turn to face where they're going (seen from above). */
   private readonly facing = new Container();
   private readonly figure = new Graphics();
-  /** The part that moves on its own (a weapon, a tail, a tongue), drawn around its pivot. */
-  private readonly weapon: Graphics | null = null;
-  private readonly weaponRest = { x: 0, y: 0 };
-  private readonly weaponSpec: Weapon | null = null;
   private readonly champ: ChampionId | null = null;
   /** What this unit does when it attacks. */
   private readonly attackAnim: Anim | null = null;
@@ -115,11 +112,6 @@ export class UnitView implements EntityView {
   private statusKey = '';
   private pulse = 0;
   private air = 0;
-  /** Feet under walking figures, stepping in turn as they move. */
-  private readonly feet: Graphics[] = [];
-  /** Light from the top-left of the screen: stays put while the figure turns. */
-  private readonly shade = new Graphics();
-  private walk = 0;
   private stride = 0;
   /** Seconds since death, for the fall-and-fade. */
   private dying = 0;
@@ -128,8 +120,8 @@ export class UnitView implements EntityView {
   private last: { x: number; y: number } | null = null;
   /** The radius the body was drawn at; Berserk grows the real one. */
   private readonly baseR: number;
-  /** Champions stand up: a jointed figure that walks, facing left or right. */
-  private readonly rig: Rig | null = null;
+  /** Anything that walks stands up: a jointed figure (or a creature) facing left or right. */
+  private readonly rig: Figure | null = null;
   private side = 1;
   /** How far above the unit's spot the top of it is (bars and names go over that). */
   private readonly headroom: number;
@@ -141,35 +133,35 @@ export class UnitView implements EntityView {
     this.resourceColor = s.champ && CHAMPION_INFO[s.champ].resource === 'rage' ? PALETTE.rage : PALETTE.mana;
     const color = s.k === 'dummy' ? PALETTE.dummy : relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
 
-    this.body.circle(4, 6, r).fill({ color: 0x000000, alpha: 0.35 });
+    // Everything that stands up casts a soft shadow round its feet.
+    const shadow = () => this.body.ellipse(0, r * 0.08, r * 0.95, r * 0.4).fill({ color: 0x000000, alpha: 0.32 });
     if (s.k === 'chud') {
-      // Chuds turn to face what they're fighting, so the whole figure lives on the rotating layer.
-      drawChud(this.figure, s.chud ?? 'melee', r, color);
-      this.weaponSpec = CHUD_PARTS[s.chud ?? 'melee'];
-      this.attackAnim = UNIT_ATTACK[`chud:${s.chud ?? 'melee'}`] ?? null;
+      // A Chud in a hood of its team's color (or the siege cart, flying the team's banner).
+      const type = s.chud ?? 'melee';
+      shadow();
+      this.rig = type === 'siege' ? new Beast('siege', r, color) : new Rig(UNIT_BUILDS[`chud:${type}`], r, unitPalette(color), `chud:${type}:${color}:${r}`);
+      this.attackAnim = UNIT_ATTACK[`chud:${type}`] ?? null;
     } else if (s.k === 'monster') {
-      drawMonster(this.figure, s.mon ?? 'rat', r);
-      this.weaponSpec = MONSTER_PARTS[s.mon ?? 'rat'] ?? null;
-      this.attackAnim = UNIT_ATTACK[`monster:${s.mon ?? 'rat'}`] ?? null;
+      const kind = s.mon ?? 'rat';
+      shadow();
+      this.rig = kind === 'warden' ? new Rig(UNIT_BUILDS['monster:warden'], r, unitPalette(color)) : new Beast(kind, r);
+      this.attackAnim = UNIT_ATTACK[`monster:${kind}`] ?? null;
     } else if (s.k === 'guard') {
-      // A royal guard from above: team-colored tabard, a steel helmet, a round shield and a spear.
-      this.figure.circle(0, 0, r).fill(color).stroke({ width: 2, color: PALETTE.outline });
-      this.figure.circle(0, 0, r * 0.55).fill(0xb8bec6).stroke({ width: 2, color: 0x4a4f58 });
-      this.figure.circle(-r * 0.2, r * 0.85, r * 0.45).fill(0xd9c27a).stroke({ width: 2, color: 0x6b5a22 });
-      this.figure.rect(r * 0.2, -r * 0.95, r * 1.6, r * 0.18).fill(0x8a6a44);
-      this.figure.poly([r * 1.8, -r * 1.05, r * 2.2, -r * 0.86, r * 1.8, -r * 0.67]).fill(0xb8bec6);
+      // King Rix's royal guards: the team's tabard and shield, a spear.
+      shadow();
+      this.rig = new Rig(UNIT_BUILDS.guard, r, unitPalette(color), `guard:${color}:${r}`);
+      this.attackAnim = UNIT_ATTACK.guard;
     } else if (s.k === 'totem') {
+      this.body.circle(4, 6, r).fill({ color: 0x000000, alpha: 0.35 });
       // A squat glowing mushroom with a team-colored ring around its stalk.
       this.body.circle(0, 0, r).fill({ color: 0x6fd6ff, alpha: 0.12 });
       this.body.ellipse(0, -r * 0.2, r * 0.95, r * 0.75).fill(0x7a3fb0).stroke({ width: 2, color: PALETTE.outline });
       for (const [x, y, rr] of [[-0.4, -0.35, 0.16], [0.35, -0.4, 0.13], [0.05, -0.05, 0.12]]) this.body.circle(x * r, y * r, rr * r).fill(0xe8d7ff);
       this.body.circle(0, r * 0.45, r * 0.35).fill(color).stroke({ width: 2, color: PALETTE.outline });
     } else if (s.k === 'dummy') {
-      this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: PALETTE.outline });
-      this.body.circle(0, 0, r * 0.62).stroke({ width: 5, color: PALETTE.enemy });
-      this.body.circle(0, 0, r * 0.24).fill(PALETTE.enemy);
+      shadow();
+      this.rig = new Beast('dummy', r, PALETTE.enemy);
     } else if (s.k === 'champion' && s.champ) {
-      this.body.clear();
       drawChampionBase(this.body, r, color, relation === 'self');
       this.champ = s.champ;
       this.pal = palette(s.champ, s.skin ?? 0);
@@ -181,17 +173,7 @@ export class UnitView implements EntityView {
       this.body.circle(0, 0, r * 0.55).fill({ color: 0xffffff, alpha: 0.12 });
       this.figure.poly([r - 6, -10, r + 12, 0, r - 6, 10]).fill(0xffffff).stroke({ width: 2, color: PALETTE.outline });
     }
-    if (this.weaponSpec) {
-      this.weapon = new Graphics();
-      this.weaponSpec.draw(this.weapon, r);
-      this.weaponRest.x = this.weaponSpec.pivot[0] * r;
-      this.weaponRest.y = this.weaponSpec.pivot[1] * r;
-      this.weapon.position.copyFrom(this.weaponRest);
-    }
-    // Some parts tuck under the body (paws under a mane, a head inside a shell); most are held in front.
-    if (this.weapon && this.weaponSpec?.behind) this.facing.addChild(this.weapon, this.figure);
-    else if (this.weapon) this.facing.addChild(this.figure, this.weapon);
-    else this.facing.addChild(this.figure);
+    this.facing.addChild(this.figure);
 
     this.label = new Text({
       text: s.name ?? '',
@@ -201,17 +183,8 @@ export class UnitView implements EntityView {
     this.headroom = this.rig ? this.rig.height + 6 : r;
     this.label.position.set(0, -this.headroom - 24);
 
-    const walker = !this.rig && (s.k === 'champion' || s.k === 'chud' || s.k === 'guard' || (s.k === 'monster' && s.mon !== 'warden' && s.mon !== 'glowcap')) && s.chud !== 'siege';
-    if (walker) {
-      const footColor = s.k === 'chud' ? 0x4f5a3c : s.champ === 'logan' ? 0xb8701f : s.k === 'monster' ? 0x3a3530 : 0x2b2118;
-      for (let i = 0; i < 2; i++) this.feet.push(new Graphics().ellipse(0, 0, r * 0.24, r * 0.16).fill(footColor).stroke({ width: 1.5, color: PALETTE.outline }));
-    }
-    if (s.k === 'guard') {
-      this.shade.circle(-r * 0.3, -r * 0.35, r * 0.5).fill({ color: 0xffffff, alpha: 0.1 });
-      this.shade.circle(r * 0.22, r * 0.28, r * 0.75).fill({ color: 0x000000, alpha: 0.1 });
-    }
     this.recallOver.addChild(this.recallOverG);
-    this.container.addChild(this.statusRing, this.recallUnder, this.body, ...this.feet, this.facing, ...(this.rig ? [this.rig.root] : []), this.shade, this.recallOver, this.bars, this.label);
+    this.container.addChild(this.statusRing, this.recallUnder, this.body, this.facing, ...(this.rig ? [this.rig.root] : []), this.recallOver, this.bars, this.label);
     // Recall props sit round the body, not the feet.
     if (this.rig) this.recallOver.y = -this.rig.height * 0.45;
     if (s.k === 'champion') {
@@ -292,14 +265,12 @@ export class UnitView implements EntityView {
       for (const t of this.recallTexts) t.visible = false;
     }
 
-    // Walking: how far it moved since last frame drives the step cycle.
+    // How fast it's going drives the walk (in the figure), and stills the breathing here.
     const moved = this.last && dt > 0 ? Math.hypot(s.x - this.last.x, s.y - this.last.y) / dt : 0;
     this.last = { x: s.x, y: s.y };
     const walking = moved > 40 && !s.dead;
     this.stride = walking ? Math.min(1, this.stride + dt * 6) : Math.max(0, this.stride - dt * 6);
-    if (walking) this.walk += dt * Math.min(16, 5 + moved / 40);
     this.clock += dt;
-    const step = Math.sin(this.walk) * this.stride;
     const breathe = 1 + Math.sin(this.clock * 2.4) * 0.015 * (1 - this.stride);
     if (this.champ) {
       const held = s.st?.some((k) => STILL_STATUSES.has(k));
@@ -318,14 +289,7 @@ export class UnitView implements EntityView {
       else if (c < -0.25) this.side = -1;
       this.rig.update({ dt, speed: s.dead ? 0 : moved, facing: this.side, turn, reach, twist, lunge: lungeBy, grow, stretch, air: this.air });
     }
-    this.facing.rotation = s.f + step * 0.08 + twist;
-    if (this.weapon && this.weaponSpec) {
-      // At rest it sways a little with the walk and the breath (a rat's tail rather more).
-      const [amp, hz] = this.weaponSpec.sway ?? [0.04, 0.27];
-      this.weapon.rotation = turn + Math.sin(this.clock * hz * Math.PI * 2) * amp + step * 0.1;
-      this.weapon.position.set(this.weaponRest.x + reach * this.baseR, this.weaponRest.y);
-      this.weapon.scale.x = (this.weaponSpec.rest ?? 1) * (1 + stretch);
-    }
+    this.facing.rotation = s.f + twist;
 
     this.pulse = Math.max(0, this.pulse - dt * 6);
     this.flash = Math.max(0, this.flash - dt * 8);
@@ -338,7 +302,6 @@ export class UnitView implements EntityView {
     const tall = size * (1 - 0.14 * this.squash);
     this.body.scale.set(wide, tall);
     this.facing.scale.set(wide, tall);
-    this.shade.scale.set(wide, tall);
     if (this.rig) {
       // The rig does its own growing and leaping; this is just hits and Berserk.
       const k = (s.r / this.baseR) * (1 + this.pulse * 0.05) * (1 - fall * 0.2);
@@ -350,24 +313,11 @@ export class UnitView implements EntityView {
     const lunge = this.attackAnim ? lungeBy * s.r : this.pulse * 7;
     this.facing.position.set(Math.cos(s.f) * lunge, Math.sin(s.f) * lunge);
     this.facing.tint = this.flash > 0 ? 0xff9a9a : 0xffffff;
-    // Feet sit under the figure and step in turn while it walks.
-    const cos = Math.cos(s.f);
-    const sin = Math.sin(s.f);
-    this.feet.forEach((foot, i) => {
-      const side = i === 0 ? -1 : 1;
-      const along = s.r * 0.15 + side * step * s.r * 0.35;
-      const across = side * s.r * 0.42;
-      foot.position.set(cos * along - sin * across, sin * along + cos * across);
-      foot.rotation = s.f;
-      foot.visible = !this.air;
-    });
     // Under the ground you only show as a mound of dirt (to whoever can see you at all).
     const under = s.st?.includes('burrowed') || s.st?.includes('underground');
     // In the Dark Dabber's smoke, his own side sees him faintly.
     this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') || s.st?.includes('vanished') ? 0.4 : s.st?.includes('untargetable') ? 0.55 : 1;
-    if (this.rig) this.rig.root.alpha = this.body.alpha;
-    this.shade.visible = !under;
-    for (const foot of this.feet) foot.visible &&= !under;
+    if (this.rig) this.rig.root.alpha = under ? 0.12 : this.body.alpha;
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
 
     const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
@@ -905,151 +855,6 @@ export class StructureView implements EntityView {
     g.rect(x - 2, y - 2, w + 4, h + 4).fill({ color: 0x000000, alpha: 0.75 });
     g.rect(x, y, (w * Math.max(0, s.hp ?? 0)) / mhp, h).fill(color);
     for (let v = 500; v < mhp; v += 500) g.rect(x + (w * v) / mhp, y, 1, h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
-  }
-}
-
-const CHUD_SKIN = 0x87916c;
-const CHUD_BRUTE_SKIN = 0x6c7652;
-const CHUD_EYES = 0xffe066;
-
-/** Hunched tunnel-dwellers in team-colored hoods, drawn facing +x. */
-function drawChud(g: Graphics, type: ChudType, r: number, team: number): void {
-  const outline = { width: 2, color: PALETTE.outline };
-  if (type === 'siege') {
-    // A rickety cart with a boulder loaded up front and the team's banner at the back.
-    g.roundRect(-r, -r * 0.75, r * 1.8, r * 1.5, 6).fill(PALETTE.bark).stroke(outline);
-    g.rect(-r * 0.95, -r * 0.8, r * 0.45, r * 1.6).fill(team);
-    return;
-  }
-  if (type === 'brute') {
-    // Spikes poking out of a team-colored helmet, and a club the size of a regular Chud.
-    const spikes: number[] = [];
-    for (let i = 0; i < 14; i++) {
-      const a = Math.PI / 2 + (i / 13) * Math.PI;
-      const rr = i % 2 === 0 ? r * 1.25 : r * 0.95;
-      spikes.push(Math.cos(a) * rr, Math.sin(a) * rr);
-    }
-    g.poly(spikes).fill(team).stroke(outline);
-  }
-  g.circle(0, 0, r).fill(type === 'brute' ? CHUD_BRUTE_SKIN : CHUD_SKIN).stroke(outline);
-  g.moveTo(0, 0).arc(0, 0, r, Math.PI / 2, Math.PI * 1.5).closePath().fill(team); // hood over the back
-  g.circle(r * 0.45, -r * 0.28, r * 0.14).fill(CHUD_EYES);
-  g.circle(r * 0.45, r * 0.28, r * 0.14).fill(CHUD_EYES);
-}
-
-const PART_OUTLINE = { width: 2, color: 0x0b0f14 };
-
-/** What Chuds hold: a club, a bigger club, a sling, the cart's boulder. */
-const CHUD_PARTS: Record<ChudType, Weapon> = {
-  melee: { pivot: [0.3, 0.7], draw: (g, r) => void g.roundRect(-0.05 * r, -0.15 * r, r, r * 0.3, 3).fill(PALETTE.bark).stroke(PART_OUTLINE) },
-  brute: {
-    pivot: [0.3, 0.75],
-    draw(g, r) {
-      g.roundRect(-0.05 * r, -0.17 * r, r * 1.25, r * 0.34, 4).fill(PALETTE.bark).stroke(PART_OUTLINE);
-      for (const x of [0.75, 0.95, 1.1]) g.poly([x * r, -0.17 * r, (x + 0.06) * r, -0.32 * r, (x + 0.12) * r, -0.17 * r]).fill(0xb8bec6);
-    },
-  },
-  ranged: {
-    pivot: [0.6, 0.3],
-    draw(g, r) {
-      g.moveTo(0, 0).lineTo(0.45 * r, -0.3 * r).stroke({ width: 2, color: 0x8a6a44 });
-      g.circle(0.45 * r, -0.3 * r, 0.3 * r).fill(0x6e6e6e).stroke(PART_OUTLINE); // stone ready in the sling
-    },
-  },
-  siege: { pivot: [0.35, 0], draw: (g, r) => void g.circle(0, 0, r * 0.45).fill(0x8d8d8d).stroke(PART_OUTLINE) },
-};
-
-/** Monsters' moving parts: tails, a head, a tongue, the Warden's shackle on its chain. */
-const MONSTER_PARTS: Partial<Record<MonsterKind, Weapon>> = {
-  rat: { pivot: [-0.8, 0], behind: true, sway: [0.35, 0.9], draw: (g, r) => void g.moveTo(0, 0).bezierCurveTo(-r * 0.8, -r * 0.2, -r * 0.9, r * 0.6, -r * 1.3, r * 0.3).stroke({ width: 3, color: 0xd99a9a }) },
-  ratKing: { pivot: [-0.8, 0], behind: true, sway: [0.3, 0.7], draw: (g, r) => void g.moveTo(0, 0).bezierCurveTo(-r * 0.8, -r * 0.2, -r * 0.9, r * 0.6, -r * 1.3, r * 0.3).stroke({ width: 4, color: 0xd99a9a }) },
-  mossback: { pivot: [0.7, 0], behind: true, sway: [0.12, 0.3], draw: (g, r) => void g.circle(0.25 * r, 0, r * 0.32).fill(0x7c8a5a).stroke(MONSTER_OUTLINE) },
-  emberToad: {
-    pivot: [0.85, 0],
-    rest: 0.25,
-    sway: [0.02, 0.5],
-    draw(g, r) {
-      g.moveTo(0, 0).lineTo(0.5 * r, 0).stroke({ width: 6, color: 0xe86a8a, cap: 'round' });
-      g.circle(0.5 * r, 0, 0.1 * r).fill(0xff8fa8);
-    },
-  },
-  warden: {
-    pivot: [0.7, 0],
-    sway: [0.1, 0.2],
-    draw(g, r) {
-      for (let i = 0; i < 3; i++) g.ellipse(0.06 * r + i * 0.1 * r, 0, i % 2 ? 0.04 * r : 0.07 * r, i % 2 ? 0.07 * r : 0.04 * r).stroke({ width: 3, color: 0x8a9099 });
-      g.circle(0.35 * r, 0, r * 0.22).stroke({ width: 6, color: 0x8a9099 });
-      g.circle(0.35 * r, 0, r * 0.22).stroke({ width: 2, color: 0xc9d1dc, alpha: 0.6 });
-    },
-  },
-};
-
-const MONSTER_OUTLINE = { width: 2, color: PALETTE.outline };
-
-/** Jungle monsters, drawn facing right (the layer rotates toward whatever they're fighting). */
-function drawMonster(g: Graphics, kind: MonsterKind, r: number): void {
-  const o = MONSTER_OUTLINE;
-  switch (kind) {
-    case 'rat':
-    case 'ratKing': {
-      // A tail curling out the back, a pointed snout, round ears and beady red eyes.
-      g.ellipse(0, 0, r * 1.05, r * 0.85).fill(kind === 'ratKing' ? 0x6b5f55 : 0x7d7268).stroke(o);
-      g.poly([r * 0.7, -r * 0.45, r * 1.35, 0, r * 0.7, r * 0.45]).fill(0x8e8278).stroke(o);
-      g.circle(r * 0.2, -r * 0.7, r * 0.3).fill(0xd99a9a).stroke(o);
-      g.circle(r * 0.2, r * 0.7, r * 0.3).fill(0xd99a9a).stroke(o);
-      g.circle(r * 0.75, -r * 0.2, r * 0.1).fill(0xff3b30);
-      g.circle(r * 0.75, r * 0.2, r * 0.1).fill(0xff3b30);
-      if (kind === 'ratKing') g.poly([-r * 0.35, -r * 0.3, -r * 0.2, 0, -r * 0.35, r * 0.3, 0.05 * r, r * 0.3, 0.05 * r, -r * 0.3]).fill(0xffd166).stroke(o); // a stolen crown
-      return;
-    }
-    case 'mossback': {
-      // A great mossy shell with a blunt head poking out the front.
-      g.circle(0, 0, r).fill(0x3d5a2e).stroke(o);
-      g.poly(regularPolygon(6, r * 0.5)).fill(0x557a3b).stroke({ width: 2, color: 0x2a3f20 });
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2 + Math.PI / 6;
-        g.circle(Math.cos(a) * r * 0.75, Math.sin(a) * r * 0.75, r * 0.14).fill(0x6fa04a);
-      }
-      return;
-    }
-    case 'emberToad': {
-      // A squat orange toad dotted with glowing embers, big eyes up front.
-      g.ellipse(0, 0, r, r * 0.9).fill(0xc2491d).stroke(o);
-      for (const [x, y, rr] of [[-0.4, -0.35, 0.16], [-0.1, 0.45, 0.13], [-0.55, 0.25, 0.1], [0.05, -0.1, 0.12]]) g.circle(x * r, y * r, rr * r).fill(0xffb347);
-      g.circle(r * 0.55, -r * 0.45, r * 0.24).fill(0xfff1c1).stroke(o);
-      g.circle(r * 0.55, r * 0.45, r * 0.24).fill(0xfff1c1).stroke(o);
-      g.circle(r * 0.62, -r * 0.45, r * 0.1).fill(0x1a0d05);
-      g.circle(r * 0.62, r * 0.45, r * 0.1).fill(0x1a0d05);
-      return;
-    }
-    case 'warden': {
-      // The iron jailer from above: a riveted steel body wrapped in a ring of chain, a visor slit glowing
-      // toward whatever it's fighting, and a shackle held out in front.
-      g.circle(0, 0, r * 1.08).fill({ color: 0x000000, alpha: 0.25 });
-      g.circle(0, 0, r).fill(0x4a4f58).stroke({ width: 4, color: PALETTE.outline });
-      g.circle(0, 0, r * 0.72).fill(0x5d636d).stroke({ width: 3, color: 0x2c3038 });
-      for (let i = 0; i < 18; i++) {
-        const a = (i / 18) * Math.PI * 2;
-        const along = i % 2 === 0;
-        g.ellipse(Math.cos(a) * r * 0.86, Math.sin(a) * r * 0.86, along ? r * 0.1 : r * 0.05, along ? r * 0.05 : r * 0.1)
-          .stroke({ width: 3, color: 0x8a9099 });
-      }
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-        g.circle(Math.cos(a) * r * 0.6, Math.sin(a) * r * 0.6, r * 0.04).fill(0x9aa1ab);
-      }
-      g.roundRect(r * 0.3, -r * 0.28, r * 0.16, r * 0.56, 4).fill(0x1a1d22);
-      g.roundRect(r * 0.33, -r * 0.22, r * 0.1, r * 0.44, 3).fill(0x7fe3ff);
-      return;
-    }
-    case 'glowcap': {
-      // A giant glowing mushroom, seen from above: a speckled blue cap with a faint halo.
-      g.circle(0, 0, r * 1.2).fill({ color: 0x6fd6ff, alpha: 0.15 });
-      g.circle(0, 0, r).fill(0x2f7fb8).stroke(o);
-      g.circle(0, 0, r * 0.62).fill({ color: 0x9fe6ff, alpha: 0.35 });
-      for (const [x, y, rr] of [[0.45, -0.35, 0.14], [-0.35, 0.5, 0.12], [-0.5, -0.3, 0.16], [0.3, 0.45, 0.1], [0, 0, 0.12]]) g.circle(x * r, y * r, rr * r).fill(0xdff7ff);
-      return;
-    }
   }
 }
 

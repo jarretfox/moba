@@ -1,23 +1,41 @@
 import type { EntitySnap } from '../../shared/protocol';
-import { BUILDS } from './builds';
+import { beastHeight } from './beasts';
+import { BUILDS, UNIT_BUILDS } from './builds';
+import type { Proportions } from './rig';
 
-// Champions stand up off the ground, so things that happen "to" them (hits, numbers, words, a halo of
-// sparks) happen up on the body rather than at their feet. Everything else is still drawn flat.
+// Everything that walks stands up off the ground, so things that happen "to" it (hits, numbers, words, a
+// halo of sparks) happen up on the body rather than at its feet. Structures, totems and the like are flat.
 
-type Sized = Pick<EntitySnap, 'k' | 'r' | 'champ'>;
+type Sized = Pick<EntitySnap, 'k' | 'r' | 'champ' | 'chud' | 'mon'>;
 
-/** How tall a unit stands above its spot on the ground, in world units. */
-export function standHeight(e: Sized): number {
-  if (e.k === 'champion' && e.champ) {
-    const s = BUILDS[e.champ].size;
-    return (s.thigh + s.shin + s.torso + s.headH) * e.r;
+const tall = (s: Proportions) => s.thigh + s.shin + s.torso + s.headH;
+
+/** How tall a unit stands, in units of its radius (0 for flat things). */
+function stands(e: Sized): number {
+  switch (e.k) {
+    case 'champion':
+      return e.champ ? tall(BUILDS[e.champ].size) : 0;
+    case 'chud':
+      return e.chud === 'siege' ? beastHeight('siege') : tall(UNIT_BUILDS[`chud:${e.chud ?? 'melee'}`].size);
+    case 'guard':
+      return tall(UNIT_BUILDS.guard.size);
+    case 'monster':
+      return e.mon === 'warden' ? tall(UNIT_BUILDS['monster:warden'].size) : beastHeight(e.mon ?? 'rat');
+    case 'dummy':
+      return beastHeight('dummy');
+    default:
+      return 0;
   }
-  return e.r;
+}
+
+/** How tall a unit stands above its spot on the ground, in world units (its radius, for flat things). */
+export function standHeight(e: Sized): number {
+  return (stands(e) || 1) * e.r;
 }
 
 /** How far above its spot a unit gets hit: the middle of the body (the spot itself for flat things). */
 export function chestHeight(e: Sized): number {
-  return e.k === 'champion' && e.champ ? standHeight(e) * 0.5 : 0;
+  return stands(e) ? stands(e) * e.r * 0.5 : 0;
 }
 
 /** How high arrows, bolts and thrown things fly. */

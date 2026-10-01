@@ -1,4 +1,4 @@
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, GraphicsContext } from 'pixi.js';
 import { inkOf, shade, type Pts } from './organic';
 
 // Upright figures with joints. A champion stands on the spot the game says they're at, seen from the side
@@ -61,6 +61,15 @@ export interface Build {
   gait?: { swing?: number; bounce?: number; lean?: number; knee?: number; arm?: number };
 }
 
+/** Anything upright the unit view can pose: a rigged figure (rig.ts) or a simpler creature (beasts.ts). */
+export interface Figure {
+  /** Its origin is the spot on the ground it stands on. */
+  readonly root: Container;
+  /** How tall it stands, in world units. */
+  readonly height: number;
+  update(input: RigInput): void;
+}
+
 /** What the view tells the rig each frame. */
 export interface RigInput {
   dt: number;
@@ -114,10 +123,13 @@ export function boot(g: Graphics, r: number, len: number, color: number): void {
 
 export type PartName = 'back' | 'backUpper' | 'backFore' | 'backHand' | 'offhand' | 'backThigh' | 'backShin' | 'backFoot' | 'frontThigh' | 'frontShin' | 'frontFoot' | 'torso' | 'head' | 'frontUpper' | 'cap' | 'frontFore' | 'frontHand' | 'weapon';
 
+/** Shapes drawn once for looks that many units share, by name. */
+const SHARED = new Map<string, Map<PartName, GraphicsContext>>();
+
 /** Back to front. */
 const ORDER: readonly PartName[] = ['back', 'offhand', 'backUpper', 'backFore', 'backHand', 'backThigh', 'backShin', 'backFoot', 'frontThigh', 'frontShin', 'frontFoot', 'torso', 'head', 'weapon', 'frontUpper', 'cap', 'frontFore', 'frontHand'];
 
-export class Rig {
+export class Rig implements Figure {
   /** The whole figure; its origin is between the feet. */
   readonly root = new Container();
   /** How tall it stands, in world units (soles to the top of the head). */
@@ -130,15 +142,28 @@ export class Rig {
   private clock = Math.random() * 10;
   private flip = 1;
 
-  constructor(private readonly build: Build, private readonly r: number, palette: Palette) {
+  /**
+   * `share` names a look many units have in common (a Chud of one team and size): those draw their parts
+   * once and every later one reuses the shapes.
+   */
+  constructor(private readonly build: Build, private readonly r: number, palette: Palette, share?: string) {
     const s = build.size;
-    const p = { ...palette, ...build.prep?.(palette) };
-    const { sleeve, hand, leg, boot: bootColor } = build.colors;
+    this.height = (s.thigh + s.shin + s.torso + s.headH) * r;
+    this.root.addChild(this.z);
+    const cached = share ? SHARED.get(share) : undefined;
+    const made = new Map<PartName, GraphicsContext>();
     for (const name of ORDER) {
-      const g = new Graphics();
+      // A context handed to a Graphics isn't destroyed with it, so shared shapes outlive any one Chud.
+      const ctx = cached?.get(name) ?? (share ? new GraphicsContext() : undefined);
+      if (ctx) made.set(name, ctx);
+      const g = ctx ? new Graphics(ctx) : new Graphics();
       this.part[name] = g;
       this.z.addChild(g);
     }
+    if (cached) return;
+    if (share) SHARED.set(share, made);
+    const p = { ...palette, ...build.prep?.(palette) };
+    const { sleeve, hand, leg, boot: bootColor } = build.colors;
     build.back?.(this.part.back, r, p);
     build.torso(this.part.torso, r, p);
     build.head(this.part.head, r, p);
@@ -158,8 +183,6 @@ export class Rig {
     build.cap?.(this.part.cap, r, p);
     build.weapon?.draw(this.part.weapon, r, p);
     build.offhand?.draw(this.part.offhand, r, p);
-    this.root.addChild(this.z);
-    this.height = (s.thigh + s.shin + s.torso + s.headH) * r;
   }
 
   update(input: RigInput): void {

@@ -512,7 +512,7 @@ export class GameClient {
         if (s.st?.includes('airborne')) this.inAir.add(s.id);
         else if (this.inAir.delete(s.id)) this.landed(s);
         if (s.k === 'monster' && !s.dead) monsterAura(this.fx, s);
-        if (s.st || s.sh) statusAura(this.fx, s.k === 'champion' ? { ...s, y: s.y - chestHeight(s) } : s, time);
+        if (s.st || s.sh) statusAura(this.fx, chestHeight(s) ? { ...s, y: s.y - chestHeight(s) } : s, time);
       }
     }
   }
@@ -1355,8 +1355,8 @@ export class GameClient {
     for (const e of this.ents.values()) {
       const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || e.k === 'monster' || e.k === 'totem' || e.k === 'guard' || (e.k === 'structure' && !e.inv);
       if (!attackable || e.dead || e.tm === this.myTeam) continue;
-      // Champions can be clicked anywhere from their feet to their head.
-      const h = e.k === 'champion' ? standHeight(e) * 0.85 : 0;
+      // Anything standing up can be clicked anywhere from its feet to its head.
+      const h = chestHeight(e) * 1.7;
       const d = h ? segmentDistance(p, e, { x: e.x, y: e.y - h }).d : dist(p, e);
       if (d <= e.r + CLICK_SLOP && d < bestD) {
         best = e;

@@ -1,7 +1,7 @@
 import type { Graphics } from 'pixi.js';
 import type { ChampionId } from '../../shared/champions/types';
 import { blob, inkLine, inkOf, inked, mix, shade, smooth, type Pts } from './organic';
-import { boot, limb, type Build, type Held, type Proportions } from './rig';
+import { boot, limb, type Build, type Held, type Palette, type Proportions } from './rig';
 
 // What each champion looks like standing up: their proportions, and the torso, head, back and weapon
 // drawn in the hand-inked style. Everything is in units of the unit's radius `r`, facing right (+x),
@@ -648,5 +648,192 @@ export const BUILDS: Record<ChampionId, Build> = {
     weapon: dagger(0.4),
     offhand: dagger(0.6),
     gait: { swing: 0.6, bounce: 0.1, lean: 0.12, knee: 1.1, arm: 0.6 },
+  },
+};
+
+// ─── Everyone else on two legs ────────────────────────────────────────────────
+
+const CHUD_SKIN = 0x87916c;
+
+/** Colors for a unit that isn't a champion: the team color goes on their hood, tabard or shield. */
+export function unitPalette(team: number, skin = CHUD_SKIN): Palette {
+  return { body: skin, hood: team, hoodDark: shade(team, 0.35), eyes: 0xffe066, wood: 0x6b4a2b, stone: 0x8d8d8d, cloth: 0x5a4a32, steel: 0xb8bec6, steelDark: 0x6a707a, rope: 0x8a6a44 };
+}
+
+const chudHead = (spiked: boolean) => (g: Graphics, r: number, p: Palette) => {
+  // A big lumpy head under a team-colored hood with a floppy point, yellow eyes glowing out.
+  inked(g, skull(0.1 * r, -0.36 * r, 0.36 * r, 0.34 * r, spiked ? 41 : 43), p.body, 3);
+  g.moveTo(0.2 * r, -0.18 * r).quadraticCurveTo(0.34 * r, -0.12 * r, 0.44 * r, -0.2 * r).stroke({ width: 2.2, color: 0x1a1414 });
+  g.poly([0.3 * r, -0.17 * r, 0.34 * r, -0.08 * r, 0.37 * r, -0.17 * r]).fill(0xf2efe6); // a snaggletooth
+  const hood = smooth([-0.34 * r, -0.08 * r, -0.4 * r, -0.5 * r, -0.62 * r, -0.86 * r, -0.2 * r, -0.74 * r, 0.22 * r, -0.72 * r, 0.42 * r, -0.5 * r, 0.12 * r, -0.5 * r, -0.08 * r, -0.2 * r], true, 2);
+  inked(g, hood, p.hood, 2.5);
+  for (const x of [0.26, 0.38]) {
+    g.circle(x * r, -0.38 * r, 0.075 * r).fill({ color: p.eyes, alpha: 0.35 });
+    g.circle(x * r, -0.38 * r, 0.045 * r).fill(p.eyes);
+  }
+  if (spiked) {
+    for (const [x, y, a] of [[-0.3, -0.62, -2.4], [-0.05, -0.76, -1.9], [0.22, -0.7, -1.3]]) {
+      const tx = x * r + Math.cos(a) * 0.22 * r;
+      const ty = y * r + Math.sin(a) * 0.22 * r;
+      inked(g, [x * r - 0.06 * r, y * r + 0.02 * r, tx, ty, x * r + 0.06 * r, y * r + 0.02 * r], p.steel, 1.5);
+    }
+  }
+};
+
+const chudTorso = (g: Graphics, r: number, p: Palette) => {
+  inked(g, trunk(r, 0.74, 0.4, 0.4, 0.95, 1.15, 0.06), p.body, 3);
+  // A ragged loincloth and a strap.
+  const cloth = smooth([-0.4 * r, -0.1 * r, 0.44 * r, -0.12 * r, 0.4 * r, 0.24 * r, 0.12 * r, 0.16 * r, -0.08 * r, 0.26 * r, -0.36 * r, 0.18 * r], true, 1);
+  inked(g, cloth, p.cloth, 2);
+  g.moveTo(-0.32 * r, -0.66 * r).lineTo(0.3 * r, -0.12 * r).stroke({ width: 3.5, color: p.hoodDark });
+};
+
+const club = (len: number, spikes: boolean): Held => ({
+  hold: -1.0,
+  draw(g, r, p) {
+    const pts = smooth([0, -0.06 * r, len * 0.55 * r, -0.1 * r, len * r, -0.17 * r, (len + 0.08) * r, 0, len * r, 0.17 * r, len * 0.55 * r, 0.1 * r, 0, 0.06 * r], true, 1);
+    inked(g, pts, p.wood, 2.5);
+    g.moveTo(0.1 * r, 0).lineTo(len * 0.7 * r, -0.03 * r).stroke({ width: 1.5, color: shade(p.wood, 0.3) });
+    if (spikes) for (const x of [0.6, 0.8, 0.95]) inked(g, [x * len * r, -0.12 * r, (x * len + 0.05) * r, -0.3 * r, (x * len + 0.1) * r, -0.12 * r], p.steel, 1.2);
+  },
+});
+
+const sling: Held = {
+  hold: 1.3,
+  draw(g, r, p) {
+    g.moveTo(0, 0).lineTo(0.42 * r, 0.06 * r).stroke({ width: 2, color: p.rope });
+    inked(g, blob(0.48 * r, 0.06 * r, 0.12 * r, 0.11 * r, 5, 0.2, 10), p.stone, 1.8);
+  },
+};
+
+const spear: Held = {
+  hold: -1.35,
+  draw(g, r, p) {
+    limb(g, 1.5 * r, 0.08 * r, 0.07 * r, p.wood);
+    limb(g, -0.4 * r, 0.08 * r, 0.07 * r, p.wood);
+    inked(g, [1.45 * r, -0.08 * r, 1.78 * r, 0, 1.45 * r, 0.08 * r], p.steel, 1.6);
+    g.rect(1.38 * r, -0.07 * r, 0.06 * r, 0.14 * r).fill(p.hood);
+  },
+};
+
+const shield: Held = {
+  hold: 0,
+  draw(g, r, p) {
+    inked(g, blob(0.05 * r, 0, 0.3 * r, 0.36 * r, 7, 0.02, 24), p.hood, 2.5);
+    g.ellipse(0.05 * r, 0, 0.3 * r, 0.36 * r).stroke({ width: 4, color: p.steel });
+    g.circle(0.05 * r, 0, 0.08 * r).fill(p.steel).stroke({ width: 1.5, color: p.steelDark });
+  },
+};
+
+const shackle: Held = {
+  hold: 1.25,
+  draw(g, r, p) {
+    // A length of chain hanging from the fist, and the shackle at the end of it.
+    for (let i = 0; i < 4; i++) g.ellipse(0.08 * r + i * 0.1 * r, 0, i % 2 ? 0.035 * r : 0.06 * r, i % 2 ? 0.06 * r : 0.035 * r).stroke({ width: 3, color: p.steel });
+    g.circle(0.6 * r, 0, 0.17 * r).stroke({ width: 7, color: inkOf(p.steel) });
+    g.circle(0.6 * r, 0, 0.17 * r).stroke({ width: 4.5, color: p.steel });
+  },
+};
+
+export type UnitBuildKey = 'chud:melee' | 'chud:ranged' | 'chud:brute' | 'guard' | 'monster:warden';
+
+/** Builds for everything else that walks on two legs, keyed like the attack moves ("chud:melee"). */
+export const UNIT_BUILDS: Record<UnitBuildKey, Build> = {
+  'chud:melee': {
+    size: sized(CHUD, { headH: 0.84 }),
+    arms: [1.3, 0.5, 1.5, 0.2],
+    colors: { sleeve: 'body', hand: 'body', leg: 'body', boot: 'body' },
+    torso: chudTorso,
+    head: chudHead(false),
+    foot: (g, r, p) => bareFoot(g, r, p.body),
+    weapon: club(0.8, false),
+    gait: { swing: 0.6, bounce: 0.1, lean: 0.18 },
+  },
+  'chud:ranged': {
+    size: sized(CHUD, { headH: 0.84, legW: 0.28, armW: 0.24 }),
+    arms: [1.2, 0.6, 1.5, 0.2],
+    colors: { sleeve: 'body', hand: 'body', leg: 'body', boot: 'body' },
+    torso: chudTorso,
+    head: chudHead(false),
+    back(g, r, p) {
+      // A pouch of stones on the hip.
+      inked(g, blob(-0.36 * r, -0.12 * r, 0.16 * r, 0.14 * r, 9, 0.15, 12), p.cloth, 2);
+    },
+    foot: (g, r, p) => bareFoot(g, r, p.body),
+    weapon: sling,
+    gait: { swing: 0.6, bounce: 0.1, lean: 0.2 },
+  },
+  'chud:brute': {
+    size: sized(CHUD, { torso: 0.86, legW: 0.38, armW: 0.36, upper: 0.48, fore: 0.46, headH: 0.82 }),
+    arms: [1.25, 0.55, 1.5, 0.2],
+    colors: { sleeve: 'body', hand: 'body', leg: 'body', boot: 'body' },
+    prep: () => ({ body: 0x6c7652 }),
+    torso(g, r, p) {
+      chudTorso(g, r, p);
+      // Scraps of armor, in the team's color.
+      inked(g, blob(0.0, -0.64 * r, 0.36 * r, 0.16 * r, 3, 0.15, 14), p.hood, 2.5);
+    },
+    head: chudHead(true),
+    foot: (g, r, p) => bareFoot(g, r, p.body),
+    weapon: club(1.15, true),
+    gait: { swing: 0.5, bounce: 0.07, lean: 0.14, arm: 0.3 },
+  },
+  guard: {
+    size: sized(HUMAN, { torso: 0.82, legW: 0.28 }),
+    arms: [1.25, 0.9, 1.15, 0.5],
+    colors: { sleeve: 'hood', hand: 'steel', leg: 'steelDark', boot: 'wood' },
+    torso(g, r, p) {
+      inked(g, trunk(r, 0.82, 0.36, 0.38, 1.0, 1.0, 0.1), p.steelDark, 3);
+      // A team tabard over the mail, with the crown's badge.
+      inked(g, smooth([-0.24 * r, -0.8 * r, 0.3 * r, -0.8 * r, 0.32 * r, 0.24 * r, -0.24 * r, 0.24 * r], true, 1), p.hood, 2.5);
+      g.poly([0.04 * r, -0.62 * r, 0.12 * r, -0.48 * r, 0.04 * r, -0.34 * r, -0.04 * r, -0.48 * r]).fill(0xffd166);
+      g.rect(-0.36 * r, -0.12 * r, 0.74 * r, 0.08 * r).fill(p.wood);
+    },
+    head(g, r, p) {
+      inked(g, skull(0.08 * r, -0.34 * r, 0.28 * r, 0.32 * r, 23), 0xd6a274, 3);
+      eye(g, 0.24 * r, -0.36 * r, 0.05 * r, 0x2a3a5a);
+      g.moveTo(0.18 * r, -0.16 * r).lineTo(0.32 * r, -0.17 * r).stroke({ width: 2, color: 0x1a1414 });
+      // A kettle helmet with a brim.
+      inked(g, smooth([-0.26 * r, -0.44 * r, -0.2 * r, -0.74 * r, 0.12 * r, -0.8 * r, 0.36 * r, -0.62 * r, 0.38 * r, -0.44 * r], true, 2), p.steel, 2.5);
+      inked(g, [-0.36 * r, -0.44 * r, 0.5 * r, -0.44 * r, 0.46 * r, -0.38 * r, -0.32 * r, -0.38 * r], p.steel, 2);
+    },
+    weapon: spear,
+    offhand: shield,
+    gait: { swing: 0.45, bounce: 0.05, lean: 0.04 },
+  },
+  'monster:warden': {
+    size: sized(HUMAN, { thigh: 0.36, shin: 0.34, torso: 0.82, legW: 0.38, armW: 0.34, upper: 0.48, fore: 0.46, headH: 0.5, shoulderX: 0.0 }),
+    arms: [1.35, 0.4, 1.5, 0.3],
+    colors: { sleeve: 'steelDark', hand: 'steelDark', leg: 'steelDark', boot: 'iron' },
+    prep: () => ({ steel: 0x8a9099, steelDark: 0x4a4f58, iron: 0x2c3038, visor: 0x7fe3ff }),
+    back(g, r, p) {
+      // Coils of chain slung over the back.
+      for (let i = 0; i < 9; i++) {
+        const a = -2.6 + i * 0.32;
+        g.ellipse(-0.2 * r + Math.cos(a) * 0.5 * r, -0.5 * r + Math.sin(a) * 0.45 * r, i % 2 ? 0.05 * r : 0.09 * r, i % 2 ? 0.09 * r : 0.05 * r).stroke({ width: 4, color: p.steel });
+      }
+    },
+    torso(g, r, p) {
+      // A riveted iron barrel of a body.
+      const body = smooth([-0.5 * r, 0.06 * r, -0.56 * r, -0.5 * r, -0.4 * r, -0.86 * r, 0.3 * r, -0.88 * r, 0.56 * r, -0.5 * r, 0.5 * r, 0.06 * r], true, 2);
+      inked(g, body, p.steelDark, 4);
+      for (const y of [-0.66, -0.36, -0.08]) {
+        g.moveTo(-0.52 * r, y * r).lineTo(0.52 * r, y * r).stroke({ width: 3, color: p.iron });
+        for (const x of [-0.36, -0.12, 0.12, 0.36]) g.circle(x * r, (y - 0.05) * r, 0.03 * r).fill(p.steel);
+      }
+      // Moss and rot from the Deep, creeping up from the hem.
+      for (const [x, y, s] of [[-0.3, 0.0, 0.1], [0.1, -0.02, 0.08], [0.35, -0.1, 0.06]]) g.circle(x * r, y * r, s * r).fill({ color: 0x8fd14f, alpha: 0.45 });
+    },
+    head(g, r, p) {
+      // A great helm sunk between the shoulders, a visor slit glowing.
+      inked(g, smooth([-0.34 * r, 0.04 * r, -0.36 * r, -0.4 * r, -0.1 * r, -0.56 * r, 0.3 * r, -0.5 * r, 0.42 * r, -0.2 * r, 0.36 * r, 0.04 * r], true, 2), p.steelDark, 4);
+      g.roundRect(0.0, -0.32 * r, 0.42 * r, 0.1 * r, 0.03 * r).fill(0x0e1014);
+      g.roundRect(0.06 * r, -0.3 * r, 0.32 * r, 0.06 * r, 0.02 * r).fill(p.visor);
+      g.roundRect(0.0, -0.36 * r, 0.42 * r, 0.18 * r, 0.05 * r).fill({ color: p.visor, alpha: 0.18 });
+      for (const x of [-0.24, 0.24]) g.circle(x * r, -0.08 * r, 0.035 * r).fill(p.steel);
+    },
+    hand: (g, r, p) => mitt(g, r, p.iron, true),
+    weapon: shackle,
+    gait: { swing: 0.35, bounce: 0.04, lean: 0.06, arm: 0.25 },
   },
 };
