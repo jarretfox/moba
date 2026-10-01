@@ -111,6 +111,11 @@ export class ShopPanel {
   private readonly advice: HTMLElement;
   private readonly undoButton: HTMLButtonElement;
   private champ: ChampionId | null = null;
+  /** What the recommended build was last built for, and the parts of it that gold updates in place. */
+  private recKey = '';
+  private rec: { buyWhole: HTMLButtonElement; part: HTMLButtonElement | null; short: HTMLElement } | null = null;
+  /** What the inventory rows were last built for. */
+  private invKey = '';
   /** The recommended build folded down to its header. */
   private folded = (() => {
     try {
@@ -247,25 +252,59 @@ export class ShopPanel {
       card.classList.toggle('discounted', price < ITEMS[id].cost);
     }
     this.undoButton.disabled = !me.undo;
-    this.drawAdvice(me);
-    this.invSlots.forEach((row, i) => {
-      const id = me.items[i];
-      row.replaceChildren();
-      if (!id) {
-        row.className = 'inv-row empty';
-        row.textContent = 'Empty';
-        return;
-      }
-      row.className = `inv-row tier-${ITEMS[id].tier}`;
-      const name = document.createElement('span');
-      name.textContent = ITEMS[id].name;
-      const sell = document.createElement('button');
-      sell.textContent = `Sell ${sellPrice(id)}g`;
-      sell.disabled = !me.inShop;
-      sell.addEventListener('click', () => this.onSell(i));
-      row.append(name, sell);
-    });
+    this.updateAdvice(me);
+    // The inventory's rows (and their Sell buttons) are only rebuilt when the inventory changes. Gold ticks
+    // up twice a second, and a button that's replaced between mouse-down and mouse-up swallows the click.
+    const invKey = JSON.stringify([me.items, me.inShop]);
+    if (invKey !== this.invKey) {
+      this.invKey = invKey;
+      this.invSlots.forEach((row, i) => {
+        const id = me.items[i];
+        row.replaceChildren();
+        if (!id) {
+          row.className = 'inv-row empty';
+          row.textContent = 'Empty';
+          return;
+        }
+        row.className = `inv-row tier-${ITEMS[id].tier}`;
+        const name = document.createElement('span');
+        name.textContent = ITEMS[id].name;
+        const sell = document.createElement('button');
+        sell.textContent = `Sell ${sellPrice(id)}g`;
+        sell.disabled = !me.inShop;
+        sell.addEventListener('click', () => this.onSell(i));
+        row.append(name, sell);
+      });
+    }
     for (const [key, , fmt] of STAT_ROWS) this.stats.get(key)!.textContent = fmt(me.stats[key]);
+  }
+
+  /**
+   * The recommended build is rebuilt only when something about it changes (what you own, what's next,
+   * whether you're at the shop, folded or not). Gold alone just updates the words and the buttons in
+   * place, so the panel never jumps or flickers under the pointer, and a click always lands.
+   */
+  private updateAdvice(me: MeSnap): void {
+    if (!this.champ) return;
+    const { steps, next, toward } = suggest(PROFILES[this.champ].build, me.items, me.gold);
+    const key = JSON.stringify([this.champ, me.items, this.folded, toward, next, me.inShop]);
+    if (key !== this.recKey) {
+      this.recKey = key;
+      this.drawAdvice(me, steps, next, toward);
+    }
+    const r = this.rec;
+    if (!r || !toward || !next) return;
+    const price = priceFor(me.items, toward);
+    const short = Math.max(0, price - me.gold);
+    const why = cantBuy(me, toward);
+    r.buyWhole.disabled = why !== null;
+    r.buyWhole.title = why ?? 'Next in your build';
+    if (r.part) {
+      const whyPart = cantBuy(me, next);
+      r.part.disabled = whyPart !== null;
+      r.part.title = whyPart ?? `A part of ${ITEMS[toward].name}: buy it now, the rest later`;
+    }
+    r.short.textContent = short > 0 ? `${short}g more for the whole thing` : me.inShop ? '' : 'Affordable: head home to buy it';
   }
 
   /**
@@ -274,11 +313,10 @@ export class ShopPanel {
    * what to buy: the whole item if you can afford it, or else a part of it, with the parts you already
    * own ticked off.
    */
-  private drawAdvice(me: MeSnap): void {
+  private drawAdvice(me: MeSnap, steps: Suggestions['steps'], next: ItemId | null, toward: ItemId | null): void {
     this.advice.replaceChildren();
+    this.rec = null;
     if (!this.champ) return;
-    const build = PROFILES[this.champ].build;
-    const { steps, next, toward } = suggest(build, me.items, me.gold);
     const done = steps.filter((s) => s.done).length;
 
     const head = el('div', 'rec-head');
@@ -292,6 +330,7 @@ export class ShopPanel {
         // storage blocked: it just won't be remembered
       }
       this.lastKey = '';
+      this.recKey = '';
       this.update(me);
     });
     this.advice.classList.toggle('folded', this.folded);
@@ -325,7 +364,6 @@ export class ShopPanel {
     }
     const it = ITEMS[toward];
     const price = priceFor(me.items, toward);
-    const short = Math.max(0, price - me.gold);
     const info = el('div', 'rec-info');
     info.append(el('div', 'rec-label', 'Next up'), el('div', 'rec-item', it.name), el('div', 'rec-stats', statLines(it.stats).join(' · ')));
     // What it's made of: the parts you have ticked, the rest with what they cost.
@@ -344,24 +382,22 @@ export class ShopPanel {
       }
       info.append(row);
     }
+    // The buttons and the "so much more to go" line are kept, to be updated in place as gold comes in.
     const actions = el('div', 'rec-actions');
     const buyWhole = el('button', 'rec-buy', `Buy ${it.name} · ${price}g`);
-    const why = cantBuy(me, toward);
-    buyWhole.disabled = why !== null;
-    buyWhole.title = why ?? 'Next in your build';
     buyWhole.addEventListener('click', () => this.onBuy(toward));
     actions.append(buyWhole);
+    let part: HTMLButtonElement | null = null;
     if (next !== toward) {
-      const part = el('button', 'rec-buy part', `Or start with ${ITEMS[next].name} · ${priceFor(me.items, next)}g`);
-      part.disabled = cantBuy(me, next) !== null;
-      part.title = cantBuy(me, next) ?? `A part of ${it.name}: buy it now, the rest later`;
+      part = el('button', 'rec-buy part', `Or start with ${ITEMS[next].name} · ${priceFor(me.items, next)}g`);
       part.addEventListener('click', () => this.onBuy(next));
       actions.append(part);
     }
-    if (short > 0) actions.append(el('div', 'rec-short', `${short}g more for the whole thing`));
-    else if (!me.inShop) actions.append(el('div', 'rec-short', 'Affordable: head home to buy it'));
+    const short = el('div', 'rec-short');
+    actions.append(short);
     box.append(iconEl(it.icon, 'ico rec-big-ico'), info, actions);
     this.advice.append(head, bar, path, box);
+    this.rec = { buyWhole, part, short };
   }
 
   /** Recommended items in the grid get their step number in the corner. */

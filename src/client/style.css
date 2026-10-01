@@ -2638,10 +2638,13 @@ html.colorblind .gold-peak.theirs {
   color: #ffd166;
 }
 
+/* A fixed shape, so the item grid under it never jumps as gold comes in or a purchase lands. */
 .rec-next {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 96px;
+  box-sizing: border-box;
   padding: 8px 10px;
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.35);
@@ -2714,10 +2717,14 @@ html.colorblind .gold-peak.theirs {
   align-items: stretch;
   gap: 4px;
   flex: none;
+  width: 236px;
 }
 
 .rec-buy {
   padding: 6px 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: 1px solid #ffd166;
   border-radius: 4px;
   background: #3a2c12;
@@ -2739,6 +2746,7 @@ html.colorblind .gold-peak.theirs {
 
 .rec-short,
 .rec-complete {
+  min-height: 1.25em;
   font-size: 12px;
   color: var(--muted);
   text-align: center;
