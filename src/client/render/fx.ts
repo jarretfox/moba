@@ -1,6 +1,7 @@
 import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import type { DamageType } from '../../shared/protocol';
 import type { Light } from './lighting';
+import { inkOf, inkStroke, noise2 } from './organic';
 import { Particles, mix } from './particles';
 
 interface Effect {
@@ -24,6 +25,21 @@ const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 const envelope = (t: number, inShare: number, outShare: number) => (t < inShare ? t / inShare : t > 1 - outShare ? (1 - t) / outShare : 1);
 
 type Layer = 'under' | 'mid' | 'top';
+
+/** A ring painted with a brush: its width swells and thins the way round. */
+function brushRing(g: Graphics, x: number, y: number, r: number, width: number, color: number, alpha: number, seed: number): void {
+  if (alpha <= 0.01 || r <= 0) return;
+  const n = Math.max(24, Math.round(r / 6));
+  const outer: number[] = [];
+  const inner: number[] = [];
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const w = width * (0.45 + 0.9 * noise2(Math.cos(a) * 1.8 + seed, Math.sin(a) * 1.8, seed));
+    outer.push(x + Math.cos(a) * (r + w / 2), y + Math.sin(a) * (r + w / 2));
+    inner.unshift(x + Math.cos(a) * (r - w / 2), y + Math.sin(a) * (r - w / 2));
+  }
+  g.poly([...outer, ...inner]).fill({ color, alpha });
+}
 
 /**
  * Short-lived cosmetic effects. Nothing here feeds back into the game. The building blocks live here
@@ -329,17 +345,20 @@ export class FxLayer {
 
   // ─── Hits and deaths ────────────────────────────────────────────────────
 
-  /** Sparks flying off whatever just got hit, in the damage type's color. */
+  /** Sparks flying off whatever just got hit, in the damage type's color; a big hit adds a comic star and ink. */
   impact(x: number, y: number, r: number, type: DamageType, heavy: boolean): void {
     const color = DAMAGE_COLORS[type];
     this.flash(x, y, r * (heavy ? 2.2 : 1.5), color, heavy ? 0.3 : 0.2, heavy ? 0.7 : 0.45);
     this.particles.burst(heavy ? 12 : 6, { shape: 'spark', x, y, life: heavy ? 0.35 : 0.25, size: 10, size2: 4, stretch: 0.06, drag: 0.02, color: 0xffffff, color2: color }, [180, heavy ? 520 : 340]);
     if (type === 'magic') this.particles.burst(heavy ? 6 : 3, { shape: 'star', x, y, life: 0.4, size: 16, size2: 2, color: 0xe4d6ff, color2: color, drag: 0.05, spin: 6 }, [60, 160]);
+    if (!heavy) return;
+    this.particles.emit({ shape: 'pow', glow: false, x, y, life: 0.22, size: r * 1.6, size2: r * 2.4, color: mix(color, 0xffffff, 0.55), rotation: Math.random() * 6, fadeIn: 0.05 });
+    this.particles.burst(4, { shape: 'splat', glow: false, x, y, life: 0.5, size: 12, size2: 7, color: mix(color, 0x1a1414, 0.35), ay: 500, drag: 0.2, spin: 4 }, [120, 260]);
   }
 
   /** A puff of dust and chunks where something died; champions and monsters also give up a rising soul. */
   death(x: number, y: number, r: number, soul: boolean): void {
-    this.particles.burst(8, { shape: 'smoke', glow: false, x, y, life: 0.7, size: r * 0.8, size2: r * 1.8, color: 0xd8cfc0, alpha: 0.4, drag: 0.08 }, [30, 90]);
+    this.particles.burst(7, { shape: 'puff', glow: false, x, y, life: 0.6, size: r * 0.7, size2: r * 1.4, color: 0xe8e0d0, alpha: 0.85, drag: 0.08 }, [40, 110]);
     this.particles.burst(8, { shape: 'shard', glow: false, x, y, life: 0.6, size: 9, size2: 4, color: 0x6b5a42, drag: 0.1, spin: 8 }, [80, 200]);
     if (!soul) return;
     this.pillar(x, y, r * 0.8, 0xbfe9ff, 1.2);
@@ -356,9 +375,15 @@ export class FxLayer {
     this.particles.emit({ shape: 'glow', x, y, life, size: r * 2.6, size2: r * 3.4, color, alpha, fadeIn: 0.05 });
   }
 
-  /** A ring that sweeps out to `radius`. */
+  /** A ring that sweeps out to `radius`, a brushy ink ring under the glow. */
   shockwave(x: number, y: number, radius: number, color: number, life = 0.4): void {
     this.light(x, y, radius * 1.2, color, life, 0.35);
+    const ink = new Graphics();
+    const seed = Math.floor(Math.random() * 1000);
+    this.add(ink, life, (t) => {
+      ink.clear();
+      brushRing(ink, x, y, radius * (0.25 + 0.75 * easeOut(t)) + 7 * (1 - t) + 5, 6 * (1 - t) + 2, inkOf(color), 0.85 * (1 - t), seed);
+    });
     const g = new Graphics();
     g.blendMode = 'add';
     this.add(g, life, (t) => {
@@ -372,8 +397,14 @@ export class FxLayer {
     });
   }
 
-  /** A thin bright ring popping outward. */
+  /** A thin bright ring popping outward, inked. */
   burst(x: number, y: number, color: number, radius = 90): void {
+    const ink = new Graphics();
+    const seed = Math.floor(Math.random() * 1000);
+    this.add(ink, 0.4, (t) => {
+      ink.clear();
+      brushRing(ink, x, y, 22 + (radius - 20) * easeOut(t), 5 * (1 - t) + 1.5, inkOf(color), 0.7 * (1 - t), seed);
+    });
     const g = new Graphics();
     g.blendMode = 'add';
     this.add(g, 0.4, (t) => {
@@ -384,6 +415,14 @@ export class FxLayer {
   /** A circle of runes turning on the ground: summonings, marks, casts. */
   sigil(x: number, y: number, r: number, color: number, life: number, spin = 1): void {
     this.light(x, y, r * 1.6, color, life, 0.5);
+    // Inked onto the ground first, then glowing over it.
+    const ink = new Graphics();
+    const seed = Math.floor(Math.random() * 1000);
+    this.add(ink, life, (t) => {
+      const a = envelope(t, 0.15, 0.35);
+      ink.clear();
+      brushRing(ink, x, y, r * (0.65 + 0.35 * easeOut(Math.min(1, t / 0.2))) + 3, 6, inkOf(color), 0.55 * a, seed);
+    }, 'under');
     const g = new Graphics();
     g.blendMode = 'add';
     g.position.set(x, y);
@@ -426,6 +465,8 @@ export class FxLayer {
 
   /** A crescent swipe: the blade sweeps across, bright on the leading edge, then fades. */
   slash(x: number, y: number, angle: number, radius: number, spread: number, color: number, life = 0.3): void {
+    const ink = new Graphics();
+    this.add(ink, life, () => undefined);
     const g = new Graphics();
     g.blendMode = 'add';
     this.add(g, life, (t) => {
@@ -451,6 +492,14 @@ export class FxLayer {
       g.poly(band(0.6, 1.06)).fill({ color, alpha: 0.22 * fade }); // soft glow around it
       g.poly(band(0.42, 1)).fill({ color, alpha: 0.6 * fade });
       g.poly(band(0.13, 1)).fill({ color: 0xffffff, alpha: 0.85 * fade }); // the hot edge
+      // An inked line along the outside of the swipe, tapering away at the tail.
+      ink.clear();
+      const edge: number[] = [];
+      for (let i = 0; i <= 16; i++) {
+        const a = a0 + (a1 - a0) * (i / 16);
+        edge.push(x + Math.cos(a) * radius * 1.07, y + Math.sin(a) * radius * 1.07);
+      }
+      inkStroke(ink, edge, 5, { color: inkOf(color), alpha: 0.8 * fade, tip: 0.05 });
     });
   }
 
@@ -510,16 +559,55 @@ export class FxLayer {
     const nx = -(y2 - y) / (len || 1);
     const ny = (x2 - x) / (len || 1);
     const steps = Math.max(4, Math.round(len / 28));
+    // An inked bolt under the glowing one.
+    const ink = new Graphics();
+    this.add(ink, life, () => undefined);
     this.add(g, life, (t) => {
-      g.clear().moveTo(x, y);
+      const pts = [x, y];
       for (let i = 1; i < steps; i++) {
         const k = i / steps;
         const off = (Math.random() - 0.5) * len * 0.12;
-        g.lineTo(x + (x2 - x) * k + nx * off, y + (y2 - y) * k + ny * off);
+        pts.push(x + (x2 - x) * k + nx * off, y + (y2 - y) * k + ny * off);
       }
-      g.lineTo(x2, y2);
+      pts.push(x2, y2);
+      g.clear().moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
       g.stroke({ width: width + 5, color, alpha: 0.35 * (1 - t) }).stroke({ width, color: 0xffffff, alpha: 0.95 * (1 - t) });
+      ink.clear().moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) ink.lineTo(pts[i], pts[i + 1]);
+      ink.stroke({ width: width + 3, color: inkOf(color), alpha: 0.85 * (1 - t), join: 'round', cap: 'round' });
     });
+  }
+
+  /**
+   * A comic-book word over a hit: hand-lettered, on a spiky burst in `color`, popping in at a tilt and
+   * floating off. `big` for knockouts.
+   */
+  comic(x: number, y: number, word: string, color: number, big = false): void {
+    const size = big ? 34 : 24;
+    const holder = new Container();
+    const star = new Graphics();
+    const w = word.length * size * 0.38 + size * 0.6;
+    const pts: number[] = [];
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * Math.PI * 2;
+      const rr = i % 2 ? 0.62 : 0.95 + Math.sin(i * 2.1) * 0.12;
+      pts.push(Math.cos(a) * w * 0.55 * rr, Math.sin(a) * size * 1.05 * rr);
+    }
+    star.poly(pts.map((v, i) => v + (i % 2 ? 3 : 2))).fill({ color: inkOf(color), alpha: 0.9 });
+    star.poly(pts).fill(mix(color, 0xffffff, 0.25)).stroke({ width: 2.5, color: inkOf(color), join: 'round' });
+    const txt = new Text({ text: word, style: { fontFamily: FONT, fontSize: size, fill: 0xfff6d8, stroke: { color: 0x1a1414, width: 6, join: 'round' }, letterSpacing: 1 } });
+    txt.anchor.set(0.5);
+    holder.addChild(star, txt);
+    const tilt = (Math.random() - 0.5) * 0.4;
+    const dx = (Math.random() - 0.5) * 40;
+    this.add(holder, big ? 1.2 : 0.8, (t) => {
+      const pop = t < 0.12 ? 0.4 + (t / 0.12) * 0.8 : t < 0.22 ? 1.2 - ((t - 0.12) / 0.1) * 0.2 : 1;
+      holder.scale.set(pop);
+      holder.rotation = tilt;
+      holder.position.set(x + dx * t, y - 30 - t * 40);
+      holder.alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+    }, 'top');
   }
 
   /** A see-through glowing picture (an ability's icon) that grows, drifts and fades: spirits of a spell. */

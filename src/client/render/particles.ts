@@ -2,10 +2,12 @@ import { Container, Particle, ParticleContainer, Rectangle, Texture } from 'pixi
 
 // A small particle engine for spell effects: thousands of tinted sprites cut from one generated sheet,
 // moved on the CPU and drawn in two batches (glowing additive ones, and plain ones like smoke and dirt).
+// The solid shapes are drawn in the game's inked style: white inside, a gray rim, so whatever color they're
+// tinted, the rim comes out a darker shade of it, like the ink lines on everything else.
 
-export type Shape = 'glow' | 'spark' | 'star' | 'smoke' | 'shard' | 'ring' | 'mote' | 'leaf';
+export type Shape = 'glow' | 'spark' | 'star' | 'smoke' | 'shard' | 'ring' | 'mote' | 'leaf' | 'splat' | 'pow' | 'puff';
 
-const SHAPES: Shape[] = ['glow', 'spark', 'star', 'smoke', 'shard', 'ring', 'mote', 'leaf'];
+const SHAPES: Shape[] = ['glow', 'spark', 'star', 'smoke', 'shard', 'ring', 'mote', 'leaf', 'splat', 'pow', 'puff'];
 const CELL = 64;
 
 export interface Emit {
@@ -88,17 +90,17 @@ function buildSheet(): Record<Shape, Texture> {
         }
         break;
       case 'smoke':
-        for (const [dx, dy, r] of [[-7, -4, 18], [6, -6, 16], [2, 6, 19], [-4, 4, 14], [8, 4, 13]]) soft(cx + dx, h + dy, r, [[0, 0.55], [0.6, 0.3], [1, 0]]);
+        // A soft, lumpy puff with a brushy darker rim.
+        lumps(ctx, cx, h, [[-7, -4, 15], [6, -6, 13], [2, 6, 16], [-5, 5, 12], [8, 4, 11]], 'rgba(150,150,150,0.55)', 'rgba(255,255,255,0.5)', 2.5);
         break;
       case 'shard':
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.moveTo(cx, 6);
-        ctx.lineTo(cx + 12, h);
-        ctx.lineTo(cx, CELL - 6);
-        ctx.lineTo(cx - 12, h);
-        ctx.closePath();
-        ctx.fill();
+        ink(ctx, () => {
+          ctx.moveTo(cx, 6);
+          ctx.lineTo(cx + 12, h - 2);
+          ctx.lineTo(cx + 3, CELL - 6);
+          ctx.lineTo(cx - 12, h + 3);
+          ctx.closePath();
+        });
         break;
       case 'ring': {
         const g = ctx.createRadialGradient(cx, h, h * 0.55, cx, h, h);
@@ -113,18 +115,82 @@ function buildSheet(): Record<Shape, Texture> {
         soft(cx, h, h * 0.45, [[0, 1], [0.55, 1], [1, 0]]);
         break;
       case 'leaf':
-        ctx.fillStyle = '#fff';
+        ink(ctx, () => {
+          ctx.moveTo(cx - 22, h);
+          ctx.quadraticCurveTo(cx, h - 16, cx + 22, h);
+          ctx.quadraticCurveTo(cx, h + 16, cx - 22, h);
+          ctx.closePath();
+        });
+        ctx.strokeStyle = 'rgb(140,140,140)';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(cx - 22, h);
-        ctx.quadraticCurveTo(cx, h - 16, cx + 22, h);
-        ctx.quadraticCurveTo(cx, h + 16, cx - 22, h);
-        ctx.fill();
+        ctx.moveTo(cx - 18, h);
+        ctx.quadraticCurveTo(cx, h - 3, cx + 20, h);
+        ctx.stroke();
+        break;
+      case 'splat': {
+        // A blot of ink, and drops flung off it.
+        ink(ctx, () => {
+          for (let k = 0; k <= 16; k++) {
+            const a = (k / 16) * Math.PI * 2;
+            const rr = (k % 2 ? 12 : 17) + Math.sin(k * 2.3) * 3;
+            if (k === 0) ctx.moveTo(cx + Math.cos(a) * rr, h + Math.sin(a) * rr);
+            else ctx.lineTo(cx + Math.cos(a) * rr, h + Math.sin(a) * rr);
+          }
+          ctx.closePath();
+        });
+        for (const [dx, dy, r] of [[22, -12, 4], [-20, 15, 3.5], [16, 20, 3], [-23, -9, 2.5]]) ink(ctx, () => ctx.arc(cx + dx, h + dy, r, 0, Math.PI * 2), 1.5);
+        break;
+      }
+      case 'pow':
+        // A comic impact star: spiky, uneven.
+        ink(ctx, () => {
+          for (let k = 0; k <= 22; k++) {
+            const a = (k / 22) * Math.PI * 2;
+            const rr = k % 2 ? 13 : 24 + Math.sin(k * 1.7) * 5;
+            if (k === 0) ctx.moveTo(cx + Math.cos(a) * rr, h + Math.sin(a) * rr);
+            else ctx.lineTo(cx + Math.cos(a) * rr, h + Math.sin(a) * rr);
+          }
+          ctx.closePath();
+        }, 3);
+        break;
+      case 'puff':
+        // A crisp cartoon cloud.
+        lumps(ctx, cx, h, [[-9, 2, 11], [0, -6, 13], [10, 1, 11], [2, 8, 10]], 'rgb(150,150,150)', '#fff', 3);
         break;
     }
     ctx.restore();
   });
   const source = Texture.from(canvas).source;
   return Object.fromEntries(SHAPES.map((s, i) => [s, new Texture({ source, frame: new Rectangle(i * CELL, 0, CELL, CELL) })])) as Record<Shape, Texture>;
+}
+
+/** Fills a shape white with a gray rim (tinted, the rim is a darker shade of the color). */
+function ink(ctx: CanvasRenderingContext2D, path: () => void, width = 2.5): void {
+  ctx.beginPath();
+  path();
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.strokeStyle = 'rgb(140,140,140)';
+  ctx.lineWidth = width;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+}
+
+/** Overlapping round lumps, rimmed as one shape. */
+function lumps(ctx: CanvasRenderingContext2D, cx: number, cy: number, parts: readonly (readonly [number, number, number])[], rim: string, fill: string, width: number): void {
+  ctx.fillStyle = rim;
+  for (const [dx, dy, r] of parts) {
+    ctx.beginPath();
+    ctx.arc(cx + dx, cy + dy, r + width, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = fill;
+  for (const [dx, dy, r] of parts) {
+    ctx.beginPath();
+    ctx.arc(cx + dx, cy + dy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 /** Most particles alive at once by default; past this, new ones are skipped (cosmetic, so nothing breaks). */

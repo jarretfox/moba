@@ -27,6 +27,7 @@ import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
 import { CAST_COLORS } from './render/spells';
+import { KO_WORD, hitWord } from './render/comic';
 import { chestHeight, crystalHeight, flightHeight, standHeight } from './render/stature';
 import { Wind } from './render/wind';
 import { noiseTexture } from './render/groundTexture';
@@ -139,6 +140,8 @@ export class GameClient {
   private frameCount = 0;
   /** Where each walker was and when its next footstep is due. */
   private readonly steps = new Map<number, { x: number; y: number; next: number; left: boolean }>();
+  /** When each source last got a comic word over a hit, so a flurry doesn't bury the screen in them. */
+  private readonly lastWord = new Map<number, number>();
   /** The wind: leans the brush, flaps the banners, stirs the leaves. */
   private readonly wind = new Wind();
   /** Patches of tall grass, for the wind to lean. */
@@ -593,6 +596,15 @@ export class GameClient {
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
           this.fx.impact(hit.x, hit.y - chestHeight(hit), hit.r, ev.type, heavy);
+          // A comic word over a big hit (not too often from any one source).
+          if (heavy && (hit.k === 'champion' || from?.k === 'champion')) {
+            const now = performance.now() / 1000;
+            const key = ev.src ?? -1;
+            if ((this.lastWord.get(key) ?? 0) < now - 0.9) {
+              this.lastWord.set(key, now);
+              this.fx.comic(hit.x, hit.y - standHeight(hit), hitWord(from?.champ, Math.random()), from?.champ ? CAST_COLORS[from.champ] : 0xffd166);
+            }
+          }
           // Hit-stop (visual only): the target freezes and shudders, a close attacker holds too, and if
           // you're in it, the effects crawl for a beat.
           if (heavy && (hit.k === 'champion' || hit.k === 'monster')) {
@@ -643,6 +655,7 @@ export class GameClient {
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
         else this.fx.death(t.x, t.y - chestHeight(t) * 0.6, t.r, t.k === 'champion' || t.k === 'monster');
         if (t.k === 'champion') championDeath(this.fx, t);
+        if (t.k === 'champion') this.fx.comic(t.x, t.y - standHeight(t) - 20, KO_WORD, 0xff5a5f, true);
         if (t.k === 'champion') this.speak(t, 'death', ev.id, true);
         if (ev.id === this.myId && !this.replay) {
           this.camera.shake(16);
