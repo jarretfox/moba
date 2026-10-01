@@ -1,12 +1,13 @@
 import type { EntitySnap } from '../../shared/protocol';
 import { beastHeight } from './beasts';
 import { BUILDS, UNIT_BUILDS } from './builds';
+import { BUILDING, buildingHeight } from './structures';
 import type { Proportions } from './rig';
 
 // Everything that walks stands up off the ground, so things that happen "to" it (hits, numbers, words, a
 // halo of sparks) happen up on the body rather than at its feet. Structures, totems and the like are flat.
 
-type Sized = Pick<EntitySnap, 'k' | 'r' | 'champ' | 'chud' | 'mon'>;
+type Sized = Pick<EntitySnap, 'k' | 'r' | 'champ' | 'chud' | 'mon' | 'role'>;
 
 const tall = (s: Proportions) => s.thigh + s.shin + s.torso + s.headH;
 
@@ -23,6 +24,8 @@ function stands(e: Sized): number {
       return e.mon === 'warden' ? tall(UNIT_BUILDS['monster:warden'].size) : beastHeight(e.mon ?? 'rat');
     case 'dummy':
       return beastHeight('dummy');
+    case 'structure':
+      return e.role ? buildingHeight(e.role) : 0;
     default:
       return 0;
   }
@@ -36,6 +39,13 @@ export function standHeight(e: Sized): number {
 /** How far above its spot a unit gets hit: the middle of the body (the spot itself for flat things). */
 export function chestHeight(e: Sized): number {
   return stands(e) ? stands(e) * e.r * 0.5 : 0;
+}
+
+/** Where a Shootie or Da Base's crystal floats, above its spot: Shootie shots and beams start there. */
+export function crystalHeight(e: Sized): number {
+  if (e.role === 'daBase') return BUILDING.daBase.crystal * e.r;
+  if (e.k === 'structure' && e.role !== 'oakner') return BUILDING.shootie.crystal * e.r;
+  return chestHeight(e);
 }
 
 /** How high arrows, bolts and thrown things fly. */

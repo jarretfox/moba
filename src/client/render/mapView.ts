@@ -84,7 +84,7 @@ export interface MapLayers {
 }
 
 /** How far each kind of tall thing leans out from the middle of the screen (share of its distance). */
-export const HEIGHT = { wall: 0.04, structure: 0.045, tree: 0.065 } as const;
+export const HEIGHT = { wall: 0.04, tree: 0.065 } as const;
 
 /** Places a tall layer: everything in it is pushed out from the camera's center by `k` of its distance. */
 export function elevate(layer: Container, k: number, cameraX: number, cameraY: number): void {

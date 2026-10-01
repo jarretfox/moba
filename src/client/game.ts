@@ -27,7 +27,7 @@ import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
 import { CAST_COLORS } from './render/spells';
-import { chestHeight, flightHeight, standHeight } from './render/stature';
+import { chestHeight, crystalHeight, flightHeight, standHeight } from './render/stature';
 import type { FxKind } from '../shared/protocol';
 import type { SoundName } from './audio';
 import { driftAt } from './render/backdrop';
@@ -70,9 +70,8 @@ export class GameClient {
   private readonly groundLayer = new Container();
   private readonly underLayer = new Container();
   private readonly structureLayer = new Container();
-  /** Raised layers for the tops of tall things: cliffs, structures, trees. */
+  /** Raised layers for the tops of tall things: cliffs and trees. */
   private readonly wallTops = new Container();
-  private readonly structureTops = new Container();
   private readonly canopy = new Container();
   /** Units, nearer the bottom of the screen drawn in front (they stand up now, so they overlap). */
   private readonly unitLayer = new Container({ sortableChildren: true });
@@ -239,7 +238,6 @@ export class GameClient {
       this.fx.under,
       this.structureLayer,
       this.wallTops,
-      this.structureTops,
       this.canopy,
       this.critters.container,
       this.fog.sprite,
@@ -397,7 +395,6 @@ export class GameClient {
     }
     this.camera.apply(this.worldLayer, w, h, dt);
     elevate(this.wallTops, HEIGHT.wall, this.camera.x, this.camera.y);
-    elevate(this.structureTops, HEIGHT.structure, this.camera.x, this.camera.y);
     elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
     elevate(this.lamps, HEIGHT.wall, this.camera.x, this.camera.y);
     this.emissive.position.copyFrom(this.worldLayer.position);
@@ -532,7 +529,7 @@ export class GameClient {
         break;
       case 'structure': {
         const sv = new StructureView(s, rel);
-        this.structureTops.addChild(sv.top);
+        this.unitLayer.addChild(sv.top);
         view = sv;
         layer = this.structureLayer;
         break;
@@ -924,8 +921,9 @@ export class GameClient {
 
   /** A Shootie firing: a flash off its crystal (up on the raised top) and sparks toward its target. */
   private shootieFires(s: EntitySnap, target: EntitySnap | undefined): void {
-    const x = s.x + HEIGHT.structure * (s.x - this.camera.x);
-    const y = s.y + HEIGHT.structure * (s.y - this.camera.y);
+    // From the crystal floating over the tower.
+    const x = s.x;
+    const y = s.y - crystalHeight(s);
     const color = s.tm === this.myTeam ? 0x7cc4ff : enemyLight();
     this.fx.flash(x, y, 34, color, 0.2, 0.9);
     const a = target ? Math.atan2(target.y - y, target.x - x) : 0;
@@ -990,9 +988,9 @@ export class GameClient {
         this.towerShots.delete(id);
         continue;
       }
-      // From the crystal on top, which leans with the raised layer.
-      const sx = s.x + HEIGHT.structure * (s.x - this.camera.x);
-      const sy = s.y + HEIGHT.structure * (s.y - this.camera.y);
+      // From the crystal floating over the tower, to the middle of whoever it's shooting.
+      const sx = s.x;
+      const sy = s.y - crystalHeight(s);
       const ours = t.tm === this.myTeam;
       const color = ours ? 0xff4a4a : 0x6fb4ff;
       const pulse = 0.75 + 0.25 * Math.sin(now * 12);
