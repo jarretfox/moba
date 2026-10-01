@@ -2860,6 +2860,111 @@ img.item-fly {
   margin: 2px 0 6px;
 }
 
+/* ─── Play of the Game: letterboxed, the HUD away, the star's card ─────── */
+
+.replaying .bar,
+.replaying .minimap,
+.replaying .help,
+.replaying .clock,
+.replaying .buffs,
+.replaying .warden,
+.replaying .tip,
+.replaying .spectate,
+.replaying .respawn {
+  visibility: hidden;
+}
+
+.potg {
+  position: absolute;
+  inset: 0;
+  z-index: 44;
+  cursor: pointer;
+}
+
+.potg-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10vh;
+  background: #000;
+  animation: potg-bar 0.5s ease-out both;
+}
+
+.potg-bar.top {
+  top: 0;
+  transform-origin: top;
+}
+
+.potg-bar.bottom {
+  bottom: 0;
+  transform-origin: bottom;
+}
+
+@keyframes potg-bar {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.potg-card {
+  position: absolute;
+  left: 4vw;
+  bottom: calc(10vh + 18px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 22px 10px 10px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(10, 12, 18, 0.92), rgba(10, 12, 18, 0.6));
+  border-left: 4px solid var(--gold);
+  animation: potg-card 0.6s 0.3s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+}
+
+@keyframes potg-card {
+  from {
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+}
+
+.potg-face {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--gold);
+}
+
+.potg-face[src=''] {
+  display: none;
+}
+
+.potg-label {
+  font: 13px var(--font-display);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.potg-name {
+  font: 30px/1.05 var(--font-display);
+  color: #fff;
+  text-shadow: 0 3px 0 #000;
+}
+
+.potg-title {
+  font: 16px var(--font-display);
+  letter-spacing: 0.12em;
+  color: #ffd2a0;
+}
+
+.potg-skip {
+  position: absolute;
+  right: 3vw;
+  bottom: 3vh;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* ─── The match intro: both teams, a VS, and words between rivals ─────── */
 
 .intro {

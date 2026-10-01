@@ -44,20 +44,23 @@ export class SnapshotBuffer {
       }
     }
 
-    let i = snaps.length - 1;
-    while (i > 0 && snaps[i].time > t) i--;
-    const s0 = snaps[i];
-    const s1 = snaps[i + 1];
-    if (!s1 || t <= s0.time) return { ents: s0.ents, events };
-
-    // Entities appear once they exist in s0 and glide toward where they are in s1.
-    const alpha = (t - s0.time) / (s1.time - s0.time);
-    const next = new Map(s1.ents.map((e) => [e.id, e]));
-    const ents = s0.ents.map((e) => {
-      const n = next.get(e.id);
-      if (!n) return e;
-      return { ...e, x: lerp(e.x, n.x, alpha), y: lerp(e.y, n.y, alpha), f: lerpAngle(e.f, n.f, alpha) };
-    });
-    return { ents, events };
+    return { ents: entsAt(snaps, t), events };
   }
+}
+
+/** Entities at time `t` among `snaps` (in time order): they appear once they exist and glide toward where they're next seen. */
+export function entsAt(snaps: readonly Snapshot[], t: number): EntitySnap[] {
+  if (!snaps.length) return [];
+  let i = snaps.length - 1;
+  while (i > 0 && snaps[i].time > t) i--;
+  const s0 = snaps[i];
+  const s1 = snaps[i + 1];
+  if (!s1 || t <= s0.time) return s0.ents;
+  const alpha = (t - s0.time) / (s1.time - s0.time);
+  const next = new Map(s1.ents.map((e) => [e.id, e]));
+  return s0.ents.map((e) => {
+    const n = next.get(e.id);
+    if (!n) return e;
+    return { ...e, x: lerp(e.x, n.x, alpha), y: lerp(e.y, n.y, alpha), f: lerpAngle(e.f, n.f, alpha) };
+  });
 }

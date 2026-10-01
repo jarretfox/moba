@@ -13,6 +13,7 @@ import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
 import type { RecapEntry } from './recap';
 import type { Award } from './awards';
+import type { Highlight } from './highlights';
 import { el } from './ui/dom';
 
 interface SlotEls {
@@ -98,6 +99,7 @@ export class Hud {
   private readonly recapEl: HTMLElement;
   /** The end screen's awards and gold graph, once the match is over. */
   private extras: { awards: HTMLElement | null; gold: HTMLElement | null } | null = null;
+  private potgCleanup: (() => void) | null = null;
   private readonly respawnRing: HTMLElement;
   private readonly respawnTime: HTMLElement;
   private readonly recall: HTMLElement;
@@ -633,6 +635,39 @@ export class Hud {
     }
     this.extras = { awards: list, gold };
     this.scoreKey = '';
+  }
+
+  /** Play of the Game: letterbox bars, the HUD tucked away, and who it's about. Click or any key skips it. */
+  showPlayOfTheGame(clip: Highlight, onSkip: () => void): void {
+    this.hidePlayOfTheGame();
+    const root = this.respawn.parentElement!;
+    root.classList.add('replaying');
+    const box = el('div', 'potg');
+    const card = el('div', 'potg-card');
+    const face = el('img', 'potg-face');
+    face.src = (clip.champ && portraitOf(clip.champ, clip.skin ?? 0)) || '';
+    face.alt = '';
+    const words = el('div', 'potg-words');
+    words.append(el('div', 'potg-label', 'Play of the Game'), el('div', 'potg-name', clip.name), el('div', 'potg-title', clip.title));
+    card.append(face, words);
+    box.append(el('div', 'potg-bar top'), el('div', 'potg-bar bottom'), card, el('div', 'potg-skip', 'Click or press any key to skip'));
+    root.append(box);
+    const skip = () => onSkip();
+    box.addEventListener('pointerdown', skip);
+    const key = (e: KeyboardEvent) => {
+      if (e.code !== 'Tab') onSkip();
+    };
+    window.addEventListener('keydown', key, { once: true });
+    this.potgCleanup = () => {
+      window.removeEventListener('keydown', key);
+      box.remove();
+      root.classList.remove('replaying');
+    };
+  }
+
+  hidePlayOfTheGame(): void {
+    this.potgCleanup?.();
+    this.potgCleanup = null;
   }
 
   /** Who the camera's following while you're dead (null: nobody). */

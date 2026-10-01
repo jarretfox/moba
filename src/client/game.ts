@@ -46,6 +46,7 @@ import { Spectator } from './spectate';
 import { goldGraph, pickAwards, type GoldSample, type MatchTally } from './awards';
 import { Tips } from './hints';
 import { utterance, type VoiceMoment } from './voices';
+import { Highlights, Replay, type Highlight } from './highlights';
 import { Shopkeeper, wickSpot } from './render/shopkeeper';
 import { buildLandmarks } from './render/landmarks';
 import { WickMood, wickLine, type WickMoment } from './wick';
@@ -157,6 +158,10 @@ export class GameClient {
   /** First-match tips, and what they watch for: have you moved, cast, or opened the shop yet. */
   private readonly tips: Tips;
   private moved = false;
+  /** Play of the Game: the best moment so far, and its replay once the match is over. */
+  private readonly highlights = new Highlights();
+  private replay: Replay | null = null;
+  private potgDone = false;
   /** When each champion last spoke, so grunts don't pile up. */
   private readonly spokeAt = new Map<number, number>();
   private casts = 0;
@@ -292,7 +297,9 @@ export class GameClient {
         this.minimap.setTeam(msg.team);
       }
     } else if (msg.t === 'snap') {
-      this.buffer.push(this.decoder.decode(msg.snap), performance.now() / 1000);
+      const snap = this.decoder.decode(msg.snap);
+      this.buffer.push(snap, performance.now() / 1000);
+      this.highlights.record(snap);
     }
   }
 
@@ -337,7 +344,8 @@ export class GameClient {
   // ─── Per frame ────────────────────────────────────────────────────────────
 
   private frame(dt: number): void {
-    const { ents, events } = this.buffer.sample(performance.now() / 1000);
+    // Normally the live match; during Play of the Game, the replay.
+    const { ents, events } = this.replay ? this.replay.step(dt) : this.buffer.sample(performance.now() / 1000);
     this.ents = new Map(ents.map((e) => [e.id, e]));
     this.syncViews(dt);
     this.emitTrails();
@@ -360,7 +368,7 @@ export class GameClient {
     const { width: w, height: h } = this.app.screen;
     this.camera.update(dt, me && !me.dead ? me : null, this.mouse.inside ? this.mouse : null, w, h, this.centerHeld);
     const watching = this.spectate(dt, me);
-    this.fog.sprite.visible = !!me;
+    this.fog.sprite.visible = !!me && !this.replay;
     if (!me && !this.finale) {
       // Waiting in the lobby or champion select: drift over the map like the menu does (no fog: no side yet).
       const at = driftAt(performance.now() / 1000);
@@ -371,7 +379,15 @@ export class GameClient {
       this.camera.x = this.peek.x;
       this.camera.y = this.peek.y;
     }
-    if (this.finale) {
+    if (this.replay) {
+      // Play of the Game: the camera rides with the star.
+      const star = this.ents.get(this.replay.clip.star);
+      const k = Math.min(1, dt * 4);
+      if (star) {
+        this.camera.x += (star.x - this.camera.x) * k;
+        this.camera.y += (star.y - this.camera.y) * k;
+      }
+    } else if (this.finale) {
       // Glide over to watch Da Base fall.
       const k = Math.min(1, dt * 2.5);
       this.camera.x += (this.finale.x - this.camera.x) * k;
@@ -410,7 +426,7 @@ export class GameClient {
     this.drawBeams();
     this.renderBloom(w, h);
     this.drawMinimap(w, h);
-    this.baseLife();
+    if (!this.replay) this.baseLife();
     this.updateSoundscape();
 
     const latest = this.buffer.latest;
@@ -432,7 +448,15 @@ export class GameClient {
         this.camera.locked = false;
       }
     }
-    if (latest?.winner && performance.now() / 1000 - this.finale!.at > 3.2) {
+    if (latest?.winner && performance.now() / 1000 - this.finale!.at > 3.2 && !this.potgDone) {
+      // Before the scores: the Play of the Game, if there was one.
+      if (!this.replay) {
+        this.highlights.close(latest.time);
+        if (this.highlights.best) this.startReplay(this.highlights.best);
+        else this.potgDone = true;
+      } else if (this.replay.done) this.endReplay();
+    }
+    if (latest?.winner && this.potgDone && performance.now() / 1000 - this.finale!.at > 3.2) {
       if (!this.gameOverPlayed) {
         const awards = pickAwards(latest.scores ?? [], this.tally);
         this.hud.setMatchExtras(awards, goldGraph(this.goldHistory, 340, 72));
@@ -567,7 +591,7 @@ export class GameClient {
           }
         }
         if (ev.src !== this.myId && ev.target !== this.myId) return;
-        if (ev.target === this.myId && ev.src !== this.myId && ev.amount >= 1) this.recordHit(ev, from);
+        if (ev.target === this.myId && ev.src !== this.myId && ev.amount >= 1 && !this.replay) this.recordHit(ev, from);
         const other = this.ents.get(ev.src === this.myId ? ev.target : (ev.src ?? -1));
         if (other?.k === 'champion' && ev.amount >= 1) this.lastFight = performance.now() / 1000;
         const t = this.ents.get(ev.target);
@@ -597,7 +621,7 @@ export class GameClient {
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
         else this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
         if (t.k === 'champion') this.speak(t, 'death', ev.id, true);
-        if (ev.id === this.myId) {
+        if (ev.id === this.myId && !this.replay) {
           this.camera.shake(16);
           this.hud.showRecap(this.damageLog.recap(performance.now() / 1000));
         }
@@ -612,6 +636,7 @@ export class GameClient {
         return;
       }
       case 'gold': {
+        if (this.replay) return;
         const t = ev.id === this.myId ? this.ents.get(ev.id) : undefined;
         if (t && ev.amount > 0) this.fx.goldNumber(t.x, t.y - t.r - 18, ev.amount);
         if (t && ev.amount >= 15) {
@@ -621,6 +646,7 @@ export class GameClient {
         return;
       }
       case 'level': {
+        if (this.replay) return;
         const t = ev.id === this.myId ? this.ents.get(ev.id) : undefined;
         if (t) this.fx.levelUp(t.x, t.y, t.r, ev.level);
         if (t) this.hud.levelFlash();
@@ -642,8 +668,8 @@ export class GameClient {
         return;
       }
       case 'kill':
-        if (ev.what === 'warden') this.tally.warden[ev.killer] = (this.tally.warden[ev.killer] ?? 0) + 1;
-        if (ev.what === 'champion' && !ev.killerChamp) this.tally.executed[ev.victim] = (this.tally.executed[ev.victim] ?? 0) + 1;
+        if (!this.replay && ev.what === 'warden') this.tally.warden[ev.killer] = (this.tally.warden[ev.killer] ?? 0) + 1;
+        if (!this.replay && ev.what === 'champion' && !ev.killerChamp) this.tally.executed[ev.victim] = (this.tally.executed[ev.victim] ?? 0) + 1;
         this.hud.pushFeed(ev, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
         this.announceKill(ev);
         return;
@@ -687,6 +713,21 @@ export class GameClient {
       label = 'Chud hits';
     } else if (from?.k === 'monster' && label === 'Basic attacks') label = 'Mauling';
     this.damageLog.add({ t, key, name, champ: from?.champ, skin: from?.skin, kind: from?.k, label, amount: ev.amount });
+  }
+
+  /** Rolls the Play of the Game: letterboxed, the HUD put away, the announcer calling it again. */
+  private startReplay(clip: Highlight): void {
+    this.replay = new Replay(clip);
+    this.multiKills.clear();
+    this.hud.showPlayOfTheGame(clip, () => this.endReplay());
+    this.sound.play('fanfare', 0.6);
+  }
+
+  private endReplay(): void {
+    if (!this.replay) return;
+    this.replay = null;
+    this.potgDone = true;
+    this.hud.hidePlayOfTheGame();
   }
 
   /** Notes who's ahead on gold (every ten seconds or so, and at the very end). */
@@ -797,7 +838,7 @@ export class GameClient {
       }
       wick.update(dt, customer);
     });
-    if (!me) return;
+    if (!me || this.replay) return;
     const mine = this.wicks[this.myTeam - 1];
     const moment = mine && this.wickMood.update(Math.hypot(me.x - mine.x, me.y - mine.y), !!me.dead, t);
     if (moment) this.wickSays(moment);
@@ -1033,7 +1074,7 @@ export class GameClient {
         return; // the finale speaks for itself
       case 'champion': {
         if (ev.team === TEAM.neutral) return say('EXECUTED', `${ev.victim} fell to ${ev.killer === 'Executed' ? 'the lane' : ev.killer}`, false);
-        const now = this.buffer.latest?.time ?? 0;
+        const now = this.replay?.time ?? this.buffer.latest?.time ?? 0;
         const last = this.multiKills.get(ev.killer);
         const n = last && now - last.at < 10 ? last.n + 1 : 1;
         this.multiKills.set(ev.killer, { n, at: now });
