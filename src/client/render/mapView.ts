@@ -83,6 +83,8 @@ export interface MapLayers {
   canopy: Container;
   /** Patches of tall grass, each pivoted at its foot, for the wind to lean. */
   sway: Container[];
+  /** Things standing up off the ground (lantern posts, braziers, toadstools): sort them in with the units. */
+  standing: Container[];
 }
 
 /** How far each kind of tall thing leans out from the middle of the screen (share of its distance). */
@@ -139,7 +141,7 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
 
   // Lanterns, braziers, glowing mushrooms and bones.
   const props = new Graphics();
-  paintProps(props, wallTops, propSpots(map));
+  const standing: Container[] = paintProps(props, propSpots(map));
   root.addChild(props);
   // Each patch of tall grass on its own, so the wind can lean it from its foot.
   const sway: Container[] = [];
@@ -160,7 +162,7 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
     t.position.set(map.width / 2, y);
     root.addChild(t);
   }
-  return { ground: root, wallTops, canopy, sway };
+  return { ground: root, wallTops, canopy, sway, standing };
 }
 
 /** A soft round pool of light, fading smoothly to nothing at radius `r` (added over what's under it). */

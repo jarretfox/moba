@@ -21,7 +21,7 @@ import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { brazierFire, championDeath, footstep, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
-import { paintLampGlows, propSpots } from './render/props';
+import { FIRE_HEIGHT, paintLampGlows, propSpots } from './render/props';
 import { Lighting, nightAt, skyAt } from './render/lighting';
 import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
@@ -124,7 +124,7 @@ export class GameClient {
   /** Which champion each Shootie is shooting at, so a beam can show it. */
   private readonly towerShots = new Map<number, { target: number; until: number }>();
   private readonly beams = new Graphics();
-  /** Lantern lamps glowing in the dark: raised like the lantern heads they sit in. */
+  /** Lantern lamps glowing in the dark, up on their posts. */
   private readonly lamps = new Graphics();
   /** Glow bleeding off spells: the glowing layer, blurred and added back over the view. */
   private readonly bloomRt = RenderTexture.create({ width: 16, height: 16, resolution: 0.35 });
@@ -146,6 +146,8 @@ export class GameClient {
   private readonly wind = new Wind();
   /** Patches of tall grass, for the wind to lean. */
   private sway: Container[] = [];
+  /** The map's standing props, sorted in with the units. */
+  private standing: Container[] = [];
   /** Ripples the tree crowns, as if the leaves were stirring (high graphics only). */
   private readonly leafNoise = new Sprite(noiseTexture());
   private readonly leaves = new DisplacementFilter({ sprite: this.leafNoise, scale: 5 });
@@ -261,14 +263,16 @@ export class GameClient {
       const at = wickSpot(MAP, team);
       const wick = new Shopkeeper(at.x, at.y, at.facing, this.fx);
       this.underLayer.addChild(wick.ground);
-      this.structureLayer.addChild(wick.body);
+      this.unitLayer.addChild(wick.body);
       this.lighting.addLight(wick.light);
       return wick;
     });
-    // Story landmarks: flat parts with the traps and zones, tall parts raised with the wall tops.
+    // Story landmarks: flat parts with the traps and zones, standing parts sorted in with the units, a few
+    // bits on the pit walls raised with the wall tops.
     const landmarks = buildLandmarks(MAP);
     this.underLayer.addChildAt(landmarks.flat, 0);
     this.wallTops.addChild(landmarks.tall);
+    for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
     paintLampGlows(this.lamps, propSpots(MAP));
     this.lamps.blendMode = 'add';
@@ -349,6 +353,9 @@ export class GameClient {
     replace(this.wallTops, layers.wallTops);
     replace(this.canopy, layers.canopy);
     this.sway = layers.sway;
+    for (const s of this.standing) s.destroy({ children: true });
+    this.standing = layers.standing;
+    for (const s of this.standing) this.unitLayer.addChild(s);
   }
 
   showNotice(title: string, detail: string): void {
@@ -411,7 +418,6 @@ export class GameClient {
     this.camera.apply(this.worldLayer, w, h, dt);
     elevate(this.wallTops, HEIGHT.wall, this.camera.x, this.camera.y);
     elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
-    elevate(this.lamps, HEIGHT.wall, this.camera.x, this.camera.y);
     this.emissive.position.copyFrom(this.worldLayer.position);
     this.emissive.scale.copyFrom(this.worldLayer.scale);
     const matchTime = this.buffer.latest?.time ?? 0;
@@ -521,7 +527,7 @@ export class GameClient {
     // Forget footsteps of things that are gone (dead Chuds pile up over a match).
     if (this.frameCount % 300 === 0) for (const id of this.steps.keys()) if (!this.ents.has(id)) this.steps.delete(id);
     for (const b of propSpots(MAP).braziers) {
-      if (Math.abs(b.x - this.camera.x) < halfW && Math.abs(b.y - this.camera.y) < halfH) brazierFire(this.fx, b.x, b.y);
+      if (Math.abs(b.x - this.camera.x) < halfW && Math.abs(b.y - this.camera.y) < halfH) brazierFire(this.fx, b.x, b.y - FIRE_HEIGHT);
     }
     for (const s of this.ents.values()) {
       if (Math.abs(s.x - this.camera.x) > halfW || Math.abs(s.y - this.camera.y) > halfH) continue;

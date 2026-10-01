@@ -1,4 +1,5 @@
-import type { Graphics } from 'pixi.js';
+import { Graphics } from 'pixi.js';
+import { blob, inkLine, inkOf, inked, shade, smooth } from './organic';
 import type { MapData } from '../../shared/map/mapData';
 import { shapeContains } from '../../shared/map/shapes';
 import type { Light } from './lighting';
@@ -108,11 +109,15 @@ export function propLights(s: PropSpots): FlickerLight[] {
   ];
 }
 
-/** The lamps themselves, glowing above the dark (drawn on the glowing layer, raised like the lantern heads). */
+/** Where a lantern's lamp is (it stands on a post), and where a brazier's fire burns (in its bowl). */
+export const LAMP_HEIGHT = 62;
+export const FIRE_HEIGHT = 40;
+
+/** The lamps themselves, glowing above the dark (drawn on the glowing layer, up on their posts). */
 export function paintLampGlows(g: Graphics, s: PropSpots): void {
   for (const p of s.lanterns) {
-    g.circle(p.x, p.y - 40, 26).fill({ color: 0xffc070, alpha: 0.18 });
-    g.circle(p.x, p.y - 40, 12).fill({ color: 0xffe2a8, alpha: 0.5 });
+    g.circle(p.x, p.y - LAMP_HEIGHT, 26).fill({ color: 0xffc070, alpha: 0.18 });
+    g.circle(p.x, p.y - LAMP_HEIGHT, 12).fill({ color: 0xffe2a8, alpha: 0.5 });
   }
 }
 
@@ -122,50 +127,75 @@ export function flickerAt(l: FlickerLight, time: number): number {
   return l.base * (1 - l.flicker * (0.5 + 0.5 * wobble));
 }
 
-const INK = { width: 2, color: 0x0b0f14 };
+const IRON = 0x3a3f48;
+const WOOD = 0x5e4630;
+const BONE = 0xd8d0bc;
 
-/** Paints the props: footings and flat things on the ground, lantern heads on the raised layer. */
-export function paintProps(ground: Graphics, top: Graphics, s: PropSpots): void {
+/**
+ * Paints the props: shadows and flat things (bones) on the ground, and each standing thing (lantern posts,
+ * braziers, mushroom clumps) as its own piece, to be sorted in with the units so things pass behind them.
+ */
+export function paintProps(ground: Graphics, s: PropSpots): Graphics[] {
+  const standing: Graphics[] = [];
+  const stand = (x: number, y: number) => {
+    const g = new Graphics();
+    g.position.set(x, y);
+    g.zIndex = y;
+    standing.push(g);
+    return g;
+  };
   for (const p of s.lanterns) {
-    ground.ellipse(p.x + 10, p.y + 14, 16, 10).fill({ color: 0x000000, alpha: 0.35 });
-    ground.rect(p.x - 9, p.y - 9, 18, 18).fill(0x4a3a28).stroke(INK);
-    top.rect(p.x - 5, p.y - 34, 10, 34).fill(0x5e4630).stroke(INK); // the post
-    top.poly([p.x - 17, p.y - 50, p.x, p.y - 62, p.x + 17, p.y - 50]).fill(0x3a2a1c).stroke(INK); // a little roof
-    top.roundRect(p.x - 13, p.y - 52, 26, 24, 4).fill(0x2a2018).stroke(INK);
-    top.roundRect(p.x - 9, p.y - 48, 18, 16, 3).fill(0xffd27a);
+    ground.ellipse(p.x + 14, p.y + 6, 22, 8).fill({ color: 0x000000, alpha: 0.35 });
+    const g = stand(p.x, p.y);
+    // A stone footing, a wooden post, and the lamp on top under a little roof.
+    inked(g, smooth([-11, 2, -9, -10, 9, -11, 11, 2], true, 1), 0x6a665c, 2);
+    g.poly([-3.5, -8, 3.5, -8, 3, -LAMP_HEIGHT + 10, -3, -LAMP_HEIGHT + 10]).fill(WOOD).stroke({ width: 2, color: inkOf(WOOD) });
+    inkLine(g, -1.5, -10, -1, -LAMP_HEIGHT + 14, 1.5, { color: shade(WOOD, -0.25), alpha: 0.6 }, 0);
+    const y = -LAMP_HEIGHT;
+    inked(g, [-11, y + 11, 11, y + 11, 9, y + 15, -9, y + 15], 0x2a2018, 1.5);
+    inked(g, smooth([-9, y + 11, -10, y - 7, 10, y - 7, 9, y + 11], true, 1), 0x2a2018, 2);
+    g.roundRect(-6.5, y - 4, 13, 13, 3).fill(0xffd27a);
+    g.moveTo(0, y - 4).lineTo(0, y + 9).stroke({ width: 1.5, color: 0x2a2018 });
+    inked(g, [-15, y - 6, 0, y - 18, 15, y - 6, 11, y - 4, -11, y - 4], 0x3a2a1c, 2);
   }
   for (const p of s.braziers) {
-    ground.ellipse(p.x + 12, p.y + 16, 34, 22).fill({ color: 0x000000, alpha: 0.35 });
-    ground.circle(p.x, p.y, 32).fill(0x6b6f78).stroke({ width: 3, color: 0x0b0f14 });
-    ground.circle(p.x, p.y, 22).fill(0x1c1410);
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      ground.circle(p.x + Math.cos(a) * 9, p.y + Math.sin(a) * 9, 5).fill(i % 2 ? 0xff7a2f : 0xffb347);
-    }
+    ground.ellipse(p.x + 16, p.y + 8, 36, 12).fill({ color: 0x000000, alpha: 0.35 });
+    const g = stand(p.x, p.y);
+    // Three iron legs, a bowl of embers on top.
+    for (const [x0, x1] of [[-22, -12], [22, 12], [0, 0]]) inkLine(g, x0, 2, x1, -FIRE_HEIGHT + 12, x0 === 0 ? 4 : 5, { color: x0 === 0 ? shade(IRON, 0.3) : IRON, tip: 0.6 }, 0);
+    const bowl = smooth([-30, -FIRE_HEIGHT + 4, 30, -FIRE_HEIGHT + 4, 22, -FIRE_HEIGHT + 18, -22, -FIRE_HEIGHT + 18], true, 2);
+    inked(g, bowl, 0x6b6f78, 2.5);
+    g.ellipse(0, -FIRE_HEIGHT + 4, 29, 7).fill(0x1c1410).stroke({ width: 2, color: inkOf(0x6b6f78) });
+    for (let i = 0; i < 6; i++) g.circle(-18 + i * 7, -FIRE_HEIGHT + 4 + Math.sin(i * 2.1) * 2, 4).fill(i % 2 ? 0xff7a2f : 0xffb347);
   }
   for (const m of s.mushrooms) {
-    for (let i = 0; i < m.n; i++) {
+    const g = stand(m.x, m.y);
+    g.ellipse(0, 4, 46, 14).fill({ color: 0x6fd6ff, alpha: 0.15 });
+    // A clump of glowing toadstools, back ones first.
+    const caps = Array.from({ length: m.n }, (_, i) => {
       const a = i * 2.4;
-      const d = 14 + (i % 2) * 16;
-      const x = m.x + Math.cos(a) * d;
-      const y = m.y + Math.sin(a) * d;
-      const r = 9 + ((i * 7) % 5);
-      ground.circle(x, y, r + 5).fill({ color: 0x6fd6ff, alpha: 0.15 });
-      ground.circle(x, y, r).fill(0x2f9fd8).stroke({ width: 1.5, color: 0x0b2a3a });
-      ground.circle(x - r * 0.3, y - r * 0.3, r * 0.3).fill(0xdff7ff);
+      return { x: Math.cos(a) * (12 + (i % 2) * 16), y: Math.sin(a) * (6 + (i % 2) * 8), h: 12 + ((i * 7) % 9), r: 8 + ((i * 5) % 6) };
+    }).sort((p, q) => p.y - q.y);
+    for (const c of caps) {
+      g.poly([c.x - 2.5, c.y, c.x + 2.5, c.y, c.x + 2, c.y - c.h, c.x - 2, c.y - c.h]).fill(0xd8eef6).stroke({ width: 1.5, color: 0x3a5a6a });
+      const cap = smooth([c.x - c.r, c.y - c.h + 2, c.x - c.r * 0.6, c.y - c.h - c.r * 0.6, c.x + c.r * 0.6, c.y - c.h - c.r * 0.6, c.x + c.r, c.y - c.h + 2], true, 1);
+      inked(g, cap, 0x2f9fd8, 1.6, 0x0b2a3a);
+      g.circle(c.x - c.r * 0.3, c.y - c.h - c.r * 0.25, c.r * 0.22).fill(0xdff7ff);
     }
   }
   for (const b of s.bones) {
     if (b.skull) {
-      ground.circle(b.x, b.y, 10).fill(0xd8d0bc).stroke(INK);
+      inked(ground, blob(b.x, b.y, 10, 9, Math.round(b.x), 0.08, 12), BONE, 2);
       ground.circle(b.x - 3.5, b.y - 1, 2.5).fill(0x1a1410);
       ground.circle(b.x + 3.5, b.y - 1, 2.5).fill(0x1a1410);
+      ground.rect(b.x - 3, b.y + 5, 6, 3).fill(shade(BONE, 0.3));
     } else {
       const dx = Math.cos(b.a) * 12;
       const dy = Math.sin(b.a) * 12;
-      ground.moveTo(b.x - dx, b.y - dy).lineTo(b.x + dx, b.y + dy).stroke({ width: 4, color: 0xd8d0bc, cap: 'round' });
-      ground.circle(b.x - dx, b.y - dy, 3.5).fill(0xd8d0bc);
-      ground.circle(b.x + dx, b.y + dy, 3.5).fill(0xd8d0bc);
+      inkLine(ground, b.x - dx, b.y - dy, b.x + dx, b.y + dy, 6, { color: inkOf(BONE), tip: 0.8 }, 0);
+      inkLine(ground, b.x - dx, b.y - dy, b.x + dx, b.y + dy, 4, { color: BONE, tip: 0.8 }, 0);
+      for (const k of [-1, 1]) inked(ground, blob(b.x + dx * k, b.y + dy * k, 3.6, 3.6, Math.round(b.y) + k, 0.1, 8), BONE, 1.4);
     }
   }
+  return standing;
 }

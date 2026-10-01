@@ -35,7 +35,9 @@ export class MenuBackdrop {
     this.wallTops = layers.wallTops;
     this.canopy = layers.canopy;
     this.ground = layers.ground;
-    this.world.addChild(layers.ground, this.water.container, this.ambience.container, this.wallTops, this.canopy);
+    const standing = new Container({ sortableChildren: true });
+    standing.addChild(...layers.standing);
+    this.world.addChild(layers.ground, this.water.container, this.ambience.container, standing, this.wallTops, this.canopy);
     this.view.addChild(this.world, this.lighting.sprite);
     this.ambience.setNight(0.8);
     app.stage.addChild(this.view);
