@@ -743,6 +743,8 @@ export class StructureView implements EntityView {
   /** The crystal floating over a Shootie or Da Base, bobbing. */
   private readonly crystal = new Graphics();
   private crystalY = 0;
+  /** See-through while your champion is behind it, so a tower never hides you. */
+  private fade = 1;
   private readonly range = new Graphics();
   private readonly body = new Graphics();
   private readonly light = new Graphics();
@@ -782,6 +784,11 @@ export class StructureView implements EntityView {
     this.clock += dt;
     this.top.zIndex = s.y;
     this.crystal.y = this.crystalY + Math.sin(this.clock * 2.1) * s.r * 0.05;
+    const me = ctx.me;
+    const tall = buildingHeight(s.role ?? 'outerShootie') * s.r;
+    const behind = !!me && !s.dead && me.y < s.y && me.y > s.y - tall - me.r && Math.abs(me.x - s.x) < s.r * 1.1 + me.r;
+    this.fade += ((behind ? 0.4 : 1) - this.fade) * Math.min(1, dt * 10);
+    this.upper.alpha = this.crystal.alpha = this.fade;
     // A felled Oakner springing back up when it regrows.
     if (this.wasDead && !s.dead) this.grow = 0;
     this.wasDead = !!s.dead;
