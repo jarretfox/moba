@@ -21,6 +21,7 @@ export const CAST_COLORS: Record<ChampionId, number> = {
   kingrix: 0xffd166,
   dongmaster: 0xffb070,
   dabber: 0x9be15d,
+  paris: 0xff8fb0,
 };
 
 const GOLD = 0xffd166;
@@ -314,6 +315,49 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     }
 
     // ── Logan
+    // ── Master Paris
+    case 'fleche': {
+      // A flash of steel from one spot to the next, rose petals in its wake.
+      fx.custom(0.3, (g, t) => g.moveTo(x, y).lineTo(x2, y2).stroke({ width: 10 * (1 - t) + 1, color: 0xffffff, alpha: 0.9 * (1 - t), cap: 'round' }), 'mid', true);
+      fx.custom(0.45, (g, t) => g.moveTo(x, y).lineTo(x2, y2).stroke({ width: 26 * (1 - t), color: 0xff8fb0, alpha: 0.25 * (1 - t), cap: 'round' }), 'mid', true);
+      for (let i = 0; i < 8; i++) {
+        const k = Math.random();
+        p.emit({ shape: 'leaf', glow: false, x: x + (x2 - x) * k, y: y + (y2 - y) * k, vx: rand(-50, 50), vy: rand(-60, -10), ay: 40, life: rand(0.6, 1.1), size: 10, size2: 8, color: 0xff6b8a, spin: 5 });
+      }
+      p.burst(6, { shape: 'star', x: x2, y: y2, life: 0.35, size: 14, size2: 2, color: 0xffffff, color2: 0xff8fb0, spin: 6 }, [120, 260]);
+      return;
+    }
+    case 'cafeBreak': {
+      // He stops for coffee: steam curling up, a calm ring, a cup.
+      const r = ev.r ?? 70;
+      fx.shockwave(x, y, r * 1.6, 0xc8a07a, 0.6);
+      for (let i = 0; i < 10; i++) fx.later(i * 0.12, () => p.emit({ shape: 'smoke', x: x + rand(-14, 14), y: y - r * 0.6, vx: rand(-10, 10), vy: rand(-50, -30), life: 1.4, size: 10, size2: 26, color: 0xffffff, color2: 0xd8d0c0, alpha: 0.45, fadeIn: 0.3 }));
+      const t = iconTexture('☕');
+      if (t) fx.ghost(t, x, y - r, { size: 40, size2: 56, dy: -50, life: 1.3, alpha: 0.85 });
+      return;
+    }
+    case 'touche': {
+      // His blade catches the light.
+      fx.flash(x, y, 50, 0xffffff, 0.25, 0.5);
+      p.burst(10, { shape: 'star', x, y, life: 0.5, size: 16, size2: 2, color: 0xffffff, color2: 0xdfe6ff, spin: 7 }, [80, 200]);
+      const t = iconTexture('✨');
+      if (t) fx.ghost(t, x, y - 50, { size: 36, size2: 60, dy: -30, life: 0.7, alpha: 0.8 });
+      return;
+    }
+    case 'encore': {
+      // The spotlight finds him, and the crowd throws roses.
+      const r = ev.r ?? 100;
+      fx.custom(1.2, (g, t) => {
+        const a = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+        g.circle(x, y, r * (1.1 - 0.2 * t)).fill({ color: 0xfff6e0, alpha: 0.25 * a });
+        g.circle(x, y, r * 0.6).fill({ color: 0xffffff, alpha: 0.15 * a });
+      }, 'mid', true);
+      for (let i = 0; i < 18; i++) fx.later(i * 0.05, () => p.emit({ shape: 'leaf', glow: false, x: x + rand(-r * 1.5, r * 1.5), y: y - rand(r * 1.2, r * 2.4), vx: rand(-30, 30), vy: rand(60, 140), life: 1.2, size: 12, size2: 10, color: i % 3 ? 0xe5484d : 0xff8fb0, spin: 6 }));
+      p.burst(12, { shape: 'star', x, y, life: 0.8, size: 14, size2: 2, color: 0xfff1b8, color2: GOLD, drag: 0.3, spin: 4 }, [100, 260]);
+      const t = iconTexture('🌹');
+      if (t) fx.ghost(t, x, y - r, { size: 60, size2: 110, dy: -40, life: 1, alpha: 0.8 });
+      return;
+    }
     // ── Dark Dabber
     case 'hotbox': {
       // A billowing cloud of smoke.
@@ -750,6 +794,18 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
         break;
       case 'weaken':
         for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'mote', ...around(0.8), vy: rand(20, 50), life: 0.6, size: 7, size2: 3, color: 0xd8b4ff, color2: 0x7a4ac0 });
+        break;
+      case 'meditating':
+        for (let i = 0; i < fx.rate(5); i++) p.emit({ shape: 'smoke', x: s.x + rand(-10, 10), y: s.y - r * 0.8, vy: rand(-40, -25), life: 1.2, size: 8, size2: 20, color: 0xffffff, color2: 0xd8d0c0, alpha: 0.4, fadeIn: 0.3 });
+        break;
+      case 'touche':
+        if (Math.random() < fx.dt * 6) p.emit({ shape: 'star', x: s.x + Math.cos(s.f) * r * 1.6, y: s.y + Math.sin(s.f) * r * 1.6, life: 0.3, size: 12, size2: 2, color: 0xffffff, color2: 0xdfe6ff, spin: 6 });
+        break;
+      case 'encore':
+        for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'leaf', glow: false, ...around(1.4), vx: rand(-20, 20), vy: rand(-30, 10), ay: 30, life: 0.9, size: 9, size2: 7, color: 0xff6b8a, spin: 5 });
+        break;
+      case 'untargetable':
+        for (let i = 0; i < fx.rate(20); i++) p.emit({ shape: 'mote', ...around(0.8), life: 0.3, size: 8, size2: 2, color: 0xffffff, color2: 0xff8fb0 });
         break;
       case 'hazed':
         // Allies see him wreathed in smoke (enemies don't see him at all).

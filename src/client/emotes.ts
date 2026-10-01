@@ -56,6 +56,13 @@ const LINES: Record<ChampionId, Record<Said, readonly string[]>> = {
     line: ['It’s all just smoke, man.', 'The Deep provides.', 'Did anyone else see that?'],
     kill: ['You got smoked.', 'Pass it on.', 'Hehehe... gone.'],
   },
+  paris: {
+    taunt: ['En garde, if you dare.', 'Is that your best? Charming.'],
+    laugh: ['Ho ho ho!', 'Ah, magnifique.'],
+    cheer: ['Encore! Encore!', 'Allons-y, mes amis!'],
+    line: ['A gentleman never rushes his coffee.', 'Elegance is a weapon.', 'Footwork, footwork, footwork.'],
+    kill: ['Touché.', 'Au revoir.', 'Merci for the lesson.'],
+  },
   kingrix: {
     taunt: ['Kneel.', 'Know your place, peasant.'],
     laugh: ['Hohoho! Delightful.', 'Ha! The crown wins again.'],
@@ -71,6 +78,8 @@ const RIVAL: Partial<Record<`${ChampionId}:${ChampionId}`, readonly string[]>> =
   'logan:kingrix': ['Your cage is empty, Rix.', 'Long live the lion.', 'Kneel to THAT.'],
   'kingrix:logan': ['Back in your cage, kitten.', 'Every lion has a master.', 'Bad kitty.'],
   'dongmaster:barbarian': ['Rage is for people who skip leg day.', 'Mogged. Again.', 'Should’ve trained instead of yelling.'],
+  'paris:kingrix': ['Your footwork was always sloppy, Majesty.', 'Lesson over.', 'Touché, Your Majesty.'],
+  'kingrix:paris': ['You’re fired. Again.', 'Off with his beret!', 'Teach THAT.'],
   'barbarian:dongmaster': ['HOW’S THAT FOR A JAWLINE?!', 'Pretty face. Broke easy.', 'FLEX THAT!'],
 };
 

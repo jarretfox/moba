@@ -21,6 +21,7 @@ const CLASSIC: Record<ChampionId, Palette> = {
   hunnag: { body: CHUD_SKIN, cap: 0x7a3fb0, spots: 0xe8d7ff, eyes: 0xb8f07a, staff: 0x6b4a2b, orb: 0xb8f07a, orbGlow: 0x8fd14f, orbEdge: 0x3d6a14 },
   logan: { mane: 0xd98a2b, maneEdge: 0x8a4f12, face: 0xe8a33d, muzzle: 0xf2c27a, collar: 0x8a9099, eyes: 0x2e1a08, nose: 0x5a2e12, paw: 0xe8a33d },
   kingrix: { cape: 0xa8232e, ermine: 0xf2f2f2, spots: 0x111111, skin: SKIN, crown: 0xffd166, jewelA: 0xc0182b, jewelB: 0x3d8bfd, scepter: 0xd9a52b, orb: 0xffd166, gem: 0xc0182b },
+  paris: { jacket: 0xf2efe6, jacketShade: 0xc9c3b4, beret: 0x1d2b4a, stem: 0x0f1a30, scarf: 0xc0182b, skin: SKIN, mustache: 0x2a1a10, blade: 0xd8dde6, guard: 0xd9a52b, grip: 0x2a1a10 },
   dabber: { fur: 0x7d8a6a, hood: 0x2f4a2a, hoodEdge: 0x1f3320, eyes: 0xff4a4a, ear: 0xd89a9a, tail: 0xd89a9a, nose: 0xe07a8a, rig: 0x9fe6c8, rigEdge: 0x3d6a5a, smoke: 0xb8f07a, wood: 0x5a3a1a, string: 0xe8e0cc },
   dongmaster: { skin: 0xe2b48a, skinDark: 0xb98a62, tank: 0x1c1c22, hair: 0x2a1a10, band: 0xe5484d, wrap: 0xf2efe6 },
 };
@@ -52,6 +53,11 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
     { name: 'White Lion', colors: { mane: 0xf2efe6, maneEdge: 0x9a9488, face: 0xe8e2d4, muzzle: 0xffffff, collar: 0xffd166, paw: 0xe8e2d4, eyes: 0x3d6a8a } },
     { name: 'Shadow Lion', colors: { mane: 0x2a2430, maneEdge: 0x0e0c12, face: 0x5a4a3a, muzzle: 0x8a7a6a, collar: 0xb98be0, paw: 0x5a4a3a, eyes: 0xffd166, nose: 0x1a1410 } },
   ],
+  paris: [
+    { name: 'Boulevard', colors: {} },
+    { name: 'Midnight Masquerade', colors: { jacket: 0x2a2a32, jacketShade: 0x16161c, beret: 0x6a1a2a, stem: 0x3a0a14, scarf: 0xc9d1dc, guard: 0xc9d1dc, blade: 0xb8c6ff } },
+    { name: 'Rosé', colors: { jacket: 0xffd6e0, jacketShade: 0xe8a8b8, beret: 0xc0406a, stem: 0x7a1a3a, scarf: 0xffffff, guard: 0xffd166 } },
+  ],
   dabber: [
     { name: 'Dank', colors: {} },
     { name: 'Purple Haze', colors: { hood: 0x5a2a7a, hoodEdge: 0x3a1a50, smoke: 0xc89bff, rig: 0xd8b4ff, rigEdge: 0x5a2a7a } },
@@ -70,7 +76,7 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
 };
 
 /** The color that sums up each look, for the swatches in champion select. */
-const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood' };
+const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret' };
 
 export function palette(id: ChampionId, skin = 0): Palette {
   return { ...CLASSIC[id], ...(SKINS[id][skin]?.colors ?? {}) };
@@ -163,6 +169,17 @@ const WEAPONS: Record<ChampionId, (p: Palette) => Weapon> = {
         g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(p.paw).stroke({ width: 1.5, color: p.maneEdge });
         for (let i = -1; i <= 1; i++) g.circle(0.28 * r, side * 0.46 * r + i * 0.08 * r, 0.045 * r).fill(p.maneEdge);
       }
+    },
+  }),
+  paris: (p) => ({
+    // His épée: a long thin blade, a bell guard, a short grip.
+    pivot: [0.3, 0.55],
+    draw(g, r) {
+      g.moveTo(-0.18 * r, 0).lineTo(0.05 * r, 0).stroke({ width: 4, color: p.grip });
+      g.moveTo(0.1 * r, 0).lineTo(1.55 * r, 0).stroke({ width: 2.5, color: p.blade });
+      g.circle(1.55 * r, 0, 1.6).fill(p.blade);
+      g.ellipse(0.1 * r, 0, 0.06 * r, 0.16 * r).fill(p.guard).stroke({ width: 1.5, color: OUTLINE.color });
+      g.moveTo(0.4 * r, -1.5).lineTo(1.3 * r, -1.5).stroke({ width: 1, color: 0xffffff, alpha: 0.6 });
     },
   }),
   dabber: (p) => ({
@@ -259,6 +276,20 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number, p: Palette) => void> 
     g.ellipse(0.35 * r, 0, 0.42 * r, 0.32 * r).fill(p.muzzle).stroke({ width: 1.5, color: p.maneEdge }); // muzzle
     for (const side of [-1, 1]) g.circle(0.2 * r, side * 0.2 * r, 0.06 * r).fill(p.eyes); // eyes
     g.poly([0.62 * r, -0.1 * r, 0.75 * r, 0, 0.62 * r, 0.1 * r]).fill(p.nose); // nose
+  },
+
+  /** A fencing master from above: white jacket, red cravat, a beret at an angle, and a mustache that curls. */
+  paris(g, r, p) {
+    g.ellipse(-0.08 * r, 0, 0.68 * r, 0.88 * r).fill(p.jacket).stroke(OUTLINE); // jacket
+    g.moveTo(-0.5 * r, -0.4 * r).quadraticCurveTo(-0.2 * r, 0, -0.5 * r, 0.4 * r).stroke({ width: 2, color: p.jacketShade }); // a seam
+    g.poly([0.18 * r, -0.2 * r, 0.42 * r, 0, 0.18 * r, 0.2 * r, 0.05 * r, 0]).fill(p.scarf).stroke({ width: 1.5, color: OUTLINE.color }); // cravat
+    g.circle(0.12 * r, 0, 0.3 * r).fill(p.skin).stroke(OUTLINE); // head
+    for (const side of [-1, 1]) {
+      g.moveTo(0.36 * r, side * 0.04 * r).quadraticCurveTo(0.5 * r, side * 0.26 * r, 0.32 * r, side * 0.34 * r).stroke({ width: 3, color: p.mustache, cap: 'round' }); // the mustache
+      g.circle(0.33 * r, side * 0.33 * r, 0.03 * r).fill(p.mustache);
+    }
+    g.ellipse(0.04 * r, -0.06 * r, 0.3 * r, 0.27 * r).fill(p.beret).stroke(OUTLINE); // beret, tilted
+    g.circle(0.0 * r, -0.12 * r, 0.05 * r).fill(p.stem);
   },
 
   /** A rat in a hoodie: snout out front, red eyes, round ears poking out, a long tail, a little smoke. */

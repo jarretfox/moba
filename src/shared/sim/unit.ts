@@ -135,7 +135,12 @@ export abstract class Unit implements Entity {
   }
 
   isTargetable(): boolean {
-    return !this.dead && !this.has('underground');
+    return !this.dead && !this.has('underground') && !this.has('untargetable');
+  }
+
+  /** Share of incoming damage that gets through (Master Paris's Café Break takes less). */
+  incomingDamageScale(_world: World): number {
+    return 1;
   }
 
   /** Hidden from the enemy even inside their vision: burrowed or dragged underground, unless bleeding gives them away. */

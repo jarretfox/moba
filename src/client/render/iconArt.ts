@@ -100,6 +100,42 @@ const SKIN_TONE = 0xe2b48a;
 const SKIN_SHADE = 0xb98a62;
 
 const ART: Record<string, Draw> = {
+  // ── Master Paris
+  '🤺': (g) => {
+    // Riposte: two blades crossing, one parrying the other.
+    rod(g, (g) => g.moveTo(-26, 22).lineTo(24, -24), 2.5, STEEL);
+    rod(g, (g) => g.moveTo(-24, -22).lineTo(26, 20), 2.5, STEEL);
+    for (const [gx, gy] of [[-20, 16], [-18, -16]] as const) g.circle(gx, gy, 7).fill(GOLD).stroke(ink(2.5));
+    g.poly([0, -8, 3, -3, 8, 0, 3, 3, 0, 8, -3, 3, -8, 0, -3, -3]).fill(WHITE).stroke(ink(1.5));
+  },
+  '💫': (g) => {
+    // Flèche: a streak of steel ending in a star.
+    for (const [y, a] of [[-10, 0.5], [0, 0.9], [10, 0.5]] as const) g.moveTo(-28, y).lineTo(6, y * 0.4).stroke({ width: 3, color: 0xff8fb0, alpha: a, cap: 'round' });
+    rod(g, (g) => g.moveTo(-10, 0).lineTo(16, 0), 2.5, STEEL);
+    g.poly([18, -12, 22, -4, 30, -2, 23, 3, 25, 11, 18, 6, 11, 11, 13, 3, 6, -2, 14, -4]).fill(GOLD).stroke(ink(2));
+  },
+  '☕': (g) => {
+    // Café Break: a cup of coffee, steaming.
+    g.roundRect(-18, -4, 30, 26, 6).fill(WHITE).stroke(ink());
+    arc(g, 14, 9, 7, -1.4, 1.4).stroke(ink(4));
+    g.ellipse(-3, -4, 15, 4).fill(0x5a3a1a).stroke(ink(2));
+    g.ellipse(-3, 24, 22, 4).fill(0xe8e0cc).stroke(ink(2));
+    for (const sx of [-10, -2, 6]) g.moveTo(sx, -10).bezierCurveTo(sx - 5, -16, sx + 5, -20, sx, -27).stroke({ width: 2.5, color: 0xd8d0c0, cap: 'round' });
+  },
+  '✨': (g) => {
+    // Touché: sparkles off a perfect hit.
+    const star = (x: number, y: number, s: number) => g.poly([x, y - s, x + s * 0.28, y - s * 0.28, x + s, y, x + s * 0.28, y + s * 0.28, x, y + s, x - s * 0.28, y + s * 0.28, x - s, y, x - s * 0.28, y - s * 0.28]).fill(0xfff6c8).stroke(ink(2));
+    star(-6, -4, 20);
+    star(16, -18, 10);
+    star(14, 16, 8);
+  },
+  '🌹': (g) => {
+    // Encore: a rose for the crowd.
+    rod(g, (g) => g.moveTo(4, -2).bezierCurveTo(0, 12, 8, 18, -2, 28), 3, GREEN_DARK);
+    leaf(g, 2, 14, 14, -4);
+    blob(g, [[0, -12, 13], [-8, -8, 9], [8, -8, 9]], 0xe5484d);
+    arc(g, 0, -12, 6, 0.4, 4.4).stroke({ width: 2, color: 0x8a1a22 });
+  },
   // ── Dark Dabber
   '🍯': (g) => {
     // Sticky Resin: a jar of amber resin, overflowing.

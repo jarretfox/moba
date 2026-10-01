@@ -109,6 +109,11 @@ export type StatusKind =
   | 'blazed'
   | 'resin'
   | 'cloudNine'
+  /** Master Paris: mid-Flèche (can't be hit), on his Café Break, Touché, Encore. */
+  | 'untargetable'
+  | 'meditating'
+  | 'touche'
+  | 'encore'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -184,7 +189,12 @@ export type FxKind =
   | 'hotbox'
   | 'stickyIcky'
   | 'lightItUp'
-  | 'cloudNine';
+  | 'cloudNine'
+  /** Master Paris. */
+  | 'fleche'
+  | 'cafeBreak'
+  | 'touche'
+  | 'encore';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

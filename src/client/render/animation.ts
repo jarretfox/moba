@@ -57,6 +57,8 @@ export const ATTACK: Record<ChampionId, Anim> = {
   logan: { dur: 0.28, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.2], [1, 0]] },
   // A royal flourish of the scepter.
   kingrix: { dur: 0.36, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
+  // A fencer's thrust: blade and body forward together.
+  paris: { dur: 0.26, reach: [[0, 0], [0.3, 0.5], [1, 0]], lunge: [[0, 0], [0.3, 0.25], [1, 0]] },
   // The rig-bow kicks back as it fires.
   dabber: { dur: 0.3, reach: [[0, 0], [0.3, -0.15], [0.45, 0.08], [1, 0]], lunge: [[0, 0], [0.45, -0.06], [1, 0]] },
   // A short, heavy jab.
@@ -73,6 +75,7 @@ export const CAST: Record<ChampionId, Anim> = {
   kingrix: { dur: 0.5, turn: [[0, 0], [0.35, -1.4], [0.7, -1.4], [1, 0]], grow: [[0, 0], [0.35, 0.1], [1, 0]] },
   dongmaster: { dur: 0.45, grow: [[0, 0], [0.3, 0.12], [1, 0]], reach: [[0, 0], [0.3, 0.25], [1, 0]] },
   dabber: { dur: 0.45, grow: [[0, 0], [0.3, 0.08], [1, 0]], reach: [[0, 0], [0.3, -0.2], [0.5, 0.1], [1, 0]] },
+  paris: { dur: 0.4, turn: [[0, 0], [0.3, -1.2], [0.6, 0.6], [1, 0]] },
 };
 
 /** Abilities with a move of their own. */
@@ -87,6 +90,12 @@ const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
   'logan:3': { dur: 0.55, grow: [[0, 0], [0.25, 0.28], [0.75, 0.22], [1, 0]], lunge: [[0, 0], [0.25, -0.15], [0.5, 0.15], [1, 0]] },
   // Longshot: a long, deep draw.
   'marksman:3': { dur: 0.6, reach: [[0, 0], [0.75, -0.4], [0.85, 0.1], [1, 0]], lunge: [[0, 0], [0.85, -0.15], [1, 0]] },
+  // Flèche: the full lunge.
+  'paris:0': { dur: 0.35, reach: [[0, 0], [0.3, 0.7], [1, 0]], lunge: [[0, 0], [0.3, 0.4], [1, 0]], twist: [[0, 0], [0.3, -0.2], [1, 0]] },
+  // Café Break: settles in.
+  'paris:1': { dur: 0.6, grow: [[0, 0], [0.4, -0.06], [1, 0]], turn: [[0, 0], [0.4, 0.8], [1, 0]] },
+  // Encore: a salute to the crowd.
+  'paris:3': { dur: 0.8, turn: [[0, 0], [0.3, -1.6], [0.7, -1.6], [1, 0]], grow: [[0, 0], [0.3, 0.12], [1, 0]] },
   // Hotbox: a crouch and a big puff.
   'dabber:0': { dur: 0.6, grow: [[0, 0], [0.3, -0.12], [0.6, 0.1], [1, 0]], twist: [[0, 0], [0.3, 0.3], [1, 0]] },
   // Light It Up: a flick of the lighter.
@@ -190,6 +199,14 @@ export const FIDGETS: Record<ChampionId, readonly Anim[]> = {
     { dur: 1.8, twist: [[0, 0], [0.25, -0.5], [0.45, -0.5], [0.7, 0.5], [0.85, 0.5], [1, 0]], grow: [[0, 0], [0.25, 0.04], [0.7, 0.04], [1, 0]] },
     // Mewing: chin up, perfectly still.
     { dur: 2.0, lunge: [[0, 0], [0.2, 0.08], [0.85, 0.08], [1, 0]], grow: [[0, 0], [0.2, 0.05], [0.85, 0.05], [1, 0]] },
+  ],
+  paris: [
+    // Twirls his mustache.
+    { dur: 1.4, twist: [[0, 0], [0.2, 0.12], [0.35, 0.06], [0.5, 0.12], [0.65, 0.06], [1, 0]], grow: [[0, 0], [0.3, 0.03], [1, 0]] },
+    // A fencer's salute: blade up to the face, then down.
+    { dur: 1.6, turn: [[0, 0], [0.25, -1.6], [0.6, -1.6], [0.8, 0.4], [1, 0]] },
+    // Inspects the tip of his blade.
+    { dur: 1.8, reach: [[0, 0], [0.3, 0.2], [0.75, 0.2], [1, 0]], turn: [[0, 0], [0.3, 0.3], [0.75, 0.3], [1, 0]] },
   ],
   dabber: [
     // Sniffs the air, twitchy.

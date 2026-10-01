@@ -37,6 +37,19 @@ const RIVALRIES: { pair: [ChampionId, ChampionId]; lines: [IntroLine, IntroLine]
     ],
   },
   {
+    pair: ['paris', 'kingrix'],
+    lines: [
+      [
+        { champ: 'kingrix', text: 'You dare raise a blade to your king?' },
+        { champ: 'paris', text: 'You were never my king. Merely my worst student.' },
+      ],
+      [
+        { champ: 'paris', text: 'En garde, Your Majesty.' },
+        { champ: 'kingrix', text: 'Guards! Seize the fencing teacher!' },
+      ],
+    ],
+  },
+  {
     pair: ['dongmaster', 'barbarian'],
     lines: [
       [

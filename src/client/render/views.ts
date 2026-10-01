@@ -306,7 +306,7 @@ export class UnitView implements EntityView {
     // Under the ground you only show as a mound of dirt (to whoever can see you at all).
     const under = s.st?.includes('burrowed') || s.st?.includes('underground');
     // In the Dark Dabber's smoke, his own side sees him faintly.
-    this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') ? 0.45 : 1;
+    this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') ? 0.45 : s.st?.includes('untargetable') ? 0.55 : 1;
     this.shade.visible = !under;
     for (const foot of this.feet) foot.visible &&= !under;
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
@@ -429,6 +429,9 @@ export class UnitView implements EntityView {
     }
     if (st.includes('royal')) g.circle(0, 0, r + 4).stroke({ width: 2, color: 0xffd166, alpha: 0.7 });
     if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
+    if (st.includes('meditating')) g.circle(0, 0, r + 8).fill({ color: 0xc8a07a, alpha: 0.12 }).stroke({ width: 3, color: 0xc8a07a, alpha: 0.8 });
+    if (st.includes('encore')) g.circle(0, 0, r + 7).stroke({ width: 4, color: 0xff6b8a, alpha: 0.8 });
+    if (st.includes('touche')) g.circle(0, 0, r + 3).stroke({ width: 2, color: 0xdfe6ff, alpha: 0.9 });
     if (st.includes('resin')) {
       g.circle(0, 0, r + 5).stroke({ width: 3, color: 0xd98a1e, alpha: 0.85 });
       for (let i = 0; i < 6; i++) g.circle(Math.cos(i * 1.05) * (r + 5), Math.sin(i * 1.05) * (r + 5) + 3, 3).fill(0xd98a1e);

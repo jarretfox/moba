@@ -218,4 +218,21 @@ const dabber: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber };
+const paris: BotProfile = {
+  skillOrder: [0, 2, 1],
+  build: ['shiv', 'treads', 'fang', 'reaver', 'striders', 'link'],
+  fight(ctx, foe) {
+    const { me, world } = ctx;
+    const d = dist(me.pos, foe.pos);
+    const crowd = enemiesInRadius(world, me.team, me.pos, 500).filter((u) => u.kind === 'champion').length;
+    if (ready(ctx, 3) && d < 500 && foe.kind === 'champion' && (hpPct(foe) < 0.7 || crowd >= 2)) return cast(3, me.pos);
+    if (ready(ctx, 0) && d < 600 && (d > 200 || hpPct(foe) < 0.4)) return cast(0, foe.pos);
+    if (ready(ctx, 2) && d < 250) return cast(2, me.pos);
+    return null;
+  },
+  escape(ctx) {
+    return ready(ctx, 3) ? cast(3, ctx.me.pos) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris };
