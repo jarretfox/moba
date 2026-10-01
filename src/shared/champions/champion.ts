@@ -5,7 +5,7 @@ import { Ward } from '../sim/ward';
 import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { BUFFS, EMBER, GLOWCAP } from '../sim/jungle';
-import { MAX_LEVEL, PASSIVE_GOLD, STARTING_GOLD, canRankUp, xpToNext } from '../sim/progression';
+import { MAX_LEVEL, PASSIVE_GOLD, STARTING_GOLD, WANTED_STREAK, canRankUp, killBounty, xpToNext } from '../sim/progression';
 import { newScore, type Score } from '../sim/score';
 import { REVEAL_TIME, Unit, type Stats } from '../sim/unit';
 import type { World } from '../sim/world';
@@ -392,6 +392,7 @@ export abstract class Champion extends Unit {
       champ: this.info.id,
       ...(this.skin ? { skin: this.skin } : {}),
       lv: this.level,
+      ...(this.streak >= WANTED_STREAK ? { bty: killBounty(this.streak) } : {}),
       mp: Math.floor(this.mana),
       mmp: Math.round(this.stats.maxMana),
     };

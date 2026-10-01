@@ -253,6 +253,8 @@ export type GameEvent =
       what?: 'champion' | 'warden' | StructureRole;
       streak?: number;
       shutdown?: boolean;
+      /** Gold the killer got for ending the victim's spree (their bounty). */
+      bounty?: number;
       ace?: boolean;
       /** Who did it and who fell, as champions in their looks, for portraits in the kill feed. */
       killerChamp?: ChampionId;
@@ -304,6 +306,8 @@ export interface EntitySnap {
   inv?: boolean;
   /** Seconds until a destroyed Oakner regrows. */
   regrow?: number;
+  /** A champion on a killing spree: the gold on their head (a WANTED poster over them). */
+  bty?: number;
 }
 
 export interface AbilitySnap {

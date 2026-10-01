@@ -36,6 +36,8 @@ export const xpShare = (n: number): number => (n <= 1 ? 1 : 1.3 / n);
 
 /** Gold for killing a champion: more for ending a streak (they had it coming). */
 export const killBounty = (victimStreak: number): number => Math.min(750, 300 + 75 * Math.max(0, victimStreak - 2));
+/** From this many kills without dying, a champion is WANTED: everyone sees the gold on their head. */
+export const WANTED_STREAK = 3;
 /** Split among everyone who helped but didn't land the kill. */
 export const ASSIST_GOLD = 150;
 /** Experience for a champion kill, split among killer and assisters. */

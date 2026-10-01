@@ -149,6 +149,9 @@ export class UnitView implements EntityView {
   private readonly levelText: Text | null = null;
   /** An icon everyone can see over the head (Willmore's next junk). Made the first time one shows up. */
   private badge: Text | null = null;
+  /** A WANTED poster over a champion on a spree, with the gold on their head. */
+  private poster: Container | null = null;
+  private posterGold: Text | null = null;
   private barKey = '';
   private statusKey = '';
   private pulse = 0;
@@ -497,6 +500,7 @@ export class UnitView implements EntityView {
       this.lightUp(s, ctx);
     }
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
+    if (s.bty || this.poster) this.wanted(s);
 
     const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
     if (barKey !== this.barKey) {
@@ -648,6 +652,35 @@ export class UnitView implements EntityView {
   /** Coming back down from a knock-up or a leap: a squash as they hit the ground. */
   land(): void {
     this.squash = 1.3;
+  }
+
+  /** The WANTED poster: pinned up over a champion on a killing spree, swaying, the bounty in gold. */
+  private wanted(s: EntitySnap): void {
+    if (!this.poster) {
+      const poster = new Container();
+      const paper = new Graphics()
+        .poly([-34, -44, 34, -46, 36, 2, -35, 4])
+        .fill(0xe8d5a6)
+        .stroke({ width: 2.5, color: 0x5a3a1a, join: 'round' });
+      paper.moveTo(-28, -27).lineTo(28, -28).stroke({ width: 1.5, color: 0x8a6a3a, alpha: 0.7 });
+      paper.circle(0, -45, 3).fill(0x8a2a2a); // the nail
+      const title = new Text({ text: 'WANTED', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 14, fill: 0x5a1a14, letterSpacing: 1 } });
+      title.anchor.set(0.5);
+      title.position.set(0, -36);
+      const gold = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 15, fill: 0xb8860b, stroke: { color: 0x3a2008, width: 3 } } });
+      gold.anchor.set(0.5);
+      gold.position.set(0, -14);
+      poster.addChild(paper, title, gold);
+      this.container.addChild(poster);
+      this.poster = poster;
+      this.posterGold = gold;
+    }
+    this.poster.visible = !!s.bty && !s.dead;
+    if (!s.bty) return;
+    const text = `${s.bty}g`;
+    if (this.posterGold!.text !== text) this.posterGold!.text = text;
+    this.poster.position.set(0, -this.headroom - 46);
+    this.poster.rotation = 0.08 + Math.sin(this.clock * 1.6) * 0.05;
   }
 
   private setBadge(text: string, r: number): void {

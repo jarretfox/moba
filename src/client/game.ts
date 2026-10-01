@@ -1217,7 +1217,7 @@ export class GameClient {
         const streak = ev.streak ?? 0;
         if (!this.firstBlood) say('FIRST BLOOD', detail, true);
         else if (n >= 2) say(n === 2 ? 'DOUBLE KILL' : n === 3 ? 'TRIPLE KILL' : 'RAMPAGE', detail, true);
-        else if (ev.shutdown) say('SHUT DOWN', `${ev.killer} ended ${ev.victim}'s streak`, true);
+        else if (ev.shutdown) say('BOUNTY CLAIMED', `${ev.killer} collected ${ev.bounty ? `${ev.bounty}g` : 'the bounty'} on ${ev.victim}`, true);
         else if (streak >= 3) say(streak === 3 ? 'KILLING SPREE' : streak === 4 ? 'RAMPAGE' : streak === 5 ? 'UNSTOPPABLE' : 'GODLIKE', detail, true);
         else if (ev.victim === myName) say('YOU HAVE BEEN SLAIN', detail, false);
         else if (ev.killer === myName) say('YOU HAVE SLAIN AN ENEMY', detail, false);

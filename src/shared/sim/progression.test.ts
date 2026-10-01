@@ -104,6 +104,9 @@ describe('gold and experience', () => {
     const helper = champ(world, TEAM.blue, LANE.x - 200, LANE.y);
     const victim = champ(world, TEAM.red, LANE.x + 300, LANE.y);
     victim.streak = 4;
+    // On a spree: WANTED, with the gold on their head for everyone to see.
+    expect(victim.snapshot(world).bty).toBe(killBounty(4));
+    expect(killer.snapshot(world).bty).toBeUndefined();
 
     world.damage(helper, victim, 50, 'true');
     world.damage(killer, victim, 1e6, 'true');
@@ -114,7 +117,7 @@ describe('gold and experience', () => {
     expect(killer.streak).toBe(1);
     expect(victim.streak).toBe(0);
     const feed = world.drainEvents().find((e) => e.e === 'kill');
-    expect(feed).toMatchObject({ killer: killer.name, victim: victim.name, team: TEAM.blue, what: 'champion', streak: 1, shutdown: true, ace: false, killerChamp: 'marksman', victimChamp: 'marksman' });
+    expect(feed).toMatchObject({ killer: killer.name, victim: victim.name, team: TEAM.blue, what: 'champion', streak: 1, shutdown: true, bounty: killBounty(4), ace: false, killerChamp: 'marksman', victimChamp: 'marksman' });
   });
 
   it('tells the announcer when a whole team is down', () => {

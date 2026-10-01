@@ -6,7 +6,7 @@ import { GUARD_BOUNTY, RoyalGuard } from '../champions/kingrix';
 import { Chud } from './chud';
 import { CAMPS, MONSTERS, Monster } from './jungle';
 import { UNCHAINED, WARDEN, Warden, holdsGrudge } from './warden';
-import { ASSIST_GOLD, CHUD_REWARD, STRUCTURE_GOLD, XP_SHARE_RANGE, killBounty, killXp, xpShare } from './progression';
+import { ASSIST_GOLD, CHUD_REWARD, STRUCTURE_GOLD, WANTED_STREAK, XP_SHARE_RANGE, killBounty, killXp, xpShare } from './progression';
 import { Structure } from './structure';
 import type { Unit } from './unit';
 import type { World } from './world';
@@ -102,8 +102,9 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
   const assisters = enemies.filter((h) => h !== killer);
   // Two Crowns: Logan and King Rix on opposite sides pay double for each other, and the winner keeps a trophy.
   const rivals = killer !== undefined && isRivalry(killer, victim);
+  const bounty = killBounty(victim.streak) * (rivals ? 2 : 1);
   if (killer) {
-    killer.gainGold(world, killBounty(victim.streak) * (rivals ? 2 : 1));
+    killer.gainGold(world, bounty);
     if (rivals) killer.takeTrophy(world);
     killer.streak++;
   }
@@ -130,7 +131,8 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
     team: credit?.team ?? 0,
     what: 'champion',
     streak: killer?.streak,
-    shutdown: endedStreak >= 3,
+    shutdown: endedStreak >= WANTED_STREAK,
+    ...(killer && endedStreak >= WANTED_STREAK ? { bounty } : {}),
     ace: team.length > 1 && team.every((u) => u.dead),
     ...(killer ? { killerChamp: killer.info.id, killerSkin: killer.skin } : {}),
     victimChamp: victim.info.id,
