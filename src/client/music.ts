@@ -86,6 +86,18 @@ export class Music {
     this.applyVolume();
   }
 
+  /** A quick dip, then back up over half a second or so. */
+  duck(depth: number): void {
+    if (!this.on) return;
+    const g = this.bus.gain;
+    const now = this.ctx.currentTime;
+    const full = 0.7 * this.level;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(full * (1 - depth), now + 0.04);
+    g.setTargetAtTime(full, now + 0.25, 0.5);
+  }
+
   private applyVolume(): void {
     this.bus.gain.setTargetAtTime(this.on ? 0.7 * this.level : 0, this.ctx.currentTime, 0.2);
   }

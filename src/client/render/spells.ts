@@ -140,6 +140,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       // Leap landing: the ground splits.
       const r = ev.r ?? 180;
       fx.cracks(x, y, r, FIRE, 1.1, 8);
+      fx.scar(x, y, r, 'crack', FIRE);
+      fx.scar(x, y, r * 0.7, 'scorch');
       fx.shockwave(x, y, r, 0xffc27a, 0.4);
       fx.flash(x, y, r * 0.5, 0xffb070, 0.25);
       dirtBurst(fx, x, y, r);
@@ -150,6 +152,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.sigil(x, y, r * 2.2, 0xff3b30, 0.9, -2);
       fx.shockwave(x, y, r * 3, 0xff3b30, 0.5);
       fx.pillar(x, y, r, 0xff5a2a, 0.8);
+      fx.scar(x, y, r * 1.6, 'scorch');
       flames(fx, x, y, r, 50);
       const t = iconTexture('😡');
       if (t) fx.ghost(t, x, y - r * 1.5, { size: r * 2, size2: r * 3.5, dy: -60, life: 0.9, alpha: 0.7 });
@@ -177,6 +180,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       const r = ev.r ?? 200;
       fx.chain(x2, y2, x, y, 0.35);
       fx.cracks(x, y, r * 1.2, ARCANE, 1.4, 10);
+      fx.scar(x, y, r * 1.2, 'crack', ARCANE, 22);
       fx.shockwave(x, y, r * 1.2, 0xc9d1dc, 0.45);
       fx.burst(x, y, 0xffffff, r);
       fx.flash(x, y, r * 0.6, ARCANE, 0.3);
@@ -193,6 +197,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     case 'surface': {
       const r = ev.r ?? 200;
       fx.cracks(x, y, r, 0xffb070, 1, 9);
+      fx.scar(x, y, r * 0.9, 'crack');
       fx.shockwave(x, y, r, 0xc8945a, 0.45);
       dirtBurst(fx, x, y, r);
       return;
@@ -236,12 +241,14 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         fx.shockwave(x2, y2, 120, TOXIC, 0.4);
         p.burst(14, { shape: 'mote', glow: false, x: x2, y: y2, life: 0.5, size: 12, size2: 5, color: 0x6fae2e, drag: 0.1, ay: 200 }, [120, 300]);
         fumes(fx, x2, y2, 80, 10);
+        fx.scar(x2, y2, 90, 'goo');
       });
       return;
     }
     case 'rotBurst': {
       const r = ev.r ?? 80;
       fx.shockwave(x, y, r * 1.4, TOXIC, 0.45);
+      fx.scar(x, y, r * 1.1, 'goo', 0x4f7a2a, 10);
       fumes(fx, x, y, r, 12);
       fx.flash(x, y, r * 0.6, TOXIC, 0.3, 0.6);
       return;
@@ -279,6 +286,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     case 'deepHands': {
       const r = ev.r ?? 350;
       fx.cracks(x, y, r, VOID, 1.4, 11);
+      fx.scar(x, y, r, 'crack', VOID, 20);
+      fx.scar(x, y, r * 0.7, 'goo');
       fx.shockwave(x, y, r, TOXIC, 0.5);
       fx.flash(x, y, r * 0.6, VOID, 0.4, 0.6);
       const spots = Array.from({ length: 12 }, (_, i) => ({ a: i * 2.4, d: r * (0.25 + ((i * 37) % 70) / 100) }));
@@ -382,6 +391,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     case 'summon': {
       const r = ev.r ?? 110;
       fx.sigil(x, y, r * 1.3, GOLD, 1.1, 1.5);
+      fx.scar(x, y, r * 1.3, 'seal', GOLD, 14);
       fx.pillar(x, y, r * 0.5, GOLD, 1);
       fx.later(0.15, () => fx.shockwave(x, y, r * 1.5, GOLD, 0.5));
       for (let i = 0; i < 24; i++) p.emit({ shape: i % 3 ? 'mote' : 'star', x: x + rand(-r, r) * 0.8, y: y + rand(-r, r) * 0.4, vy: rand(-260, -80), drag: 0.5, life: rand(0.6, 1.1), size: 12, size2: 2, color: 0xfff1b8, color2: GOLD, spin: 4 });
@@ -400,6 +410,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.later(0.3, () => {
         fx.shockwave(mx, my, dist * 0.5, GOLD, 0.45);
         fx.cracks(mx, my, dist * 0.45, GOLD, 0.9, 6);
+        fx.scar(mx, my, dist * 0.45, 'crack', GOLD);
         p.burst(18, { shape: 'star', x: mx, y: my, life: 0.6, size: 16, size2: 3, color: 0xfff1b8, color2: GOLD, drag: 0.05, spin: 6 }, [150, 400]);
       });
       return;
@@ -408,6 +419,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       // The royal seal stamped on the target.
       const r = ev.r ?? 90;
       fx.sigil(x, y, r * 1.2, 0xb38cff, 1, 2);
+      fx.scar(x, y, r * 1.1, 'seal', GOLD, 12);
       fx.burst(x, y, GOLD, r * 1.4);
       fx.flash(x, y, r * 0.6, GOLD, 0.4);
       const t = iconTexture('📜');
@@ -430,6 +442,8 @@ export function structureCollapse(fx: FxLayer, x: number, y: number, r: number, 
   const p = fx.particles;
   fx.shockwave(x, y, r * 3, 0xffc27a, 0.6);
   fx.cracks(x, y, r * 2, FIRE, 1.6, 9);
+  fx.scar(x, y, r * 2, 'scorch', 0x000000, 40);
+  fx.scar(x, y, r * 1.8, 'crack', FIRE, 40);
   fx.flash(x, y, r, 0xffb070, 0.4);
   p.burst(16, { shape: 'smoke', glow: false, x, y, life: 1.6, size: r * 0.7, size2: r * 1.8, color: 0x9a8f80, alpha: 0.6, drag: 0.15 }, [r * 0.8, r * 2]);
   p.burst(26, { shape: 'shard', glow: false, x, y, life: 1, size: 16, size2: 8, color: 0x6b6f78, drag: 0.2, spin: 10, ay: 220 }, [r * 1.5, r * 4]);

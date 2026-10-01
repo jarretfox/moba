@@ -68,6 +68,8 @@ export class UnitView implements EntityView {
   private anim: { a: Anim; t: number } | null = null;
   /** Knocked back by a big hit; settles back to 0. */
   private readonly knock = { x: 0, y: 0 };
+  /** Squashed by a hit or a landing, springing back. */
+  private squash = 0;
   private readonly statusRing = new Graphics();
   private readonly bars = new Graphics();
   private readonly label: Text;
@@ -233,9 +235,12 @@ export class UnitView implements EntityView {
     const airborne = s.st?.includes('airborne') ?? false;
     this.air = airborne ? Math.min(1, this.air + dt * 8) : Math.max(0, this.air - dt * 8);
     const size = (s.r / this.baseR) * (1 + this.pulse * 0.08) * (1 + this.air * 0.3) * (1 + grow) * breathe * (1 - fall * 0.35);
-    this.body.scale.set(size);
-    this.facing.scale.set(size);
-    this.shade.scale.set(size);
+    this.squash = Math.max(0, this.squash - dt * 7);
+    const wide = size * (1 + 0.16 * this.squash);
+    const tall = size * (1 - 0.14 * this.squash);
+    this.body.scale.set(wide, tall);
+    this.facing.scale.set(wide, tall);
+    this.shade.scale.set(wide, tall);
     // A swing lunges the figure forward a little (units with their own moves follow those instead).
     const lunge = this.attackAnim ? lungeBy * s.r : this.pulse * 7;
     this.facing.position.set(Math.cos(s.f) * lunge, Math.sin(s.f) * lunge);
@@ -286,12 +291,20 @@ export class UnitView implements EntityView {
 
   onHit(from?: { x: number; y: number }, heavy?: boolean): void {
     this.flash = 1;
-    if (!heavy || !from) return;
+    this.squash = Math.max(this.squash, heavy ? 1 : 0.4);
+    if (!from) return;
+    // Every hit nudges; a big one shoves.
     const dx = this.container.x - from.x;
     const dy = this.container.y - from.y;
     const d = Math.hypot(dx, dy) || 1;
-    this.knock.x = (dx / d) * 12;
-    this.knock.y = (dy / d) * 12;
+    const push = heavy ? 22 : 4;
+    this.knock.x = (dx / d) * push;
+    this.knock.y = (dy / d) * push;
+  }
+
+  /** Coming back down from a knock-up or a leap: a squash as they hit the ground. */
+  land(): void {
+    this.squash = 1.3;
   }
 
   private setBadge(text: string, r: number): void {

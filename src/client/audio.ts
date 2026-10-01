@@ -29,6 +29,12 @@ export type SoundName =
   | 'defeat'
   /** Menus: a soft tick when the pointer moves onto something you can click. */
   | 'hover'
+  /** Weight under big hits: a thump you feel, a crack, and a rumble after. */
+  | 'impact'
+  /** The biggest ones: slams that shake the ground. */
+  | 'quake'
+  /** An ultimate going off: a rush in, then a boom. */
+  | 'ultimate'
   /** The announcer: good news for your side, and bad. */
   | 'fanfare'
   | 'toll'
@@ -115,6 +121,11 @@ export class Sound {
     this.musicOn = this.music ? this.music.toggle() : !this.musicOn;
     saveFlag(MUSIC_KEY, !this.musicOn);
     return this.musicOn;
+  }
+
+  /** The music dips for a moment under something huge, so it lands. */
+  duck(depth: number): void {
+    this.music?.duck(depth);
   }
 
   /** How much of a fight you're in, 0–1: brings the drums in. */
@@ -287,6 +298,26 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
   },
   click: (v, t) => v.tone(t, 'square', 1200, 900, 0.03, 0.08),
   hover: (v, t) => v.tone(t, 'sine', 1800, 1700, 0.025, 0.05),
+  impact: (v, t) => {
+    v.tone(t, 'sine', 150, 42, 0.32, 0.75, 0.003); // the thump
+    v.noise(t, 'highpass', 5200, 2400, 0.045, 0.35); // the crack
+    v.noise(t, 'lowpass', 1400, 220, 0.2, 0.42); // the body
+    v.noise(t + 0.03, 'lowpass', 320, 70, 0.7, 0.22, 1, 0.03); // the rumble after
+  },
+  quake: (v, t) => {
+    v.tone(t, 'sine', 85, 26, 1.1, 0.95, 0.004);
+    v.tone(t, 'triangle', 60, 30, 0.6, 0.35, 0.004);
+    v.noise(t, 'highpass', 3200, 1500, 0.07, 0.4);
+    v.noise(t, 'lowpass', 700, 55, 1.3, 0.6, 1, 0.01);
+    // Debris pattering down after.
+    for (let i = 0; i < 5; i++) v.noise(t + 0.12 + i * 0.09 + Math.random() * 0.05, 'bandpass', 900 + Math.random() * 900, 300, 0.07, 0.15, 3);
+  },
+  ultimate: (v, t) => {
+    v.noise(t, 'bandpass', 250, 3000, 0.32, 0.32, 1.2, 0.2); // the rush in
+    v.tone(t + 0.28, 'sine', 120, 34, 0.9, 0.85, 0.004);
+    v.noise(t + 0.28, 'lowpass', 900, 70, 1, 0.5, 1, 0.01);
+    v.tone(t + 0.28, 'sawtooth', 220, 110, 0.5, 0.08, 0.01);
+  },
   buy: (v, t) => {
     v.tone(t, 'sine', 1046, 1046, 0.06, 0.2);
     v.tone(t + 0.05, 'sine', 1568, 1568, 0.16, 0.2);

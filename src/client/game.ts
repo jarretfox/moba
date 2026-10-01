@@ -24,6 +24,10 @@ import { brazierFire, footstep, castFlash, monsterAura, playSpell, projectileTra
 import { paintLampGlows, propSpots } from './render/props';
 import { Lighting, nightAt, skyAt } from './render/lighting';
 import { WeatherView } from './render/weather';
+import { Ripple } from './render/ripple';
+import { CAST_COLORS } from './render/spells';
+import type { FxKind } from '../shared/protocol';
+import type { SoundName } from './audio';
 import { driftAt } from './render/backdrop';
 import { Water } from './render/water';
 import { Minimap, type MinimapPing } from './minimap';
@@ -76,6 +80,10 @@ export class GameClient {
   /** World, lighting and glows together, so the whole view can go grey while you're dead. */
   private readonly view = new Container();
   private readonly deathFilter = new ColorMatrixFilter();
+  /** The screen bending under the biggest impacts. */
+  private readonly ripple = new Ripple();
+  /** Units up in the air right now, to catch the moment they land. */
+  private readonly inAir = new Set<number>();
   private deadFade = 0;
   /** For the announcer: has anyone drawn first blood, and who's on a multi-kill. */
   private firstBlood = false;
@@ -184,7 +192,7 @@ export class GameClient {
       const resolution = high ? Math.min(window.devicePixelRatio || 1, 2) : 1;
       if (this.app.renderer.resolution !== resolution) this.app.renderer.resize(this.app.screen.width, this.app.screen.height, resolution);
     });
-    app.stage.addChild(this.view);
+    app.stage.addChild(this.view, this.ripple.sprite);
     this.deathFilter.desaturate();
     this.bindInput();
     app.ticker.add((ticker) => this.frame(ticker.deltaMS / 1000));
@@ -293,8 +301,9 @@ export class GameClient {
     // The world drains of color while you wait to respawn.
     this.deadFade = Math.max(0, Math.min(1, this.deadFade + (me?.dead && !this.finale ? dt * 2 : -dt * 3)));
     this.deathFilter.alpha = this.deadFade * 0.85;
-    const wantFilter = this.deadFade > 0;
-    if (wantFilter !== (this.view.filters?.length === 1)) this.view.filters = wantFilter ? [this.deathFilter] : [];
+    this.ripple.update(dt);
+    const filters = [...(this.deadFade > 0 ? [this.deathFilter] : []), ...(this.ripple.active ? [this.ripple.filter] : [])];
+    if (filters.length !== (this.view.filters?.length ?? 0) || filters.some((f, i) => this.view.filters?.[i] !== f)) this.view.filters = filters;
 
     const mouseWorld = this.mouseWorld();
     if (this.rightHeld && (this.holdTimer -= dt) <= 0) this.rightClick(false);
@@ -362,6 +371,8 @@ export class GameClient {
       if (s.k === 'projectile') projectileTrail(this.fx, s, s.tm === this.myTeam);
       else {
         this.footsteps(s, time);
+        if (s.st?.includes('airborne')) this.inAir.add(s.id);
+        else if (this.inAir.delete(s.id)) this.landed(s);
         if (s.k === 'monster' && !s.dead) monsterAura(this.fx, s);
         if (s.st || s.sh) statusAura(this.fx, s, time);
       }
@@ -418,7 +429,14 @@ export class GameClient {
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
           this.fx.impact(hit.x, hit.y, hit.r, ev.type, heavy);
-          if (ev.target === this.myId && heavy) this.camera.shake(Math.min(18, 6 + (ev.amount / (hit.mhp ?? 1000)) * 60));
+          if (ev.target === this.myId && heavy) {
+            this.camera.shake(Math.min(18, 6 + (ev.amount / (hit.mhp ?? 1000)) * 60));
+            this.sound.play('impact', 0.55);
+            if (from) {
+              const d = Math.hypot(hit.x - from.x, hit.y - from.y) || 1;
+              this.camera.kick(((hit.x - from.x) / d) * 12, ((hit.y - from.y) / d) * 12);
+            }
+          }
         }
         if (ev.src !== this.myId && ev.target !== this.myId) return;
         const other = this.ents.get(ev.src === this.myId ? ev.target : (ev.src ?? -1));
@@ -498,9 +516,27 @@ export class GameClient {
         const caster = this.ents.get(ev.src);
         this.views.get(ev.src)?.onCast?.(ev.slot);
         if (caster) castFlash(this.fx, caster);
+        if (caster?.champ && ev.slot === 3) {
+          const name = CHAMPION_INFO[caster.champ].abilities[3].name.toUpperCase();
+          this.fx.callout(caster.x, caster.y - caster.r - 70, name.endsWith('!') ? name : `${name}!`, CAST_COLORS[caster.champ]);
+          this.playCue({ name: 'ultimate', at: caster, gain: 0.8 });
+          const halfView = this.app.screen.width / 2 / this.camera.zoom;
+          if (Math.hypot(caster.x - this.camera.x, caster.y - this.camera.y) < halfView) {
+            this.camera.punch(0.025);
+            this.sound.duck(0.3);
+          }
+        }
         return;
       }
     }
+  }
+
+  /** Coming down from a knock-up or a leap: a squash, a ring of dust and a thud. */
+  private landed(s: EntitySnap): void {
+    (this.views.get(s.id) as UnitView | undefined)?.land?.();
+    this.fx.particles.burst(10, { shape: 'smoke', glow: false, x: s.x, y: s.y + s.r * 0.3, life: 0.6, size: s.r * 0.5, size2: s.r * 1.2, color: 0xb9a27c, alpha: 0.45, drag: 0.08 }, [s.r * 1.5, s.r * 3]);
+    this.fx.burst(s.x, s.y, 0xd8cfc0, s.r * 2.2);
+    if (s.id === this.myId) this.camera.shake(5);
   }
 
   /** Dust and leaves under anything walking: champions step often, Chuds and monsters less. */
@@ -655,6 +691,46 @@ export class GameClient {
     this.sound.play(cue.name, cue.gain * falloff, pan);
   }
 
+  /**
+   * The weight under big abilities: a deep impact sound, the music dipping, the screen bending in a ring,
+   * a shove and a punch-in, all scaled by how close to the middle of the screen it happened.
+   */
+  private landHeavy(ev: Extract<GameEvent, { e: 'fx' }>): void {
+    const HEAVY: Partial<Record<FxKind, { sound: SoundName; ripple: number; duck: number; punch: number }>> = {
+      slam: { sound: 'quake', ripple: 1, duck: 0.5, punch: 0.02 },
+      wardenSlam: { sound: 'quake', ripple: 1.3, duck: 0.7, punch: 0.035 },
+      deepHands: { sound: 'quake', ripple: 1, duck: 0.6, punch: 0.03 },
+      kneel: { sound: 'quake', ripple: 0, duck: 0.5, punch: 0.025 },
+      surface: { sound: 'impact', ripple: 0.9, duck: 0.35, punch: 0.015 },
+      roar: { sound: 'impact', ripple: 0, duck: 0.35, punch: 0.02 },
+      berserk: { sound: 'impact', ripple: 0, duck: 0.3, punch: 0.02 },
+      warCry: { sound: 'impact', ripple: 0, duck: 0.25, punch: 0 },
+      decree: { sound: 'impact', ripple: 0, duck: 0.25, punch: 0.015 },
+      summon: { sound: 'impact', ripple: 0, duck: 0.2, punch: 0 },
+      pounce: { sound: 'impact', ripple: 0, duck: 0, punch: 0 },
+      maul: { sound: 'impact', ripple: 0, duck: 0, punch: 0 },
+      cleave: { sound: 'impact', ripple: 0, duck: 0, punch: 0 },
+    };
+    const h = HEAVY[ev.fx];
+    if (!h) return;
+    // KNEEL! lands out in front of King Rix; everything else where it's centered.
+    const at = ev.fx === 'kneel' && ev.x2 !== undefined && ev.y2 !== undefined ? { x: ev.x + (ev.x2 - ev.x) * 0.6, y: ev.y + (ev.y2 - ev.y) * 0.6 } : ev;
+    this.playCue({ name: h.sound, at, gain: 0.85 });
+    const { width, height } = this.app.screen;
+    const halfView = width / 2 / this.camera.zoom;
+    const near = Math.max(0, 1 - Math.hypot(at.x - this.camera.x, at.y - this.camera.y) / (halfView * 1.4));
+    if (near <= 0.05) return;
+    if (h.duck) this.sound.duck(h.duck * near);
+    if (h.punch) this.camera.punch(h.punch * near);
+    const r = (ev.fx === 'kneel' ? 260 : ev.r ?? 200) * h.ripple;
+    if (r > 0) this.ripple.start((at.x - this.camera.x) * this.camera.zoom + width / 2, (at.y - this.camera.y) * this.camera.zoom + height / 2, r * this.camera.zoom * 1.8, near);
+    // Shove the view away from the blast.
+    const dx = this.camera.x - at.x;
+    const dy = this.camera.y - at.y;
+    const d = Math.hypot(dx, dy) || 1;
+    this.camera.kick((dx / d) * 10 * near, (dy / d) * 10 * near);
+  }
+
   /** Shake the camera for something big, less the further it is from the middle of the screen. */
   private shakeNear(at: { x: number; y: number }, amount: number): void {
     const halfView = this.app.screen.width / 2 / this.camera.zoom;
@@ -667,6 +743,7 @@ export class GameClient {
     const SHAKES: Partial<Record<typeof ev.fx, number>> = { wardenSlam: 18, slam: 8, surface: 10, deepHands: 12, roar: 6, kneel: 7, berserk: 5, pounce: 4 };
     const kick = SHAKES[ev.fx];
     if (kick) this.shakeNear(ev, kick);
+    this.landHeavy(ev);
     if (ev.fx === 'wardenMark') {
       // The Warden rears back for the whole warning, then brings it down.
       const warden = [...this.ents.values()].find((e) => e.k === 'monster' && e.mon === 'warden');

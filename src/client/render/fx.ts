@@ -41,6 +41,8 @@ export class FxLayer {
   private effects: Effect[] = [];
   private timers: { at: number; fn: () => void }[] = [];
   private glows: { light: Light; strength: number; age: number; life: number }[] = [];
+  /** Marks left on the ground, oldest first; only so many at once. */
+  private scars: Effect[] = [];
   private clock = 0;
   /** This frame's step, for effects that spray particles while they last. */
   dt = 0;
@@ -100,14 +102,95 @@ export class FxLayer {
   // ─── Numbers and markers ────────────────────────────────────────────────
 
   damageNumber(x: number, y: number, amount: number, type: DamageType): void {
-    const txt = new Text({ text: String(amount), style: { fontFamily: FONT, fontSize: 24, fill: DAMAGE_COLORS[type], stroke: { color: 0x000000, width: 5 } } });
+    // Bigger hits get bigger numbers that slam in and shudder.
+    const weight = Math.min(1, amount / 300);
+    const heavy = amount >= 150;
+    const txt = new Text({ text: heavy ? `${amount}!` : String(amount), style: { fontFamily: FONT, fontSize: 22 + 20 * weight, fill: DAMAGE_COLORS[type], stroke: { color: 0x000000, width: 5 + 2 * weight } } });
     txt.anchor.set(0.5);
     const drift = (Math.random() - 0.5) * 36;
-    this.add(txt, 0.9, (t) => {
-      txt.position.set(x + drift * t, y - 30 - t * 55);
-      txt.scale.set(t < 0.12 ? 0.7 + t * 2.5 : 1);
+    const life = 0.9 + 0.4 * weight;
+    this.add(txt, life, (t) => {
+      const jitter = heavy && t < 0.15 ? (Math.random() - 0.5) * 8 : 0;
+      txt.position.set(x + drift * t + jitter, y - 30 - t * 55 + jitter);
+      const pop = heavy ? 1.8 : 1.4;
+      txt.scale.set(t < 0.1 ? pop - (t / 0.1) * (pop - 1) : 1);
       txt.alpha = t < 0.65 ? 1 : 1 - (t - 0.65) / 0.35;
     }, 'top');
+  }
+
+  /** An ultimate's name punching up over whoever cast it. */
+  callout(x: number, y: number, text: string, color: number): void {
+    const txt = new Text({ text, style: { fontFamily: FONT, fontSize: 36, fill: 0xffffff, stroke: { color, width: 8 }, letterSpacing: 2, dropShadow: { color: 0x000000, alpha: 0.6, blur: 4, distance: 4, angle: Math.PI / 2 } } });
+    txt.anchor.set(0.5);
+    this.add(txt, 1.5, (t) => {
+      const jitter = t < 0.12 ? (Math.random() - 0.5) * 10 : 0;
+      txt.position.set(x + jitter, y - 20 - t * 40 + jitter);
+      txt.scale.set(t < 0.1 ? 2.2 - (t / 0.1) * 1.2 : 1 + Math.max(0, 0.05 - (t - 0.1) * 0.2));
+      txt.alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+    }, 'top');
+  }
+
+  /**
+   * A mark left on the ground that lasts a while: scorched earth, cracks, goo, or a faint royal seal.
+   * Drawn once and slowly faded; the oldest go first if there are too many.
+   */
+  scar(x: number, y: number, r: number, kind: 'scorch' | 'crack' | 'goo' | 'seal', color = 0x000000, life = 16): void {
+    const g = new Graphics();
+    switch (kind) {
+      case 'scorch':
+        for (let i = 0; i < 9; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.random() * r * 0.45;
+          g.circle(x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.35 + Math.random() * 0.3)).fill({ color: 0x0c0806, alpha: 0.16 });
+        }
+        for (let i = 0; i < 7; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.random() * r * 0.7;
+          g.circle(x + Math.cos(a) * d, y + Math.sin(a) * d, 2 + Math.random() * 2.5).fill({ color: 0xff7a2f, alpha: 0.5 });
+        }
+        break;
+      case 'crack': {
+        const count = 6 + Math.round(r / 60);
+        for (let i = 0; i < count; i++) {
+          let a = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+          let d = r * 0.1;
+          g.moveTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+          while (d < r * (0.6 + Math.random() * 0.35)) {
+            a += (Math.random() - 0.5) * 0.7;
+            d += r * (0.1 + Math.random() * 0.12);
+            g.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+          }
+        }
+        g.stroke({ width: 6, color: 0x120c08, alpha: 0.6, join: 'round', cap: 'round' });
+        if (color !== 0x000000) {
+          g.circle(x, y, r * 0.3).fill({ color, alpha: 0.08 });
+        }
+        g.circle(x, y, r * 0.18).fill({ color: 0x120c08, alpha: 0.35 });
+        break;
+      }
+      case 'goo':
+        for (let i = 0; i < 7; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.random() * r * 0.6;
+          const s = r * (0.15 + Math.random() * 0.22);
+          g.circle(x + Math.cos(a) * d, y + Math.sin(a) * d, s).fill({ color: color === 0x000000 ? 0x4f7a2a : color, alpha: 0.42 });
+          g.circle(x + Math.cos(a) * d - s * 0.3, y + Math.sin(a) * d - s * 0.3, s * 0.25).fill({ color: 0xc9f59a, alpha: 0.35 });
+        }
+        break;
+      case 'seal':
+        g.circle(x, y, r).stroke({ width: 3, color, alpha: 0.35 });
+        g.circle(x, y, r * 0.8).stroke({ width: 1.5, color, alpha: 0.25 });
+        for (let i = 0; i < 6; i++) {
+          const p = (k: number) => [x + Math.cos((k / 6) * Math.PI * 2) * r * 0.78, y + Math.sin((k / 6) * Math.PI * 2) * r * 0.78] as const;
+          g.moveTo(...p(i)).lineTo(...p(i + 2));
+        }
+        g.stroke({ width: 1.5, color, alpha: 0.22 });
+        break;
+    }
+    this.add(g, life, (t) => (g.alpha = t < 0.7 ? 1 : (1 - t) / 0.3), 'under');
+    this.scars.push(this.effects[this.effects.length - 1]);
+    this.scars = this.scars.filter((s) => s.age < s.life);
+    if (this.scars.length > 36) this.scars.shift()!.age = Infinity;
   }
 
   healNumber(x: number, y: number, amount: number): void {
