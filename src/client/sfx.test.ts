@@ -34,14 +34,15 @@ describe('sound cues', () => {
   });
 
   it('only play hits you deal or take, on champions', () => {
-    expect(cueFor({ e: 'dmg', src: 2, target: 1, amount: 50, type: 'physical' }, ents, ME)).toMatchObject({ name: 'hit' });
-    expect(cueFor({ e: 'dmg', src: 1, target: 2, amount: 50, type: 'physical' }, ents, ME)).toMatchObject({ name: 'hit' });
+    // A hit on you has a deeper body than one you land.
+    expect(cueFor({ e: 'dmg', src: 2, target: 1, amount: 50, type: 'physical' }, ents, ME)).toMatchObject({ name: 'hitMe', gain: 0.75 });
+    expect(cueFor({ e: 'dmg', src: 1, target: 2, amount: 50, type: 'physical' }, ents, ME)).toMatchObject({ name: 'hit', gain: 0.4 });
     expect(cueFor({ e: 'dmg', src: 1, target: 3, amount: 50, type: 'physical' }, ents, ME)).toBeNull();
     expect(cueFor({ e: 'dmg', src: 3, target: 2, amount: 50, type: 'physical' }, ents, ME)).toBeNull();
   });
 
   it('give heavy hits weight and magic a sting', () => {
-    expect(cueFor({ e: 'dmg', src: 2, target: 1, amount: 79, type: 'physical' }, ents, ME)).toMatchObject({ name: 'hit' });
+    expect(cueFor({ e: 'dmg', src: 2, target: 1, amount: 79, type: 'physical' }, ents, ME)).toMatchObject({ name: 'hitMe' });
     expect(cueFor({ e: 'dmg', src: 2, target: 1, amount: 80, type: 'physical' }, ents, ME)).toMatchObject({ name: 'hitHeavy' });
     expect(cueFor({ e: 'dmg', src: 2, target: 1, amount: 30, type: 'magic' }, ents, ME)).toMatchObject({ name: 'hitMagic' });
     expect(cueFor({ e: 'dmg', src: 2, target: 1, amount: 300, type: 'magic' }, ents, ME)).toMatchObject({ name: 'hitHeavy' });

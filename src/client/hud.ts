@@ -141,6 +141,8 @@ export class Hud {
   private readonly written = new WeakMap<HTMLElement, Map<string, string>>();
   private readonly announceEl: HTMLElement;
   private readonly dangerEl: HTMLElement;
+  /** Flushes red at the edges for a moment with every hit you take. */
+  private readonly hurtEl: HTMLElement;
   /** Banners waiting their turn; one shows at a time. */
   private banners: { title: string; detail: string; tone: Tone }[] = [];
   private bannerUntil = 0;
@@ -149,6 +151,7 @@ export class Hud {
     root.innerHTML = `
       <div class="vignette"></div>
       <div class="danger"></div>
+      <div class="hurt"></div>
       <div class="announce"></div>
       <div class="debug"></div>
       <div class="feed"></div>
@@ -190,6 +193,7 @@ export class Hud {
     }
     this.announceEl = q('.announce');
     this.dangerEl = q('.danger');
+    this.hurtEl = q('.hurt');
     this.feed = q('.feed');
     this.buffBar = q('.buffs');
     this.clockTime = q('.clock .time');
@@ -516,6 +520,11 @@ export class Hud {
     this.set(nb.text, 'text', ready ? (me.inShop ? 'Buy now' : 'Ready: head home') : `${price - me.gold}g to go`);
     this.set(nb.root, 'class', `next-buy${ready ? ' ready' : ''}`);
     nb.root.title = `Next in your build: ${ITEMS[next].name} (${price}g)${next !== toward ? `, a part of ${ITEMS[toward].name}` : ''}. Click to open the shop.`;
+  }
+
+  /** A hit on you: the edges of the screen flush red, `k` (0–1) strong, and fade. */
+  hurt(k: number): void {
+    this.hurtEl.animate([{ opacity: k }, { opacity: 0 }], { duration: 420, easing: 'ease-out' });
   }
 
   /** You're the host: a rematch can swap the sides too. */

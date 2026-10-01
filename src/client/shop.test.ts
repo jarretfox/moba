@@ -3,7 +3,7 @@ import type { ItemId } from '../shared/items';
 import type { MeSnap } from '../shared/protocol';
 import { itemChanges, statGains, suggest } from './shop';
 
-const stats = (o: Partial<MeSnap['stats']> = {}): MeSnap['stats'] => ({ ad: 50, ap: 0, armor: 20, mr: 20, as: 0.7, ms: 340, haste: 0, ls: 0, ...o });
+const stats = (o: Partial<MeSnap['stats']> = {}): MeSnap['stats'] => ({ ad: 50, ap: 0, armor: 20, mr: 20, as: 0.7, ms: 340, haste: 0, ls: 0, range: 150, ...o });
 
 describe('what a purchase changed', () => {
   it('finds the items bought and sold, and where they went', () => {

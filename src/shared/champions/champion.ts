@@ -424,6 +424,7 @@ export abstract class Champion extends Unit {
       items: [...this.items],
       inShop: this.inShop(),
       ...(this.canUndo ? { undo: true } : {}),
+      ...(this.order.kind === 'attack' ? { tgt: this.order.targetId } : {}),
       ...(this.items.some((id) => ACTIVES[id]) ? { itemCd: this.itemCooldowns(world) } : {}),
       buffs: this.buffsLeft(world).map((b) => ({ kind: b.kind, left: Math.ceil(b.left) })),
       stats: {
@@ -435,6 +436,7 @@ export abstract class Champion extends Unit {
         ms: Math.round(this.moveSpeed),
         haste: this.haste,
         ls: Math.round(this.lifesteal * 100),
+        range: Math.round(this.stats.attackRange),
       },
     };
   }

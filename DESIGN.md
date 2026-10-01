@@ -383,6 +383,11 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
       - The Glowworm Lantern hangs at the belt, and the Warden's Link wraps the forearm.
       - Bloodreaver stains the weapon (or the fists) red.
     - Hits, numbers, words and auras happen on the body (`render/stature.ts` knows how tall everything stands), arrows fly at chest height with a shadow below, and units can be clicked anywhere from feet to head.
+    - **Attacks are made to be seen and heard** (a playtest found it hard to tell when you were attacking or being attacked):
+      - A reticle in the enemy color turns under whatever you're attacking for as long as your attack order is on it, and your reach shows faintly round you. The host sends your current target (`MeSnap.tgt`) and attack range.
+      - Every basic attack trails a swoosh, and the weapon flashes at the moment the blow lands (`hit` on each attack animation). Melee blows leave a bigger, longer slash arc (yours biggest); ranged shots flash at the hand.
+      - Every hit you take flushes the screen edges red in proportion, and a champion's hit shoves the view a touch (heavy hits keep their shake, hit-stop and comic word).
+      - Your own attacks are louder with a bright edge on top; hits on you have a deeper thump; an enemy champion starting an attack at you comes with a rising whoosh.
     - **They're alive** (all in the rig):
       - Capes, tails, sacks and wings swing behind the movement, and hats wobble.
       - Champions blink and glance where they're heading. They wince when hit, grin after a kill, an ultimate or a cheery emote, and sleep with their eyes closed.

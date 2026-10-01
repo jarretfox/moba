@@ -158,6 +158,10 @@ export interface RigInput {
   look?: number;
   expression?: Expression;
   posture?: Posture;
+  /** 1 while a basic attack's animation plays: the weapon trails a swoosh however fast it moves. */
+  swing?: number;
+  /** A flash at the weapon's tip as a blow lands, 1 at the moment of impact and dying away. */
+  glint?: number;
 }
 
 /** A tapered limb from (0, 0) to (len, 0): round at both ends, inked, shaded on one side. */
@@ -196,13 +200,13 @@ export function boot(g: Graphics, r: number, len: number, color: number): void {
 export type PartName =
   | 'back' | 'offhand' | 'backUpper' | 'backFore' | 'backHand' | 'backThigh' | 'backShin' | 'backFoot'
   | 'frontThigh' | 'frontShin' | 'frontFoot' | 'torso' | 'head' | 'dangle' | 'headProp' | 'streak' | 'weapon'
-  | 'frontUpper' | 'cap' | 'frontFore' | 'frontHand' | 'handProp';
+  | 'frontUpper' | 'cap' | 'frontFore' | 'frontHand' | 'handProp' | 'glint';
 
 /** The parts drawn from the build (shareable); the rest are drawn as they go. */
 const DRAWN: readonly PartName[] = ['back', 'offhand', 'backUpper', 'backFore', 'backHand', 'backThigh', 'backShin', 'backFoot', 'frontThigh', 'frontShin', 'frontFoot', 'torso', 'head', 'dangle', 'weapon', 'frontUpper', 'cap', 'frontFore', 'frontHand'];
 
 /** Back to front. The face goes just above whichever part it's on. */
-const ORDER: readonly PartName[] = ['back', 'offhand', 'backUpper', 'backFore', 'backHand', 'backThigh', 'backShin', 'backFoot', 'frontThigh', 'frontShin', 'frontFoot', 'torso', 'head', 'dangle', 'headProp', 'streak', 'weapon', 'frontUpper', 'cap', 'frontFore', 'frontHand', 'handProp'];
+const ORDER: readonly PartName[] = ['back', 'offhand', 'backUpper', 'backFore', 'backHand', 'backThigh', 'backShin', 'backFoot', 'frontThigh', 'frontShin', 'frontFoot', 'torso', 'head', 'dangle', 'headProp', 'streak', 'weapon', 'frontUpper', 'cap', 'frontFore', 'frontHand', 'handProp', 'glint'];
 
 /** Shapes drawn once for looks that many units share, by name. */
 const SHARED = new Map<string, Map<PartName, GraphicsContext>>();
@@ -287,6 +291,7 @@ export class Rig implements Figure {
       this.part[name] = g;
       this.z.addChild(g);
     }
+    this.part.glint.blendMode = 'add';
     const p = { ...palette, ...build.prep?.(palette) };
     if (build.face) {
       this.face = makeFace(build.face, r, p);
@@ -485,7 +490,7 @@ export class Rig implements Figure {
       o.position.set(back.x, back.y);
       o.rotation = build.offhand.hold - armSwing * sin * 0.5;
     }
-    this.updateStreak(hx, hy, tipAngle, dt);
+    this.updateStreak(hx, hy, tipAngle, dt, input.swing ?? 0, input.glint ?? 0);
     if (this.gear) {
       const follow = (g: Graphics, on: Graphics) => {
         g.position.copyFrom(on.position);
@@ -504,19 +509,30 @@ export class Rig implements Figure {
     this.updateLoose(dead, dt);
   }
 
-  /** A swoosh where the weapon's tip has just been, while it's moving fast. */
-  private updateStreak(hx: number, hy: number, angle: number, dt: number): void {
-    const g = this.part.streak;
-    const color = this.build.streak;
-    if (color === undefined) return;
+  /**
+   * A swoosh where the weapon's tip has just been: while it's moving fast, or (`swing`) however it moves
+   * during a basic attack, so every attack is seen to happen. And the glint: a bright star bursting at the
+   * tip as the blow lands.
+   */
+  private updateStreak(hx: number, hy: number, angle: number, dt: number, swing: number, glint: number): void {
     const len = (this.build.weapon?.tip ?? 0.22) * this.r;
     const tx = hx + Math.cos(angle) * len;
     const ty = hy + Math.sin(angle) * len;
+    const gl = this.part.glint.clear();
+    if (glint > 0.01) {
+      const s = (0.14 + 0.34 * glint) * this.r;
+      const w = s * 0.26;
+      gl.poly([tx, ty - s, tx + w, ty - w, tx + s, ty, tx + w, ty + w, tx, ty + s, tx - w, ty + w, tx - s, ty, tx - w, ty - w]).fill({ color: 0xffffff, alpha: 0.9 * glint });
+      gl.circle(tx, ty, s * 0.42).fill({ color: 0xffffff, alpha: 0.55 * glint });
+    }
+    const g = this.part.streak;
+    const color = this.build.streak;
+    if (color === undefined) return;
     const ix = hx + Math.cos(angle) * len * 0.35;
     const iy = hy + Math.sin(angle) * len * 0.35;
     const speed = this.lastTip && dt > 0 ? Math.hypot(tx - this.lastTip[0], ty - this.lastTip[1]) / dt : 0;
     this.lastTip = [tx, ty];
-    if (speed > 6.5 * this.r) this.trail.push({ tx, ty, ix, iy, t: this.clock });
+    if (speed > (swing > 0 ? 1.5 : 6.5) * this.r) this.trail.push({ tx, ty, ix, iy, t: this.clock });
     this.trail = this.trail.filter((p) => this.clock - p.t < 0.12);
     if (this.trail.length < 2) {
       if (this.streaking) g.clear();

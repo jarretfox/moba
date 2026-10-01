@@ -20,6 +20,9 @@ export type SoundName =
   | 'hit'
   | 'hitHeavy'
   | 'hitMagic'
+  | 'hitMe'
+  | 'atkEdge'
+  | 'incoming'
   | 'cast'
   | 'magic'
   | 'boom'
@@ -536,6 +539,21 @@ export const RECIPES: Record<SoundName, Recipe> = {
     v.tone(t, 'sine', 160, 70, 0.14, 0.35);
     v.noise(t, 'highpass', 5000, 2500, 0.08, 0.12);
   }, { gap: 0.06, send: 0.22 }),
+  // A hit landing on you: the same blow with a deeper, longer body under it, so you feel it's yours.
+  hitMe: fx((v, t) => {
+    v.click(t, 0.38, 3600);
+    v.tone(t, 'sine', 140, 46, 0.2, 0.75, 0.003);
+    v.noise(t, 'lowpass', 1200, 240, 0.16, 0.3);
+    v.noise(t + 0.01, 'lowpass', 500, 90, 0.26, 0.18, 1, 0.01);
+  }, { gap: 0.06, duck: 0.05 }),
+  // The edge on your own swing or shot: a bright snap on top of the champion's own sound, so you always
+  // hear yourself start an attack, whatever else is going on.
+  atkEdge: fx((v, t) => {
+    v.click(t, 0.5, 6500);
+    v.noise(t, 'highpass', 4500, 2500, 0.035, 0.28, 1);
+  }, { gap: 0.05 }),
+  // An enemy champion starting a swing or a shot at you: a quick rising whoosh, a beat before it lands.
+  incoming: fx((v, t) => v.noise(t, 'bandpass', 600, 2400, 0.15, 0.4, 1.5, 0.02), { gap: 0.12 }),
   cast: fx((v, t) => v.tone(t, 'triangle', 320, 760, 0.16, 0.22, 0.01), { gap: 0.05 }),
   magic: fx((v, t) => {
     v.tone(t, 'sine', 880, 1320, 0.28, 0.14, 0.02);

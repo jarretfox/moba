@@ -128,6 +128,15 @@ kbd {
   background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
 }
 
+/* A red flush at the edges for a moment, with every hit you take (see Hud.hurt). */
+.hurt {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 48%, rgba(225, 30, 40, 0.8) 100%);
+}
+
 /* Pulses red at the edges while you're low on health. */
 .danger {
   position: absolute;

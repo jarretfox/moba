@@ -85,6 +85,11 @@ export class GameClient {
   private readonly unitLayer = new Container({ sortableChildren: true });
   private readonly projectileLayer = new Container();
   private readonly indicator = new Graphics();
+  /** A reticle under whatever you're attacking (and your reach round you), while you're attacking it. */
+  private readonly targetMark = new Graphics();
+  private markId = -1;
+  private markOn = 0;
+  private markT = 0;
   private readonly fx = new FxLayer();
   private readonly ambience = new Ambience(MAP);
   private readonly water = new Water(MAP);
@@ -302,6 +307,7 @@ export class GameClient {
     // bits on the pit walls raised with the wall tops.
     const landmarks = buildLandmarks(MAP);
     this.underLayer.addChildAt(landmarks.flat, 0);
+    this.underLayer.addChild(this.targetMark);
     this.wallTops.addChild(landmarks.tall);
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
@@ -418,6 +424,57 @@ export class GameClient {
     }
   }
 
+  /**
+   * A reticle under whatever you're attacking, for as long as your attack order is on it: a turning dashed
+   * ring in the enemy's color with four ticks pointing in, popping in as it lands on something new. Your
+   * reach shows faintly round you at the same time, so you can see when you're close enough.
+   */
+  private drawTargetMark(dt: number, me: EntitySnap | undefined): void {
+    const mine = this.buffer.latest?.me;
+    const tgt = mine?.tgt !== undefined ? this.ents.get(mine.tgt) : undefined;
+    const g = this.targetMark;
+    if (!me || me.dead || !mine || !tgt || tgt.dead || this.replay) {
+      if (this.markOn > 0) g.clear();
+      this.markOn = 0;
+      this.markId = -1;
+      return;
+    }
+    if (this.markId !== tgt.id) {
+      this.markId = tgt.id;
+      this.markOn = 0;
+    }
+    this.markOn = Math.min(1, this.markOn + dt * 8);
+    this.markT += dt;
+    const color = PALETTE.enemy;
+    const pop = 1 + (1 - this.markOn) * 0.6;
+    const r = tgt.r * 1.3 * pop;
+    const rot = this.markT * 1.4;
+    const alpha = (0.7 + 0.3 * Math.sin(this.markT * 7)) * this.markOn;
+    g.clear();
+    g.ellipse(tgt.x, tgt.y, r, r * 0.45).fill({ color, alpha: 0.12 * this.markOn });
+    // Eight dashes round the ring (as a flat ellipse, like the ground), and four ticks pointing in.
+    for (let i = 0; i < 8; i++) {
+      const a0 = rot + (i / 8) * Math.PI * 2;
+      for (let k = 0; k <= 4; k++) {
+        const a = a0 + (k / 4) * (Math.PI / 8);
+        const x = tgt.x + Math.cos(a) * r;
+        const y = tgt.y + Math.sin(a) * r * 0.45;
+        if (k === 0) g.moveTo(x, y);
+        else g.lineTo(x, y);
+      }
+      g.stroke({ width: 3, color, alpha, cap: 'round' });
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = -rot * 0.5 + (i / 4) * Math.PI * 2;
+      const c = Math.cos(a);
+      const s = Math.sin(a) * 0.45;
+      g.moveTo(tgt.x + c * (r + 14), tgt.y + s * (r + 14)).lineTo(tgt.x + c * (r + 5), tgt.y + s * (r + 5)).stroke({ width: 3, color, alpha, cap: 'round' });
+    }
+    // Your reach, faintly, round you.
+    const reach = mine.stats.range + me.r;
+    g.ellipse(me.x, me.y, reach, reach * 0.45).stroke({ width: 1.5, color, alpha: 0.2 * this.markOn });
+  }
+
   /** The hour for the look of things: the match clock, plus the head start if the match began at night. */
   private lookTime(): number {
     return (this.replay?.time ?? this.buffer.latest?.time ?? 0) + this.clockOffset;
@@ -509,6 +566,7 @@ export class GameClient {
     this.setCursor(this.enemyAt(mouseWorld) ? 'attack' : !this.replay && this.wicks[this.myTeam - 1]?.hit(mouseWorld) ? 'shop' : '');
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
+    this.drawTargetMark(dt, me);
 
     this.updateWicks(dt, me);
     this.chudChatter(dt);
@@ -711,6 +769,14 @@ export class GameClient {
               this.camera.kick(((hit.x - from.x) / d) * 12, ((hit.y - from.y) / d) * 12);
             }
           }
+          if (ev.target === this.myId && !this.replay) {
+            // Every hit you take flushes the edges of the screen, in proportion; a champion's shoves the view a touch.
+            this.hud.hurt(Math.max(0.12, Math.min(0.7, (ev.amount / (hit.mhp ?? 1000)) * 6)));
+            if (!heavy && from?.k === 'champion') {
+              const d = Math.hypot(hit.x - from.x, hit.y - from.y) || 1;
+              this.camera.kick(((hit.x - from.x) / d) * 4, ((hit.y - from.y) / d) * 4);
+            }
+          }
         }
         if (ev.src !== this.myId && ev.target !== this.myId) return;
         if (ev.target === this.myId && ev.src !== this.myId && ev.amount >= 1 && !this.replay) this.recordHit(ev, from);
@@ -726,15 +792,26 @@ export class GameClient {
         const shooter = this.ents.get(ev.src);
         if (shooter?.k === 'structure' && this.ents.get(ev.target)?.k === 'champion') this.towerShots.set(ev.src, { target: ev.target, until: performance.now() / 1000 + 1.4 });
         if (shooter?.k === 'structure') this.shootieFires(shooter, this.ents.get(ev.target));
-        // Melee champions' hits leave a small slash where they land.
+        // Melee champions' blows leave a slash arc where they land (yours bigger and brighter); ranged ones a
+        // bright twang at the hand as the shot leaves. Either way you can see an attack happen.
         const src = this.ents.get(ev.src);
         const tgt = this.ents.get(ev.target);
+        const mine = ev.src === this.myId;
         if (src?.k === 'champion' && src.champ && MELEE.has(src.champ) && tgt) {
           const a = Math.atan2(tgt.y - src.y, tgt.x - src.x);
-          const reach = Math.min(Math.hypot(tgt.x - src.x, tgt.y - src.y) + tgt.r * 0.4, src.r * 3.2);
+          const reach = Math.min((Math.hypot(tgt.x - src.x, tgt.y - src.y) + tgt.r * 0.4) * 1.1, src.r * 3.6);
           const color = src.champ === 'barbarian' ? 0xff8a3d : src.champ === 'logan' ? 0xffc04d : 0xc8945a;
-          this.fx.slash(src.x, src.y, a, reach, 1.2, color, 0.2);
+          this.fx.slash(src.x, src.y, a, reach, 1.5, color, mine ? 0.38 : 0.3);
+        } else if (src?.k === 'champion' && src.champ) {
+          const color = CAST_COLORS[src.champ];
+          const hx = src.x + Math.cos(src.f) * src.r * 0.6;
+          const hy = src.y - chestHeight(src) * 0.9;
+          this.fx.flash(hx, hy, mine ? 26 : 18, color, 0.14, 0.85);
+          if (mine) this.fx.particles.burst(5, { shape: 'spark', x: hx, y: hy, life: 0.2, size: 8, size2: 2, stretch: 0.05, color: 0xffffff, color2: color }, [120, 260], src.f, 0.8);
         }
+        // Your own attack has an edge you always hear; an enemy champion's at you comes in with a whoosh.
+        if (mine && src) this.sound.play('atkEdge', 0.5);
+        else if (src?.k === 'champion' && src.tm !== this.myTeam && ev.target === this.myId) this.playCue({ name: 'incoming', at: src, gain: 0.6 });
         return;
       }
       case 'death': {

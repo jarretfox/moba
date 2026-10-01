@@ -28,6 +28,8 @@ export interface Anim {
   grow?: readonly Key[];
   /** The weapon stretching out along its length (1 = twice as long): a toad's tongue. */
   stretch?: readonly Key[];
+  /** For attacks: how far through (0–1) the blow lands, when the weapon flashes. Halfway if left out. */
+  hit?: number;
 }
 
 /** The value of a track at time t, eased between keys (0 if there's no track). */
@@ -51,27 +53,27 @@ const TAU = Math.PI * 2;
 /** Basic attacks. */
 export const ATTACK: Record<ChampionId, Anim> = {
   // The axe up over his head, then down like he's splitting a log.
-  barbarian: { dur: 0.32, turn: [[0, 0], [0.35, -1.6], [0.6, 0.9], [1, 0]], lunge: [[0, 0], [0.35, -0.05], [0.6, 0.2], [1, 0]], grow: [[0, 0], [0.35, 0.05], [0.6, -0.03], [1, 0]] },
+  barbarian: { dur: 0.32, hit: 0.6, turn: [[0, 0], [0.35, -1.6], [0.6, 0.9], [1, 0]], lunge: [[0, 0], [0.35, -0.05], [0.6, 0.2], [1, 0]], grow: [[0, 0], [0.35, 0.05], [0.6, -0.03], [1, 0]] },
   // Draw the string back, loose, and rock back from the shot.
-  marksman: { dur: 0.3, reach: [[0, 0], [0.45, -0.22], [0.55, 0.06], [1, 0]], lunge: [[0, 0], [0.55, -0.08], [1, 0]] },
+  marksman: { dur: 0.3, hit: 0.45, reach: [[0, 0], [0.45, -0.22], [0.55, 0.06], [1, 0]], lunge: [[0, 0], [0.55, -0.08], [1, 0]] },
   // Whirl the hook round once and fling it out.
-  willmore: { dur: 0.36, turn: [[0, 0], [1, -TAU]], reach: [[0, 0], [0.55, 0.35], [1, 0]] },
+  willmore: { dur: 0.36, hit: 0.55, turn: [[0, 0], [1, -TAU]], reach: [[0, 0], [0.55, 0.35], [1, 0]] },
   // Lift the staff and jab the spore forward.
-  hunnag: { dur: 0.32, turn: [[0, 0], [0.3, -0.5], [0.55, 0.45], [1, 0]], reach: [[0, 0], [0.3, -0.12], [0.55, 0.32], [1, 0]] },
+  hunnag: { dur: 0.32, hit: 0.55, turn: [[0, 0], [0.3, -0.5], [0.55, 0.45], [1, 0]], reach: [[0, 0], [0.3, -0.12], [0.55, 0.32], [1, 0]] },
   // Claws up, then raked down with a lunge.
-  logan: { dur: 0.28, turn: [[0, 0], [0.25, -1.3], [0.5, 0.7], [1, 0]], reach: [[0, 0], [0.5, 0.3], [1, 0]], lunge: [[0, 0], [0.5, 0.25], [1, 0]] },
+  logan: { dur: 0.28, hit: 0.5, turn: [[0, 0], [0.25, -1.3], [0.5, 0.7], [1, 0]], reach: [[0, 0], [0.5, 0.3], [1, 0]], lunge: [[0, 0], [0.5, 0.25], [1, 0]] },
   // A royal flourish of the scepter.
-  kingrix: { dur: 0.36, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
+  kingrix: { dur: 0.36, hit: 0.6, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
   // A quick, sneaky stab.
-  daltonomo: { dur: 0.26, reach: [[0, 0], [0.3, 0.45], [1, 0]], twist: [[0, 0], [0.3, 0.2], [1, 0]], lunge: [[0, 0], [0.3, 0.15], [1, 0]] },
+  daltonomo: { dur: 0.26, hit: 0.3, reach: [[0, 0], [0.3, 0.45], [1, 0]], twist: [[0, 0], [0.3, 0.2], [1, 0]], lunge: [[0, 0], [0.3, 0.15], [1, 0]] },
   // A downward slash of the flaming cheese knife.
-  havarti: { dur: 0.32, turn: [[0, 0], [0.3, -1.3], [0.55, 0.9], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
+  havarti: { dur: 0.32, hit: 0.55, turn: [[0, 0], [0.3, -1.3], [0.55, 0.9], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
   // A fencer's thrust: blade and body forward together.
-  paris: { dur: 0.26, reach: [[0, 0], [0.3, 0.5], [1, 0]], lunge: [[0, 0], [0.3, 0.25], [1, 0]] },
+  paris: { dur: 0.26, hit: 0.3, reach: [[0, 0], [0.3, 0.5], [1, 0]], lunge: [[0, 0], [0.3, 0.25], [1, 0]] },
   // The rig-bow kicks back as it fires.
-  dabber: { dur: 0.3, reach: [[0, 0], [0.3, -0.15], [0.45, 0.08], [1, 0]], lunge: [[0, 0], [0.45, -0.06], [1, 0]] },
+  dabber: { dur: 0.3, hit: 0.3, reach: [[0, 0], [0.3, -0.15], [0.45, 0.08], [1, 0]], lunge: [[0, 0], [0.45, -0.06], [1, 0]] },
   // A short, heavy jab.
-  dongmaster: { dur: 0.28, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.15], [1, 0]], twist: [[0, 0], [0.35, -0.18], [1, 0]] },
+  dongmaster: { dur: 0.28, hit: 0.35, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.15], [1, 0]], twist: [[0, 0], [0.35, -0.18], [1, 0]] },
 };
 
 /** Casting an ability, unless the slot has its own move below. */

@@ -164,6 +164,9 @@ export class UnitView implements EntityView {
   private dying = 0;
   private clock = Math.random() * 10;
   private flash = 0;
+  /** The weapon's flash as a basic attack lands (1 at impact, dying away), and whether this attack's has gone. */
+  private glint = 0;
+  private hitFired = false;
   private last: { x: number; y: number } | null = null;
   /** The radius the body was drawn at; Berserk grows the real one. */
   private readonly baseR: number;
@@ -333,11 +336,18 @@ export class UnitView implements EntityView {
     let lungeBy = 0;
     let grow = 0;
     let stretch = 0;
+    let swinging = false;
     if (this.anim) {
       this.anim.t += dt / this.anim.a.dur;
       if (this.anim.t >= 1 || s.dead) this.anim = null;
       else {
         const { a, t } = this.anim;
+        swinging = a === this.attackAnim;
+        // The moment the blow lands, the weapon flashes.
+        if (swinging && !this.hitFired && t >= (a.hit ?? 0.5)) {
+          this.hitFired = true;
+          this.glint = 1;
+        }
         turn = sample(a.turn, t);
         reach = sample(a.reach, t);
         twist = sample(a.twist, t);
@@ -446,6 +456,7 @@ export class UnitView implements EntityView {
       this.airT = airborne ? this.airT + dt : 0;
       const knocked = airborne && (!!s.st?.includes('stun') || this.clock - this.lastCast > 0.6);
       const k = Math.min(1, this.airT / 0.6);
+      this.glint = Math.max(0, this.glint - dt * 5);
       this.rig.update({
         dt,
         speed: s.dead ? 0 : Math.max(moved, paceSpeed),
@@ -456,6 +467,8 @@ export class UnitView implements EntityView {
         lunge: lungeBy,
         grow,
         stretch,
+        swing: swinging ? 1 : 0,
+        glint: this.glint,
         air: Math.max(this.air, hop),
         vx: s.dead ? 0 : vx,
         recoil: this.recoil,
@@ -607,6 +620,7 @@ export class UnitView implements EntityView {
 
   onAttack(): void {
     this.pulse = 1;
+    this.hitFired = false;
     if (this.attackAnim) this.anim = { a: this.attackAnim, t: 0 };
   }
 

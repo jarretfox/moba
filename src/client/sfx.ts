@@ -99,7 +99,7 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       const at = { x: src.x, y: src.y };
       switch (src.k) {
         case 'champion':
-          return { name: src.champ ? ATTACK_SOUND[src.champ] : 'swing', at, gain: src.id === myId ? 0.7 : 0.5 };
+          return { name: src.champ ? ATTACK_SOUND[src.champ] : 'swing', at, gain: src.id === myId ? 0.9 : 0.5 };
         case 'structure':
           return { name: 'tower', at, gain: 0.7 };
         case 'chud':
@@ -112,10 +112,10 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       if (ev.target !== myId && ev.src !== myId) return null;
       const t = ents.get(ev.target);
       if (!t || (t.k !== 'champion' && ev.target !== myId)) return null;
-      // Heavy hits land with more weight; magic stings rather than thumps.
+      // Heavy hits land with more weight; magic stings rather than thumps; a hit on you has a deeper body.
       const heavy = ev.amount >= (t.mhp ?? 1000) * HEAVY_HIT;
-      const name: SoundName = heavy ? 'hitHeavy' : ev.type === 'magic' ? 'hitMagic' : 'hit';
-      return { name, at: { x: t.x, y: t.y }, gain: ev.target === myId ? 0.6 : 0.4 };
+      const name: SoundName = heavy ? 'hitHeavy' : ev.type === 'magic' ? 'hitMagic' : ev.target === myId ? 'hitMe' : 'hit';
+      return { name, at: { x: t.x, y: t.y }, gain: ev.target === myId ? 0.75 : 0.4 };
     }
     case 'death': {
       const t = ents.get(ev.id);

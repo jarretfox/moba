@@ -367,12 +367,14 @@ export interface MeSnap {
   inShop: boolean;
   /** There's a purchase or sale this visit that can be taken back. */
   undo?: boolean;
+  /** What you're attacking right now (the unit your attack order is on), while you have one. */
+  tgt?: number;
   /** Seconds until each inventory slot's item can be used again (0 when ready, or when it has no active). */
   itemCd?: number[];
   /** Jungle buffs and the seconds left on each. */
   buffs: { kind: BuffKind; left: number }[];
   /** For the shop's stat panel. `as` is attacks per second; `ls` is lifesteal in percent. */
-  stats: { ad: number; ap: number; armor: number; mr: number; as: number; ms: number; haste: number; ls: number };
+  stats: { ad: number; ap: number; armor: number; mr: number; as: number; ms: number; haste: number; ls: number; /** Basic attack range. */ range: number };
 }
 
 export interface Snapshot {
