@@ -137,6 +137,11 @@ export class Lighting {
     ];
   }
 
+  /** Another wavering light that stays put (Old Wick's lantern). */
+  addLight(light: FlickerLight): void {
+    this.flickering.push(light);
+  }
+
   /** Redraws the light map for this frame. `world` is the game's world layer (for the camera transform). */
   update(renderer: Renderer, world: Container, screenW: number, screenH: number, dt: number, ents: Iterable<EntitySnap>, myTeam: number, extra: readonly Light[], sky: number): void {
     if (this.rt.width !== screenW || this.rt.height !== screenH) this.rt.resize(screenW, screenH);

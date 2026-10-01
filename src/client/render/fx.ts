@@ -227,6 +227,20 @@ export class FxLayer {
     this.particles.burst(4, { shape: 'star', x, y, life: 0.5, size: 14, size2: 2, color: 0xffe29a, drag: 0.1, spin: 4 }, [40, 90]);
   }
 
+  /** What a purchase gave you ("+25 Attack damage"...), rising off your champion one line after another. */
+  statLines(x: number, y: number, lines: readonly string[]): void {
+    lines.slice(0, 4).forEach((line, i) => {
+      this.later(i * 0.2, () => {
+        const txt = new Text({ text: line, style: { fontFamily: FONT, fontSize: 18, fill: 0x86efac, stroke: { color: 0x000000, width: 5 } } });
+        txt.anchor.set(0.5);
+        this.add(txt, 1.5, (t) => {
+          txt.position.set(x, y - t * 55);
+          txt.alpha = t < 0.08 ? t / 0.08 : t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+        }, 'top');
+      });
+    });
+  }
+
   /** A pillar of golden light, a rune circle and a "LEVEL n" banner over your champion. */
   levelUp(x: number, y: number, r: number, level: number): void {
     this.pillar(x, y, r * 1.1, 0xffd166, 1.1);

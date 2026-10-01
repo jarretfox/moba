@@ -37,6 +37,12 @@ export type SoundName =
   | 'ultimate'
   /** A Chud wave marching out. */
   | 'horn'
+  /** Old Wick, the shopkeeper: a wheezy "heh heh heh", a low "ahhh...", and a no-sale buzz. */
+  | 'chuckle'
+  | 'murmur'
+  | 'deny'
+  /** A bright little chime: awards on the end screen, a new tip. */
+  | 'chime'
   /** Your Da Base in danger. */
   | 'heartbeat'
   /** The announcer: good news for your side, and bad. */
@@ -226,6 +232,24 @@ class Voice {
     src.stop(at + dur + 0.02);
   }
 
+  /** A buzzy voice through vowel formants: mutters and chuckles. */
+  vowel(at: number, f0: number, f1: number, dur: number, vol: number, formants: readonly number[], attack = 0.02): void {
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f0, at);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), at + dur);
+    const out = this.env(at, dur, vol, attack);
+    for (const f of formants) {
+      const band = this.ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = f;
+      band.Q.value = 5;
+      o.connect(band).connect(out);
+    }
+    o.start(at);
+    o.stop(at + dur + 0.02);
+  }
+
   private env(at: number, dur: number, vol: number, attack: number): GainNode {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.0001, at);
@@ -321,6 +345,27 @@ const RECIPES: Record<SoundName, (v: Voice, t: number) => void> = {
       v.tone(t + dt, 'sawtooth', f * 0.97, f, dur, 0.06, 0.08);
       v.tone(t + dt, 'triangle', f, f, dur, 0.14, 0.06);
     }
+  },
+  chuckle: (v, t) => {
+    // "heh heh heh heh", each one a breath and a low buzzy "eh", sinking.
+    for (let i = 0; i < 4; i++) {
+      const at = t + i * 0.13;
+      v.noise(at, 'bandpass', 1900, 1300, 0.05, 0.07, 1.5);
+      v.vowel(at + 0.02, 152 - i * 9, 130 - i * 9, 0.1, 1.1 - i * 0.14, [540, 1750], 0.01);
+    }
+  },
+  murmur: (v, t) => {
+    // "Ahhh... mmm."
+    v.noise(t, 'bandpass', 1400, 900, 0.12, 0.05, 1.2, 0.03);
+    v.vowel(t + 0.05, 122, 94, 0.7, 0.9, [720, 1150], 0.08);
+    v.vowel(t + 0.62, 104, 86, 0.45, 0.6, [300, 900], 0.05);
+  },
+  deny: (v, t) => {
+    v.tone(t, 'square', 220, 190, 0.08, 0.16);
+    v.tone(t + 0.1, 'square', 180, 140, 0.14, 0.16);
+  },
+  chime: (v, t) => {
+    [1318.5, 1760, 2093].forEach((f, i) => v.tone(t + i * 0.06, 'sine', f, f, 0.35, 0.12, 0.004));
   },
   heartbeat: (v, t) => {
     v.tone(t, 'sine', 72, 40, 0.16, 0.7, 0.004);

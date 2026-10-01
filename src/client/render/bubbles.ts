@@ -1,5 +1,11 @@
 import { Container, Graphics, Text } from 'pixi.js';
-import type { EntitySnap } from '../../shared/protocol';
+/** Whoever's talking: where they are, how big, and whether they're still around to talk. */
+export interface Speaker {
+  x: number;
+  y: number;
+  r: number;
+  dead?: boolean;
+}
 
 // Speech bubbles over champions' heads: emotes and kill quips. One per champion (a new line replaces the
 // last); they follow their speaker around and hide when the speaker can't be seen.
@@ -37,10 +43,11 @@ export class Bubbles {
     this.bubbles.set(id, { box, age: 0 });
   }
 
-  update(dt: number, ents: ReadonlyMap<number, EntitySnap>): void {
+  /** `find` says where each speaker is now (champions by entity id; Old Wick has ids of his own). */
+  update(dt: number, find: (id: number) => Speaker | undefined): void {
     for (const [id, b] of this.bubbles) {
       b.age += dt;
-      const e = ents.get(id);
+      const e = find(id);
       if (b.age >= LIFE || !e || e.dead) {
         b.box.destroy({ children: true });
         this.bubbles.delete(id);

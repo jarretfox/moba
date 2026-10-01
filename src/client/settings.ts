@@ -13,9 +13,11 @@ export interface Settings {
   colorblind: boolean;
   /** Interface size, 0.8–1.3. */
   uiScale: number;
+  /** Tips for first matches. */
+  tips: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1 };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true };
 
 const KEY = 'moba.settings';
 
@@ -32,6 +34,7 @@ export function parseSettings(raw: string | null): Settings {
     if (v.quality === 'high' || v.quality === 'low') s.quality = v.quality;
     if (typeof v.showFps === 'boolean') s.showFps = v.showFps;
     if (typeof v.colorblind === 'boolean') s.colorblind = v.colorblind;
+    if (typeof v.tips === 'boolean') s.tips = v.tips;
     if (typeof v.uiScale === 'number' && Number.isFinite(v.uiScale)) s.uiScale = Math.max(0.8, Math.min(1.3, v.uiScale));
   } catch {
     // a broken save just means the defaults
@@ -150,6 +153,10 @@ export function settingsPanel(): HTMLElement {
       ['Orange (colorblind)', () => settings.colorblind, () => updateSettings({ colorblind: true })],
     ]),
     scaleSlider(),
+    toggle('Tips', [
+      ['Off', () => !settings.tips, () => updateSettings({ tips: false })],
+      ['On (from the start)', () => settings.tips, () => updateSettings({ tips: true })],
+    ]),
   );
   return panel;
 }

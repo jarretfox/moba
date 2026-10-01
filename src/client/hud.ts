@@ -1,4 +1,4 @@
-import { atRank, perRank, type ChampionInfo } from '../shared/champions/types';
+import { atRank, perRank, type ChampionId, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
 import { INVENTORY_SLOTS, ITEMS, hasteMultiplier, sellPrice, statLines, type ItemId } from '../shared/items';
 import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../shared/protocol';
@@ -12,6 +12,8 @@ import { iconEl } from './render/icons';
 import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
 import type { RecapEntry } from './recap';
+import type { Award } from './awards';
+import { el } from './ui/dom';
 
 interface SlotEls {
   root: HTMLElement;
@@ -92,6 +94,10 @@ export class Hud {
   private readonly xp: BarEls;
   private readonly tooltip: HTMLElement;
   private readonly respawn: HTMLElement;
+  private readonly spectateEl: HTMLElement;
+  private readonly recapEl: HTMLElement;
+  /** The end screen's awards and gold graph, once the match is over. */
+  private extras: { awards: HTMLElement | null; gold: HTMLElement | null } | null = null;
   private readonly respawnRing: HTMLElement;
   private readonly respawnTime: HTMLElement;
   private readonly recall: HTMLElement;
@@ -126,6 +132,7 @@ export class Hud {
       <div class="warden"></div>
       <div class="help"><div class="help-title"></div><div class="help-keys">${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div><div class="help-hint"><kbd>H</kbd> controls</div></div>
       <div class="respawn" hidden><div class="respawn-ring"><img class="respawn-face" alt="" /><b class="respawn-time"></b></div><div class="respawn-label">Respawning</div><div class="recap" hidden></div></div>
+      <div class="spectate" hidden><img class="spectate-face" alt="" /><span class="spectate-text"></span><span class="spectate-hint"><kbd>Space</kbd> next teammate</span></div>
       <div class="recall" hidden><div class="recall-label">Recalling</div><div class="recall-bar"><div class="recall-fill"></div></div></div>
       <div class="fade"></div>
       <div class="esc-menu" hidden><div class="esc-panel"><div class="esc-title">Menu</div><div class="esc-settings"></div><div class="esc-actions"><button class="esc-resume">Back to the match</button><button class="esc-leave">Leave match</button></div></div></div>
@@ -172,6 +179,8 @@ export class Hud {
     this.gold = q('.gold');
     this.tooltip = q('.tooltip');
     this.respawn = q('.respawn');
+    this.spectateEl = q('.spectate');
+    this.recapEl = q('.recap');
     this.respawnRing = q('.respawn-ring');
     this.respawnTime = q('.respawn-time');
     this.recall = q('.recall');
@@ -400,7 +409,15 @@ export class Hud {
     const tables = scoreTables(rows, myTeam, meId);
     if (over) {
       const mvp = pickMvp(rows, winner);
-      (this.gameOver.querySelector('.gameover-scores') as HTMLElement).replaceChildren(...(mvp ? [mvpCard(mvp)] : []), tables);
+      // Over the tables: the MVP beside the gold graph, then a row of awards.
+      const top = el('div', 'gameover-extras');
+      const row = el('div', 'extras-row');
+      if (mvp) row.append(mvpCard(mvp));
+      if (this.extras?.gold) row.append(this.extras.gold);
+      top.append(row);
+      if (this.extras?.awards) top.append(this.extras.awards);
+      this.gameOver.classList.toggle('compact', !!this.extras);
+      (this.gameOver.querySelector('.gameover-scores') as HTMLElement).replaceChildren(top, tables);
       this.report = matchReport(rows, winner, time);
       (this.gameOver.querySelector('.gameover-copy') as HTMLElement).hidden = false;
     } else {
@@ -429,10 +446,9 @@ export class Hud {
     this.showOverlay(victory ? 'VICTORY' : 'DEFEAT', victory ? 'Their Da Base has fallen.' : 'Your Da Base has fallen.', victory);
   }
 
-  /** A full-screen message with a way back to the menu, e.g. when the host leaves. */
   /** Under the respawn ring: who killed you, and with what. Built with textContent, since names come from other players. */
   showRecap(entries: RecapEntry[]): void {
-    const box = this.respawn.querySelector('.recap') as HTMLElement;
+    const box = this.recapEl;
     box.replaceChildren();
     box.hidden = !entries.length;
     if (!entries.length) return;
@@ -472,6 +488,7 @@ export class Hud {
     });
   }
 
+  /** A full-screen message with a way back to the menu, e.g. when the host leaves. */
   showNotice(title: string, detail: string): void {
     this.showOverlay(title, detail, false);
   }
@@ -552,6 +569,90 @@ export class Hud {
   }
 
   /** Replays a one-shot CSS animation class on an element. */
+  /**
+   * A purchase landed: the item's icon flies from its shop card (or the gold counter) into its inventory
+   * slot, which flashes, and the stats it raised light up in the shop.
+   */
+  itemBought(id: ItemId, slot: number, statKeys: readonly string[]): void {
+    const target = this.inv[slot];
+    if (!target) return;
+    const from = this.shop.cardRect(id) ?? this.purse.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+    const icon = iconEl(ITEMS[id].icon, 'item-fly');
+    const sx = from.left + Math.min(from.width, 40) / 2;
+    const sy = from.top + Math.min(from.height, 40) / 2;
+    icon.style.left = `${sx}px`;
+    icon.style.top = `${sy}px`;
+    this.purse.closest('#hud')!.append(icon);
+    const dx = to.left + to.width / 2 - sx;
+    const dy = to.top + to.height / 2 - sy;
+    const flight = icon.animate(
+      [
+        { transform: 'translate(0, 0) scale(1.5) rotate(0deg)', opacity: 0.4 },
+        { transform: `translate(${dx * 0.4}px, ${dy * 0.4 - 90}px) scale(1.8) rotate(-12deg)`, opacity: 1, offset: 0.4 },
+        { transform: `translate(${dx}px, ${dy}px) scale(1) rotate(0deg)`, opacity: 1 },
+      ],
+      { duration: 700, easing: 'cubic-bezier(0.45, 0, 0.7, 0.7)' },
+    );
+    flight.onfinish = () => {
+      icon.remove();
+      this.pop(target, 'landed');
+    };
+    this.shop.flashStats(statKeys);
+  }
+
+  /** A sale: coins fly from the emptied slot to your gold. */
+  itemSold(slot: number, gold: number): void {
+    const from = this.inv[slot]?.getBoundingClientRect();
+    if (from) this.flyCoins(from.left + from.width / 2, from.top + from.height / 2, gold);
+  }
+
+  /** The end screen's extras: award cards and the gold lead graph (markup from `goldGraph`: numbers only). */
+  setMatchExtras(awards: readonly Award[], graph: string): void {
+    let list: HTMLElement | null = null;
+    let gold: HTMLElement | null = null;
+    if (awards.length) {
+      list = el('div', 'awards');
+      awards.forEach((a, i) => {
+        const card = el('div', 'award');
+        card.style.animationDelay = `${0.9 + i * 0.25}s`;
+        const face = el('img', 'award-face');
+        face.src = portraitOf(a.row.champ, a.row.skin ?? 0) ?? '';
+        face.alt = '';
+        const words = el('div', 'award-words');
+        words.append(el('div', 'award-title', a.title), el('div', 'award-name', a.row.name), el('div', 'award-detail', a.detail));
+        card.append(face, words);
+        list!.append(card);
+      });
+    }
+    if (graph) {
+      gold = el('div', 'gold-box');
+      const chart = el('div');
+      chart.innerHTML = graph;
+      gold.append(el('div', 'gold-title', 'Gold lead'), chart);
+    }
+    this.extras = { awards: list, gold };
+    this.scoreKey = '';
+  }
+
+  /** Who the camera's following while you're dead (null: nobody). */
+  setSpectating(who: { name: string; champ?: ChampionId; skin?: number; killer: boolean } | null): void {
+    const box = this.spectateEl;
+    const key = who ? `${who.name}|${who.champ}|${who.skin}|${who.killer}` : '';
+    if (box.dataset.key === key) return;
+    box.dataset.key = key;
+    box.hidden = !who;
+    if (!who) return;
+    box.classList.toggle('killer', who.killer);
+    (box.querySelector('.spectate-face') as HTMLImageElement).src = (who.champ && portraitOf(who.champ, who.skin ?? 0)) || '';
+    (box.querySelector('.spectate-text') as HTMLElement).textContent = who.killer ? `Watching your killer, ${who.name}` : `Watching ${who.name}`;
+  }
+
+  /** Old Wick's latest words, shown in the shop's header. */
+  wickSays(line: string): void {
+    this.shop.say(line);
+  }
+
   private pop(el: HTMLElement, cls: string): void {
     el.classList.remove(cls);
     void el.offsetWidth;

@@ -7,7 +7,7 @@ import { NavGrid } from '../shared/map/navGrid';
 import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
 import { dist, type Vec2 } from '../shared/math';
-import type { Command, EntitySnap, GameEvent, HostMessage } from '../shared/protocol';
+import type { Command, EntitySnap, GameEvent, HostMessage, MeSnap, ScoreRow } from '../shared/protocol';
 import { getSound } from './audio';
 import { onSettings, settings } from './settings';
 import { Camera } from './camera';
@@ -41,6 +41,14 @@ import { PALETTE, enemyLight, setColorblind, PickupView, ProjectileView, Structu
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
 import { DamageLog } from './recap';
+import { INTRO_TIME, showIntro } from './intro';
+import { Spectator } from './spectate';
+import { goldGraph, pickAwards, type GoldSample, type MatchTally } from './awards';
+import { Tips } from './hints';
+import { Shopkeeper, wickSpot } from './render/shopkeeper';
+import { WickMood, wickLine, type WickMoment } from './wick';
+import { cantBuy, itemChanges, statGains } from './shop';
+import { ITEMS, sellPrice, type ItemId } from '../shared/items';
 import { CHUD_DEFS } from '../shared/sim/chud';
 
 /** While right mouse is held, re-send the move target this often. */
@@ -50,6 +58,9 @@ const CLICK_SLOP = 20;
 const SLOT_BY_CODE: Record<string, Slot> = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
 
 /** Everything the player sees and touches. Reads host snapshots; sends commands. Never simulates. */
+/** Speech-bubble ids for Old Wick (blue's, then red's one below it), clear of every entity id. */
+const WICK_ID = -100;
+
 export class GameClient {
   private readonly worldLayer = new Container();
   private readonly groundLayer = new Container();
@@ -124,6 +135,31 @@ export class GameClient {
   private readonly steps = new Map<number, { x: number; y: number; next: number }>();
   /** When you last traded hits with a champion, for the music. */
   private lastFight = -Infinity;
+  /** Old Wick at each fountain (blue's, then red's), and how yours is feeling about you. */
+  private readonly wicks: Shopkeeper[];
+  private readonly wickMood = new WickMood();
+  private wickN = 0;
+  /** Your inventory, stats and max health last frame, to catch purchases and sales landing. */
+  private lastItems: ItemId[] | null = null;
+  private lastStats: MeSnap['stats'] | null = null;
+  private lastMhp = 0;
+  /** While you're dead: who the camera follows (your killer, then teammates). */
+  private readonly spectator = new Spectator();
+  /** The last champion to hit you, and when: your killer, if you go down soon after. */
+  private lastChampHit: { id: number; t: number } | null = null;
+  private wasDead = false;
+  /** For the end screen: the gold race as it went, and Warden kills and Chud deaths from the kill feed. */
+  private readonly goldHistory: GoldSample[] = [];
+  private readonly tally: MatchTally = { warden: {}, executed: {} };
+  private lastScores: ScoreRow[] | undefined;
+  /** First-match tips, and what they watch for: have you moved, cast, or opened the shop yet. */
+  private readonly tips: Tips;
+  private moved = false;
+  private casts = 0;
+  private shopOpened = false;
+  /** The VS screen has had its turn (or there was nobody to face). */
+  private introShown = false;
+  private introUp = false;
   /** What hurt you lately, for the death recap. */
   private readonly damageLog = new DamageLog();
   private nextPlaceCheck = 0;
@@ -146,22 +182,32 @@ export class GameClient {
   constructor(
     private readonly app: Application,
     private readonly conn: Connection,
-    hudRoot: HTMLElement,
+    private readonly hudRoot: HTMLElement,
   ) {
     this.hud = new Hud(hudRoot);
     this.hud.onLevelUp = (slot) => {
       this.sound.play('click', 0.6);
       this.send({ k: 'levelUp', slot });
     };
+    // The sounds and Wick's reaction wait for the host to say it went through (see shopLanded).
     this.hud.onBuy = (item) => {
-      this.sound.play('buy', 0.6);
+      const me = this.buffer.latest?.me;
+      const why = me ? cantBuy(me, item) : null;
+      if (why) {
+        this.sound.play('deny', 0.6);
+        if (why === 'Not enough gold') this.wickSays('broke');
+        return;
+      }
+      this.sound.play('click', 0.5);
       this.send({ k: 'buy', item });
     };
     this.hud.onSell = (slot) => {
-      this.sound.play('buy', 0.4);
+      this.sound.play('click', 0.5);
       this.send({ k: 'sell', slot });
     };
     this.hud.onMute = () => this.hud.setMuted(this.sound.toggleMute());
+    this.tips = new Tips(hudRoot);
+    this.tips.onShow = () => this.sound.play('chime', 0.25);
     this.minimap = new Minimap(hudRoot, MAP);
     this.minimap.setTeam(TEAM.blue);
     this.minimap.onPeek = (p) => (this.peek = p);
@@ -190,9 +236,17 @@ export class GameClient {
       this.unitLayer,
       this.projectileLayer,
     );
+    this.wicks = [TEAM.blue, TEAM.red].map((team) => {
+      const at = wickSpot(MAP, team);
+      const wick = new Shopkeeper(at.x, at.y, at.facing, this.fx);
+      this.underLayer.addChild(wick.ground);
+      this.structureLayer.addChild(wick.body);
+      this.lighting.addLight(wick.light);
+      return wick;
+    });
     paintLampGlows(this.lamps, propSpots(MAP));
     this.lamps.blendMode = 'add';
-    this.emissive.addChild(this.lamps, this.beams, this.fx.container, this.bubbles.container);
+    this.emissive.addChild(this.lamps, ...this.wicks.map((w) => w.glow), this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
     this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35 })];
@@ -296,6 +350,7 @@ export class GameClient {
 
     const { width: w, height: h } = this.app.screen;
     this.camera.update(dt, me && !me.dead ? me : null, this.mouse.inside ? this.mouse : null, w, h, this.centerHeld);
+    const watching = this.spectate(dt, me);
     this.fog.sprite.visible = !!me;
     if (!me && !this.finale) {
       // Waiting in the lobby or champion select: drift over the map like the menu does (no fog: no side yet).
@@ -329,7 +384,8 @@ export class GameClient {
     this.critters.update(dt, this.ents.values(), { x: this.camera.x, y: this.camera.y, w: w / this.camera.zoom, h: h / this.camera.zoom });
     // The world drains of color while you wait to respawn.
     this.deadFade = Math.max(0, Math.min(1, this.deadFade + (me?.dead && !this.finale ? dt * 2 : -dt * 3)));
-    this.deathFilter.alpha = this.deadFade * 0.85;
+    // Less grey while you're watching someone fight.
+    this.deathFilter.alpha = this.deadFade * (watching ? 0.55 : 0.85);
     this.ripple.update(dt);
     const filters = [...(this.deadFade > 0 ? [this.deathFilter] : []), ...(this.ripple.active ? [this.ripple.filter] : [])];
     if (filters.length !== (this.view.filters?.length ?? 0) || filters.some((f, i) => this.view.filters?.[i] !== f)) this.view.filters = filters;
@@ -340,7 +396,8 @@ export class GameClient {
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
 
-    this.bubbles.update(dt, this.ents);
+    this.updateWicks(dt, me);
+    this.bubbles.update(dt, (id) => this.ents.get(id) ?? this.wicks[WICK_ID - id]?.anchor);
     this.drawBeams();
     this.renderBloom(w, h);
     this.drawMinimap(w, h);
@@ -352,6 +409,13 @@ export class GameClient {
     this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
     this.hud.setWarden(latest?.warden, this.myTeam);
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
+    if (!this.introShown && me && latest?.scores) this.playIntro(latest.scores);
+    if (latest?.winner) this.tips.hide();
+    else if (me && latest?.me && !this.introUp) this.updateTips(me, latest.me, latest.time);
+    if (latest?.scores && latest.scores !== this.lastScores) {
+      this.lastScores = latest.scores;
+      this.sampleGold(latest.scores, latest.time, !!latest.winner);
+    }
     if (latest?.winner) {
       if (!this.finale) {
         const base = [...this.ents.values()].find((e) => e.k === 'structure' && e.role === 'daBase' && e.dead);
@@ -360,6 +424,11 @@ export class GameClient {
       }
     }
     if (latest?.winner && performance.now() / 1000 - this.finale!.at > 3.2) {
+      if (!this.gameOverPlayed) {
+        const awards = pickAwards(latest.scores ?? [], this.tally);
+        this.hud.setMatchExtras(awards, goldGraph(this.goldHistory, 340, 72));
+        awards.forEach((_, i) => setTimeout(() => this.sound.play('chime', 0.4), 900 + i * 250));
+      }
       this.hud.showGameOver(latest.winner === this.myTeam);
       if (!this.gameOverPlayed) this.sound.play(latest.winner === this.myTeam ? 'victory' : 'defeat', 0.8);
       this.gameOverPlayed = true;
@@ -561,6 +630,8 @@ export class GameClient {
         return;
       }
       case 'kill':
+        if (ev.what === 'warden') this.tally.warden[ev.killer] = (this.tally.warden[ev.killer] ?? 0) + 1;
+        if (ev.what === 'champion' && !ev.killerChamp) this.tally.executed[ev.victim] = (this.tally.executed[ev.victim] ?? 0) + 1;
         this.hud.pushFeed(ev, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
         this.announceKill(ev);
         return;
@@ -571,6 +642,7 @@ export class GameClient {
         const caster = this.ents.get(ev.src);
         this.views.get(ev.src)?.onCast?.(ev.slot);
         if (caster) castFlash(this.fx, caster);
+        if (ev.src === this.myId) this.casts++;
         if (caster?.champ) this.damageLog.noteCast(ev.src, CHAMPION_INFO[caster.champ].abilities[ev.slot].name, performance.now() / 1000);
         if (caster?.champ && ev.slot === 3) {
           const name = CHAMPION_INFO[caster.champ].abilities[3].name.toUpperCase();
@@ -593,6 +665,7 @@ export class GameClient {
     const key = ev.src === undefined ? 'unknown' : String(ev.src);
     let name = from?.name;
     let label = ev.src === undefined ? 'Lingering effects' : this.damageLog.labelFor(ev.src, t);
+    if (from?.k === 'champion') this.lastChampHit = { id: from.id, t };
     if (from?.k === 'structure') {
       name = from.role === 'daBase' ? 'Da Base' : 'Shootie';
       label = 'Shootie shots';
@@ -601,6 +674,164 @@ export class GameClient {
       label = 'Chud hits';
     } else if (from?.k === 'monster' && label === 'Basic attacks') label = 'Mauling';
     this.damageLog.add({ t, key, name, champ: from?.champ, skin: from?.skin, kind: from?.k, label, amount: ev.amount });
+  }
+
+  /** Notes who's ahead on gold (every ten seconds or so, and at the very end). */
+  private sampleGold(rows: readonly ScoreRow[], t: number, final: boolean): void {
+    const last = this.goldHistory[this.goldHistory.length - 1];
+    if (last && t - last.t < 10 && !final) return;
+    const lead = rows.reduce((sum, r) => sum + (r.team === this.myTeam ? r.gold : -r.gold), 0);
+    this.goldHistory.push({ t, lead });
+  }
+
+  /** Tells the tips what's going on: gold and items, points and casts, health, and enemy Shooties nearby. */
+  private updateTips(self: EntitySnap, me: MeSnap, time: number): void {
+    if (this.hud.shop.open) this.shopOpened = true;
+    let shootieAlone = false;
+    for (const s of this.ents.values()) {
+      if (s.k !== 'structure' || s.tm === this.myTeam || s.dead || !s.role?.endsWith('Shootie')) continue;
+      if (Math.hypot(s.x - self.x, s.y - self.y) > 1000) continue;
+      const covered = [...this.ents.values()].some((c) => c.k === 'chud' && c.tm === this.myTeam && Math.hypot(c.x - s.x, c.y - s.y) < 700);
+      if (!covered) shootieAlone = true;
+    }
+    this.tips.update(
+      {
+        time,
+        inShop: me.inShop,
+        gold: me.gold,
+        items: me.items.length,
+        shopOpened: this.shopOpened,
+        moved: this.moved,
+        points: me.points,
+        learned: me.abilities.filter((a) => a.rank > 0).length,
+        casts: this.casts,
+        hp: (self.hp ?? 0) / (self.mhp ?? 1),
+        dead: !!self.dead,
+        recalling: !!self.st?.includes('recall'),
+        shootieAlone,
+      },
+      performance.now() / 1000,
+    );
+  }
+
+  /** Your teammates still standing, in a steady order. */
+  private livingAllies(): number[] {
+    return [...this.ents.values()]
+      .filter((e) => e.k === 'champion' && e.tm === this.myTeam && e.id !== this.myId && !e.dead)
+      .map((e) => e.id)
+      .sort((a, b) => a - b);
+  }
+
+  /** While you're dead and the camera's locked: glide after your killer, then a teammate. Returns who. */
+  private spectate(dt: number, me: EntitySnap | undefined): EntitySnap | undefined {
+    const t = performance.now() / 1000;
+    const dead = !!me?.dead && !this.finale;
+    if (dead && !this.wasDead) {
+      const hit = this.lastChampHit;
+      this.spectator.start(hit && t - hit.t < 6 ? hit.id : null, t);
+    } else if (!dead && this.wasDead) this.spectator.stop();
+    this.wasDead = dead;
+    let watching: EntitySnap | undefined;
+    if (dead && this.camera.locked) {
+      const id = this.spectator.pick(t, (id) => !!this.ents.get(id) && !this.ents.get(id)!.dead, this.livingAllies());
+      watching = id === null ? undefined : this.ents.get(id);
+      if (watching) {
+        const k = Math.min(1, dt * 5);
+        this.camera.x += (watching.x - this.camera.x) * k;
+        this.camera.y += (watching.y - this.camera.y) * k;
+      }
+    }
+    this.hud.setSpectating(watching ? { name: watching.name ?? '', champ: watching.champ, skin: watching.skin, killer: this.spectator.onKiller } : null);
+    return watching;
+  }
+
+  /** Both teams side by side and a VS, as the match opens (not in practice, with nobody to face). */
+  private playIntro(rows: ScoreRow[]): void {
+    this.introShown = true;
+    if (!rows.some((r) => r.team !== this.myTeam)) return;
+    const t = performance.now() / 1000;
+    // Old Wick holds his hello until the screen clears.
+    this.wickMood.heard(t + INTRO_TIME - 3.5);
+    let over = false;
+    this.introUp = true;
+    const at = (seconds: number, fn: () => void) => setTimeout(() => !over && fn(), seconds * 1000);
+    at(0.15, () => this.sound.play('whoosh', 0.5));
+    at(0.85, () => {
+      this.sound.play('impact', 0.8);
+      this.sound.play('horn', 0.35);
+    });
+    showIntro(this.hudRoot, rows, this.myTeam, this.myId, Math.floor(Math.random() * 6), () => {
+      over = true;
+      this.introUp = false;
+      this.wickMood.heard(performance.now() / 1000 - 3.5);
+      const me = this.ents.get(this.myId);
+      const wick = this.wicks[this.myTeam - 1];
+      if (me && wick && Math.hypot(me.x - wick.x, me.y - wick.y) < 650) this.wickSays('greet');
+    });
+  }
+
+  /** Old Wick: both of them breathe and watch; yours greets you, sees you off, and reacts to your shopping. */
+  private updateWicks(dt: number, me: EntitySnap | undefined): void {
+    const t = performance.now() / 1000;
+    this.wicks.forEach((wick, i) => {
+      const team = i + 1;
+      let customer: EntitySnap | null = null;
+      let best = 800;
+      for (const e of this.ents.values()) {
+        if (e.k !== 'champion' || e.dead || e.tm !== team) continue;
+        const d = Math.hypot(e.x - wick.x, e.y - wick.y);
+        if (d < best) [customer, best] = [e, d];
+      }
+      wick.update(dt, customer);
+    });
+    if (!me) return;
+    const mine = this.wicks[this.myTeam - 1];
+    const moment = mine && this.wickMood.update(Math.hypot(me.x - mine.x, me.y - mine.y), !!me.dead, t);
+    if (moment) this.wickSays(moment);
+    this.shopLanded(me);
+  }
+
+  /** Old Wick says something: in a bubble over his hood (if he's in sight) and in the shop's header. */
+  private wickSays(moment: WickMoment): void {
+    const wick = this.wicks[this.myTeam - 1];
+    if (!wick) return;
+    const line = wickLine(moment, this.wickN++);
+    this.hud.wickSays(line);
+    this.bubbles.say(WICK_ID - (this.myTeam - 1), line, 0x9b5cff);
+    const near = Math.hypot(this.camera.x - wick.x, this.camera.y - wick.y) < 1400;
+    const laughs = moment === 'buy' || moment === 'bigBuy' || moment === 'sell' || moment === 'welcomeBack' || moment === 'idle';
+    this.sound.play(laughs ? 'chuckle' : 'murmur', near ? 0.7 : 0.4);
+    if (laughs) wick.chuckle();
+    else wick.showWares(moment === 'greet' ? 3 : 1.5);
+  }
+
+  /** A purchase or sale went through: the icon flies to its slot, the new stats rise off you, Wick reacts. */
+  private shopLanded(self: EntitySnap): void {
+    const me = this.buffer.latest?.me;
+    if (!me) return;
+    const before = this.lastItems;
+    const stats = this.lastStats;
+    const mhp = this.lastMhp;
+    this.lastItems = [...me.items];
+    this.lastStats = { ...me.stats };
+    this.lastMhp = self.mhp ?? 0;
+    if (!before || !stats) return;
+    const { bought, sold } = itemChanges(before, me.items);
+    if (!bought.length && !sold.length) return;
+    const t = performance.now() / 1000;
+    this.wickMood.heard(t);
+    for (const { id, slot } of bought) {
+      const gains = statGains(stats, me.stats, [mhp, self.mhp ?? 0]);
+      this.sound.play('buy', 0.7);
+      this.hud.itemBought(id, slot, gains.map((g) => g.key));
+      if (!self.dead) this.fx.statLines(self.x, self.y - self.r - 30, gains.map((g) => g.text));
+      this.wickSays(ITEMS[id].tier === 'core' ? 'bigBuy' : 'buy');
+    }
+    if (!bought.length) {
+      for (const { id, slot } of sold) this.hud.itemSold(slot, sellPrice(id));
+      this.sound.play('gold', 0.6);
+      this.wickSays('sell');
+    }
   }
 
   /** Coming down from a knock-up or a leap: a squash, a ring of dust and a thud. */
@@ -955,6 +1186,8 @@ export class GameClient {
     }
     if (e.code === 'Space') {
       this.centerHeld = down;
+      // Dead: Space watches the next teammate instead.
+      if (down && !e.repeat && this.ents.get(this.myId)?.dead) this.spectator.next(this.livingAllies());
       e.preventDefault();
       return;
     }
@@ -1074,6 +1307,7 @@ export class GameClient {
   }
 
   private send(cmd: Command): void {
+    if (cmd.k === 'move' || cmd.k === 'attack') this.moved = true;
     this.conn.send({ t: 'cmd', cmd });
   }
 }
