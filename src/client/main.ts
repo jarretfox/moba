@@ -4,6 +4,7 @@ import type { ChampionId } from '../shared/champions/types';
 import { GameClient } from './game';
 import { PORTRAITS, renderPortraits } from './render/champions';
 import { renderIcons } from './render/icons';
+import { MenuBackdrop } from './render/backdrop';
 import type { Connection } from './net/connection';
 import { HostWorker } from './net/hostWorker';
 import { PeerHost, PeerLink, normalizeCode } from './net/peer';
@@ -32,6 +33,8 @@ async function boot(): Promise<void> {
   renderIcons(app.renderer);
   await fonts;
   const hudRoot = document.getElementById('hud')!;
+  // The map at dusk behind the menu, until the match screen takes over.
+  const backdrop = new MenuBackdrop(app);
 
   // Menu until we have a working connection: joining can fail (bad code, host gone).
   let error: string | undefined;
@@ -56,6 +59,7 @@ async function boot(): Promise<void> {
     }
   }
 
+  backdrop.destroy();
   const game = new GameClient(app, conn, hudRoot);
   if (import.meta.env.DEV) Object.assign(window, { game }); // poke at it from devtools
   game.setTitle(choice.kind === 'solo' && choice.mode === 'practice' ? 'Practice Range' : choice.kind === 'solo' ? 'Match vs Bots' : `Lobby ${code}`);

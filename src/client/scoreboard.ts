@@ -9,6 +9,28 @@ import { el } from './ui/dom';
 const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
+/**
+ * The match's most valuable player: the best showing on the winning team (or anyone, if nobody won),
+ * counting kills and assists, damage to champions and structures, and holding deaths against them.
+ */
+export function pickMvp(rows: readonly ScoreRow[], winner: Team | undefined): ScoreRow | undefined {
+  const pool = winner !== undefined && rows.some((r) => r.team === winner) ? rows.filter((r) => r.team === winner) : rows;
+  const value = (r: ScoreRow) => r.k * 3 + r.a * 1.5 - r.d * 1.5 + r.dmg / 600 + r.tdmg / 1500;
+  return [...pool].sort((a, b) => value(b) - value(a))[0];
+}
+
+/** A card for the end screen: the MVP's portrait, name and numbers. */
+export function mvpCard(r: ScoreRow): HTMLElement {
+  const card = el('div', 'mvp');
+  const face = el('img', 'mvp-face');
+  face.src = PORTRAITS[r.champ] ?? '';
+  face.alt = '';
+  const who = el('div', 'mvp-who');
+  who.append(el('div', 'mvp-badge', 'MVP'), el('div', 'mvp-name', r.name), el('div', 'mvp-line', `${CHAMPION_INFO[r.champ].name} · ${r.k} / ${r.d} / ${r.a} · ${k(r.dmg)} damage`));
+  card.append(face, who);
+  return card;
+}
+
 /** Both teams side by side: champion, level, K/D/A, CS, damage to champions, gold and items. Your team first. */
 export function scoreTables(rows: readonly ScoreRow[], myTeam: Team, meId: number): HTMLElement {
   const wrap = el('div', 'score-tables');

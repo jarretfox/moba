@@ -19,6 +19,7 @@ import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
 import { castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { Lighting, nightAt, skyAt } from './render/lighting';
+import { driftAt } from './render/backdrop';
 import { Water } from './render/water';
 import { Minimap, type MinimapPing } from './minimap';
 import { PINGS, PingWheel } from './pings';
@@ -212,6 +213,13 @@ export class GameClient {
 
     const { width: w, height: h } = this.app.screen;
     this.camera.update(dt, me && !me.dead ? me : null, this.mouse.inside ? this.mouse : null, w, h, this.centerHeld);
+    this.fog.sprite.visible = !!me;
+    if (!me && !this.finale) {
+      // Waiting in the lobby or champion select: drift over the map like the menu does (no fog: no side yet).
+      const at = driftAt(performance.now() / 1000);
+      this.camera.x = at.x;
+      this.camera.y = at.y;
+    }
     if (this.peek) {
       this.camera.x = this.peek.x;
       this.camera.y = this.peek.y;

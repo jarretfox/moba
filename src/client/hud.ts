@@ -6,7 +6,7 @@ import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
 import { PORTRAITS } from './render/champions';
 import { iconEl } from './render/icons';
-import { matchReport, scoreTables } from './scoreboard';
+import { matchReport, mvpCard, pickMvp, scoreTables } from './scoreboard';
 import { ShopPanel } from './shop';
 
 interface SlotEls {
@@ -106,7 +106,7 @@ export class Hud {
       <div class="help"><div class="help-title"></div><div class="help-keys">${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div><div class="help-hint"><kbd>H</kbd> controls</div></div>
       <div class="respawn"></div>
       <div class="scoreboard" hidden></div>
-      <div class="gameover" hidden><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-again">Back to menu</button></div></div>
+      <div class="gameover" hidden><div class="gameover-rays"></div><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-again">Back to menu</button></div></div>
       <div class="buffs"></div>
       <div class="bar" hidden>
         <div class="portrait"><img class="face" alt="" /><span class="initial"></span><span class="stacks"></span><span class="lvl">1</span></div>
@@ -321,7 +321,8 @@ export class Hud {
     this.scoreKey = key;
     const tables = scoreTables(rows, myTeam, meId);
     if (over) {
-      (this.gameOver.querySelector('.gameover-scores') as HTMLElement).replaceChildren(tables);
+      const mvp = pickMvp(rows, winner);
+      (this.gameOver.querySelector('.gameover-scores') as HTMLElement).replaceChildren(...(mvp ? [mvpCard(mvp)] : []), tables);
       this.report = matchReport(rows, winner, time);
       (this.gameOver.querySelector('.gameover-copy') as HTMLElement).hidden = false;
     } else {
