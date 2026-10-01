@@ -502,18 +502,14 @@ kbd {
   box-shadow: 0 0 10px #7cc4ff;
 }
 
-/* The match fades in from black. */
+/* The match fades in from black (it's see-through until then, so the lobby and champion select show). */
 .fade {
   position: absolute;
   inset: 0;
   background: #000;
+  opacity: 0;
   pointer-events: none;
   z-index: 40;
-}
-
-.fade.out {
-  opacity: 0;
-  transition: opacity 1.2s ease-out 0.2s;
 }
 
 /* The in-match menu. */

@@ -526,7 +526,7 @@ export class Hud {
 
   /** The match fading in from black when it starts. */
   fadeIn(): void {
-    this.fade.classList.add('out');
+    this.fade.animate([{ opacity: 1 }, { opacity: 1, offset: 0.15 }, { opacity: 0 }], { duration: 1400, easing: 'ease-out' });
   }
 
   /** Brief red flash when you press an ability that isn't ready. */
