@@ -98,7 +98,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Reward:** every champion on the killing team gets 300 gold and 300 experience. The team is then **Unchained** for 90s: its Chuds spawn with +50% health and damage, and are drawn with a pale blue ring.
   - **Uprising:** if Willmore or HunnaG lands the kill, Unchained becomes an Uprising, and every wave also brings a Chud Brute.
   - **HUD and kill feed:** the HUD shows who's Unchained and for how long. The kill feed announces the kill, and names the Warden (or a Shootie) when it kills a champion.
-  - **Old Grudge** is coded for Willmore and HunnaG by champion id, so it works once they exist (M4).
+  - **Old Grudge** applies to Willmore and HunnaG by champion id.
 - **Shop** (items in `src/shared/items.ts`): 17 items, 4 inventory slots. Press P or click your gold.
   - You can buy and sell only in your own fountain, or while dead. Selling returns 70% of the price.
   - No recipes: each item is bought whole.
@@ -113,7 +113,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - No Flash-style summoner spells in v1. Everyone gets Recall and one shared blink on a long cooldown.
 - **Bots** ("decent new player"; numbers at the top of `src/shared/bots/bot.ts`, each champion's habits in `profiles.ts`):
   - They play through the same commands a human sends, rethinking about 5 times a second.
-  - Lineup per team: solo top Barbarian, duo bot lane of Marksman and Barbarian. A human takes a slot and bots fill the rest.
+  - **Lineup per team:** a solo top lane and a duo bot lane. Each slot has champions that suit it: top Barbarian, Willmore or Logan; carry Marksman, King Rix or HunnaG; partner HunnaG, Logan, King Rix or Willmore. Bots pick at random among those their team doesn't have yet, after the humans' picks. Champions are one per team for humans too: a teammate's pick is greyed out in the lobby.
   - **Laning:** stand behind their own wave (melee close in, ranged further back), last-hit first, and step out of position for a last hit. They help the wave, and hit structures when their Chuds are soaking the Shootie and no enemy champion is near.
   - **Safety:** they won't walk under an enemy Shootie unless at least 2 of their Chuds are tanking it, and they leave immediately if it targets them.
   - **Fighting:** they engage enemy champions within 700 when they're at least as healthy, or the enemy is below 35%. They avoid trading into a crowd of enemy Chuds, never dive towers, and give ground when hit by someone they won't fight. Each champion uses its kit in fights: for example the Marksman rolls away from melee champions and fires Longshot at low targets, and the Barbarian leaps in and uses Berserk when things get close.
@@ -122,7 +122,8 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Grouping up:** from 18:00 a team's bots leave their own lanes and push one lane together: the one where the enemy has the least left standing. They switch lanes only once the other one is better by a whole structure.
   - **Fair ticks:** every bot decides from the same world state before any of their orders go in, and which team's orders go first alternates each tick. Before this, the team whose bots acted first lost every bots-only match, because casts land the moment they're applied and the other team's bots reacted within the same tick.
   - **What they don't do:** dodge skillshots, plan ganks, defend as a group, or take camps and the Warden.
-  - **Match length:** a bots-only match ends in 19–29 minutes (median about 20), usually in a base race soon after the bots group up. Wins split evenly between the sides. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items.
+  - **Match length:** with random six-champion lineups, a bots-only match ends in 11–31 minutes (median about 16). Wins split 17–13 between the sides over 30 games. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items.
+  - **Bot win rates by champion** over those 30 games: HunnaG 68%, Barbarian 62%, Marksman 61%, Willmore 45%, Logan 41%, King Rix 33%. That's noisy (about ±10%) and mixes kit strength with how well each bot plays its kit, so it's a starting point for M5 balance, not a verdict.
 
 ## Lore
 
@@ -215,12 +216,20 @@ The numbers live at the top of `src/shared/champions/logan.ts`. No resource: coo
 - **E, Maul:** a cone swipe that makes enemies bleed for 3s: extra damage each second, and bleeding enemies can't hide (it reveals a burrowed Willmore).
 - **R, Pride's Roar:** enemies in front of him are feared for 1.25s (King Rix's guards for 2.5s: the Royal Menagerie). Allies near him get a shield and 30% speed for 3s.
 
-### King Rix (M4)
-- **Passive, Royal Tax:** allied Chuds near him hit harder, and he gets bonus gold when allies nearby last-hit.
-- **Q, Levy:** a scepter bolt. If it kills a unit, he gets bonus gold and mana back.
-- **W, Call the Guard:** summons 2 royal guards for 8s that attack his target.
-- **E, KNEEL!:** enemies in a short cone kneel, which stuns them for 1s.
-- **R, Royal Decree:** works anywhere on the map. Marks a visible enemy champion: they're revealed and take 15% more damage for 6s. If they die, his whole team gets bonus gold.
+### King Rix ✅ implemented
+
+The numbers live at the top of `src/shared/champions/kingrix.ts`. Mid-range (400) attacks; his spells deal magic damage and scale with ability power.
+- **Passive, Royal Tax:** allied Chuds within 700 of him deal 20% more damage (drawn with a thin gold ring). When an ally near him last-hits a Chud, he takes 4 gold.
+- **Q, Levy:** a scepter bolt that hits the first enemy for magic damage. If it kills, he collects extra gold and gets the mana back.
+- **W, Call the Guard:** two royal guards for 8s. They follow him, attack whatever he attacks, and go home when their time's up or he dies. Chuds and Shooties fight them like Chuds; killing one pays 15 gold.
+- **E, KNEEL!:** enemies in a short cone take magic damage and are stunned for 1–1.3s.
+- **R, Royal Decree:** anywhere on the map, marks the visible enemy champion nearest where he aims. For 6s they're revealed to everyone (even burrowed or in brush) and take 15% more damage. If they die while marked, whoever gets the kill, everyone on his team gets 100/150/200 gold. No target, no cast.
+
+**The rivalry, as built:**
+- **A Lion Kneels to No One:** KNEEL! stuns Logan for half as long, and he roars right back, scaring Rix off for 0.6s.
+- **The Royal Menagerie:** Pride's Roar keeps Rix's guards scared for 2.5s instead of 1.25s.
+- **Uneasy Alliance:** Logan's Lionheart triggers for Rix only below 15% health.
+- **Two Crowns:** on opposite teams, killing the rival pays double the bounty. Logan then wears the crown (👑 over his head); Rix hangs a lion banner over his own Da Base (🦁 DA BASE 🦁).
 
 ## Architecture
 
@@ -279,11 +288,11 @@ src/
 | M1 | Chuds, Shooties, Oakners, Da Base, win condition, unit collision, Barbarian, basic bots | ✅ done (plus Recall, fountain, champion select, growing death timers and Chuds) |
 | M2 | Hosting over PeerJS, lobby codes, bots fill empty slots, fog of war and brush, snapshot compression, GitHub Pages | ✅ done — live at https://jarretfox.github.io/moba/ |
 | M3 | Jungle camps, the Warden, experience/levels/ability ranks, gold, shop | ✅ done (plus kill feed, structure retune, bots that group up late, fair bot ticks) |
-| M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | |
+| M4 | Logan Lionheart, King Rix, Willmore, HunnaG (with the lore mechanics), art and sound pass | 🟡 all four champions and their lore mechanics done; art and sound pass still to do |
 | M5 | Balance tools, playtests | |
 
-### Known gaps after M3
-- **Only two champions,** so teams repeat them (the one-per-team rule waits for a bigger roster). Old Grudge and Uprising are wired up but can't trigger until Willmore and HunnaG exist (M4).
+### Known gaps
+- **No art or sound pass yet:** champions are team-colored circles told apart by name, portrait initials and their spells' effects.
 - **Bots don't jungle or fight the Warden.** All three per side lane; the camps and the Warden are there for humans.
 - Bots don't dodge skillshots or defend as a group. Late in the game both teams often push different lanes and race each other's bases.
 - No minimap, scoreboard, or camp respawn timers yet.

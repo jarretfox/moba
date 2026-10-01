@@ -44,7 +44,13 @@ export class LobbyScreen {
 
   update(lobby: LobbyState, you: string): void {
     const me = lobby.players.find((p) => p.id === you);
-    for (const [id, card] of this.cards) card.classList.toggle('picked', me?.champion === id);
+    for (const [id, card] of this.cards) {
+      card.classList.toggle('picked', me?.champion === id);
+      // One of each champion per team: a teammate's pick is off the table.
+      const taken = lobby.players.some((p) => p.id !== you && p.team === me?.team && p.champion === id);
+      card.classList.toggle('taken', taken);
+      card.disabled = taken;
+    }
 
     this.teams.replaceChildren(
       ...([TEAM.blue, TEAM.red] as const).map((team) => {

@@ -76,6 +76,33 @@ describe('the lobby', () => {
     expect(ann.champion).toBe('barbarian');
   });
 
+  it('keeps champions one per team: no picking a teammate\'s, and switching to their team clears yours', () => {
+    const { core, lastLobby } = host();
+    core.receive(LOCAL_CONN, { t: 'hello', name: 'Host' }); // blue
+    core.receive('peer:a', { t: 'hello', name: 'Ann' }); // red
+    core.receive('peer:b', { t: 'hello', name: 'Bo' }); // blue
+    core.receive(LOCAL_CONN, { t: 'pick', champion: 'logan' });
+    core.receive('peer:b', { t: 'pick', champion: 'logan' });
+    const pickOf = (id: string) => lastLobby(id)!.players.find((p) => p.id === id)!.champion;
+    expect(pickOf('peer:b')).toBeNull();
+
+    core.receive('peer:a', { t: 'pick', champion: 'logan' }); // the other team can have him
+    expect(pickOf('peer:a')).toBe('logan');
+    core.receive('peer:a', { t: 'pick', team: TEAM.blue });
+    expect(pickOf('peer:a')).toBeNull();
+  });
+
+  it('fills the rest of each team with champions nobody on it has', () => {
+    for (let i = 0; i < 5; i++) {
+      const { core } = host();
+      core.quickStart(LOCAL_CONN, 'Jo', 'marksman', 'bots');
+      for (const team of [TEAM.blue, TEAM.red]) {
+        const ids = champions(core).filter((c) => c.team === team).map((c) => c.info.id);
+        expect(new Set(ids).size).toBe(3);
+      }
+    }
+  });
+
   it('only lets the host start, and only once everyone has picked', () => {
     const { core } = host();
     core.receive(LOCAL_CONN, { t: 'hello', name: 'Host' });

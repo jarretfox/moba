@@ -469,8 +469,8 @@ kbd {
 }
 
 .select-card {
-  width: 250px;
-  padding: 16px 18px;
+  width: 188px;
+  padding: 14px 14px;
   text-align: left;
   border: 2px solid var(--panel-edge);
   border-radius: 12px;
@@ -485,13 +485,23 @@ kbd {
   background: linear-gradient(160deg, #3d1f1b, #160e0c);
 }
 
+.select-card.none {
+  background: linear-gradient(160deg, #33291c, #14100b);
+}
+
+.select-card.taken {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .select-card:hover {
   border-color: var(--gold);
   transform: translateY(-3px);
 }
 
 .select-name {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 800;
 }
 

@@ -100,12 +100,23 @@ export class HostCore {
     this.broadcastLobby();
   }
 
+  /** One of each champion per team: a pick a teammate already has is refused, and switching to a team that has yours clears it. */
   private pick(connId: string, team: unknown, champion: unknown): void {
     const me = this.lobby.get(connId);
     if (!me || this.phase !== 'lobby') return;
-    if ((team === TEAM.blue || team === TEAM.red) && team !== me.team && this.humansOn(team) < TEAM_SIZE) me.team = team;
-    if (typeof champion === 'string' && Object.hasOwn(CHAMPION_INFO, champion)) me.champion = champion as ChampionId;
+    if ((team === TEAM.blue || team === TEAM.red) && team !== me.team && this.humansOn(team) < TEAM_SIZE) {
+      me.team = team;
+      if (me.champion && this.takenBy(me.team, me.champion, connId)) me.champion = null;
+    }
+    if (typeof champion === 'string' && Object.hasOwn(CHAMPION_INFO, champion) && !this.takenBy(me.team, champion as ChampionId, connId)) {
+      me.champion = champion as ChampionId;
+    }
     this.broadcastLobby();
+  }
+
+  /** Whether someone else on `team` already plays `champion`. */
+  private takenBy(team: PlayerTeam, champion: ChampionId, except: string): boolean {
+    return [...this.lobby.values()].some((p) => p.id !== except && p.team === team && p.champion === champion);
   }
 
   private start(connId: string, mode: unknown): void {
@@ -123,7 +134,10 @@ export class HostCore {
     if (mode === 'practice') {
       setupPracticeRange(this.world);
     } else {
-      for (const team of [TEAM.blue, TEAM.red] as const) this.bots.push(...addBots(this.world, team, TEAM_SIZE - this.humansOn(team)));
+      for (const team of [TEAM.blue, TEAM.red] as const) {
+        const taken = everyone.filter((p) => p.team === team).map((p) => p.champion!);
+        this.bots.push(...addBots(this.world, team, TEAM_SIZE - this.humansOn(team), taken, Math.random));
+      }
     }
     this.broadcastLobby();
   }
