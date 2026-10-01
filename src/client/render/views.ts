@@ -429,6 +429,9 @@ export class UnitView implements EntityView {
     }
     if (st.includes('royal')) g.circle(0, 0, r + 4).stroke({ width: 2, color: 0xffd166, alpha: 0.7 });
     if (st.includes('bleed')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0xc0182b, alpha: 0.85 });
+    if (st.includes('blessed')) g.circle(0, 0, r * 2.2).fill({ color: 0xffd166, alpha: 0.12 }).stroke({ width: 4, color: 0xfff1b8, alpha: 0.85 });
+    if (st.includes('curdled')) g.circle(0, 0, r + 6).stroke({ width: 3, color: 0xf3dc8a, alpha: 0.85 });
+    if (st.includes('rindBlade')) g.circle(0, 0, r + 3).stroke({ width: 2, color: 0xffd166, alpha: 0.9 });
     if (st.includes('meditating')) g.circle(0, 0, r + 8).fill({ color: 0xc8a07a, alpha: 0.12 }).stroke({ width: 3, color: 0xc8a07a, alpha: 0.8 });
     if (st.includes('encore')) g.circle(0, 0, r + 7).stroke({ width: 4, color: 0xff6b8a, alpha: 0.8 });
     if (st.includes('touche')) g.circle(0, 0, r + 3).stroke({ width: 2, color: 0xdfe6ff, alpha: 0.9 });
@@ -505,6 +508,16 @@ export class ProjectileView implements EntityView {
         g.moveTo(0, 0).arc(6, 0, 10, Math.PI, Math.PI * 2.4).stroke({ width: 4, color: 0x5d636d });
         g.poly([14, 8, 20, 2, 10, 4]).fill(0x5d636d);
         break;
+      case 'cheeseWheel':
+        // A whole wheel of cheese, rind and holes and all.
+        g.circle(0, 0, 14).fill(0xd9a52b).stroke({ width: 2, color: 0x6a4a10 });
+        g.circle(0, 0, 11).fill(0xf3dc8a);
+        for (const [hx, hy, hr] of [[-4, -4, 2.5], [4, 3, 2], [-2, 5, 1.5], [5, -5, 1.5]]) g.circle(hx, hy, hr).fill(0xd8b860);
+        break;
+      case 'cheeseBolt':
+        g.poly([8, 0, -6, -6, -6, 6]).fill(0xffe29a).stroke({ width: 1.5, color: 0x8a6a1e });
+        g.circle(-1, 0, 1.5).fill(0xd8b860);
+        break;
       case 'resinBolt':
         g.circle(0, 0, 8).fill(0xd98a1e).stroke({ width: 1.5, color: 0x6a3a0a });
         g.circle(-3, -3, 2.5).fill({ color: 0xffe2a0, alpha: 0.85 });
@@ -542,6 +555,8 @@ const TAIL_COLORS: Record<string, number> = {
   levy: 0xffd166,
   junk_sludge: 0x8fd14f,
   resinBolt: 0xffb347,
+  cheeseWheel: 0xffd166,
+  cheeseBolt: 0xffe29a,
   smokeBolt: 0xb8f07a,
 };
 

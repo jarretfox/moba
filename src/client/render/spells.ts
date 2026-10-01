@@ -22,6 +22,7 @@ export const CAST_COLORS: Record<ChampionId, number> = {
   dongmaster: 0xffb070,
   dabber: 0x9be15d,
   paris: 0xff8fb0,
+  havarti: 0xffe29a,
 };
 
 const GOLD = 0xffd166;
@@ -315,6 +316,71 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     }
 
     // ── Logan
+    // ── Havarti
+    case 'curdle': {
+      // The wheel lands: a golden flash and a spray of crumbs.
+      const r = ev.r ?? 40;
+      fx.flash(x, y, r * 1.8, 0xffe29a, 0.3);
+      fx.shockwave(x, y, r * 2.4, 0xffd166, 0.35);
+      p.burst(14, { shape: 'shard', glow: false, x, y, life: 0.6, size: 9, size2: 5, color: 0xf3dc8a, drag: 0.1, ay: 260, spin: 6 }, [120, 300]);
+      return;
+    }
+    case 'fondue': {
+      // A ribbon of warm gold from her to whoever needed it most, and healing light on both.
+      if (dist > 10) fx.custom(0.5, (g, t) => g.moveTo(x, y).lineTo(x2, y2).stroke({ width: 10 * (1 - t) + 2, color: 0xffe29a, alpha: 0.7 * (1 - t), cap: 'round' }), 'mid', true);
+      for (const [hx, hy] of dist > 10 ? [[x, y], [x2, y2]] : [[x, y]]) {
+        fx.flash(hx, hy, 60, 0xfff1b8, 0.35);
+        for (let i = 0; i < 10; i++) p.emit({ shape: i % 3 ? 'mote' : 'star', x: hx + rand(-30, 30), y: hy + rand(-20, 20), vy: rand(-90, -40), life: 0.9, size: 10, size2: 2, color: 0xffffff, color2: 0xa8e6a0, spin: 3 });
+      }
+      return;
+    }
+    case 'rindBlade': {
+      fx.flash(x, y, 55, 0xffd166, 0.3);
+      for (let i = 0; i < 12; i++) p.emit({ shape: 'glow', x: x + rand(-20, 20), y: y + rand(-20, 20), vy: rand(-140, -60), drag: 0.4, life: 0.5, size: 18, size2: 3, color: 0xfff1b8, color2: 0xff9f43, alpha: 0.8 });
+      return;
+    }
+    case 'divineFondue': {
+      // A golden dome settles over them, a halo above, for as long as it lasts.
+      const dur = ev.dur ?? 2;
+      const r = (ev.r ?? 40) * 2.2;
+      fx.pillar(x, y, r * 0.6, 0xfff1b8, 0.8);
+      fx.custom(dur, (g, t) => {
+        const a = t < 0.1 ? t / 0.1 : t > 0.9 ? (1 - t) / 0.1 : 1;
+        g.circle(x, y, r).fill({ color: 0xffd166, alpha: 0.16 * a }).stroke({ width: 4, color: 0xfff1b8, alpha: 0.85 * a });
+        g.circle(x, y - r * 1.2, r * 0.35).stroke({ width: 4, color: 0xffe29a, alpha: 0.9 * a });
+      }, 'mid', true);
+      for (let i = 0; i < Math.round(dur * 6); i++) fx.later(i / 6, () => p.emit({ shape: 'star', x: x + rand(-r, r), y: y + rand(-r, r), vy: -30, life: 0.6, size: 12, size2: 2, color: 0xffffff, color2: GOLD, spin: 4 }));
+      return;
+    }
+    case 'fondueEruption': {
+      // The fondue boils over: a golden blast, molten cheese thrown everywhere.
+      const r = ev.r ?? 450;
+      fx.flash(x, y, r * 0.7, 0xffe29a, 0.4);
+      fx.shockwave(x, y, r, 0xffd166, 0.5);
+      fx.later(0.08, () => fx.shockwave(x, y, r * 0.75, 0xff9f43, 0.45));
+      fx.cracks(x, y, r * 0.7, 0xffd166, 1.4, 8);
+      p.burst(40, { shape: 'mote', glow: false, x, y, life: 0.9, size: 14, size2: 6, color: 0xf3dc8a, drag: 0.15, ay: 320 }, [200, 620]);
+      fx.scar(x, y, r * 0.6, 'goo', 0xc9a23a);
+      return;
+    }
+    case 'cheeseWave': {
+      // Vintage: a crescent of molten cheese rolling on past the target.
+      fx.custom(0.35, (g, t) => {
+        const k = Math.min(1, t * 1.6);
+        g.moveTo(x, y).lineTo(x + (x2 - x) * k, y + (y2 - y) * k).stroke({ width: 22 * (1 - t) + 4, color: 0xffd166, alpha: 0.55 * (1 - t), cap: 'round' });
+      }, 'mid', true);
+      p.burst(6, { shape: 'mote', glow: false, x: x2, y: y2, life: 0.5, size: 9, size2: 4, color: 0xf3dc8a, drag: 0.1, ay: 200 }, [60, 160]);
+      return;
+    }
+    case 'ascend': {
+      // She ripens a tier: a pillar of light, wings flung wide in a burst of feathers.
+      const tier = ev.r ?? 1;
+      fx.pillar(x, y, 60 + tier * 20, 0xfff1b8, 1.4);
+      fx.shockwave(x, y, 160 + tier * 60, 0xffe29a, 0.6);
+      p.burst(16 + tier * 8, { shape: 'leaf', glow: false, x, y, life: 1.4, size: 14, size2: 10, color: 0xfff6dc, drag: 0.2, ay: 40, spin: 3 }, [150, 360]);
+      p.burst(12, { shape: 'star', x, y, life: 1, size: 14, size2: 2, color: 0xffffff, color2: GOLD, spin: 4 }, [80, 220]);
+      return;
+    }
     // ── Master Paris
     case 'fleche': {
       // A flash of steel from one spot to the next, rose petals in its wake.
@@ -641,6 +707,8 @@ const HEADS: Record<string, [number, number]> = {
   spore: [TOXIC, 55],
   junk_sludge: [TOXIC, 45],
   resinBolt: [0xffb347, 45],
+  cheeseWheel: [GOLD, 70],
+  cheeseBolt: [0xffe29a, 45],
   smokeBolt: [0xb8f07a, 90],
 };
 
@@ -794,6 +862,15 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
         break;
       case 'weaken':
         for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'mote', ...around(0.8), vy: rand(20, 50), life: 0.6, size: 7, size2: 3, color: 0xd8b4ff, color2: 0x7a4ac0 });
+        break;
+      case 'blessed':
+        for (let i = 0; i < fx.rate(16); i++) p.emit({ shape: i % 4 ? 'mote' : 'star', ...around(1.3), vy: rand(-60, -20), life: 0.8, size: 10, size2: 2, color: 0xffffff, color2: GOLD, spin: 3 });
+        break;
+      case 'curdled':
+        for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'shard', glow: false, ...around(0.8), vy: rand(10, 40), ay: 200, life: 0.6, size: 7, size2: 4, color: 0xf3dc8a, spin: 4 });
+        break;
+      case 'rindBlade':
+        for (let i = 0; i < fx.rate(10); i++) p.emit({ shape: 'glow', x: s.x + Math.cos(s.f) * r * 1.3 + rand(-8, 8), y: s.y + Math.sin(s.f) * r * 1.3 + rand(-8, 8), vy: rand(-90, -40), life: 0.4, size: 14, size2: 3, color: 0xfff1b8, color2: 0xff9f43, alpha: 0.8 });
         break;
       case 'meditating':
         for (let i = 0; i < fx.rate(5); i++) p.emit({ shape: 'smoke', x: s.x + rand(-10, 10), y: s.y - r * 0.8, vy: rand(-40, -25), life: 1.2, size: 8, size2: 20, color: 0xffffff, color2: 0xd8d0c0, alpha: 0.4, fadeIn: 0.3 });

@@ -37,6 +37,28 @@ const RIVALRIES: { pair: [ChampionId, ChampionId]; lines: [IntroLine, IntroLine]
     ],
   },
   {
+    pair: ['havarti', 'dabber'],
+    lines: [
+      [
+        { champ: 'dabber', text: 'Is that... cheese? Hehehe.' },
+        { champ: 'havarti', text: 'Touch me and perish, vermin.' },
+      ],
+      [
+        { champ: 'havarti', text: 'I smell rat.' },
+        { champ: 'dabber', text: 'I smell lunch.' },
+      ],
+    ],
+  },
+  {
+    pair: ['havarti', 'hunnag'],
+    lines: [
+      [
+        { champ: 'hunnag', text: 'Six hundred years old? You must be ripe.' },
+        { champ: 'havarti', text: 'Aged, not rotten. Learn the difference.' },
+      ],
+    ],
+  },
+  {
     pair: ['paris', 'kingrix'],
     lines: [
       [

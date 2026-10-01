@@ -1706,11 +1706,12 @@ html.colorblind .gold-peak.theirs {
   gap: 16px;
 }
 
+/* Ten champions: two even rows of five. */
 .select-cards {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 128px));
   justify-content: center;
-  gap: 10px;
+  gap: 8px 10px;
   padding: 0 16px;
 }
 
@@ -1874,8 +1875,8 @@ html.colorblind .gold-peak.theirs {
 }
 
 .select-card {
-  width: 128px;
-  padding: 10px 8px 9px;
+  width: 100%;
+  padding: 7px 6px 7px;
   text-align: center;
   border: 2px solid var(--rim);
   border-radius: 8px;
@@ -1908,8 +1909,8 @@ html.colorblind .gold-peak.theirs {
 
 .select-face {
   display: block;
-  width: 62px;
-  height: 62px;
+  width: 50px;
+  height: 50px;
   margin: 0 auto 6px;
   border-radius: 50%;
   border: 2px solid var(--panel-edge);

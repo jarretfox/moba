@@ -57,6 +57,8 @@ export const ATTACK: Record<ChampionId, Anim> = {
   logan: { dur: 0.28, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.2], [1, 0]] },
   // A royal flourish of the scepter.
   kingrix: { dur: 0.36, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
+  // A sweep of the flaming cheese knife.
+  havarti: { dur: 0.32, turn: [[0, 0], [0.3, 0.9], [0.55, -1.2], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
   // A fencer's thrust: blade and body forward together.
   paris: { dur: 0.26, reach: [[0, 0], [0.3, 0.5], [1, 0]], lunge: [[0, 0], [0.3, 0.25], [1, 0]] },
   // The rig-bow kicks back as it fires.
@@ -76,6 +78,7 @@ export const CAST: Record<ChampionId, Anim> = {
   dongmaster: { dur: 0.45, grow: [[0, 0], [0.3, 0.12], [1, 0]], reach: [[0, 0], [0.3, 0.25], [1, 0]] },
   dabber: { dur: 0.45, grow: [[0, 0], [0.3, 0.08], [1, 0]], reach: [[0, 0], [0.3, -0.2], [0.5, 0.1], [1, 0]] },
   paris: { dur: 0.4, turn: [[0, 0], [0.3, -1.2], [0.6, 0.6], [1, 0]] },
+  havarti: { dur: 0.45, turn: [[0, 0], [0.35, -1.4], [0.7, -1.4], [1, 0]], grow: [[0, 0], [0.35, 0.1], [1, 0]] },
 };
 
 /** Abilities with a move of their own. */
@@ -90,6 +93,10 @@ const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
   'logan:3': { dur: 0.55, grow: [[0, 0], [0.25, 0.28], [0.75, 0.22], [1, 0]], lunge: [[0, 0], [0.25, -0.15], [0.5, 0.15], [1, 0]] },
   // Longshot: a long, deep draw.
   'marksman:3': { dur: 0.6, reach: [[0, 0], [0.75, -0.4], [0.85, 0.1], [1, 0]], lunge: [[0, 0], [0.85, -0.15], [1, 0]] },
+  // Holy Wheel: wind up and hurl.
+  'havarti:0': { dur: 0.4, reach: [[0, 0], [0.3, -0.25], [0.5, 0.35], [1, 0]], twist: [[0, 0], [0.3, 0.3], [0.5, -0.2], [1, 0]] },
+  // Divine Fondue: blade raised to the sky.
+  'havarti:3': { dur: 0.8, turn: [[0, 0], [0.3, -1.9], [0.8, -1.9], [1, 0]], grow: [[0, 0], [0.3, 0.16], [0.8, 0.12], [1, 0]] },
   // Flèche: the full lunge.
   'paris:0': { dur: 0.35, reach: [[0, 0], [0.3, 0.7], [1, 0]], lunge: [[0, 0], [0.3, 0.4], [1, 0]], twist: [[0, 0], [0.3, -0.2], [1, 0]] },
   // Café Break: settles in.
@@ -199,6 +206,14 @@ export const FIDGETS: Record<ChampionId, readonly Anim[]> = {
     { dur: 1.8, twist: [[0, 0], [0.25, -0.5], [0.45, -0.5], [0.7, 0.5], [0.85, 0.5], [1, 0]], grow: [[0, 0], [0.25, 0.04], [0.7, 0.04], [1, 0]] },
     // Mewing: chin up, perfectly still.
     { dur: 2.0, lunge: [[0, 0], [0.2, 0.08], [0.85, 0.08], [1, 0]], grow: [[0, 0], [0.2, 0.05], [0.85, 0.05], [1, 0]] },
+  ],
+  havarti: [
+    // A flutter of the wings.
+    { dur: 1.0, grow: [[0, 0], [0.1, 0.06], [0.2, 0], [0.3, 0.06], [0.4, 0], [1, 0]] },
+    // Twirls the knife.
+    { dur: 1.0, turn: [[0, 0], [1, TAU]] },
+    // A regal pose, chin up.
+    { dur: 1.8, twist: [[0, 0], [0.25, -0.25], [0.75, -0.25], [1, 0]], grow: [[0, 0], [0.25, 0.06], [0.75, 0.06], [1, 0]] },
   ],
   paris: [
     // Twirls his mustache.

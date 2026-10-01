@@ -12,7 +12,7 @@ import { Bot } from './bot';
 const SLOTS: { lane: Lane; picks: ChampionId[] }[] = [
   { lane: 'top', picks: ['barbarian', 'willmore', 'logan', 'dongmaster', 'paris'] },
   { lane: 'bot', picks: ['marksman', 'kingrix', 'hunnag', 'dabber'] },
-  { lane: 'bot', picks: ['hunnag', 'logan', 'kingrix', 'willmore'] },
+  { lane: 'bot', picks: ['hunnag', 'logan', 'kingrix', 'willmore', 'havarti'] },
 ];
 
 export const TEAM_SIZE = 3;

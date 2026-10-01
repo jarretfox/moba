@@ -114,6 +114,10 @@ export type StatusKind =
   | 'meditating'
   | 'touche'
   | 'encore'
+  /** Havarti: resists curdled by Holy Wheel (amount = share), invulnerable under Divine Fondue, Rind Blade ready. */
+  | 'curdled'
+  | 'blessed'
+  | 'rindBlade'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. */
 export type BuffKind = 'ember' | 'glowcap';
@@ -194,7 +198,15 @@ export type FxKind =
   | 'fleche'
   | 'cafeBreak'
   | 'touche'
-  | 'encore';
+  | 'encore'
+  /** Havarti. */
+  | 'curdle'
+  | 'fondue'
+  | 'rindBlade'
+  | 'divineFondue'
+  | 'fondueEruption'
+  | 'cheeseWave'
+  | 'ascend';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

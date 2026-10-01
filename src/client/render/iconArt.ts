@@ -100,6 +100,47 @@ const SKIN_TONE = 0xe2b48a;
 const SKIN_SHADE = 0xb98a62;
 
 const ART: Record<string, Draw> = {
+  // ── Havarti
+  '🧀': (g) => {
+    // Aged to Perfection: a wedge of cheese with holes, a halo over it.
+    g.poly([-26, 18, 24, 18, 24, -2, -26, 8]).fill(0xd9a52b).stroke(ink());
+    g.poly([-26, 8, 24, -2, 6, -18]).fill(0xf3dc8a).stroke(ink());
+    for (const [hx, hy, hr] of [[-8, 12, 4], [10, 10, 3], [4, -6, 3]] as const) g.circle(hx, hy, hr).fill(0xc9a23a);
+    g.ellipse(0, -26, 12, 4).stroke({ width: 3, color: GOLD });
+  },
+  '🌕': (g) => {
+    // Holy Wheel: a wheel of cheese, spinning through the air.
+    for (const y of [-12, 0, 12]) g.moveTo(-30, y).lineTo(-18, y).stroke({ width: 3, color: GOLD, alpha: 0.8, cap: 'round' });
+    g.circle(4, 0, 24).fill(0xd9a52b).stroke(ink());
+    g.circle(4, 0, 18).fill(0xf3dc8a);
+    for (const [hx, hy, hr] of [[-4, -6, 4], [10, 6, 3.5], [0, 9, 2.5], [12, -8, 2.5]] as const) g.circle(hx, hy, hr).fill(0xd8b860);
+    arc(g, 4, 0, 20, Math.PI * 1.1, Math.PI * 1.45).stroke(shine);
+  },
+  '💛': (g) => {
+    // Fondue Blessing: a golden heart, dripping warm fondue.
+    g.moveTo(0, 24).bezierCurveTo(-30, 2, -24, -24, 0, -10).bezierCurveTo(24, -24, 30, 2, 0, 24).closePath().fill(GOLD).stroke(ink());
+    g.moveTo(-12, -10).quadraticCurveTo(-16, -2, -10, 4).stroke({ ...shine, alpha: 0.6 });
+    g.moveTo(8, 12).lineTo(8, 20).stroke({ width: 4, color: 0xf3dc8a, cap: 'round' });
+    g.circle(8, 22, 3.5).fill(0xf3dc8a).stroke(ink(1.5));
+  },
+  '🔪': (g) => {
+    // Rind Blade: a cheese knife, forked at the tip, holes down the blade.
+    g.poly(rot([-4, -26, 4, -26, 6, -28, 6, -22, 4, -20, 4, 8, -4, 8, -4, -20, -6, -22, -6, -28], 0.6)).fill(0xffe9a8).stroke(ink(2.5));
+    for (const y of [-14, -4]) {
+      const [hx, hy] = rot([0, y], 0.6);
+      g.circle(hx, hy, 2).fill(0xc9a23a);
+    }
+    rod(g, (g) => g.moveTo(...(rot([0, 10], 0.6) as [number, number])).lineTo(...(rot([0, 26], 0.6) as [number, number])), 5, WOOD_DARK);
+    const [fx, fy] = rot([0, -30], 0.6);
+    g.circle(fx, fy, 6).fill({ color: 0xff9f43, alpha: 0.7 });
+  },
+  '😇': (g) => {
+    // Divine Fondue: a golden dome, a halo floating above it.
+    g.moveTo(-26, 18).arc(0, 18, 26, Math.PI, Math.PI * 2).closePath().fill({ color: GOLD, alpha: 0.85 }).stroke(ink());
+    g.moveTo(-26, 18).lineTo(26, 18).stroke(ink(3));
+    arc(g, 0, 18, 18, Math.PI * 1.15, Math.PI * 1.45).stroke(shine);
+    g.ellipse(0, -18, 14, 5).stroke({ width: 4, color: 0xfff1b8 }).stroke({ width: 1.5, color: INK });
+  },
   // ── Master Paris
   '🤺': (g) => {
     // Riposte: two blades crossing, one parrying the other.

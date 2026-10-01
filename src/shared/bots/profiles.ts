@@ -235,4 +235,30 @@ const paris: BotProfile = {
   },
 };
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris };
+const havarti: BotProfile = {
+  skillOrder: [2, 0, 1],
+  build: ['sagestone', 'treads', 'shiv', 'staff', 'fang', 'link'],
+  fight(ctx, foe) {
+    const { me, world } = ctx;
+    const d = dist(me.pos, foe.pos);
+    // Divine Fondue: save whoever on her team is about to fall (herself included).
+    if (ready(ctx, 3)) {
+      const saving = world
+        .units()
+        .find((u) => u.team === me.team && u.kind === 'champion' && !u.dead && dist(u.pos, me.pos) < 900 && hpPct(u) < 0.3 && enemiesInRadius(world, me.team, u.pos, 600).some((e) => e.kind === 'champion'));
+      if (saving) return cast(3, saving.pos);
+    }
+    const hurtAlly = world.units().some((u) => u.team === me.team && u.kind === 'champion' && !u.dead && u !== me && dist(u.pos, me.pos) < 900 && hpPct(u) < 0.5);
+    if (ready(ctx, 1) && (hpPct(me) < 0.6 || hurtAlly)) return cast(1, me.pos);
+    if (ready(ctx, 0) && d < 880) return cast(0, lead(foe, 0.3));
+    if (ready(ctx, 2) && d < me.stats.attackRange + 250) return cast(2, me.pos);
+    return null;
+  },
+  escape(ctx) {
+    const { me } = ctx;
+    if (ready(ctx, 3) && hpPct(me) < 0.25) return cast(3, me.pos);
+    return ready(ctx, 1) ? cast(1, me.pos) : null;
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris, havarti };

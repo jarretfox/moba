@@ -116,10 +116,12 @@ export class World {
   /** Apply mitigated damage. Returns the amount actually dealt. */
   damage(source: Unit | null, target: Unit, amount: number, type: DamageType, opts: { basic?: boolean } = {}): number {
     if (!target.isTargetable() || amount <= 0) return 0;
+    if (target.has('blessed')) return 0; // Havarti's Divine Fondue: nothing gets through
     if (source) amount *= 1 - source.strongest('weaken');
     amount *= 1 + target.strongest('decreed'); // Royal Decree
     amount *= target.incomingDamageScale(this);
-    const resist = type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0;
+    // Holy Wheel curdles armor and magic resist alike.
+    const resist = (type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0) * (1 - target.strongest('curdled'));
     const dealt = target.absorb(type === 'true' ? amount : mitigate(amount, resist));
     target.hp -= dealt;
     target.lastDamagedAt = this.time;

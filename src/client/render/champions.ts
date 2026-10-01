@@ -21,6 +21,7 @@ const CLASSIC: Record<ChampionId, Palette> = {
   hunnag: { body: CHUD_SKIN, cap: 0x7a3fb0, spots: 0xe8d7ff, eyes: 0xb8f07a, staff: 0x6b4a2b, orb: 0xb8f07a, orbGlow: 0x8fd14f, orbEdge: 0x3d6a14 },
   logan: { mane: 0xd98a2b, maneEdge: 0x8a4f12, face: 0xe8a33d, muzzle: 0xf2c27a, collar: 0x8a9099, eyes: 0x2e1a08, nose: 0x5a2e12, paw: 0xe8a33d },
   kingrix: { cape: 0xa8232e, ermine: 0xf2f2f2, spots: 0x111111, skin: SKIN, crown: 0xffd166, jewelA: 0xc0182b, jewelB: 0x3d8bfd, scepter: 0xd9a52b, orb: 0xffd166, gem: 0xc0182b },
+  havarti: { wheel: 0xf3dc8a, rind: 0xd9a52b, holes: 0xd8b860, wing: 0xfff6dc, wingEdge: 0xd8c48a, halo: 0xffe29a, face: 0xfbe9b7, eyes: 0x5a3a1a, blade: 0xffe9a8, hilt: 0x8a6a1e, flame: 0xffd166 },
   paris: { jacket: 0xf2efe6, jacketShade: 0xc9c3b4, beret: 0x1d2b4a, stem: 0x0f1a30, scarf: 0xc0182b, skin: SKIN, mustache: 0x2a1a10, blade: 0xd8dde6, guard: 0xd9a52b, grip: 0x2a1a10 },
   dabber: { fur: 0x7d8a6a, hood: 0x2f4a2a, hoodEdge: 0x1f3320, eyes: 0xff4a4a, ear: 0xd89a9a, tail: 0xd89a9a, nose: 0xe07a8a, rig: 0x9fe6c8, rigEdge: 0x3d6a5a, smoke: 0xb8f07a, wood: 0x5a3a1a, string: 0xe8e0cc },
   dongmaster: { skin: 0xe2b48a, skinDark: 0xb98a62, tank: 0x1c1c22, hair: 0x2a1a10, band: 0xe5484d, wrap: 0xf2efe6 },
@@ -53,6 +54,11 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
     { name: 'White Lion', colors: { mane: 0xf2efe6, maneEdge: 0x9a9488, face: 0xe8e2d4, muzzle: 0xffffff, collar: 0xffd166, paw: 0xe8e2d4, eyes: 0x3d6a8a } },
     { name: 'Shadow Lion', colors: { mane: 0x2a2430, maneEdge: 0x0e0c12, face: 0x5a4a3a, muzzle: 0x8a7a6a, collar: 0xb98be0, paw: 0x5a4a3a, eyes: 0xffd166, nose: 0x1a1410 } },
   ],
+  havarti: [
+    { name: 'The Aged One', colors: {} },
+    { name: 'Blue Cheese', colors: { wheel: 0xe6ecef, rind: 0x9fb4c8, holes: 0x5a7aa8, wing: 0xe6f4ff, wingEdge: 0x9fb4c8, halo: 0xbfe0ff, blade: 0xd8ecff, flame: 0x8fd0ff } },
+    { name: 'Smoked Gouda', colors: { wheel: 0xe8a85a, rind: 0x7a3a12, holes: 0xc0803a, wing: 0xffe6c8, wingEdge: 0xc89a6a, halo: 0xffb070, blade: 0xffd7a0, flame: 0xff9f43 } },
+  ],
   paris: [
     { name: 'Boulevard', colors: {} },
     { name: 'Midnight Masquerade', colors: { jacket: 0x2a2a32, jacketShade: 0x16161c, beret: 0x6a1a2a, stem: 0x3a0a14, scarf: 0xc9d1dc, guard: 0xc9d1dc, blade: 0xb8c6ff } },
@@ -76,7 +82,7 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
 };
 
 /** The color that sums up each look, for the swatches in champion select. */
-const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret' };
+const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret', havarti: 'wheel' };
 
 export function palette(id: ChampionId, skin = 0): Palette {
   return { ...CLASSIC[id], ...(SKINS[id][skin]?.colors ?? {}) };
@@ -169,6 +175,17 @@ const WEAPONS: Record<ChampionId, (p: Palette) => Weapon> = {
         g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(p.paw).stroke({ width: 1.5, color: p.maneEdge });
         for (let i = -1; i <= 1; i++) g.circle(0.28 * r, side * 0.46 * r + i * 0.08 * r, 0.045 * r).fill(p.maneEdge);
       }
+    },
+  }),
+  havarti: (p) => ({
+    // A golden cheese knife, forked at the tip, holes down the blade, a flame along its edge.
+    pivot: [0.3, 0.62],
+    draw(g, r) {
+      g.moveTo(-0.15 * r, 0).lineTo(0.08 * r, 0).stroke({ width: 4, color: p.hilt });
+      g.moveTo(0.14 * r, -0.12 * r).lineTo(1.15 * r, -0.12 * r).stroke({ width: 6, color: p.flame, alpha: 0.35, cap: 'round' });
+      g.poly([0.1 * r, -0.08 * r, 1.15 * r, -0.08 * r, 1.3 * r, -0.04 * r, 1.18 * r, 0, 1.3 * r, 0.04 * r, 1.12 * r, 0.08 * r, 0.1 * r, 0.08 * r]).fill(p.blade).stroke({ width: 1.5, color: OUTLINE.color });
+      for (const x of [0.45, 0.7, 0.95]) g.circle(x * r, 0, 0.03 * r).fill(p.hilt);
+      g.rect(0.06 * r, -0.13 * r, 0.06 * r, 0.26 * r).fill(p.hilt);
     },
   }),
   paris: (p) => ({
@@ -278,6 +295,22 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number, p: Palette) => void> 
     g.poly([0.62 * r, -0.1 * r, 0.75 * r, 0, 0.62 * r, 0.1 * r]).fill(p.nose); // nose
   },
 
+  /** A wheel of havarti, ascended: feathered wings spread behind, a small serene face, a halo. */
+  havarti(g, r, p) {
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const a = side * (Math.PI / 2 + 0.25 + i * 0.38);
+        g.poly(featherPoly(-0.1 * r + Math.cos(a) * 0.8 * r, Math.sin(a) * 0.8 * r, 0.6 * r, 0.17 * r, a)).fill(p.wing).stroke({ width: 1.5, color: p.wingEdge });
+      }
+    }
+    g.circle(0, 0, 0.74 * r).fill(p.rind).stroke(OUTLINE); // the rind
+    g.circle(0, 0, 0.62 * r).fill(p.wheel);
+    for (const [x, y, rr] of [[-0.25, -0.3, 0.1], [0.1, 0.32, 0.08], [-0.38, 0.15, 0.07], [0.18, -0.2, 0.06], [-0.08, 0.04, 0.09]]) g.circle(x * r, y * r, rr * r).fill(p.holes);
+    g.circle(0.42 * r, 0, 0.24 * r).fill(p.face).stroke(OUTLINE); // face
+    for (const side of [-1, 1]) g.circle(0.52 * r, side * 0.08 * r, 0.035 * r).fill(p.eyes);
+    g.circle(0.42 * r, 0, 0.33 * r).stroke({ width: 3, color: p.halo, alpha: 0.95 }); // halo
+  },
+
   /** A fencing master from above: white jacket, red cravat, a beret at an angle, and a mustache that curls. */
   paris(g, r, p) {
     g.ellipse(-0.08 * r, 0, 0.68 * r, 0.88 * r).fill(p.jacket).stroke(OUTLINE); // jacket
@@ -337,6 +370,20 @@ const FIGURES: Record<ChampionId, (g: Graphics, r: number, p: Palette) => void> 
     }
   },
 };
+
+/** An ellipse turned to `angle`, as polygon points: a feather. */
+function featherPoly(cx: number, cy: number, rx: number, ry: number, angle: number): number[] {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const pts: number[] = [];
+  for (let i = 0; i < 16; i++) {
+    const t = (i / 16) * Math.PI * 2;
+    const x = Math.cos(t) * rx;
+    const y = Math.sin(t) * ry;
+    pts.push(cx + x * c - y * s, cy + x * s + y * c);
+  }
+  return pts;
+}
 
 /** Portraits in the classic look, filled in once at startup by renderPortraits. */
 export const PORTRAITS: Partial<Record<ChampionId, string>> = {};
