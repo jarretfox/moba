@@ -4,6 +4,7 @@ import type { ChampionId } from '../shared/champions/types';
 import { GameClient } from './game';
 import { PORTRAITS, renderPortraits } from './render/champions';
 import { renderIcons } from './render/icons';
+import { installInkUi } from './ui/ink';
 import { MenuBackdrop } from './render/backdrop';
 import { getSound } from './audio';
 import { onSettings } from './settings';
@@ -33,6 +34,7 @@ async function boot(): Promise<void> {
   document.getElementById('stage')!.appendChild(app.canvas);
   Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));
   renderIcons(app.renderer);
+  installInkUi();
   await fonts;
   onSettings((s) => {
     if (s.quality === 'low' && app.renderer.resolution !== 1) app.renderer.resize(app.screen.width, app.screen.height, 1);

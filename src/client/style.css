@@ -50,7 +50,8 @@ input {
   font-family: var(--font-body);
 }
 
-/* Framed panels: dark, faintly grainy, with a bronze rim that catches the light along the top. */
+/* Framed panels: warm dark paper inside a brushed ink border with a faint bronze line just inside it
+   (the frame and the paper are drawn at startup: see ui/ink.ts). */
 .clock,
 .help,
 .bar,
@@ -59,34 +60,10 @@ input {
 .score-team,
 .tooltip,
 .lobby-team {
-  background: var(--grain), linear-gradient(180deg, #1e252e, #0c1015 75%);
-  border: 1px solid var(--rim);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 226, 160, 0.18),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 8px 22px rgba(0, 0, 0, 0.5);
-}
-
-/* Little bright brackets on the corners of the big panels. */
-.bar::after,
-.shop::after,
-.minimap::after,
-.help::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  pointer-events: none;
-  --c: var(--rim-hi);
-  background:
-    linear-gradient(var(--c), var(--c)) top left / 14px 2px,
-    linear-gradient(var(--c), var(--c)) top left / 2px 14px,
-    linear-gradient(var(--c), var(--c)) top right / 14px 2px,
-    linear-gradient(var(--c), var(--c)) top right / 2px 14px,
-    linear-gradient(var(--c), var(--c)) bottom left / 14px 2px,
-    linear-gradient(var(--c), var(--c)) bottom left / 2px 14px,
-    linear-gradient(var(--c), var(--c)) bottom right / 14px 2px,
-    linear-gradient(var(--c), var(--c)) bottom right / 2px 14px;
-  background-repeat: no-repeat;
+  background: var(--ink-paper), var(--grain), linear-gradient(180deg, #231e19, #120f0c 78%);
+  border: 1px solid transparent;
+  border-image: var(--ink-panel) 24 / 18px / 6px stretch;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
 }
 
 /* Drawn icons (an <img>), or the emoji while the pictures aren't ready. */
@@ -2002,9 +1979,9 @@ html.colorblind .gold-peak.theirs {
   width: 74px;
   height: 74px;
   border-radius: 50%;
-  border: 3px solid var(--gold);
-  background: radial-gradient(circle at 35% 30%, #4d79c7, #1b2f55);
-  box-shadow: 0 0 0 2px #1a1408, 0 0 0 3px var(--rim), 0 4px 12px rgba(0, 0, 0, 0.6);
+  border: 3px solid #0b0908;
+  background: radial-gradient(circle at 35% 30%, #4d6fa8, #1b2440);
+  box-shadow: 0 0 0 2px rgba(201, 160, 90, 0.75), 0 0 0 4px #0b0908, 0 4px 12px rgba(0, 0, 0, 0.6);
   display: grid;
   place-items: center;
   font: 22px var(--font-display);
@@ -2021,6 +1998,15 @@ html.colorblind .gold-peak.theirs {
 
 .portrait .face:not([src]) {
   display: none;
+}
+
+/* Your champion, live: wincing, grinning, nodding off (see ui/livePortrait.ts). Covers the still picture. */
+.portrait .live {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .portrait.empowered {
@@ -2235,9 +2221,10 @@ html.colorblind .gold-peak.theirs {
   width: 62px;
   height: 62px;
   border-radius: 6px;
-  border: 2px solid #8a6f3e;
-  background: radial-gradient(circle at 50% 35%, #33465f, #111925 75%);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 2px 8px rgba(255, 255, 255, 0.07), 0 3px 6px rgba(0, 0, 0, 0.6);
+  border: 2px solid transparent;
+  border-image: var(--ink-slot) 14 / 10px / 3px stretch;
+  background: var(--ink-paper), radial-gradient(circle at 50% 35%, #3a4152, #14131b 75%);
+  box-shadow: inset 0 2px 8px rgba(255, 236, 200, 0.06), 0 3px 6px rgba(0, 0, 0, 0.6);
 }
 
 .bar.rage .slot {

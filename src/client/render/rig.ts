@@ -123,7 +123,8 @@ export interface Posture {
   weight?: number;
 }
 
-export type Expression = 'hurt' | 'grin' | null;
+/** A face to pull: wincing, grinning, asleep, or out cold (X-ed eyes without falling down: a portrait). */
+export type Expression = 'hurt' | 'grin' | 'sleep' | 'ko' | null;
 
 /** What the view tells the rig each frame. */
 export interface RigInput {
@@ -531,11 +532,12 @@ export class Rig implements Figure {
     if (this.blink < -0.13) this.blink = 2 + Math.random() * 3.5;
     const mood = dead ? null : input.expression ?? null;
     const asleep = (pose?.lie ?? 0) < 0 && (pose?.weight ?? 1) > 0.5;
-    face.ko.visible = dead;
+    const out = dead || mood === 'ko';
+    face.ko.visible = out;
     face.happy.visible = mood === 'grin';
     face.grin.visible = mood === 'grin';
     face.hurt.visible = mood === 'hurt';
-    face.lids.visible = !dead && mood !== 'grin' && (mood === 'hurt' || asleep || this.blink < 0);
+    face.lids.visible = !out && mood !== 'grin' && (mood === 'hurt' || mood === 'sleep' || asleep || this.blink < 0);
   }
 
   /** On death the weapon drops and the hat flies off; they're put back when the champion comes back. */

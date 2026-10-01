@@ -718,6 +718,7 @@ export class GameClient {
         if (ev.what === 'champion') {
           const killer = [...this.ents.values()].find((e) => e.k === 'champion' && e.name === ev.killer);
           if (killer) (this.views.get(killer.id) as UnitView | undefined)?.smile?.();
+          if (killer?.id === this.myId) this.hud.smile();
         }
         this.announceKill(ev);
         return;
@@ -732,6 +733,7 @@ export class GameClient {
         if (caster?.champ) this.damageLog.noteCast(ev.src, CHAMPION_INFO[caster.champ].abilities[ev.slot].name, performance.now() / 1000);
         if (caster?.champ && ev.slot === 3) {
           this.speak(caster, 'ult', 0, true);
+          if (ev.src === this.myId) this.hud.smile();
           const name = CHAMPION_INFO[caster.champ].abilities[3].name.toUpperCase();
           this.fx.callout(caster.x, caster.y - standHeight(caster) - 50, name.endsWith('!') ? name : `${name}!`, CAST_COLORS[caster.champ]);
           this.playCue({ name: 'ultimate', at: caster, gain: 0.8 });

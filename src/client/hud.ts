@@ -15,6 +15,7 @@ import type { RecapEntry } from './recap';
 import type { Award } from './awards';
 import type { Highlight } from './highlights';
 import { el } from './ui/dom';
+import { LivePortrait } from './ui/livePortrait';
 
 interface SlotEls {
   root: HTMLElement;
@@ -78,6 +79,8 @@ export class Hud {
   private readonly feed: HTMLElement;
   private readonly bar: HTMLElement;
   private readonly portrait: HTMLElement;
+  /** Your champion, live in the portrait. */
+  private readonly live = new LivePortrait();
   private readonly stacks: HTMLElement;
   private readonly level: HTMLElement;
   private readonly gold: HTMLElement;
@@ -176,6 +179,7 @@ export class Hud {
     this.warden = q('.warden');
     this.bar = q('.bar');
     this.portrait = q('.portrait');
+    this.portrait.insertBefore(this.live.canvas, this.portrait.querySelector('.stacks'));
     this.stacks = q('.stacks');
     this.level = q('.lvl');
     this.gold = q('.gold');
@@ -237,6 +241,7 @@ export class Hud {
     (this.respawn.querySelector('.respawn-face') as HTMLImageElement).src = face ?? '';
     (this.portrait.querySelector('.initial') as HTMLElement).textContent = face ? '' : info.name.slice(0, 2).toUpperCase();
     if (face) (this.portrait.querySelector('.face') as HTMLImageElement).src = face;
+    this.live.show(info.id, skin);
     this.bar.classList.toggle('rage', info.resource === 'rage');
     this.bar.classList.toggle('nores', info.resource === 'none');
     info.abilities.forEach((a, i) => {
@@ -278,6 +283,7 @@ export class Hud {
     this.updateBuffs(me);
     this.set(this.stacks, 'text', me.passiveStacks ? String(me.passiveStacks) : '');
     this.set(this.portrait, 'class', me.empowered ? 'portrait empowered' : 'portrait');
+    this.live.set({ health: (self.hp ?? 0) / (self.mhp ?? 1), dead: !!self.dead, recalling: !!self.st?.includes('recall') });
 
     me.abilities.forEach((a, i) => {
       const el = this.slots[i];
@@ -562,6 +568,11 @@ export class Hud {
         this.pop(this.purse, 'bump');
       };
     }
+  }
+
+  /** Your portrait grins: you got a kill, or let off your ultimate. */
+  smile(): void {
+    this.live.smile();
   }
 
   /** The XP bar and portrait burst with light on a level up. */
