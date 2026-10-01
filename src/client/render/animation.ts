@@ -4,6 +4,11 @@ import type { Slot } from '../../shared/constants';
 // How champions move when they attack and cast: a few keyframes per move, played on the figure and the
 // weapon in their hand. Turns are in radians (positive is clockwise on screen), distances in the
 // champion's radius, and every move starts and ends at rest.
+//
+// Champions stand side-on (see rig.ts), facing right: a negative turn raises the arm and weapon up and
+// back, a positive one brings them down and forward; a reach pushes the hand out in front; a twist turns
+// the whole figure (a full turn is a spin); a lunge leans and steps forward; grow rears up. Chuds and
+// monsters are still seen from above, where a turn swings the weapon round.
 
 /** [time 0–1, value] */
 export type Key = readonly [number, number];
@@ -45,22 +50,22 @@ const TAU = Math.PI * 2;
 
 /** Basic attacks. */
 export const ATTACK: Record<ChampionId, Anim> = {
-  // Wind the axe back, then sweep it across the front.
-  barbarian: { dur: 0.32, turn: [[0, 0], [0.3, 0.8], [0.55, -1.5], [1, 0]], twist: [[0, 0], [0.3, 0.15], [0.55, -0.2], [1, 0]], lunge: [[0, 0], [0.5, 0.15], [1, 0]] },
+  // The axe up over his head, then down like he's splitting a log.
+  barbarian: { dur: 0.32, turn: [[0, 0], [0.35, -1.6], [0.6, 0.9], [1, 0]], lunge: [[0, 0], [0.35, -0.05], [0.6, 0.2], [1, 0]], grow: [[0, 0], [0.35, 0.05], [0.6, -0.03], [1, 0]] },
   // Draw the string back, loose, and rock back from the shot.
   marksman: { dur: 0.3, reach: [[0, 0], [0.45, -0.22], [0.55, 0.06], [1, 0]], lunge: [[0, 0], [0.55, -0.08], [1, 0]] },
   // Whirl the hook round once and fling it out.
   willmore: { dur: 0.36, turn: [[0, 0], [1, -TAU]], reach: [[0, 0], [0.55, 0.35], [1, 0]] },
-  // Pull the staff back and jab the spore forward.
-  hunnag: { dur: 0.32, turn: [[0, 0], [0.3, 0.4], [0.55, -0.25], [1, 0]], reach: [[0, 0], [0.3, -0.12], [0.55, 0.32], [1, 0]] },
-  // Paws out and a lunge with the swipe.
-  logan: { dur: 0.28, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.2], [1, 0]] },
+  // Lift the staff and jab the spore forward.
+  hunnag: { dur: 0.32, turn: [[0, 0], [0.3, -0.5], [0.55, 0.45], [1, 0]], reach: [[0, 0], [0.3, -0.12], [0.55, 0.32], [1, 0]] },
+  // Claws up, then raked down with a lunge.
+  logan: { dur: 0.28, turn: [[0, 0], [0.25, -1.3], [0.5, 0.7], [1, 0]], reach: [[0, 0], [0.5, 0.3], [1, 0]], lunge: [[0, 0], [0.5, 0.25], [1, 0]] },
   // A royal flourish of the scepter.
   kingrix: { dur: 0.36, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
   // A quick, sneaky stab.
   daltonomo: { dur: 0.26, reach: [[0, 0], [0.3, 0.45], [1, 0]], twist: [[0, 0], [0.3, 0.2], [1, 0]], lunge: [[0, 0], [0.3, 0.15], [1, 0]] },
-  // A sweep of the flaming cheese knife.
-  havarti: { dur: 0.32, turn: [[0, 0], [0.3, 0.9], [0.55, -1.2], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
+  // A downward slash of the flaming cheese knife.
+  havarti: { dur: 0.32, turn: [[0, 0], [0.3, -1.3], [0.55, 0.9], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
   // A fencer's thrust: blade and body forward together.
   paris: { dur: 0.26, reach: [[0, 0], [0.3, 0.5], [1, 0]], lunge: [[0, 0], [0.3, 0.25], [1, 0]] },
   // The rig-bow kicks back as it fires.
@@ -119,7 +124,7 @@ const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
   // Cloud Nine: rig up high, rearing back into the smoke.
   'dabber:3': { dur: 0.7, grow: [[0, 0], [0.3, 0.18], [0.8, 0.12], [1, 0]], turn: [[0, 0], [0.3, -1.4], [0.8, -1.4], [1, 0]] },
   // Chin Check: wind back and throw the uppercut.
-  'dongmaster:0': { dur: 0.35, reach: [[0, 0], [0.25, -0.2], [0.5, 0.75], [1, 0]], lunge: [[0, 0], [0.5, 0.3], [1, 0]], twist: [[0, 0], [0.25, 0.25], [0.5, -0.3], [1, 0]] },
+  'dongmaster:0': { dur: 0.35, turn: [[0, 0], [0.25, 0.4], [0.5, -1.5], [1, 0]], lunge: [[0, 0], [0.25, -0.1], [0.5, 0.3], [1, 0]], grow: [[0, 0], [0.25, -0.06], [0.5, 0.1], [1, 0]] },
   // Sigma Stare: lean in, dead still.
   'dongmaster:2': { dur: 0.6, lunge: [[0, 0], [0.3, 0.2], [0.8, 0.2], [1, 0]], grow: [[0, 0], [0.3, 0.06], [1, 0]] },
   // Ascension: a double biceps pose, swelling up.

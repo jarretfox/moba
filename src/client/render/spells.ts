@@ -6,6 +6,7 @@ import type { Emit } from './particles';
 import { RECALLS } from './recalls';
 import { PALETTE } from './views';
 import { arc } from './draw';
+import { chestHeight, standHeight } from './stature';
 
 // What every spell looks like: the building blocks in fx.ts put together per ability, plus the trails
 // behind projectiles and the auras around units with statuses. Purely cosmetic.
@@ -742,14 +743,16 @@ export function castFlash(fx: FxLayer, caster: EntitySnap): void {
   if (!caster.champ) return;
   const color = CAST_COLORS[caster.champ];
   fx.sigil(caster.x, caster.y, caster.r * 1.9, color, 0.55, 3);
-  fx.particles.burst(8, { shape: 'mote', x: caster.x, y: caster.y, life: 0.4, size: 8, size2: 2, color: 0xffffff, color2: color, drag: 0.1 }, [80, 180]);
+  fx.particles.burst(8, { shape: 'mote', x: caster.x, y: caster.y - chestHeight(caster), life: 0.4, size: 8, size2: 2, color: 0xffffff, color2: color, drag: 0.1 }, [80, 180]);
 }
 
 /** Each champion goes down in character, on top of the usual death burst. */
 export function championDeath(fx: FxLayer, s: EntitySnap): void {
   const p = fx.particles;
-  const { x, y, r } = s;
-  const top = y - r - 34;
+  const { x, r } = s;
+  // Bursts come off the body; the last words go over where the head was.
+  const y = s.y - chestHeight(s);
+  const top = s.y - standHeight(s) - 10;
   switch (s.champ) {
     case 'marksman':
       // Jordini: the paperwork goes everywhere.
@@ -800,7 +803,7 @@ export function championDeath(fx: FxLayer, s: EntitySnap): void {
       return;
     case 'havarti':
       // She melts into a puddle of fondue, feathers drifting down.
-      fx.scar(x, y, r * 1.6, 'goo', 0xc9a23a, 12);
+      fx.scar(x, s.y, r * 1.6, 'goo', 0xc9a23a, 12);
       p.burst(14, { shape: 'leaf', glow: false, x, y, life: 1.6, size: 12, size2: 10, color: 0xfff6dc, drag: 0.25, ay: 40, spin: 3 }, [80, 200]);
       p.burst(12, { shape: 'mote', glow: false, x, y, life: 0.8, size: 9, size2: 4, color: 0xf3dc8a, ay: 300 }, [100, 240]);
       return;

@@ -1,13 +1,12 @@
 import { Container, Graphics, Rectangle, type Renderer } from 'pixi.js';
+import { BUILDS } from './builds';
+import { Rig } from './rig';
 import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
-import { arc } from './draw';
 
-// Champion art, drawn in code like the rest of the game. Every figure is seen from above, facing right
-// (+x), sized to the champion's radius `r`, and lives on the layer that turns to face where they're going.
-// The team shows as a colored ring underneath (drawChampionBase), so the figures keep their own colors.
-// Every color comes from the champion's palette, so a skin is just a different palette.
+// Champions' colors and looks. The figures themselves are built in builds.ts and posed by rig.ts; here
+// are the palettes they're painted from (a skin is just a different palette), the team ring under their
+// feet, and the portraits for the HUD and champion select.
 
-const OUTLINE = { width: 2, color: 0x0b0f14 };
 const SKIN = 0xd6a274;
 const CHUD_SKIN = 0x87916c;
 
@@ -105,21 +104,6 @@ export function drawChampionBase(g: Graphics, r: number, teamColor: number, self
   if (self) g.circle(0, 0, r + 4).stroke({ width: 2, color: 0xffffff, alpha: 0.9 });
 }
 
-/** The champion without their weapon (see drawChampionWeapon, which animates on its own). */
-export function drawChampionFigure(g: Graphics, id: ChampionId, r: number, skin = 0): void {
-  FIGURES[id](g, r, palette(id, skin));
-}
-
-/**
- * Draws the champion's weapon around its pivot (their hand) and says where that pivot sits on the figure,
- * so the weapon can swing, draw back or whirl while the body stays put.
- */
-export function drawChampionWeapon(g: Graphics, id: ChampionId, r: number, skin = 0): { x: number; y: number } {
-  const w = championWeapon(id, skin);
-  w.draw(g, r);
-  return { x: w.pivot[0] * r, y: w.pivot[1] * r };
-}
-
 /** A part that moves on its own: a weapon, a tail, a head, a tongue. */
 export interface Weapon {
   /** Where it's held, in units of the unit's radius. */
@@ -134,305 +118,6 @@ export interface Weapon {
   rest?: number;
 }
 
-export function championWeapon(id: ChampionId, skin = 0): Weapon {
-  return WEAPONS[id](palette(id, skin));
-}
-
-const WEAPONS: Record<ChampionId, (p: Palette) => Weapon> = {
-  marksman: (p) => ({
-    pivot: [0.35, 0],
-    draw(g, r) {
-      arc(g, 0, 0, 0.95 * r, -1.15, 1.15).stroke({ width: 4, color: p.bow }); // bow
-      const tip = { x: Math.cos(1.15) * 0.95 * r, y: Math.sin(1.15) * 0.95 * r };
-      g.moveTo(tip.x, -tip.y).lineTo(0, 0).lineTo(tip.x, tip.y).stroke({ width: 1.5, color: p.string }); // string
-      g.moveTo(0, 0).lineTo(1.05 * r, 0).stroke({ width: 2, color: p.arrow }); // arrow
-      g.poly([1.05 * r, -5, 1.25 * r, 0, 1.05 * r, 5]).fill(p.tip);
-    },
-  }),
-  barbarian: (p) => ({
-    pivot: [0.3, 0.75],
-    draw(g, r) {
-      g.moveTo(0, 0).lineTo(1.05 * r, -0.2 * r).stroke({ width: 5, color: p.haft }); // haft
-      g.poly([0.85 * r, -0.6 * r, 1.2 * r, -0.45 * r, 1.25 * r, 0, 0.85 * r, 0.2 * r, 0.95 * r, -0.2 * r]).fill(p.blade).stroke(OUTLINE); // blade
-      g.moveTo(1.18 * r, -0.42 * r).lineTo(1.22 * r, -0.02 * r).stroke({ width: 2, color: 0xffffff, alpha: 0.6 });
-    },
-  }),
-  willmore: (p) => ({
-    pivot: [0.3, 0.6],
-    draw(g, r) {
-      g.moveTo(0, 0).lineTo(0.55 * r, 0.15 * r).stroke({ width: 2, color: p.rope }); // rope
-      arc(g, 0.7 * r, 0, 0.22 * r, -0.5, 3.4).stroke({ width: 4, color: p.hook }); // hook
-    },
-  }),
-  hunnag: (p) => ({
-    pivot: [0.2, 0.65],
-    draw(g, r) {
-      g.moveTo(0, 0).lineTo(1.05 * r, -0.15 * r).stroke({ width: 3, color: p.staff }); // staff
-      g.circle(1.1 * r, -0.15 * r, 0.36 * r).fill({ color: p.orbGlow, alpha: 0.25 });
-      g.circle(1.1 * r, -0.15 * r, 0.18 * r).fill(p.orb).stroke({ width: 1.5, color: p.orbEdge });
-    },
-  }),
-  logan: (p) => ({
-    // Two front paws, reaching out from under the mane.
-    pivot: [0.45, 0],
-    behind: true,
-    draw(g, r) {
-      for (const side of [-1, 1]) {
-        g.ellipse(0.1 * r, side * 0.46 * r, 0.22 * r, 0.17 * r).fill(p.paw).stroke({ width: 1.5, color: p.maneEdge });
-        for (let i = -1; i <= 1; i++) g.circle(0.28 * r, side * 0.46 * r + i * 0.08 * r, 0.045 * r).fill(p.maneEdge);
-      }
-    },
-  }),
-  daltonomo: (p) => ({
-    // A dagger in each hand.
-    pivot: [0.5, 0],
-    draw(g, r) {
-      for (const side of [-1, 1]) {
-        const y = side * 0.45 * r;
-        g.rect(-0.14 * r, y - 0.04 * r, 0.12 * r, 0.08 * r).fill(p.hilt).stroke({ width: 1.2, color: OUTLINE.color });
-        g.moveTo(0, y - 0.1 * r).lineTo(0, y + 0.1 * r).stroke({ width: 3, color: p.bell });
-        g.poly([0.02 * r, y - 0.05 * r, 0.42 * r, y, 0.02 * r, y + 0.05 * r]).fill(p.blade).stroke({ width: 1.2, color: OUTLINE.color });
-      }
-    },
-  }),
-  havarti: (p) => ({
-    // A golden cheese knife, forked at the tip, holes down the blade, a flame along its edge.
-    pivot: [0.3, 0.62],
-    draw(g, r) {
-      g.moveTo(-0.15 * r, 0).lineTo(0.08 * r, 0).stroke({ width: 4, color: p.hilt });
-      g.moveTo(0.14 * r, -0.12 * r).lineTo(1.15 * r, -0.12 * r).stroke({ width: 6, color: p.flame, alpha: 0.35, cap: 'round' });
-      g.poly([0.1 * r, -0.08 * r, 1.15 * r, -0.08 * r, 1.3 * r, -0.04 * r, 1.18 * r, 0, 1.3 * r, 0.04 * r, 1.12 * r, 0.08 * r, 0.1 * r, 0.08 * r]).fill(p.blade).stroke({ width: 1.5, color: OUTLINE.color });
-      for (const x of [0.45, 0.7, 0.95]) g.circle(x * r, 0, 0.03 * r).fill(p.hilt);
-      g.rect(0.06 * r, -0.13 * r, 0.06 * r, 0.26 * r).fill(p.hilt);
-    },
-  }),
-  paris: (p) => ({
-    // His épée: a long thin blade, a bell guard, a short grip.
-    pivot: [0.3, 0.55],
-    draw(g, r) {
-      g.moveTo(-0.18 * r, 0).lineTo(0.05 * r, 0).stroke({ width: 4, color: p.grip });
-      g.moveTo(0.1 * r, 0).lineTo(1.55 * r, 0).stroke({ width: 2.5, color: p.blade });
-      g.circle(1.55 * r, 0, 1.6).fill(p.blade);
-      g.ellipse(0.1 * r, 0, 0.06 * r, 0.16 * r).fill(p.guard).stroke({ width: 1.5, color: OUTLINE.color });
-      g.moveTo(0.4 * r, -1.5).lineTo(1.3 * r, -1.5).stroke({ width: 1, color: 0xffffff, alpha: 0.6 });
-    },
-  }),
-  dabber: (p) => ({
-    // His rig: a little crossbow with a glass bulb bubbling on the stock.
-    pivot: [0.3, 0.55],
-    draw(g, r) {
-      g.moveTo(0, 0).lineTo(0.75 * r, -0.1 * r).stroke({ width: 4, color: p.wood });
-      g.moveTo(0.55 * r, -0.4 * r).quadraticCurveTo(0.75 * r, -0.1 * r, 0.55 * r, 0.22 * r).stroke({ width: 3, color: p.wood });
-      g.moveTo(0.55 * r, -0.4 * r).lineTo(0.55 * r, 0.22 * r).stroke({ width: 1, color: p.string });
-      g.circle(0.3 * r, -0.05 * r, 0.14 * r).fill({ color: p.rig, alpha: 0.85 }).stroke({ width: 2, color: p.rigEdge });
-      g.circle(0.26 * r, -0.09 * r, 0.04 * r).fill({ color: 0xffffff, alpha: 0.7 });
-      g.circle(0.38 * r, -0.28 * r, 0.06 * r).fill({ color: p.smoke, alpha: 0.5 });
-    },
-  }),
-  dongmaster: (p) => ({
-    // Two big wrapped fists, up in a guard.
-    pivot: [0.5, 0],
-    draw(g, r) {
-      for (const side of [-1, 1]) {
-        const y = side * 0.5 * r;
-        g.roundRect(-0.05 * r, y - 0.17 * r, 0.34 * r, 0.34 * r, 0.1 * r).fill(p.skin).stroke(OUTLINE);
-        g.roundRect(-0.12 * r, y - 0.15 * r, 0.12 * r, 0.3 * r, 0.05 * r).fill(p.wrap).stroke({ width: 1.5, color: OUTLINE.color });
-        for (let i = -1; i <= 1; i++) g.moveTo(0.22 * r, y + i * 0.09 * r).lineTo(0.28 * r, y + i * 0.09 * r).stroke({ width: 1.5, color: p.skinDark });
-      }
-    },
-  }),
-  kingrix: (p) => ({
-    pivot: [0.3, 0.6],
-    draw(g, r) {
-      g.moveTo(0, 0).lineTo(0.9 * r, -0.15 * r).stroke({ width: 3, color: p.scepter }); // scepter
-      g.circle(0.95 * r, -0.16 * r, 0.15 * r).fill(p.orb).stroke({ width: 1.5, color: 0x8a6a1e });
-      g.circle(0.95 * r, -0.16 * r, 0.06 * r).fill(p.gem);
-    },
-  }),
-};
-
-const FIGURES: Record<ChampionId, (g: Graphics, r: number, p: Palette) => void> = {
-  /** A hooded archer in a cloak, a quiver on her back. */
-  marksman(g, r, p) {
-    g.ellipse(-0.15 * r, 0, 0.95 * r, 0.85 * r).fill(p.cloak).stroke(OUTLINE); // cloak
-    g.roundRect(-1.05 * r, 0.1 * r, 0.6 * r, 0.3 * r, 4).fill(p.quiver).stroke(OUTLINE); // quiver
-    for (const y of [0.13, 0.25, 0.37]) g.poly([-1.2 * r, y * r - 4, -1.05 * r, y * r, -1.2 * r, y * r + 4]).fill(p.fletch);
-    g.circle(0.1 * r, 0, 0.48 * r).fill(p.hood).stroke(OUTLINE); // hood
-    g.circle(0.3 * r, 0, 0.22 * r).fill(p.face); // face in shadow
-    g.circle(0.55 * r, 0.35 * r, 0.14 * r).fill(p.hand); // drawing hand
-  },
-
-  /** Broad shoulders, fur pauldrons, a horned helmet, and a broken shackle on one wrist. */
-  barbarian(g, r, p) {
-    g.ellipse(0, 0, 0.75 * r, 1.0 * r).fill(p.skin).stroke(OUTLINE); // shoulders
-    for (const side of [-1, 1]) {
-      g.circle(-0.05 * r, side * 0.68 * r, 0.38 * r).fill(p.fur).stroke(OUTLINE); // fur
-      for (const [x, y] of [[-0.2, 0.55], [0.1, 0.6], [-0.05, 0.85]]) g.circle(x * r, side * y * r, 0.1 * r).fill(p.furDot);
-    }
-    g.circle(0.15 * r, 0, 0.42 * r).fill(p.skin).stroke(OUTLINE); // head
-    g.circle(0.1 * r, 0, 0.36 * r).fill(p.helmet).stroke(OUTLINE); // helmet
-    for (const side of [-1, 1]) g.poly([0.05 * r, side * 0.3 * r, 0.6 * r, side * 0.8 * r, 0.32 * r, side * 0.24 * r]).fill(p.horns).stroke(OUTLINE); // horns
-    for (let i = 0; i < 3; i++) g.ellipse(0.35 * r + i * 7, -0.85 * r - i * 3, 4, 2.5).stroke({ width: 2, color: p.chain }); // broken chain
-  },
-
-  /** A Chud in goggles and a trash-can-lid crown, a sack of junk on his back. */
-  willmore(g, r, p) {
-    g.circle(-0.65 * r, 0.1 * r, 0.5 * r).fill(p.sack).stroke(OUTLINE); // junk sack
-    g.moveTo(-0.9 * r, -0.05 * r).lineTo(-0.45 * r, 0.3 * r).stroke({ width: 2, color: p.patch }); // a patch
-    g.circle(0, 0, 0.8 * r).fill(p.body).stroke(OUTLINE); // body
-    g.circle(0.05 * r, 0, 0.36 * r).fill(p.lid).stroke(OUTLINE); // the lid
-    g.roundRect(-0.03 * r, -0.08 * r, 0.16 * r, 0.16 * r, 2).fill(p.lidKnob);
-    g.moveTo(0.5 * r, -0.28 * r).lineTo(0.5 * r, 0.28 * r).stroke({ width: 3, color: p.strap }); // goggle strap
-    for (const side of [-1, 1]) g.circle(0.55 * r, side * 0.28 * r, 0.2 * r).fill(p.goggles).stroke({ width: 3, color: p.rim }); // goggles
-  },
-
-  /** A Chud under a spotted mushroom cap, eyes glowing. */
-  hunnag(g, r, p) {
-    g.circle(0, 0, 0.8 * r).fill(p.body).stroke(OUTLINE); // body
-    g.ellipse(-0.1 * r, 0, 0.9 * r, 0.85 * r).fill(p.cap).stroke(OUTLINE); // the cap
-    for (const [x, y, rr] of [[-0.45, -0.35, 0.16], [-0.1, 0.4, 0.13], [-0.55, 0.25, 0.1], [0.15, -0.3, 0.12], [-0.25, -0.05, 0.09]]) g.circle(x * r, y * r, rr * r).fill(p.spots);
-    for (const side of [-1, 1]) g.circle(0.62 * r, side * 0.2 * r, 0.09 * r).fill(p.eyes); // eyes under the brim
-    for (const [x, y] of [[0.9, -0.5], [0.4, -0.85], [-0.8, 0.75]]) g.circle(x * r, y * r, 2.5).fill({ color: p.eyes, alpha: 0.8 }); // spores
-  },
-
-  /** A lion from above: a great mane, muzzle forward, and a broken collar from the royal cage. */
-  logan(g, r, p) {
-    const mane: number[] = [];
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * Math.PI * 2;
-      const rr = i % 2 === 0 ? 1.05 * r : 0.82 * r;
-      mane.push(Math.cos(a) * rr - 0.05 * r, Math.sin(a) * rr);
-    }
-    g.poly(mane).fill(p.mane).stroke({ width: 2, color: p.maneEdge });
-    g.circle(0, 0, 0.7 * r).fill(p.face);
-    arc(g, -0.05 * r, 0, 0.62 * r, 2.2, 4.1).stroke({ width: 4, color: p.collar }); // the broken collar
-    g.ellipse(-0.75 * r, -0.62 * r, 4, 2.5).stroke({ width: 2, color: p.collar });
-    for (const side of [-1, 1]) g.circle(-0.02 * r, side * 0.48 * r, 0.14 * r).fill(p.mane).stroke({ width: 1.5, color: p.maneEdge }); // ears
-    g.ellipse(0.35 * r, 0, 0.42 * r, 0.32 * r).fill(p.muzzle).stroke({ width: 1.5, color: p.maneEdge }); // muzzle
-    for (const side of [-1, 1]) g.circle(0.2 * r, side * 0.2 * r, 0.06 * r).fill(p.eyes); // eyes
-    g.poly([0.62 * r, -0.1 * r, 0.75 * r, 0, 0.62 * r, 0.1 * r]).fill(p.nose); // nose
-  },
-
-  /** A jester from above: a three-pointed belled hat, a white grinning mask, a ruff, and a harlequin tunic. */
-  daltonomo(g, r, p) {
-    g.ellipse(-0.1 * r, 0, 0.7 * r, 0.85 * r).fill(p.tunicA).stroke(OUTLINE); // tunic
-    for (const [x, y] of [[-0.35, -0.38], [-0.35, 0.38], [-0.05, 0], [-0.62, 0]]) {
-      const cx = x * r;
-      const cy = y * r;
-      const s = 0.17 * r;
-      g.poly([cx - s, cy, cx, cy - s, cx + s, cy, cx, cy + s]).fill(p.tunicB); // harlequin diamonds
-    }
-    const ruff: number[] = [];
-    for (let i = 0; i < 20; i++) {
-      const a = (i / 20) * Math.PI * 2;
-      const rr = i % 2 ? 0.32 * r : 0.43 * r;
-      ruff.push(0.1 * r + Math.cos(a) * rr, Math.sin(a) * rr);
-    }
-    g.poly(ruff).fill(p.ruff).stroke({ width: 1.5, color: OUTLINE.color }); // ruff
-    // The hat's three floppy points, falling back and to the sides, each with a bell.
-    for (const [a, color] of [[Math.PI, p.hatB], [Math.PI - 1, p.hatA], [Math.PI + 1, p.hatA]] as const) {
-      const tipX = 0.1 * r + Math.cos(a) * 0.95 * r;
-      const tipY = Math.sin(a) * 0.95 * r;
-      const nx = -Math.sin(a) * 0.17 * r;
-      const ny = Math.cos(a) * 0.17 * r;
-      g.moveTo(0.1 * r + nx, ny).quadraticCurveTo(0.1 * r + Math.cos(a) * 0.6 * r + nx * 1.4, Math.sin(a) * 0.6 * r + ny * 1.4, tipX, tipY).quadraticCurveTo(0.1 * r + Math.cos(a) * 0.6 * r - nx * 1.4, Math.sin(a) * 0.6 * r - ny * 1.4, 0.1 * r - nx, -ny).closePath().fill(color).stroke(OUTLINE);
-      g.circle(tipX, tipY, 0.09 * r).fill(p.bell).stroke({ width: 1.5, color: OUTLINE.color });
-    }
-    g.circle(0.12 * r, 0, 0.27 * r).fill(p.face).stroke(OUTLINE); // mask
-    arc(g, 0.16 * r, 0, 0.17 * r, -1.1, 1.1).stroke({ width: 2.5, color: p.grin }); // the grin
-    for (const side of [-1, 1]) g.poly([0.18 * r, side * 0.1 * r - 0.04 * r, 0.22 * r, side * 0.1 * r, 0.18 * r, side * 0.1 * r + 0.04 * r, 0.14 * r, side * 0.1 * r]).fill(p.eye); // diamond eyes
-  },
-
-  /** A wheel of havarti, ascended: feathered wings spread behind, a small serene face, a halo. */
-  havarti(g, r, p) {
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {
-        const a = side * (Math.PI / 2 + 0.25 + i * 0.38);
-        g.poly(featherPoly(-0.1 * r + Math.cos(a) * 0.8 * r, Math.sin(a) * 0.8 * r, 0.6 * r, 0.17 * r, a)).fill(p.wing).stroke({ width: 1.5, color: p.wingEdge });
-      }
-    }
-    g.circle(0, 0, 0.74 * r).fill(p.rind).stroke(OUTLINE); // the rind
-    g.circle(0, 0, 0.62 * r).fill(p.wheel);
-    for (const [x, y, rr] of [[-0.25, -0.3, 0.1], [0.1, 0.32, 0.08], [-0.38, 0.15, 0.07], [0.18, -0.2, 0.06], [-0.08, 0.04, 0.09]]) g.circle(x * r, y * r, rr * r).fill(p.holes);
-    g.circle(0.42 * r, 0, 0.24 * r).fill(p.face).stroke(OUTLINE); // face
-    for (const side of [-1, 1]) g.circle(0.52 * r, side * 0.08 * r, 0.035 * r).fill(p.eyes);
-    g.circle(0.42 * r, 0, 0.33 * r).stroke({ width: 3, color: p.halo, alpha: 0.95 }); // halo
-  },
-
-  /** A fencing master from above: white jacket, red cravat, a beret at an angle, and a mustache that curls. */
-  paris(g, r, p) {
-    g.ellipse(-0.08 * r, 0, 0.68 * r, 0.88 * r).fill(p.jacket).stroke(OUTLINE); // jacket
-    g.moveTo(-0.5 * r, -0.4 * r).quadraticCurveTo(-0.2 * r, 0, -0.5 * r, 0.4 * r).stroke({ width: 2, color: p.jacketShade }); // a seam
-    g.poly([0.18 * r, -0.2 * r, 0.42 * r, 0, 0.18 * r, 0.2 * r, 0.05 * r, 0]).fill(p.scarf).stroke({ width: 1.5, color: OUTLINE.color }); // cravat
-    g.circle(0.12 * r, 0, 0.3 * r).fill(p.skin).stroke(OUTLINE); // head
-    for (const side of [-1, 1]) {
-      g.moveTo(0.36 * r, side * 0.04 * r).quadraticCurveTo(0.5 * r, side * 0.26 * r, 0.32 * r, side * 0.34 * r).stroke({ width: 3, color: p.mustache, cap: 'round' }); // the mustache
-      g.circle(0.33 * r, side * 0.33 * r, 0.03 * r).fill(p.mustache);
-    }
-    g.ellipse(0.04 * r, -0.06 * r, 0.3 * r, 0.27 * r).fill(p.beret).stroke(OUTLINE); // beret, tilted
-    g.circle(0.0 * r, -0.12 * r, 0.05 * r).fill(p.stem);
-  },
-
-  /** A rat in a hoodie: snout out front, red eyes, round ears poking out, a long tail, a little smoke. */
-  dabber(g, r, p) {
-    g.moveTo(-0.6 * r, 0.1 * r).quadraticCurveTo(-1.3 * r, 0.9 * r, -1.75 * r, 0.2 * r).stroke({ width: 7, color: OUTLINE.color, cap: 'round' });
-    g.moveTo(-0.6 * r, 0.1 * r).quadraticCurveTo(-1.3 * r, 0.9 * r, -1.75 * r, 0.2 * r).stroke({ width: 4, color: p.tail, cap: 'round' }); // tail
-    g.ellipse(-0.15 * r, 0, 0.72 * r, 0.8 * r).fill(p.hood).stroke(OUTLINE); // hoodie
-    for (const side of [-1, 1]) g.circle(0.12 * r, side * 0.36 * r, 0.17 * r).fill(p.fur).stroke(OUTLINE); // ears
-    for (const side of [-1, 1]) g.circle(0.14 * r, side * 0.37 * r, 0.09 * r).fill(p.ear);
-    arc(g, 0.15 * r, 0, 0.44 * r, Math.PI * 0.55, Math.PI * 1.45).stroke({ width: 6, color: p.hoodEdge }); // hood round the head
-    g.ellipse(0.28 * r, 0, 0.36 * r, 0.3 * r).fill(p.fur).stroke(OUTLINE); // head
-    g.poly([0.45 * r, -0.2 * r, 0.9 * r, 0, 0.45 * r, 0.2 * r]).fill(p.fur).stroke(OUTLINE); // snout
-    g.circle(0.88 * r, 0, 0.07 * r).fill(p.nose);
-    for (const side of [-1, 1]) {
-      g.moveTo(0.74 * r, side * 0.07 * r).lineTo(0.98 * r, side * 0.26 * r).stroke({ width: 1.2, color: 0xe8e0cc, alpha: 0.8 }); // whiskers
-      g.circle(0.5 * r, side * 0.13 * r, 0.065 * r).fill(p.eyes); // red eyes
-    }
-    for (const [x, y, rr] of [[-0.35, -0.75, 0.12], [-0.6, -0.55, 0.09], [0.0, -0.9, 0.08]]) g.circle(x * r, y * r, rr * r).fill({ color: p.smoke, alpha: 0.45 }); // smoke
-  },
-
-  /** A giga chad from above: traps like hills, a tank top, slicked-back hair, a sweatband, and THE jaw. */
-  dongmaster(g, r, p) {
-    g.ellipse(-0.05 * r, 0, 0.78 * r, 1.08 * r).fill(p.skin).stroke(OUTLINE); // shoulders
-    g.ellipse(-0.12 * r, 0, 0.55 * r, 0.7 * r).fill(p.tank).stroke(OUTLINE); // tank top
-    for (const side of [-1, 1]) g.moveTo(-0.1 * r, side * 0.62 * r).quadraticCurveTo(0.25 * r, side * 0.75 * r, 0.3 * r, side * 0.95 * r).stroke({ width: 2, color: p.skinDark }); // delts
-    g.roundRect(0.2 * r, -0.32 * r, 0.56 * r, 0.64 * r, 0.16 * r).fill(p.skin).stroke(OUTLINE); // THE jaw, squared off
-    g.moveTo(0.68 * r, -0.24 * r).lineTo(0.68 * r, 0.24 * r).stroke({ width: 3, color: p.skinDark }); // its shadow
-    g.moveTo(0.76 * r, -0.07 * r).lineTo(0.67 * r, 0).lineTo(0.76 * r, 0.07 * r).stroke({ width: 2.5, color: p.skinDark }); // cleft chin
-    g.circle(0.04 * r, 0, 0.34 * r).fill(p.skin).stroke(OUTLINE); // head
-    g.moveTo(-0.3 * r, 0).arc(0.04 * r, 0, 0.33 * r, Math.PI, Math.PI * 1.62).quadraticCurveTo(0.3 * r, 0, 0.16 * r, 0.31 * r).arc(0.04 * r, 0, 0.33 * r, Math.PI * 0.38, Math.PI).closePath().fill(p.hair); // slicked-back hair
-    arc(g, 0.04 * r, 0, 0.32 * r, -0.7, 0.7).stroke({ width: 5, color: p.band }); // sweatband across the brow
-    g.moveTo(-0.45 * r, -0.62 * r).lineTo(-0.2 * r, -0.85 * r).stroke({ width: 3, color: 0xffffff, alpha: 0.35 }); // the shine
-  },
-
-  /** The king from above: a cape, an ermine collar, and a jeweled crown. */
-  kingrix(g, r, p) {
-    g.ellipse(-0.35 * r, 0, 0.85 * r, 0.95 * r).fill(p.cape).stroke(OUTLINE); // cape
-    g.ellipse(0, 0, 0.5 * r, 0.72 * r).fill(p.ermine).stroke(OUTLINE); // ermine
-    for (const [x, y] of [[-0.25, -0.45], [-0.3, 0.4], [0.2, -0.55], [0.15, 0.55], [-0.4, 0]]) g.ellipse(x * r, y * r, 2, 3).fill(p.spots);
-    g.circle(0.1 * r, 0, 0.33 * r).fill(p.skin).stroke(OUTLINE); // head
-    g.circle(0.1 * r, 0, 0.28 * r).stroke({ width: 5, color: p.crown }); // crown band
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      g.circle(0.1 * r + Math.cos(a) * 0.28 * r, Math.sin(a) * 0.28 * r, 0.07 * r).fill(i % 2 ? p.jewelA : p.jewelB).stroke({ width: 1, color: 0x8a6a1e });
-    }
-  },
-};
-
-/** An ellipse turned to `angle`, as polygon points: a feather. */
-function featherPoly(cx: number, cy: number, rx: number, ry: number, angle: number): number[] {
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  const pts: number[] = [];
-  for (let i = 0; i < 16; i++) {
-    const t = (i / 16) * Math.PI * 2;
-    const x = Math.cos(t) * rx;
-    const y = Math.sin(t) * ry;
-    pts.push(cx + x * c - y * s, cy + x * s + y * c);
-  }
-  return pts;
-}
-
 /** Portraits in the classic look, filled in once at startup by renderPortraits. */
 export const PORTRAITS: Partial<Record<ChampionId, string>> = {};
 /** Every look's portrait, keyed "champion:skin". */
@@ -444,8 +129,8 @@ export function portraitOf(id: ChampionId, skin = 0): string | undefined {
 }
 
 /**
- * One small picture per champion and look, for the HUD and the champion select: the figure facing up on
- * a dark disc. Rendered once with the game's own renderer, so the art only lives in one place.
+ * One small picture per champion and look, for the HUD and the champion select: head and shoulders on a
+ * dark disc. Rendered once with the game's own renderer, so the art only lives in one place.
  */
 export function renderPortraits(renderer: Renderer, ids: readonly ChampionId[]): Record<ChampionId, string> {
   const out = {} as Record<ChampionId, string>;
@@ -454,15 +139,13 @@ export function renderPortraits(renderer: Renderer, ids: readonly ChampionId[]):
     for (let skin = 0; skin < SKIN_COUNT; skin++) {
       const root = new Container();
       const bg = new Graphics().circle(0, 0, R * 1.7).fill(0x10161f);
-      const fig = new Container();
-      const body = new Graphics();
-      drawChampionFigure(body, id, R, skin);
-      const weapon = new Graphics();
-      weapon.position.copyFrom(drawChampionWeapon(weapon, id, R, skin));
-      fig.addChild(id === 'logan' ? weapon : body, id === 'logan' ? body : weapon);
-      fig.rotation = -Math.PI / 2; // facing up, at the viewer
-      fig.scale.set(1.15);
-      root.addChild(bg, fig);
+      // A bust: head and shoulders, standing at ease, a little larger than life.
+      const rig = new Rig(BUILDS[id], R, palette(id, skin));
+      rig.update({ dt: 0, speed: 0, facing: 1, turn: 0, reach: 0, twist: 0, lunge: 0, grow: 0, stretch: 0, air: 0 });
+      const k = (R * 2.9) / (rig.height * 0.62);
+      rig.root.scale.set(k);
+      rig.root.position.set(-R * 0.15, -R * 1.7 + 6 + rig.height * k);
+      root.addChild(bg, rig.root);
       const canvas = renderer.extract.canvas({ target: root, frame: new Rectangle(-R * 1.7, -R * 1.7, R * 3.4, R * 3.4), resolution: 2 });
       const url = (canvas as HTMLCanvasElement).toDataURL('image/png');
       SKIN_PORTRAITS[`${id}:${skin}`] = url;

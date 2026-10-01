@@ -5,7 +5,10 @@ import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
 import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
-import { championWeapon, drawChampionBase, drawChampionFigure, palette, type Weapon } from './champions';
+import { drawChampionBase, palette, type Weapon } from './champions';
+import { BUILDS } from './builds';
+import { Rig } from './rig';
+import { flightHeight } from './stature';
 import { RECALLS, type RecallRoutine, type Say } from './recalls';
 import { arc } from './draw';
 
@@ -125,6 +128,11 @@ export class UnitView implements EntityView {
   private last: { x: number; y: number } | null = null;
   /** The radius the body was drawn at; Berserk grows the real one. */
   private readonly baseR: number;
+  /** Champions stand up: a jointed figure that walks, facing left or right. */
+  private readonly rig: Rig | null = null;
+  private side = 1;
+  /** How far above the unit's spot the top of it is (bars and names go over that). */
+  private readonly headroom: number;
   private readonly resourceColor: number;
 
   constructor(s: EntitySnap, private readonly relation: Relation) {
@@ -163,10 +171,10 @@ export class UnitView implements EntityView {
     } else if (s.k === 'champion' && s.champ) {
       this.body.clear();
       drawChampionBase(this.body, r, color, relation === 'self');
-      drawChampionFigure(this.figure, s.champ, r, s.skin ?? 0);
       this.champ = s.champ;
       this.pal = palette(s.champ, s.skin ?? 0);
-      this.weaponSpec = championWeapon(s.champ, s.skin ?? 0);
+      this.rig = new Rig(BUILDS[s.champ], r, this.pal);
+      this.side = Math.cos(s.f) < 0 ? -1 : 1;
       this.attackAnim = ATTACK[s.champ];
     } else {
       this.body.circle(0, 0, r).fill(color).stroke({ width: 3, color: relation === 'self' ? 0xffffff : PALETTE.outline });
@@ -190,19 +198,22 @@ export class UnitView implements EntityView {
       style: { fontFamily: 'Nunito, system-ui, sans-serif', fontSize: 13, fontWeight: '800', fill: 0xffffff, stroke: { color: 0x000000, width: 3 } },
     });
     this.label.anchor.set(0.5, 1);
-    this.label.position.set(0, -r - 24);
+    this.headroom = this.rig ? this.rig.height + 6 : r;
+    this.label.position.set(0, -this.headroom - 24);
 
-    const walker = (s.k === 'champion' || s.k === 'chud' || s.k === 'guard' || (s.k === 'monster' && s.mon !== 'warden' && s.mon !== 'glowcap')) && s.chud !== 'siege';
+    const walker = !this.rig && (s.k === 'champion' || s.k === 'chud' || s.k === 'guard' || (s.k === 'monster' && s.mon !== 'warden' && s.mon !== 'glowcap')) && s.chud !== 'siege';
     if (walker) {
       const footColor = s.k === 'chud' ? 0x4f5a3c : s.champ === 'logan' ? 0xb8701f : s.k === 'monster' ? 0x3a3530 : 0x2b2118;
       for (let i = 0; i < 2; i++) this.feet.push(new Graphics().ellipse(0, 0, r * 0.24, r * 0.16).fill(footColor).stroke({ width: 1.5, color: PALETTE.outline }));
     }
-    if (s.k === 'champion' || s.k === 'guard') {
+    if (s.k === 'guard') {
       this.shade.circle(-r * 0.3, -r * 0.35, r * 0.5).fill({ color: 0xffffff, alpha: 0.1 });
       this.shade.circle(r * 0.22, r * 0.28, r * 0.75).fill({ color: 0x000000, alpha: 0.1 });
     }
     this.recallOver.addChild(this.recallOverG);
-    this.container.addChild(this.statusRing, this.recallUnder, this.body, ...this.feet, this.facing, this.shade, this.recallOver, this.bars, this.label);
+    this.container.addChild(this.statusRing, this.recallUnder, this.body, ...this.feet, this.facing, ...(this.rig ? [this.rig.root] : []), this.shade, this.recallOver, this.bars, this.label);
+    // Recall props sit round the body, not the feet.
+    if (this.rig) this.recallOver.y = -this.rig.height * 0.45;
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -229,7 +240,10 @@ export class UnitView implements EntityView {
     const fall = Math.min(1, this.dying / DEATH_TIME);
     this.container.visible = !s.dead || fall < 1;
     this.container.alpha = (ctx.inBrush(s.x, s.y) ? 0.55 : 1) * (1 - fall);
-    this.container.rotation = fall * 0.6;
+    // Upright figures topple over backward; the rest slump where they stand.
+    this.container.rotation = this.rig ? -this.side * fall * 1.35 : fall * 0.6;
+    // Nearer the bottom of the screen draws in front.
+    this.container.zIndex = s.y;
     this.bars.visible = this.label.visible = !s.dead;
     // A big hit knocks the figure back a step; it recovers quickly.
     const settle = Math.exp(-dt * 10);
@@ -297,6 +311,13 @@ export class UnitView implements EntityView {
         this.nextFidget = 5 + Math.random() * 5;
       }
     }
+    if (this.rig) {
+      // Facing left or right, with a little give so walking straight up or down doesn't flicker.
+      const c = Math.cos(s.f);
+      if (c > 0.25) this.side = 1;
+      else if (c < -0.25) this.side = -1;
+      this.rig.update({ dt, speed: s.dead ? 0 : moved, facing: this.side, turn, reach, twist, lunge: lungeBy, grow, stretch, air: this.air });
+    }
     this.facing.rotation = s.f + step * 0.08 + twist;
     if (this.weapon && this.weaponSpec) {
       // At rest it sways a little with the walk and the breath (a rat's tail rather more).
@@ -318,6 +339,13 @@ export class UnitView implements EntityView {
     this.body.scale.set(wide, tall);
     this.facing.scale.set(wide, tall);
     this.shade.scale.set(wide, tall);
+    if (this.rig) {
+      // The rig does its own growing and leaping; this is just hits and Berserk.
+      const k = (s.r / this.baseR) * (1 + this.pulse * 0.05) * (1 - fall * 0.2);
+      this.rig.root.scale.set(k * (1 + 0.12 * this.squash), k * (1 - 0.14 * this.squash));
+      this.rig.root.tint = this.flash > 0 ? 0xff9a9a : 0xffffff;
+      this.body.scale.set((s.r / this.baseR) * (1 - this.air * 0.25));
+    }
     // A swing lunges the figure forward a little (units with their own moves follow those instead).
     const lunge = this.attackAnim ? lungeBy * s.r : this.pulse * 7;
     this.facing.position.set(Math.cos(s.f) * lunge, Math.sin(s.f) * lunge);
@@ -337,6 +365,7 @@ export class UnitView implements EntityView {
     const under = s.st?.includes('burrowed') || s.st?.includes('underground');
     // In the Dark Dabber's smoke, his own side sees him faintly.
     this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') || s.st?.includes('vanished') ? 0.4 : s.st?.includes('untargetable') ? 0.55 : 1;
+    if (this.rig) this.rig.root.alpha = this.body.alpha;
     this.shade.visible = !under;
     for (const foot of this.feet) foot.visible &&= !under;
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
@@ -424,7 +453,7 @@ export class UnitView implements EntityView {
       this.container.addChild(this.badge);
     }
     if (this.badge.text !== text) this.badge.text = text;
-    this.badge.position.set(0, -r - 44);
+    this.badge.position.set(0, -(this.rig ? this.headroom : r) - 44);
   }
 
   private drawBars(s: EntitySnap): void {
@@ -432,7 +461,7 @@ export class UnitView implements EntityView {
     const w = s.k === 'champion' ? 84 : s.k === 'chud' ? 44 : 70;
     const h = s.k === 'chud' ? 5 : 9;
     const x = -w / 2;
-    const y = -s.r - (s.k === 'chud' ? 12 : 20);
+    const y = -(this.rig ? this.headroom * (s.r / this.baseR) : s.r) - (s.k === 'chud' ? 12 : 20);
     const showMana = this.relation !== 'enemy' && (s.mmp ?? 0) > 0;
     const hpColor = this.relation === 'self' ? PALETTE.selfHp : this.relation === 'ally' ? PALETTE.ally : this.relation === 'neutral' ? PALETTE.neutral : PALETTE.enemy;
     const mhp = s.mhp ?? 1;
@@ -505,10 +534,17 @@ export class UnitView implements EntityView {
 }
 
 export class ProjectileView implements EntityView {
-  readonly container = new Graphics();
+  readonly container = new Container();
+  /** The projectile itself, up in the air at chest height; its shadow stays on the ground. */
+  private readonly body = new Graphics();
+  private readonly lift: number;
 
   constructor(s: EntitySnap, relation: Relation) {
-    const g = this.container;
+    const g = this.body;
+    this.lift = flightHeight(s.vis);
+    if (this.lift > 0) this.container.addChild(new Graphics().ellipse(0, 0, Math.min(16, s.r * 0.8 + 6), Math.min(7, s.r * 0.3 + 3)).fill({ color: 0x000000, alpha: 0.28 }));
+    this.container.addChild(g);
+    g.y = -this.lift;
     drawTail(g, s.vis ?? 'arrow', relation);
     switch (s.vis) {
       case 'shootie': {
@@ -602,7 +638,7 @@ export class ProjectileView implements EntityView {
 
   update(s: EntitySnap): void {
     this.container.position.set(s.x, s.y);
-    this.container.rotation = s.f;
+    this.body.rotation = s.f;
   }
 }
 

@@ -6,7 +6,7 @@ import { MAP } from '../shared/map/mapData';
 import { NavGrid } from '../shared/map/navGrid';
 import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
-import { dist, type Vec2 } from '../shared/math';
+import { dist, segmentDistance, type Vec2 } from '../shared/math';
 import type { Command, EntitySnap, GameEvent, HostMessage, MeSnap, ScoreRow } from '../shared/protocol';
 import { getSound } from './audio';
 import { onSettings, settings } from './settings';
@@ -27,6 +27,7 @@ import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
 import { CAST_COLORS } from './render/spells';
+import { chestHeight, flightHeight, standHeight } from './render/stature';
 import type { FxKind } from '../shared/protocol';
 import type { SoundName } from './audio';
 import { driftAt } from './render/backdrop';
@@ -73,7 +74,8 @@ export class GameClient {
   private readonly wallTops = new Container();
   private readonly structureTops = new Container();
   private readonly canopy = new Container();
-  private readonly unitLayer = new Container();
+  /** Units, nearer the bottom of the screen drawn in front (they stand up now, so they overlap). */
+  private readonly unitLayer = new Container({ sortableChildren: true });
   private readonly projectileLayer = new Container();
   private readonly indicator = new Graphics();
   private readonly fx = new FxLayer();
@@ -422,7 +424,11 @@ export class GameClient {
     else this.indicator.clear();
 
     this.updateWicks(dt, me);
-    this.bubbles.update(dt, (id) => this.ents.get(id) ?? this.wicks[WICK_ID - id]?.anchor);
+    this.bubbles.update(dt, (id) => {
+      const e = this.ents.get(id);
+      // Over the head of whoever's talking, however tall they stand.
+      return e ? { x: e.x, y: e.y - standHeight(e) + e.r, r: e.r, dead: e.dead } : this.wicks[WICK_ID - id]?.anchor;
+    });
     this.drawBeams();
     this.renderBloom(w, h);
     this.drawMinimap(w, h);
@@ -500,13 +506,13 @@ export class GameClient {
     }
     for (const s of this.ents.values()) {
       if (Math.abs(s.x - this.camera.x) > halfW || Math.abs(s.y - this.camera.y) > halfH) continue;
-      if (s.k === 'projectile') projectileTrail(this.fx, s, s.tm === this.myTeam);
+      if (s.k === 'projectile') projectileTrail(this.fx, { ...s, y: s.y - flightHeight(s.vis) }, s.tm === this.myTeam);
       else {
         this.footsteps(s, time);
         if (s.st?.includes('airborne')) this.inAir.add(s.id);
         else if (this.inAir.delete(s.id)) this.landed(s);
         if (s.k === 'monster' && !s.dead) monsterAura(this.fx, s);
-        if (s.st || s.sh) statusAura(this.fx, s, time);
+        if (s.st || s.sh) statusAura(this.fx, s.k === 'champion' ? { ...s, y: s.y - chestHeight(s) } : s, time);
       }
     }
   }
@@ -570,7 +576,7 @@ export class GameClient {
         if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.(from, !!hit && ev.amount >= (hit.mhp ?? 1000) * 0.08);
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
-          this.fx.impact(hit.x, hit.y, hit.r, ev.type, heavy);
+          this.fx.impact(hit.x, hit.y - chestHeight(hit), hit.r, ev.type, heavy);
           // Hit-stop (visual only): the target freezes and shudders, a close attacker holds too, and if
           // you're in it, the effects crawl for a beat.
           if (heavy && (hit.k === 'champion' || hit.k === 'monster')) {
@@ -595,7 +601,7 @@ export class GameClient {
         const other = this.ents.get(ev.src === this.myId ? ev.target : (ev.src ?? -1));
         if (other?.k === 'champion' && ev.amount >= 1) this.lastFight = performance.now() / 1000;
         const t = this.ents.get(ev.target);
-        if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - t.r, ev.amount, ev.type);
+        if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - standHeight(t), ev.amount, ev.type);
         return;
       }
       case 'attack': {
@@ -619,7 +625,7 @@ export class GameClient {
         const t = this.ents.get(ev.id);
         if (!t) return;
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
-        else this.fx.death(t.x, t.y, t.r, t.k === 'champion' || t.k === 'monster');
+        else this.fx.death(t.x, t.y - chestHeight(t) * 0.6, t.r, t.k === 'champion' || t.k === 'monster');
         if (t.k === 'champion') championDeath(this.fx, t);
         if (t.k === 'champion') this.speak(t, 'death', ev.id, true);
         if (ev.id === this.myId && !this.replay) {
@@ -633,13 +639,13 @@ export class GameClient {
       case 'heal': {
         if (ev.target !== this.myId) return;
         const t = this.ents.get(ev.target);
-        if (t) this.fx.healNumber(t.x, t.y - t.r, ev.amount);
+        if (t) this.fx.healNumber(t.x, t.y - standHeight(t), ev.amount);
         return;
       }
       case 'gold': {
         if (this.replay) return;
         const t = ev.id === this.myId ? this.ents.get(ev.id) : undefined;
-        if (t && ev.amount > 0) this.fx.goldNumber(t.x, t.y - t.r - 18, ev.amount);
+        if (t && ev.amount > 0) this.fx.goldNumber(t.x, t.y - standHeight(t) - 18, ev.amount);
         if (t && ev.amount >= 15) {
           const { width, height } = this.app.screen;
           this.hud.flyCoins((t.x - this.camera.x) * this.camera.zoom + width / 2, (t.y - this.camera.y) * this.camera.zoom + height / 2, ev.amount);
@@ -686,7 +692,7 @@ export class GameClient {
         if (caster?.champ && ev.slot === 3) {
           this.speak(caster, 'ult', 0, true);
           const name = CHAMPION_INFO[caster.champ].abilities[3].name.toUpperCase();
-          this.fx.callout(caster.x, caster.y - caster.r - 70, name.endsWith('!') ? name : `${name}!`, CAST_COLORS[caster.champ]);
+          this.fx.callout(caster.x, caster.y - standHeight(caster) - 50, name.endsWith('!') ? name : `${name}!`, CAST_COLORS[caster.champ]);
           this.playCue({ name: 'ultimate', at: caster, gain: 0.8 });
           const halfView = this.app.screen.width / 2 / this.camera.zoom;
           if (Math.hypot(caster.x - this.camera.x, caster.y - this.camera.y) < halfView) {
@@ -879,7 +885,7 @@ export class GameClient {
       const gains = statGains(stats, me.stats, [mhp, self.mhp ?? 0]);
       this.sound.play('buy', 0.7);
       this.hud.itemBought(id, slot, gains.map((g) => g.key));
-      if (!self.dead) this.fx.statLines(self.x, self.y - self.r - 30, gains.map((g) => g.text));
+      if (!self.dead) this.fx.statLines(self.x, self.y - standHeight(self) - 30, gains.map((g) => g.text));
       this.wickSays(ITEMS[id].tier === 'core' ? 'bigBuy' : 'buy');
     }
     if (!bought.length) {
@@ -1349,7 +1355,9 @@ export class GameClient {
     for (const e of this.ents.values()) {
       const attackable = e.k === 'champion' || e.k === 'chud' || e.k === 'dummy' || e.k === 'monster' || e.k === 'totem' || e.k === 'guard' || (e.k === 'structure' && !e.inv);
       if (!attackable || e.dead || e.tm === this.myTeam) continue;
-      const d = dist(p, e);
+      // Champions can be clicked anywhere from their feet to their head.
+      const h = e.k === 'champion' ? standHeight(e) * 0.85 : 0;
+      const d = h ? segmentDistance(p, e, { x: e.x, y: e.y - h }).d : dist(p, e);
       if (d <= e.r + CLICK_SLOP && d < bestD) {
         best = e;
         bestD = d;
