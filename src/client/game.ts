@@ -14,6 +14,7 @@ import { Camera } from './camera';
 import { MELEE, cueFor, type SoundCue } from './sfx';
 import { EMOTE_ANIM, wardenWindup } from './render/animation';
 import { Bubbles } from './render/bubbles';
+import { BICKER, CHEERS } from './render/chudLife';
 import { emoteLine } from './emotes';
 import type { Connection } from './net/connection';
 import { Hud } from './hud';
@@ -119,6 +120,9 @@ export class GameClient {
   private firstBlood = false;
   private multiKills = new Map<string, { n: number; at: number }>();
   private readonly bubbles = new Bubbles();
+  /** Chuds bickering on the march: seconds until the next squabble, and the replies still to come. */
+  private bickerIn = 6;
+  private replies: { id: number; text: string; at: number }[] = [];
   /** Rain, storms or mist: set when the match starts. */
   private weather: WeatherView | null = null;
   /** Which champion each Shootie is shooting at, so a beam can show it. */
@@ -442,6 +446,7 @@ export class GameClient {
     else this.indicator.clear();
 
     this.updateWicks(dt, me);
+    this.chudChatter(dt);
     this.bubbles.update(dt, (id) => {
       const e = this.ents.get(id);
       // Over the head of whoever's talking, however tall they stand.
@@ -665,6 +670,7 @@ export class GameClient {
         const t = this.ents.get(ev.id);
         if (!t) return;
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
+        if (t.k === 'structure') this.chudsCheer(t);
         else this.fx.death(t.x, t.y - chestHeight(t) * 0.6, t.r, t.k === 'champion' || t.k === 'monster');
         if (t.k === 'champion') championDeath(this.fx, t);
         if (t.k === 'champion') this.fx.comic(t.x, t.y - standHeight(t) - 20, KO_WORD, 0xff5a5f, true);
@@ -1182,6 +1188,47 @@ export class GameClient {
    * A champion says something out loud, from where they stand. Grunts wait their turn (a few seconds
    * apart); emotes, ultimates and deaths always speak up.
    */
+  /** A Shootie (or an Oakner) falls: the other side's Chuds nearby cheer, and one of them shouts about it. */
+  private chudsCheer(fallen: EntitySnap): void {
+    let shouted = false;
+    for (const e of this.ents.values()) {
+      if (e.k !== 'chud' || e.dead || e.tm === fallen.tm || Math.hypot(e.x - fallen.x, e.y - fallen.y) > 900) continue;
+      (this.views.get(e.id) as UnitView | undefined)?.cheer?.();
+      if (!shouted && e.chud !== 'siege') {
+        this.bubbles.say(e.id, CHEERS[Math.floor(Math.random() * CHEERS.length)], e.tm === this.myTeam ? PALETTE.ally : PALETTE.enemy, true);
+        shouted = true;
+      }
+    }
+  }
+
+  /**
+   * Every so often two Chuds marching side by side (with no one to fight) have words, where you can see
+   * them: one mutters something, the other answers back.
+   */
+  private chudChatter(dt: number): void {
+    const now = performance.now() / 1000;
+    for (const r of this.replies.filter((r) => r.at <= now)) {
+      const e = this.ents.get(r.id);
+      if (e && !e.dead) this.bubbles.say(r.id, r.text, e.tm === this.myTeam ? PALETTE.ally : PALETTE.enemy, true);
+    }
+    this.replies = this.replies.filter((r) => r.at > now);
+    this.bickerIn -= dt;
+    if (this.bickerIn > 0 || this.replay) return;
+    this.bickerIn = 7 + Math.random() * 7;
+    const chuds = [...this.ents.values()].filter(
+      (e) => e.k === 'chud' && !e.dead && e.chud !== 'siege' && Math.hypot(e.x - this.camera.x, e.y - this.camera.y) < 700,
+    );
+    const calm = (c: EntitySnap) => ![...this.ents.values()].some((o) => !o.dead && o.tm !== c.tm && (o.k === 'chud' || o.k === 'champion' || o.k === 'structure') && Math.hypot(o.x - c.x, o.y - c.y) < 650);
+    for (const a of chuds.sort(() => Math.random() - 0.5)) {
+      const b = chuds.find((c) => c !== a && c.tm === a.tm && Math.hypot(c.x - a.x, c.y - a.y) < 140);
+      if (!b || !calm(a)) continue;
+      const [line, reply] = BICKER[Math.floor(Math.random() * BICKER.length)];
+      this.bubbles.say(a.id, line, a.tm === this.myTeam ? PALETTE.ally : PALETTE.enemy, true);
+      this.replies.push({ id: b.id, text: reply, at: now + 0.9 });
+      return;
+    }
+  }
+
   private speak(u: EntitySnap, moment: VoiceMoment, n: number, always = false): void {
     if (!u.champ) return;
     const t = performance.now() / 1000;

@@ -10,6 +10,7 @@ import type { ChampionId } from '../../shared/champions/types';
 import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
 import { drawChampionBase, palette } from './champions';
 import { Beast } from './beasts';
+import { dressChud } from './chudLife';
 import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
 import { Rig, type Expression, type Figure, type Posture } from './rig';
 import { flightHeight } from './stature';
@@ -104,6 +105,10 @@ const STILL_STATUSES: ReadonlySet<StatusKind> = new Set<StatusKind>(['recall', '
 const DEATH_TIME = 0.55;
 /** Upright figures take longer: they crumple, lie there a moment, then fade. */
 const FIGURE_DEATH_TIME = 1.7;
+/** Seconds of each lap the Warden walks, pacing its pit (then it stops and looks about). */
+const PACE_WALK = 2.4;
+/** Seconds a Chud's cheer lasts. */
+const CHEER_TIME = 1.5;
 
 export class UnitView implements EntityView {
   readonly container = new Container();
@@ -160,6 +165,15 @@ export class UnitView implements EntityView {
   /** Faces: seconds left wincing from a hit, and grinning (a kill, an ultimate, a laugh). */
   private hurtT = 0;
   private grinT = 0;
+  /** The Warden, left alone: pacing its pit (how far from its spot, which way, how long into this lap). */
+  private readonly warden: boolean = false;
+  private wardenCalm = 0;
+  private paceX = 0;
+  private paceDir = 1;
+  private paceT = 0;
+  /** A Chud: cheering (seconds left) when a Shootie falls. */
+  private readonly chud: boolean = false;
+  private cheerT = 0;
   /** A hit to flinch from on the next frame (+ knocked back, − forward), and how long they've been airborne. */
   private recoil = 0;
   private airT = 0;
@@ -190,11 +204,15 @@ export class UnitView implements EntityView {
       const type = s.chud ?? 'melee';
       shadow();
       this.rig = type === 'siege' ? new Beast('siege', r, color) : new Rig(UNIT_BUILDS[`chud:${type}`], r, unitPalette(color), `chud:${type}:${color}:${r}`);
+      // Each one in whatever it found to wear, with a face of its own.
+      if (this.rig instanceof Rig) dressChud(this.rig.part.headProp, r, s.id, type === 'brute');
+      this.chud = true;
       this.attackAnim = UNIT_ATTACK[`chud:${type}`] ?? null;
     } else if (s.k === 'monster') {
       const kind = s.mon ?? 'rat';
       shadow();
       this.rig = kind === 'warden' ? new Rig(UNIT_BUILDS['monster:warden'], r, unitPalette(color)) : new Beast(kind, r);
+      this.warden = kind === 'warden';
       this.attackAnim = UNIT_ATTACK[`monster:${kind}`] ?? null;
     } else if (s.k === 'guard') {
       // King Rix's royal guards: the team's tabard and shield, a spear.
@@ -368,6 +386,46 @@ export class UnitView implements EntityView {
         this.nextFidget = 5 + Math.random() * 5;
       }
     }
+    // Chuds: hopping with their arms up in a cheer, or flapping their arms about in a panic when they're
+    // nearly done for.
+    let hop = 0;
+    if (this.chud && this.rig instanceof Rig && !s.dead) {
+      this.cheerT = Math.max(0, this.cheerT - dt);
+      const into = CHEER_TIME - this.cheerT;
+      if (this.cheerT > 0 && !this.anim) {
+        posture ??= { armF: [-1.4, 0.2], armB: [-1.6, 0.1], weight: Math.min(1, this.cheerT / 0.25, into / 0.15) };
+        hop = Math.max(0, Math.sin(into * 9)) * 0.5;
+      } else if ((s.hp ?? 1) < (s.mhp ?? 1) * 0.3 && walking) {
+        const flap = Math.sin(this.clock * 14);
+        posture ??= { armF: [-1.5 + flap * 0.6, 0.5], armB: [-1.5 - flap * 0.6, 0.5] };
+      }
+    }
+    // The Warden, undisturbed for a while, paces its pit: a few steps one way, a stop to look about, round
+    // and back. Anything happening and it's straight back on its spot.
+    let paceSpeed = 0;
+    let paceLook = 0;
+    if (this.warden && this.rig) {
+      const calm = !s.dead && !walking && !this.anim && (s.hp ?? 0) >= (s.mhp ?? 1);
+      this.wardenCalm = calm ? this.wardenCalm + dt : 0;
+      if (this.wardenCalm > 3) {
+        this.paceT += dt;
+        if (this.paceT < PACE_WALK) {
+          paceSpeed = 0.7 * s.r;
+          this.paceX += this.paceDir * paceSpeed * dt;
+        } else {
+          paceLook = Math.sin((this.paceT - PACE_WALK) * 2.2) * 0.3;
+          if (this.paceT > PACE_WALK + 1.6) {
+            this.paceT = 0;
+            // Round and back toward the spot (never wandering far from it).
+            this.paceDir = this.paceX > 0 ? -1 : 1;
+          }
+        }
+      } else {
+        this.paceX *= Math.exp(-dt * 5);
+        this.paceT = 0;
+      }
+      this.rig.root.x = this.body.x = this.paceX;
+    }
     if (this.rig) {
       // Facing left or right, with a little give so walking straight up or down doesn't flicker.
       const c = Math.cos(s.f);
@@ -382,22 +440,22 @@ export class UnitView implements EntityView {
       const k = Math.min(1, this.airT / 0.6);
       this.rig.update({
         dt,
-        speed: s.dead ? 0 : moved,
-        facing: this.side,
+        speed: s.dead ? 0 : Math.max(moved, paceSpeed),
+        facing: paceSpeed > 0 || paceLook !== 0 ? this.paceDir : this.side,
         turn,
         reach,
         twist,
         lunge: lungeBy,
         grow,
         stretch,
-        air: this.air,
+        air: Math.max(this.air, hop),
         vx: s.dead ? 0 : vx,
         recoil: this.recoil,
         dizzy: s.st?.includes('stun') && !airborne ? 1 : 0,
         tumble: knocked ? k * k * (3 - 2 * k) : 0,
         dead: s.dead ? this.dying : 0,
         // They glance where they're heading: up the screen, or down it.
-        look: Math.sin(s.f) * 0.3,
+        look: Math.sin(s.f) * 0.3 + paceLook,
         expression: recallFace !== undefined ? recallFace : this.hurtT > 0 ? 'hurt' : this.grinT > 0 ? 'grin' : null,
         posture,
       });
@@ -550,6 +608,11 @@ export class UnitView implements EntityView {
   /** What they've bought, shown on the figure. */
   wear(items: readonly ItemId[]): void {
     if (this.rig instanceof Rig) this.rig.setGear(items);
+  }
+
+  /** A Chud's cheer: arms up, hopping. */
+  cheer(): void {
+    if (this.chud) this.cheerT = CHEER_TIME;
   }
 
   /** A grin: a kill, a laugh, a cheer. */

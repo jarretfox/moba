@@ -6,6 +6,10 @@ import { limb, type Figure, type RigInput } from './rig';
 // four, the Mossback plodding under its shell, the Ember Toad squatting with its tongue ready, the Glowcap
 // swaying, and the Chuds' siege cart rolling on its wheels. Simpler than the rigs: a body, a head that can
 // lunge out, a tail, four legs that trot, and wheels that turn. Sizes are in the unit's radius.
+//
+// Left alone in their camps they have lives of their own: the Mossback dozes off (z's drifting up), the
+// Ember Toad snaps at a fly buzzing round its head, the rats squabble (turning on each other, nipping,
+// hopping), the Rat King guarding a crumb of cheese.
 
 export type BeastKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'siege' | 'dummy';
 
@@ -213,6 +217,18 @@ export class Beast implements Figure {
   private roll = 0;
   private clock = Math.random() * 10;
   private flip = 1;
+  /** Seconds with nothing going on (not moving, not fighting); after a while they get on with their lives. */
+  private calm = 0;
+  /** How far gone the Mossback's doze is (0–1), and its drifting z's. */
+  private doze = 0;
+  private readonly zs: { g: Graphics; age: number }[] = [];
+  private nextZ = 0;
+  /** The toad's fly (and when it'll be back after being eaten), the rats' squabbles: the current act. */
+  private fly: Graphics | null = null;
+  private flyGone = 0;
+  private act: { t: number; dur: number; hop: number } | null = null;
+  private nextAct = 1 + Math.random() * 2;
+  private crumb: Graphics | null = null;
 
   constructor(private readonly kind: BeastKind, private readonly r: number, team = 0x8a9099) {
     const spec = SPECS[kind];
@@ -255,6 +271,25 @@ export class Beast implements Figure {
       this.wheels.push(w);
     }
     this.z.addChild(...this.farLegs, ...(this.tail ? [this.tail] : []), this.body, ...(this.head ? [this.head] : []), ...(this.tongue ? [this.tongue] : []), ...this.nearLegs, ...this.wheels);
+    if (kind === 'emberToad') {
+      // A fly: a dark speck with two glassy wings.
+      this.fly = new Graphics()
+        .ellipse(-0.03 * r, -0.05 * r, 0.06 * r, 0.035 * r)
+        .fill({ color: 0xdff2ff, alpha: 0.7 })
+        .ellipse(0.03 * r, -0.05 * r, 0.06 * r, 0.035 * r)
+        .fill({ color: 0xdff2ff, alpha: 0.7 })
+        .circle(0, 0, 0.04 * r)
+        .fill(0x1a1414);
+      this.fly.alpha = 0;
+      this.z.addChild(this.fly);
+    }
+    if (kind === 'ratKing') {
+      // A crumb of cheese he's not sharing.
+      this.crumb = inked(new Graphics(), [0.75 * r, -0.02 * r, 1.05 * r, -0.02 * r, 0.9 * r, -0.2 * r], 0xf2c14e, 2);
+      this.crumb.circle(0.88 * r, -0.07 * r, 0.025 * r).fill(0xc8952a);
+      this.crumb.alpha = 0;
+      this.z.addChildAt(this.crumb, 0);
+    }
     this.root.addChild(this.z);
   }
 
@@ -263,6 +298,10 @@ export class Beast implements Figure {
     const { r } = this;
     const { dt } = input;
     this.clock += dt;
+    const busy = input.speed > 20 || input.reach !== 0 || input.turn !== 0 || input.stretch !== 0 || !!input.recoil || !!input.dead || input.air > 0 || !!input.tumble;
+    this.calm = busy ? 0 : this.calm + dt;
+    const life = this.idleLife(dt, this.calm > 2.5);
+    input = { ...input, reach: input.reach + life.reach, stretch: input.stretch + life.stretch, air: Math.max(input.air, life.hop), facing: life.facing ?? input.facing };
     const moving = input.speed > 20;
     this.stride = moving ? Math.min(1, this.stride + dt * 6) : Math.max(0, this.stride - dt * 5);
     if (moving) this.phase += dt * Math.min(spec.pace ?? 2, input.speed / (2 * r)) * Math.PI * 2;
@@ -286,14 +325,15 @@ export class Beast implements Figure {
       this.farLegs.forEach((leg, i) => (leg.rotation = Math.PI / 2 + swing * Math.sin(this.phase + (i + 1) * Math.PI)));
     }
     if (this.head && spec.headAt) {
-      const nod = Math.sin(this.phase * 2) * 0.02 * r * st;
+      // Nodding with the step, or drooping in a doze.
+      const nod = Math.sin(this.phase * 2) * 0.02 * r * st + this.doze * (0.08 + Math.sin(this.clock * 1.2) * 0.015) * r;
       if (this.kind === 'siege') {
         // The arm rocks back on a draw and flings forward on a throw.
         this.head.position.set(spec.headAt[0] * r, spec.headAt[1] * r);
         this.head.rotation = -input.reach * 2.2 - 0.25;
       } else {
         this.head.position.set(spec.headAt[0] * r + Math.max(0, input.reach) * 0.4 * r, spec.headAt[1] * r - bob + nod);
-        this.head.rotation = input.turn * 0.15;
+        this.head.rotation = input.turn * 0.15 + this.doze * 0.35;
       }
     }
     if (this.tail) this.tail.rotation = Math.sin(this.clock * 3.2) * 0.25 + Math.sin(this.phase) * 0.2 * st;
@@ -302,6 +342,97 @@ export class Beast implements Figure {
     this.roll += (dt * input.speed) / ((spec.wheelR ?? 0.3) * r);
     for (const w of this.wheels) w.rotation = this.roll;
   }
+
+  /** What they get up to left alone (`idle`): dozing, fly-catching, squabbling. Eases off when anything happens. */
+  private idleLife(dt: number, idle: boolean): IdleLife {
+    const { r } = this;
+    const life: IdleLife = { reach: 0, stretch: 0, hop: 0 };
+    // The Mossback nods off, and the z's drift up from its head.
+    if (this.kind === 'mossback') {
+      this.doze += ((idle ? 1 : 0) - this.doze) * Math.min(1, dt * (idle ? 0.8 : 6));
+      this.nextZ -= dt;
+      if (this.doze > 0.8 && this.nextZ <= 0) {
+        this.nextZ = 1.3;
+        const s = 0.16 + Math.random() * 0.06;
+        const z = new Graphics().moveTo(-s * r, -s * r).lineTo(s * r, -s * r).lineTo(-s * r, s * r).lineTo(s * r, s * r);
+        z.stroke({ width: 5, color: 0x1a1414, cap: 'round', join: 'round' }).stroke({ width: 2.5, color: 0xf2efe6, cap: 'round', join: 'round' });
+        this.root.addChild(z);
+        this.zs.push({ g: z, age: 0 });
+      }
+      for (const z of this.zs) {
+        z.age += dt;
+        // From the head, up and away behind it, swaying, growing, fading.
+        z.g.position.set(this.flip * (1.0 - z.age * 0.15) * r + Math.sin(z.age * 3) * 0.12 * r, (-0.7 - z.age * 0.45) * r);
+        z.g.scale.set(0.6 + z.age * 0.25);
+        z.g.alpha = Math.min(1, z.age * 3) * Math.max(0, 1 - z.age / 2.4) * this.doze;
+      }
+      for (const z of this.zs.filter((z) => z.age > 2.4 || this.doze < 0.05)) z.g.destroy();
+      this.zs.splice(0, this.zs.length, ...this.zs.filter((z) => !z.g.destroyed));
+      return life;
+    }
+    // The Ember Toad: a fly buzzes round in front of it; every so often the tongue lashes out and the
+    // fly's gone (another turns up a little later).
+    if (this.fly) {
+      this.flyGone = Math.max(0, this.flyGone - dt);
+      const show = idle && this.flyGone <= 0;
+      this.fly.alpha += ((show ? 1 : 0) - this.fly.alpha) * Math.min(1, dt * 4);
+      const a = this.clock * 3.1;
+      this.fly.position.set((1.25 + Math.cos(a) * 0.22) * r, (-0.62 + Math.sin(a * 1.7) * 0.18) * r);
+      this.fly.scale.y = Math.sin(this.clock * 60) > 0 ? 1 : 0.6; // wings a-blur
+      this.tickAct(dt, show && this.fly.alpha > 0.9, 2.5, 4.5, 0.3);
+      if (this.act) {
+        const k = Math.sin((this.act.t / this.act.dur) * Math.PI);
+        life.stretch = k * 6;
+        // Snapped up at full stretch.
+        if (this.act.t / this.act.dur > 0.5 && this.flyGone <= 0) {
+          this.flyGone = 2.5 + Math.random() * 3;
+          this.fly.alpha = 0;
+        }
+      }
+      return life;
+    }
+    // Rats: rounding on each other, a nip, a hop; the Rat King minds his crumb.
+    if (this.kind === 'rat' || this.kind === 'ratKing') {
+      if (this.crumb) this.crumb.alpha += ((idle ? 1 : 0) - this.crumb.alpha) * Math.min(1, dt * 3);
+      const before = this.act;
+      this.tickAct(dt, idle, 1.2, 2.8, 0.35);
+      if (this.act && this.act !== before) {
+        // A new squabble: turn round (or not), and nip (and maybe hop).
+        if (Math.random() < 0.6) this.flip = -this.flip;
+        this.act.hop = Math.random() < 0.5 ? 0.35 : 0;
+      }
+      if (this.act) {
+        const k = Math.sin((this.act.t / this.act.dur) * Math.PI);
+        life.reach = k * 0.6;
+        life.hop = k * this.act.hop;
+      }
+      if (idle) life.facing = this.flip;
+      return life;
+    }
+    return life;
+  }
+
+  /** Runs the current idle act, and starts the next one every `min`–`max` seconds while `ok`. */
+  private tickAct(dt: number, ok: boolean, min: number, max: number, dur: number): void {
+    if (this.act) {
+      this.act.t += dt;
+      if (this.act.t >= this.act.dur) this.act = null;
+      return;
+    }
+    if (!ok) return;
+    this.nextAct -= dt;
+    if (this.nextAct > 0) return;
+    this.nextAct = min + Math.random() * (max - min);
+    this.act = { t: 0, dur, hop: 0 };
+  }
+}
+
+export interface IdleLife {
+  reach: number;
+  stretch: number;
+  hop: number;
+  /** Facing a new way (a rat rounding on another), or left as it was. */
+  facing?: number;
 }
 
 /** How tall each creature stands, in units of its radius. */

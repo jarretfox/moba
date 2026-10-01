@@ -23,10 +23,11 @@ export class Bubbles {
   readonly container = new Container();
   private readonly bubbles = new Map<number, Bubble>();
 
-  say(id: number, text: string, color: number): void {
+  /** A line over someone's head; `small` for a Chud's mutterings. */
+  say(id: number, text: string, color: number, small = false): void {
     this.bubbles.get(id)?.box.destroy({ children: true });
     const box = new Container();
-    const label = new Text({ text, style: { fontFamily: FONT, fontSize: 17, fontWeight: '800', fill: 0x1a1408, wordWrap: true, wordWrapWidth: 220, align: 'center' } });
+    const label = new Text({ text, style: { fontFamily: FONT, fontSize: small ? 13 : 17, fontWeight: '800', fill: 0x1a1408, wordWrap: true, wordWrapWidth: small ? 150 : 220, align: 'center' } });
     label.anchor.set(0.5, 1);
     const w = label.width + 26;
     const h = label.height + 14;
