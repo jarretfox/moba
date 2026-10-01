@@ -271,7 +271,10 @@ export class Beast implements Figure {
     const twistW = Math.cos(input.twist);
     // Mushrooms and dummies don't turn, but they do sway and wobble.
     const sway = spec.turns ? 0 : Math.sin(this.clock * 1.3) * 0.04 + input.twist * 0.3;
-    this.z.scale.set((spec.turns ? this.flip * twistW : 1) * (1 + input.grow), 1 + input.grow * 1.2);
+    // Dying, they keel over (or, a mushroom or a dummy, slump); knocked up, they flip.
+    const fall = input.dead ? Math.min(1, input.dead / 0.5) : 0;
+    this.z.scale.set((spec.turns ? this.flip * twistW : 1) * (1 + input.grow), (1 + input.grow * 1.2) * (spec.turns ? 1 : 1 - fall * 0.55));
+    this.z.rotation = spec.turns ? this.flip * (-fall * 1.4 - (input.tumble ?? 0) * Math.PI * 2) : 0;
     this.z.skew.x = sway;
     this.z.position.set((spec.turns ? this.flip : 1) * input.lunge * 0.8 * r, -input.air * 0.7 * r);
     const bob = Math.abs(Math.sin(this.phase)) * 0.05 * r * st;

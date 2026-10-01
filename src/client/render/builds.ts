@@ -98,6 +98,7 @@ const bow: Held = {
 
 const axe: Held = {
   hold: -1.15,
+  tip: 1.1,
   draw(g, r, p) {
     limb(g, 1.15 * r, 0.12 * r, 0.1 * r, p.haft);
     const blade = smooth([0.75 * r, -0.08 * r, 0.82 * r, -0.42 * r, 1.12 * r, -0.5 * r, 1.08 * r, -0.08 * r, 1.12 * r, 0.3 * r, 0.82 * r, 0.24 * r], true, 1);
@@ -109,6 +110,7 @@ const axe: Held = {
 
 const hookRope: Held = {
   hold: 1.2,
+  tip: 0.7,
   draw(g, r, p) {
     g.moveTo(0, 0).quadraticCurveTo(0.25 * r, 0.15 * r, 0.5 * r, 0.05 * r).stroke({ width: 2.5, color: p.rope });
     g.moveTo(0.5 * r, 0.05 * r).arc(0.62 * r, 0.05 * r, 0.12 * r, Math.PI, Math.PI * 2.5).stroke({ width: 5.5, color: inkOf(p.hook), cap: 'round' });
@@ -119,6 +121,7 @@ const hookRope: Held = {
 
 const staff: Held = {
   hold: -1.45,
+  tip: 1.4,
   draw(g, r, p) {
     g.position.set(0, 0);
     limb(g, 1.35 * r, 0.09 * r, 0.08 * r, p.staff);
@@ -133,6 +136,7 @@ const staff: Held = {
 
 const scepter: Held = {
   hold: -1.25,
+  tip: 1.05,
   draw(g, r, p) {
     limb(g, 0.95 * r, 0.08 * r, 0.07 * r, p.scepter);
     g.circle(1.02 * r, 0, 0.15 * r).fill(p.orb).stroke({ width: 2, color: 0x8a6a1e });
@@ -144,6 +148,7 @@ const scepter: Held = {
 
 const epee: Held = {
   hold: 0.12,
+  tip: 1.6,
   draw(g, r, p) {
     g.moveTo(-0.16 * r, 0).lineTo(0.04 * r, 0).stroke({ width: 5, color: p.grip, cap: 'round' });
     g.moveTo(0.08 * r, 0).lineTo(1.6 * r, 0).stroke({ width: 3.2, color: inkOf(p.blade), cap: 'round' });
@@ -154,6 +159,7 @@ const epee: Held = {
 
 const cheeseKnife: Held = {
   hold: -0.9,
+  tip: 1.2,
   draw(g, r, p) {
     g.moveTo(-0.16 * r, 0).lineTo(0.08 * r, 0).stroke({ width: 5, color: p.hilt, cap: 'round' });
     g.moveTo(0.16 * r, -0.12 * r).lineTo(1.12 * r, -0.12 * r).stroke({ width: 7, color: p.flame, alpha: 0.35, cap: 'round' });
@@ -182,6 +188,7 @@ const rigBow: Held = {
 
 const dagger = (hold: number): Held => ({
   hold,
+  tip: 0.5,
   draw(g, r, p) {
     g.rect(-0.14 * r, -0.045 * r, 0.14 * r, 0.09 * r).fill(p.hilt).stroke({ width: 1.5, color: inkOf(p.hilt) });
     g.moveTo(0.01 * r, -0.11 * r).lineTo(0.01 * r, 0.11 * r).stroke({ width: 3, color: p.bell, cap: 'round' });
@@ -227,6 +234,8 @@ export const BUILDS: Record<ChampionId, Build> = {
       g.moveTo(0.14 * r, -0.2 * r).quadraticCurveTo(0.2 * r, -0.24 * r, 0.27 * r, -0.19 * r).stroke({ width: 2, color: 0x1a1414 }); // the frown
     },
     weapon: bow,
+    face: { eyes: [[0.18, -0.4, 0.065]], skin: 'face', mouth: [0.2, -0.21, 0.13] },
+    backSway: { at: [-0.2, -0.9], give: 0.35 },
     gait: { swing: 0.5, lean: 0.06 },
   },
 
@@ -261,15 +270,23 @@ export const BUILDS: Record<ChampionId, Build> = {
       eye(g, 0.36 * r, -0.41 * r, 0.05 * r, 0x2a1a10); // the far eye, not quite pointing the same way
       brow(g, 0.27 * r, -0.53 * r, 0.24 * r, 0.04 * r, 0x2a1a10);
       g.poly([0.4 * r, -0.36 * r, 0.48 * r, -0.26 * r, 0.38 * r, -0.26 * r]).fill(shade(p.skin, 0.1)).stroke({ width: 1.5, color: inkOf(p.skin) }); // nose
-      // The helmet and its horns (or the tinfoil hat: same shape, just shinier).
-      const helm = smooth([-0.3 * r, -0.44 * r, -0.26 * r, -0.72 * r, 0.06 * r, -0.84 * r, 0.36 * r, -0.66 * r, 0.4 * r, -0.48 * r], true, 2);
-      inked(g, helm, p.helmet, 3);
-      g.rect(-0.31 * r, -0.52 * r, 0.72 * r, 0.08 * r).fill(shade(p.helmet, 0.3));
-      for (const [x, dir] of [[0.22, 1], [-0.2, -1]] as const) {
-        const horn: Pts = [x * r, -0.66 * r, (x + dir * 0.16) * r, -0.86 * r, (x + dir * 0.34) * r, -0.98 * r, (x + dir * 0.2) * r, -0.78 * r, (x + dir * 0.06) * r, -0.6 * r];
-        inked(g, smooth(horn, true, 1), p.horns, 2);
-      }
     },
+    dangle: {
+      at: [0.05, -0.5],
+      give: 0.5,
+      draw(g, r, p) {
+        // The helmet and its horns (or the tinfoil hat: same shape, just shinier).
+        const helm = smooth([-0.3 * r, -0.44 * r, -0.26 * r, -0.72 * r, 0.06 * r, -0.84 * r, 0.36 * r, -0.66 * r, 0.4 * r, -0.48 * r], true, 2);
+        inked(g, helm, p.helmet, 3);
+        g.rect(-0.31 * r, -0.52 * r, 0.72 * r, 0.08 * r).fill(shade(p.helmet, 0.3));
+        for (const [x, dir] of [[0.22, 1], [-0.2, -1]] as const) {
+          const horn: Pts = [x * r, -0.66 * r, (x + dir * 0.16) * r, -0.86 * r, (x + dir * 0.34) * r, -0.98 * r, (x + dir * 0.2) * r, -0.78 * r, (x + dir * 0.06) * r, -0.6 * r];
+          inked(g, smooth(horn, true, 1), p.horns, 2);
+        }
+      },
+    },
+    face: { eyes: [[0.24, -0.4, 0.075], [0.36, -0.41, 0.05]], skin: 'skin' },
+    streak: 0xdfe6ee,
     weapon: axe,
     gait: { swing: 0.55, bounce: 0.09, lean: 0.12 },
   },
@@ -307,11 +324,20 @@ export const BUILDS: Record<ChampionId, Build> = {
         g.circle(x * r, -0.42 * r, 0.11 * r).fill(p.goggles).stroke({ width: 3.5, color: p.rim });
         g.circle((x - 0.03) * r, -0.45 * r, 0.03 * r).fill({ color: 0xffffff, alpha: 0.8 });
       }
-      // The bin lid, worn like a crown.
-      const lid: Pts = [-0.34 * r, -0.66 * r, 0.42 * r, -0.74 * r, 0.44 * r, -0.66 * r, -0.34 * r, -0.58 * r];
-      inked(g, smooth(lid, true, 1), p.lid, 2.5);
-      inked(g, [0.0, -0.72 * r, 0.12 * r, -0.73 * r, 0.12 * r, -0.82 * r, 0.0, -0.81 * r], p.lidKnob, 1.5);
     },
+    dangle: {
+      at: [0.04, -0.64],
+      give: 1,
+      draw(g, r, p) {
+        // The bin lid, worn like a crown.
+        const lid: Pts = [-0.34 * r, -0.66 * r, 0.42 * r, -0.74 * r, 0.44 * r, -0.66 * r, -0.34 * r, -0.58 * r];
+        inked(g, smooth(lid, true, 1), p.lid, 2.5);
+        inked(g, [0.0, -0.72 * r, 0.12 * r, -0.73 * r, 0.12 * r, -0.82 * r, 0.0, -0.81 * r], p.lidKnob, 1.5);
+      },
+    },
+    face: { skin: 'body', mouth: [0.31, -0.15, 0.15] },
+    backSway: { at: [-0.25, -0.85], give: 0.6 },
+    streak: 0x9aa1ab,
     weapon: hookRope,
     foot: (g, r, p) => bareFoot(g, r, p.body),
     gait: { swing: 0.6, bounce: 0.1, lean: 0.1 },
@@ -332,11 +358,6 @@ export const BUILDS: Record<ChampionId, Build> = {
     },
     head(g, r, p) {
       inked(g, skull(0.08 * r, -0.3 * r, 0.32 * r, 0.3 * r, 7), p.body, 3);
-      // The cap: wide and drooping, spotted, overhanging the face.
-      const cap = smooth([-0.62 * r, -0.36 * r, -0.5 * r, -0.78 * r, 0.0, -1.0 * r, 0.5 * r, -0.86 * r, 0.7 * r, -0.4 * r, 0.5 * r, -0.4 * r, 0.1 * r, -0.46 * r, -0.3 * r, -0.4 * r], true, 2);
-      inked(g, cap, p.cap, 3);
-      g.moveTo(-0.5 * r, -0.4 * r).quadraticCurveTo(0.1 * r, -0.5 * r, 0.62 * r, -0.42 * r).stroke({ width: 3, color: shade(p.cap, 0.4) }); // gills under the brim
-      for (const [x, y, s] of [[-0.3, -0.7, 0.1], [0.1, -0.86, 0.08], [0.38, -0.66, 0.07], [-0.05, -0.62, 0.06], [-0.48, -0.5, 0.05]]) g.ellipse(x * r, y * r, s * r, s * 0.8 * r).fill(p.spots);
       // Eyes glowing out from under the brim.
       for (const x of [0.22, 0.36]) {
         g.circle(x * r, -0.28 * r, 0.09 * r).fill({ color: p.eyes, alpha: 0.35 });
@@ -344,6 +365,19 @@ export const BUILDS: Record<ChampionId, Build> = {
       }
       g.moveTo(0.18 * r, -0.12 * r).quadraticCurveTo(0.3 * r, -0.07 * r, 0.4 * r, -0.14 * r).stroke({ width: 2, color: 0x1a1414 });
     },
+    dangle: {
+      at: [0.05, -0.46],
+      give: 0.8,
+      draw(g, r, p) {
+        // The cap: wide and drooping, spotted, overhanging the face.
+        const cap = smooth([-0.62 * r, -0.36 * r, -0.5 * r, -0.78 * r, 0.0, -1.0 * r, 0.5 * r, -0.86 * r, 0.7 * r, -0.4 * r, 0.5 * r, -0.4 * r, 0.1 * r, -0.46 * r, -0.3 * r, -0.4 * r], true, 2);
+        inked(g, cap, p.cap, 3);
+        g.moveTo(-0.5 * r, -0.4 * r).quadraticCurveTo(0.1 * r, -0.5 * r, 0.62 * r, -0.42 * r).stroke({ width: 3, color: shade(p.cap, 0.4) }); // gills under the brim
+        for (const [x, y, s] of [[-0.3, -0.7, 0.1], [0.1, -0.86, 0.08], [0.38, -0.66, 0.07], [-0.05, -0.62, 0.06], [-0.48, -0.5, 0.05]]) g.ellipse(x * r, y * r, s * r, s * 0.8 * r).fill(p.spots);
+      },
+    },
+    face: { eyes: [[0.22, -0.28, 0.055], [0.36, -0.28, 0.055]], skin: 'body', mouth: [0.29, -0.11, 0.13] },
+    streak: 0xb8f07a,
     weapon: staff,
     foot: (g, r, p) => bareFoot(g, r, p.body),
     gait: { swing: 0.55, bounce: 0.08, lean: 0.12 },
@@ -394,6 +428,9 @@ export const BUILDS: Record<ChampionId, Build> = {
       for (let i = -1; i <= 1; i++) g.poly([0.16 * r, i * 0.06 * r - 0.02 * r, 0.27 * r, i * 0.07 * r, 0.16 * r, i * 0.06 * r + 0.02 * r]).fill(0xf2efe6).stroke({ width: 1, color: 0x6a5a40 });
     },
     foot: (g, r, p) => bareFoot(g, r, p.paw, 2),
+    face: { eyes: [[0.22, -0.48, 0.065]], skin: 'face', mouth: [0.36, -0.2, 0.11], mouthSkin: 'muzzle' },
+    backSway: { at: [-0.3, -0.1], give: 1.2 },
+    streak: 0xffe6b0,
     gait: { swing: 0.6, bounce: 0.06, lean: 0.14, knee: 1.1 },
   },
 
@@ -430,12 +467,20 @@ export const BUILDS: Record<ChampionId, Build> = {
       eye(g, 0.24 * r, -0.4 * r, 0.06 * r, 0x2a3a6a, 0.03 * r); // half-lidded, unimpressed
       brow(g, 0.24 * r, -0.5 * r, 0.16 * r, -0.02 * r, 0x6a4a2a);
       g.poly([0.36 * r, -0.4 * r, 0.44 * r, -0.28 * r, 0.34 * r, -0.28 * r]).fill(p.skin).stroke({ width: 1.5, color: inkOf(p.skin) });
-      // The crown.
-      const crown: Pts = [-0.22 * r, -0.56 * r, -0.24 * r, -0.86 * r, -0.12 * r, -0.72 * r, 0.0, -0.92 * r, 0.12 * r, -0.72 * r, 0.24 * r, -0.88 * r, 0.3 * r, -0.56 * r];
-      inked(g, crown, p.crown, 2.5);
-      g.rect(-0.22 * r, -0.62 * r, 0.52 * r, 0.07 * r).fill(shade(p.crown, 0.25));
-      for (const [x, c] of [[-0.12, p.jewelB], [0.04, p.jewelA], [0.2, p.jewelB]] as const) g.circle(x * r, -0.6 * r, 0.035 * r).fill(c);
     },
+    dangle: {
+      at: [0.04, -0.58],
+      give: 0.4,
+      draw(g, r, p) {
+        const crown: Pts = [-0.22 * r, -0.56 * r, -0.24 * r, -0.86 * r, -0.12 * r, -0.72 * r, 0.0, -0.92 * r, 0.12 * r, -0.72 * r, 0.24 * r, -0.88 * r, 0.3 * r, -0.56 * r];
+        inked(g, crown, p.crown, 2.5);
+        g.rect(-0.22 * r, -0.62 * r, 0.52 * r, 0.07 * r).fill(shade(p.crown, 0.25));
+        for (const [x, c] of [[-0.12, p.jewelB], [0.04, p.jewelA], [0.2, p.jewelB]] as const) g.circle(x * r, -0.6 * r, 0.035 * r).fill(c);
+      },
+    },
+    face: { eyes: [[0.24, -0.4, 0.06]], skin: 'skin' },
+    backSway: { at: [-0.2, -0.86], give: 0.5 },
+    streak: 0xffd166,
     weapon: scepter,
     gait: { swing: 0.42, bounce: 0.05, lean: -0.04 },
   },
@@ -483,6 +528,8 @@ export const BUILDS: Record<ChampionId, Build> = {
       mitt(g, r, p.skin, true);
       g.roundRect(-0.1 * r, -0.12 * r, 0.08 * r, 0.24 * r, 0.03 * r).fill(p.wrap).stroke({ width: 1.5, color: inkOf(p.wrap) });
     },
+    face: { eyes: [[0.16, -0.44, 0.052]], skin: 'skin', mouth: [0.3, -0.24, 0.13] },
+    streak: 0xffffff,
     gait: { swing: 0.45, bounce: 0.05, lean: 0.02, arm: 0.2 },
   },
 
@@ -523,6 +570,8 @@ export const BUILDS: Record<ChampionId, Build> = {
     hand: (g, r, p) => mitt(g, r, p.fur),
     foot: (g, r, p) => bareFoot(g, r, p.tail, 0),
     weapon: rigBow,
+    face: { eyes: [[0.3, -0.36, 0.065]], skin: 'fur' },
+    backSway: { at: [-0.28, -0.05], give: 1.3 },
     gait: { swing: 0.55, bounce: 0.05, lean: 0.3, knee: 1.1 },
   },
 
@@ -550,10 +599,18 @@ export const BUILDS: Record<ChampionId, Build> = {
       g.moveTo(0.42 * r, -0.2 * r).quadraticCurveTo(0.5 * r, -0.16 * r, 0.47 * r, -0.26 * r).stroke({ width: 2.5, color: p.mustache, cap: 'round' });
       g.moveTo(0.16 * r, -0.2 * r).quadraticCurveTo(0.08 * r, -0.16 * r, 0.11 * r, -0.26 * r).stroke({ width: 2.5, color: p.mustache, cap: 'round' });
       ear(g, -0.1 * r, -0.36 * r, 0.12 * r, p.skin);
-      // The beret, tilted rakishly.
-      inked(g, smooth([-0.3 * r, -0.58 * r, -0.12 * r, -0.76 * r, 0.24 * r, -0.74 * r, 0.38 * r, -0.6 * r, 0.1 * r, -0.56 * r], true, 2), p.beret, 2.5);
-      g.rect(0.0, -0.84 * r, 0.04 * r, 0.1 * r).fill(p.stem);
     },
+    dangle: {
+      at: [0.05, -0.6],
+      give: 0.6,
+      draw(g, r, p) {
+        // The beret, tilted rakishly.
+        inked(g, smooth([-0.3 * r, -0.58 * r, -0.12 * r, -0.76 * r, 0.24 * r, -0.74 * r, 0.38 * r, -0.6 * r, 0.1 * r, -0.56 * r], true, 2), p.beret, 2.5);
+        g.rect(0.0, -0.84 * r, 0.04 * r, 0.1 * r).fill(p.stem);
+      },
+    },
+    face: { eyes: [[0.2, -0.42, 0.058]], skin: 'skin' },
+    streak: 0xdfe6ff,
     weapon: epee,
     gait: { swing: 0.5, bounce: 0.04, lean: 0.04 },
   },
@@ -589,11 +646,20 @@ export const BUILDS: Record<ChampionId, Build> = {
       g.moveTo(0.1 * r, -0.7 * r).quadraticCurveTo(0.19 * r, -0.63 * r, 0.28 * r, -0.7 * r).stroke({ width: 2.4, color: p.eyes, cap: 'round' });
       for (const x of [0.02, 0.36]) g.circle(x * r, -0.75 * r, 0.05 * r).fill({ color: 0xff9a7a, alpha: 0.45 }); // rosy
     },
-    head(g, r, p) {
-      // No head as such: the halo floats over the wheel.
-      g.ellipse(0.0, -0.18 * r, 0.3 * r, 0.09 * r).stroke({ width: 6, color: p.halo, alpha: 0.35 });
-      g.ellipse(0.0, -0.18 * r, 0.3 * r, 0.09 * r).stroke({ width: 3, color: p.halo });
+    // No head as such: the halo floats over the wheel, and floats off to heaven when she falls.
+    head() {},
+    dangle: {
+      at: [0, -0.18],
+      give: 0.5,
+      off: 'float',
+      draw(g, r, p) {
+        g.ellipse(0.0, -0.18 * r, 0.3 * r, 0.09 * r).stroke({ width: 6, color: p.halo, alpha: 0.35 });
+        g.ellipse(0.0, -0.18 * r, 0.3 * r, 0.09 * r).stroke({ width: 3, color: p.halo });
+      },
     },
+    face: { on: 'torso', eyes: [[0.08, -0.85, 0.065], [0.3, -0.85, 0.065]], skin: 'wheel', mouth: [0.19, -0.68, 0.15] },
+    backSway: { at: [0, -0.62], give: 0.3, flap: true },
+    streak: 0xffd166,
     hand: (g, r, p) => mitt(g, r * 0.85, p.wheel),
     weapon: cheeseKnife,
     gait: { swing: 0.65, bounce: 0.12, lean: 0.0, knee: 0.6, arm: 0.6 },
@@ -629,15 +695,23 @@ export const BUILDS: Record<ChampionId, Build> = {
       g.moveTo(0.1 * r, -0.2 * r).lineTo(0.3 * r, -0.2 * r).stroke({ width: 1.5, color: p.grin, alpha: 0.6 });
       for (const [x, s] of [[0.2, 0.07], [0.34, 0.05]] as const) g.poly([x * r, -0.5 * r, (x + s * 0.6) * r, -0.42 * r, x * r, -0.34 * r, (x - s * 0.6) * r, -0.42 * r]).fill(p.eye);
       g.moveTo(0.18 * r, -0.36 * r).lineTo(0.16 * r, -0.28 * r).stroke({ width: 1.5, color: p.eye, alpha: 0.6 }); // a painted tear
-      // The hat: three floppy points, each with a bell.
-      const points: [number, number, number][] = [[-0.5, -0.5, p.hatA], [-0.1, -1.0, p.hatB], [0.38, -0.78, p.hatA]];
-      for (const [tx, ty, c] of points) {
-        const base = smooth([-0.24 * r, -0.54 * r, tx * r, ty * r, 0.3 * r, -0.56 * r], true, 1);
-        inked(g, [...base, 0.04 * r, -0.66 * r], c, 2.5);
-        g.circle(tx * r, ty * r + 0.04 * r, 0.06 * r).fill(p.bell).stroke({ width: 1.5, color: inkOf(p.bell) });
-      }
-      g.rect(-0.26 * r, -0.6 * r, 0.6 * r, 0.08 * r).fill(p.hatB).stroke({ width: 1.5, color: inkOf(p.hatB) });
     },
+    dangle: {
+      at: [0.04, -0.58],
+      give: 1.2,
+      draw(g, r, p) {
+        // The hat: three floppy points, each with a bell.
+        const points: [number, number, number][] = [[-0.5, -0.5, p.hatA], [-0.1, -1.0, p.hatB], [0.38, -0.78, p.hatA]];
+        for (const [tx, ty, c] of points) {
+          const base = smooth([-0.24 * r, -0.54 * r, tx * r, ty * r, 0.3 * r, -0.56 * r], true, 1);
+          inked(g, [...base, 0.04 * r, -0.66 * r], c, 2.5);
+          g.circle(tx * r, ty * r + 0.04 * r, 0.06 * r).fill(p.bell).stroke({ width: 1.5, color: inkOf(p.bell) });
+        }
+        g.rect(-0.26 * r, -0.6 * r, 0.6 * r, 0.08 * r).fill(p.hatB).stroke({ width: 1.5, color: inkOf(p.hatB) });
+      },
+    },
+    face: { eyes: [[0.2, -0.42, 0.065], [0.34, -0.42, 0.05]], skin: 'face' },
+    streak: 0xd8dde6,
     foot(g, r, p, front) {
       // Curled toes, with a bell on the end.
       const c = front ? p.tunicA : p.tunicB;
@@ -708,6 +782,7 @@ const sling: Held = {
 
 const spear: Held = {
   hold: -1.35,
+  tip: 1.75,
   draw(g, r, p) {
     limb(g, 1.5 * r, 0.08 * r, 0.07 * r, p.wood);
     limb(g, -0.4 * r, 0.08 * r, 0.07 * r, p.wood);
@@ -727,6 +802,7 @@ const shield: Held = {
 
 const shackle: Held = {
   hold: 1.25,
+  tip: 0.75,
   draw(g, r, p) {
     // A length of chain hanging from the fist, and the shackle at the end of it.
     for (let i = 0; i < 4; i++) g.ellipse(0.08 * r + i * 0.1 * r, 0, i % 2 ? 0.035 * r : 0.06 * r, i % 2 ? 0.06 * r : 0.035 * r).stroke({ width: 3, color: p.steel });
@@ -834,6 +910,8 @@ export const UNIT_BUILDS: Record<UnitBuildKey, Build> = {
     },
     hand: (g, r, p) => mitt(g, r, p.iron, true),
     weapon: shackle,
+    streak: 0x9aa1ab,
+    backSway: { at: [-0.2, -0.8], give: 0.3 },
     gait: { swing: 0.35, bounce: 0.04, lean: 0.06, arm: 0.25 },
   },
 };

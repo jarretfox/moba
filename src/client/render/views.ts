@@ -71,6 +71,8 @@ const STILL_STATUSES: ReadonlySet<StatusKind> = new Set<StatusKind>(['recall', '
 
 /** Seconds a unit takes to slump and fade when it dies. */
 const DEATH_TIME = 0.55;
+/** Upright figures take longer: they crumple, lie there a moment, then fade. */
+const FIGURE_DEATH_TIME = 1.7;
 
 export class UnitView implements EntityView {
   readonly container = new Container();
@@ -124,6 +126,13 @@ export class UnitView implements EntityView {
   /** Anything that walks stands up: a jointed figure (or a creature) facing left or right. */
   private readonly rig: Figure | null = null;
   private side = 1;
+  /** Faces: seconds left wincing from a hit, and grinning (a kill, an ultimate, a laugh). */
+  private hurtT = 0;
+  private grinT = 0;
+  /** A hit to flinch from on the next frame (+ knocked back, − forward), and how long they've been airborne. */
+  private recoil = 0;
+  private airT = 0;
+  private lastCast = -9;
   /** How far above the unit's spot the top of it is (bars and names go over that). */
   private readonly headroom: number;
   private readonly resourceColor: number;
@@ -211,11 +220,12 @@ export class UnitView implements EntityView {
       this.heldAt = null;
     }
     this.dying = s.dead ? this.dying + dt : 0;
-    const fall = Math.min(1, this.dying / DEATH_TIME);
+    const fall = Math.min(1, this.dying / (this.rig ? FIGURE_DEATH_TIME : DEATH_TIME));
+    // Upright figures crumple (in the figure) and lie there a moment before fading; the rest slump and fade.
+    const fade = this.rig ? Math.max(0, Math.min(1, (this.dying - (FIGURE_DEATH_TIME - 0.6)) / 0.6)) : fall;
     this.container.visible = !s.dead || fall < 1;
-    this.container.alpha = (ctx.inBrush(s.x, s.y) ? 0.55 : 1) * (1 - fall);
-    // Upright figures topple over backward; the rest slump where they stand.
-    this.container.rotation = this.rig ? -this.side * fall * 1.35 : fall * 0.6;
+    this.container.alpha = (ctx.inBrush(s.x, s.y) ? 0.55 : 1) * (1 - fade);
+    this.container.rotation = this.rig ? 0 : fall * 0.6;
     // Nearer the bottom of the screen draws in front.
     this.container.zIndex = s.y;
     this.bars.visible = this.label.visible = !s.dead;
@@ -268,6 +278,7 @@ export class UnitView implements EntityView {
 
     // How fast it's going drives the walk (in the figure), and stills the breathing here.
     const moved = this.last && dt > 0 ? Math.hypot(s.x - this.last.x, s.y - this.last.y) / dt : 0;
+    const vx = this.last && dt > 0 ? (s.x - this.last.x) / dt : 0;
     this.last = { x: s.x, y: s.y };
     const walking = moved > 40 && !s.dead;
     this.stride = walking ? Math.min(1, this.stride + dt * 6) : Math.max(0, this.stride - dt * 6);
@@ -288,7 +299,34 @@ export class UnitView implements EntityView {
       const c = Math.cos(s.f);
       if (c > 0.25) this.side = 1;
       else if (c < -0.25) this.side = -1;
-      this.rig.update({ dt, speed: s.dead ? 0 : moved, facing: this.side, turn, reach, twist, lunge: lungeBy, grow, stretch, air: this.air });
+      this.hurtT = Math.max(0, this.hurtT - dt);
+      this.grinT = Math.max(0, this.grinT - dt);
+      // Knocked into the air (not a leap of their own): a backflip.
+      const airborne = !!s.st?.includes('airborne');
+      this.airT = airborne ? this.airT + dt : 0;
+      const knocked = airborne && (!!s.st?.includes('stun') || this.clock - this.lastCast > 0.6);
+      const k = Math.min(1, this.airT / 0.6);
+      this.rig.update({
+        dt,
+        speed: s.dead ? 0 : moved,
+        facing: this.side,
+        turn,
+        reach,
+        twist,
+        lunge: lungeBy,
+        grow,
+        stretch,
+        air: this.air,
+        vx: s.dead ? 0 : vx,
+        recoil: this.recoil,
+        dizzy: s.st?.includes('stun') && !airborne ? 1 : 0,
+        tumble: knocked ? k * k * (3 - 2 * k) : 0,
+        dead: s.dead ? this.dying : 0,
+        // They glance where they're heading: up the screen, or down it.
+        look: Math.sin(s.f) * 0.3,
+        expression: this.hurtT > 0 ? 'hurt' : this.grinT > 0 ? 'grin' : null,
+      });
+      this.recoil = 0;
     }
     this.facing.rotation = s.f + twist;
 
@@ -305,7 +343,7 @@ export class UnitView implements EntityView {
     this.facing.scale.set(wide, tall);
     if (this.rig) {
       // The rig does its own growing and leaping; this is just hits and Berserk.
-      const k = (s.r / this.baseR) * (1 + this.pulse * 0.05) * (1 - fall * 0.2);
+      const k = (s.r / this.baseR) * (1 + this.pulse * 0.05);
       this.rig.root.scale.set(k * (1 + 0.12 * this.squash), k * (1 - 0.14 * this.squash));
       this.rig.root.tint = this.flash > 0 ? 0xff9a9a : 0xffffff;
       this.body.scale.set((s.r / this.baseR) * (1 - this.air * 0.25));
@@ -372,12 +410,24 @@ export class UnitView implements EntityView {
 
   onCast(slot: Slot): void {
     if (this.champ) this.anim = { a: castAnim(this.champ, slot), t: 0 };
+    this.lastCast = this.clock;
+    if (slot === 3) this.smile(1.2);
+  }
+
+  /** A grin: a kill, a laugh, a cheer. */
+  smile(seconds = 1.4): void {
+    this.grinT = seconds;
+    this.hurtT = 0;
   }
 
   onHit(from?: { x: number; y: number }, heavy?: boolean): void {
     this.flash = 1;
     this.squash = Math.max(this.squash, heavy ? 1 : 0.4);
+    if (this.grinT <= 0) this.hurtT = heavy ? 0.6 : 0.3;
     if (!from) return;
+    // A flinch: back from a hit in front, forward from one behind.
+    const inFront = Math.sign(from.x - this.container.x) === this.side;
+    this.recoil += (inFront ? 1 : -1) * (heavy ? 1 : 0.35);
     // Every hit nudges; a big one shoves.
     const dx = this.container.x - from.x;
     const dy = this.container.y - from.y;

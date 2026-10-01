@@ -116,6 +116,77 @@ describe('champion rigs', () => {
     expect(d.part.torso.context).toBe(b.part.torso.context);
   });
 
+  it('drop their weapon and lose their hat when they die, and get them back when they return', () => {
+    const rig = new Rig(BUILDS.kingrix, R, palette('kingrix'));
+    run(rig, {}, 2);
+    const before = rig.root.children.length;
+    for (let f = 1; f <= 90; f++) run(rig, { dead: f / 60 }, 1);
+    // The scepter and the crown are now loose on the ground, the held ones hidden.
+    expect(rig.root.children.length).toBe(before + 2);
+    expect(rig.part.weapon.visible).toBe(false);
+    expect(rig.part.dangle.visible).toBe(false);
+    for (const loose of rig.root.children.slice(before)) expect(Math.abs(loose.y)).toBeLessThan(0.2 * R);
+    // Toppled over backward.
+    expect(Math.abs(rig.root.children[0].rotation)).toBeGreaterThan(1.2);
+    run(rig, { dead: 0 }, 1);
+    expect(rig.root.children.length).toBe(before);
+    expect(rig.part.weapon.visible && rig.part.dangle.visible).toBe(true);
+  });
+
+  it('pull faces: a wince when hit, a grin, closed eyes asleep, and X-ed out when dead', () => {
+    const rig = new Rig(BUILDS.dongmaster, R, palette('dongmaster'));
+    const face = (rig as unknown as { face: Record<'lids' | 'happy' | 'ko' | 'hurt' | 'grin', { visible: boolean }> }).face;
+    run(rig, { expression: 'hurt' }, 1);
+    expect([face.lids.visible, face.hurt.visible, face.grin.visible]).toEqual([true, true, false]);
+    run(rig, { expression: 'grin' }, 1);
+    expect([face.lids.visible, face.happy.visible, face.grin.visible, face.hurt.visible]).toEqual([false, true, true, false]);
+    run(rig, { posture: { lie: -1 } }, 1);
+    expect(face.lids.visible).toBe(true);
+    run(rig, { dead: 0.5 }, 1);
+    expect([face.ko.visible, face.lids.visible, face.grin.visible]).toEqual([true, false, false]);
+  });
+
+  it('leave a swoosh behind a fast swing, and none at rest', () => {
+    const rig = new Rig(BUILDS.barbarian, R, palette('barbarian'));
+    run(rig, {}, 5);
+    expect(rig.part.streak.context.instructions.length).toBe(0);
+    for (let f = 0; f < 8; f++) run(rig, { turn: -1.6 + f * 0.35 }, 1);
+    expect(rig.part.streak.context.instructions.length).toBeGreaterThan(0);
+    run(rig, { turn: 1.2 }, 20);
+    expect(rig.part.streak.context.instructions.length).toBe(0);
+  });
+
+  it('flip right over when knocked up, landing the right way up', () => {
+    const rig = new Rig(BUILDS.willmore, R, palette('willmore'));
+    const body = rig.root.children[0];
+    run(rig, { air: 1, tumble: 0.5 }, 1);
+    expect(Math.abs(body.rotation)).toBeCloseTo(Math.PI, 3);
+    run(rig, { air: 1, tumble: 1 }, 1);
+    expect(Math.cos(body.rotation)).toBeCloseTo(1, 6);
+  });
+
+  it('let a cape swing out behind when running, and settle when stood still', () => {
+    const rig = new Rig(BUILDS.kingrix, R, palette('kingrix'));
+    run(rig, { speed: 340, vx: 340 }, 40);
+    const torso = rig.part.torso.rotation;
+    expect(rig.part.back.rotation - torso).toBeGreaterThan(0.1);
+    run(rig, {}, 180);
+    expect(Math.abs(rig.part.back.rotation - rig.part.torso.rotation)).toBeLessThan(0.02);
+  });
+
+  it('sit down, and lie flat', () => {
+    const rig = new Rig(BUILDS.paris, R, palette('paris'));
+    run(rig, {}, 2);
+    const standing = rig.part.torso.y;
+    run(rig, { posture: { sit: 1 } }, 2);
+    expect(rig.part.torso.y).toBeGreaterThan(standing + 0.3 * R);
+    expect(Math.abs(rig.part.frontThigh.rotation)).toBeLessThan(0.5);
+    run(rig, { posture: { lie: 1 } }, 2);
+    expect(rig.root.children[0].rotation).toBeCloseTo(Math.PI / 2, 3);
+    run(rig, { facing: -1, posture: { lie: 1 } }, 2);
+    expect(rig.root.children[0].rotation).toBeCloseTo(-Math.PI / 2, 3);
+  });
+
   it('leave the ground in a leap', () => {
     const rig = new Rig(BUILDS.logan, R, palette('logan'));
     run(rig, {}, 2);

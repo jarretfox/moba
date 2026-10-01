@@ -765,10 +765,9 @@ export function championDeath(fx: FxLayer, s: EntitySnap): void {
       fx.quip(x, top, 'IT’S A SETUP!', 0xff5a2a);
       return;
     case 'willmore':
-      // His sack bursts: junk everywhere, and his lid goes rolling.
+      // His sack bursts: junk everywhere (his lid flies off on its own).
       p.burst(16, { shape: 'shard', glow: false, x, y, life: 0.9, size: 11, size2: 9, color: 0x9aa1ab, drag: 0.1, ay: 400, spin: 10 }, [160, 340]);
       p.burst(8, { shape: 'shard', glow: false, x, y, life: 0.9, size: 9, size2: 7, color: 0x6b4a2b, drag: 0.1, ay: 400, spin: 10 }, [140, 300]);
-      rolling(fx, x, y, 0x9aa1ab, 0x5d636d);
       return;
     case 'hunnag':
       // She comes apart in a cloud of spores.
@@ -781,8 +780,7 @@ export function championDeath(fx: FxLayer, s: EntitySnap): void {
       fx.shockwave(x, y, r * 3, 0xffc04d, 0.6);
       return;
     case 'kingrix':
-      // His crown rolls away, and his coins spill.
-      rolling(fx, x, y, 0xffd166, 0xc0182b);
+      // His coins spill (the crown's already flying).
       p.burst(14, { shape: 'star', x, y, life: 0.8, size: 12, size2: 3, color: 0xfff1b8, color2: 0xffd166, ay: 300, spin: 6 }, [120, 280]);
       return;
     case 'dongmaster':
@@ -812,20 +810,6 @@ export function championDeath(fx: FxLayer, s: EntitySnap): void {
       fx.quip(x, top, 'Ta-da...?', 0xb98be0);
       return;
   }
-}
-
-/** Something round (a trash-can lid, a crown) rolling off the way things do in cartoons. */
-function rolling(fx: FxLayer, x: number, y: number, color: number, trim: number): void {
-  const dir = Math.random() < 0.5 ? -1 : 1;
-  fx.custom(1.4, (g, t) => {
-    const k = 1 - (1 - t) * (1 - t);
-    const cx = x + dir * 150 * k;
-    const cy = y + 20 * Math.sin(k * Math.PI);
-    const spin = dir * k * 9;
-    const a = t > 0.8 ? (1 - t) / 0.2 : 1;
-    g.circle(cx, cy, 13).fill({ color, alpha: a }).stroke({ width: 2.5, color: 0x0b0f14, alpha: a });
-    g.moveTo(cx, cy).lineTo(cx + Math.cos(spin) * 11, cy + Math.sin(spin) * 11).stroke({ width: 3, color: trim, alpha: a });
-  });
 }
 
 /** A burst of jester's confetti: little paper scraps in every color, fluttering down. */

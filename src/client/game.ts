@@ -663,6 +663,7 @@ export class GameClient {
         this.bubbles.say(u.id, emoteLine(u.champ, ev.kind, ev.n, ev.vs), color);
         this.speak(u, ev.kind, ev.n, true);
         (this.views.get(u.id) as UnitView | undefined)?.play?.(EMOTE_ANIM[ev.kind]);
+        if (ev.kind !== 'line') (this.views.get(u.id) as UnitView | undefined)?.smile?.(1.2);
         return;
       }
       case 'ping': {
@@ -675,6 +676,11 @@ export class GameClient {
         if (!this.replay && ev.what === 'warden') this.tally.warden[ev.killer] = (this.tally.warden[ev.killer] ?? 0) + 1;
         if (!this.replay && ev.what === 'champion' && !ev.killerChamp) this.tally.executed[ev.victim] = (this.tally.executed[ev.victim] ?? 0) + 1;
         this.hud.pushFeed(ev, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
+        // Whoever got it grins.
+        if (ev.what === 'champion') {
+          const killer = [...this.ents.values()].find((e) => e.k === 'champion' && e.name === ev.killer);
+          if (killer) (this.views.get(killer.id) as UnitView | undefined)?.smile?.();
+        }
         this.announceKill(ev);
         return;
       case 'fx':
