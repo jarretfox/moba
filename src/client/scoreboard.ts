@@ -67,7 +67,7 @@ export function scoreTables(rows: readonly ScoreRow[], myTeam: Team, meId: numbe
  * who won, and each champion's numbers.
  */
 export function matchReport(rows: readonly ScoreRow[], winner: Team | undefined, time: number): string {
-  const lines = [`MOBA match report · ${new Date().toISOString().slice(0, 10)} · ${mmss(time)} · ${winner === TEAM.blue ? 'Blue won' : winner === TEAM.red ? 'Red won' : 'unfinished'}`];
+  const lines = [`Blokes match report · ${new Date().toISOString().slice(0, 10)} · ${mmss(time)} · ${winner === TEAM.blue ? 'Blue won' : winner === TEAM.red ? 'Red won' : 'unfinished'}`];
   for (const team of [TEAM.blue, TEAM.red]) {
     lines.push(`${team === TEAM.blue ? 'BLUE' : 'RED'}${winner === team ? ' (won)' : ''}`);
     for (const r of rows.filter((x) => x.team === team)) {

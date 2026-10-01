@@ -3,6 +3,10 @@ import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
 import type { LobbyState, MatchMode } from '../../shared/protocol';
 import { SKINS, portraitOf, swatchColor } from '../render/champions';
+import { CAST_COLORS } from '../render/spells';
+import { getSound } from '../audio';
+import { emoteLine } from '../emotes';
+import { LORE } from './lore';
 import { iconEl } from '../render/icons';
 import { el } from './dom';
 
@@ -27,6 +31,10 @@ export class LobbyScreen {
   /** The look chosen on each card (0 is the classic one). */
   private readonly skins = new Map<ChampionId, number>();
   private picked: ChampionId | null = null;
+  /** The big panel showing whichever champion you're looking at. */
+  private readonly showcase = el('div', 'showcase');
+  private shown: ChampionId | null = null;
+  private readonly cardFaces = new Map<ChampionId, HTMLImageElement>();
 
   constructor(
     root: HTMLElement,
@@ -112,55 +120,108 @@ export class LobbyScreen {
   }
 
   private championCards(): HTMLElement {
+    const picker = el('div', 'select-picker');
     const cards = el('div', 'select-cards');
     for (const info of Object.values(CHAMPION_INFO)) {
       const card = el('button', `select-card ${info.resource}`);
       const img = el('img', 'select-face');
       img.src = portraitOf(info.id) ?? '';
       img.alt = '';
-      card.append(img);
-      card.append(
-        el('div', 'select-name', info.name),
-        el('div', 'select-sub', `${info.title} · ${{ rage: 'Rage', mana: 'Mana', none: 'No resource' }[info.resource]}`),
-      );
-      // Looks: a dot per skin; picking one changes the portrait (and your champion, if it's your pick).
-      const looks = el('div', 'select-skins');
-      const lookName = el('span', 'skin-name', SKINS[info.id][0].name);
-      const dots: HTMLElement[] = [];
-      for (let skin = 0; skin < SKIN_COUNT; skin++) {
-        const dot = el('span', `skin-dot${skin === 0 ? ' on' : ''}`);
-        dot.style.background = `#${swatchColor(info.id, skin).toString(16).padStart(6, '0')}`;
-        dot.title = SKINS[info.id][skin].name;
-        dot.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.skins.set(info.id, skin);
-          img.src = portraitOf(info.id, skin) ?? '';
-          lookName.textContent = SKINS[info.id][skin].name;
-          dots.forEach((d, i) => d.classList.toggle('on', i === skin));
-          if (this.picked === info.id) this.opts.onPick({ skin });
-        });
-        dots.push(dot);
-        looks.append(dot);
-      }
-      looks.append(lookName);
-      card.append(looks);
-      const passive = el('div', 'select-passive');
-      passive.append(iconEl(info.passive.icon, 'select-icon'), info.passive.name);
-      card.append(passive);
-      const list = el('div', 'select-abilities');
-      info.abilities.forEach((a, i) => {
-        const row = el('div', 'select-ability');
-        row.append(el('kbd', '', SLOT_KEYS[i]), iconEl(a.icon, 'select-icon'), document.createTextNode(a.name));
-        list.append(row);
-      });
-      card.append(list);
-      card.addEventListener('click', () => {
-        this.opts.onPick({ champion: info.id, skin: this.skins.get(info.id) ?? 0 });
-        if (this.opts.solo) this.opts.onStart(this.opts.solo);
-      });
+      this.cardFaces.set(info.id, img);
+      card.append(img, el('div', 'select-name', info.name), el('div', 'select-sub', info.title));
+      // Look at a champion by pointing at them; pick them by clicking.
+      card.addEventListener('pointerenter', () => this.show(info.id));
+      card.addEventListener('focus', () => this.show(info.id));
+      card.addEventListener('click', () => this.lockIn(info.id));
       this.cards.set(info.id, card);
       cards.append(card);
     }
-    return cards;
+    picker.append(this.showcase, cards);
+    this.show(Object.values(CHAMPION_INFO)[0].id);
+    return picker;
+  }
+
+  /** Fills the showcase with a champion: big portrait, story, looks, and their kit. */
+  private show(id: ChampionId): void {
+    if (this.shown === id) return;
+    this.shown = id;
+    const info = CHAMPION_INFO[id];
+    const color = `#${CAST_COLORS[id].toString(16).padStart(6, '0')}`;
+    const skin = this.skins.get(id) ?? 0;
+    const s = this.showcase;
+    s.replaceChildren();
+    s.style.setProperty('--champ', color);
+    s.classList.remove('locked');
+
+    const art = el('div', 'showcase-art');
+    const face = el('img', 'showcase-face');
+    face.src = portraitOf(id, skin) ?? '';
+    face.alt = '';
+    art.append(el('div', 'showcase-ring'), face, el('div', 'showcase-quote'));
+
+    const text = el('div', 'showcase-info');
+    text.append(
+      el('div', 'showcase-name', info.name),
+      el('div', 'showcase-title', `${info.title} · ${{ rage: 'Rage', mana: 'Mana', none: 'No resource' }[info.resource]}`),
+      el('div', 'showcase-lore', LORE[id]),
+    );
+
+    // Looks: a dot per skin.
+    const looks = el('div', 'select-skins');
+    const lookName = el('span', 'skin-name', SKINS[id][skin].name);
+    const dots: HTMLElement[] = [];
+    for (let k = 0; k < SKIN_COUNT; k++) {
+      const dot = el('span', `skin-dot${k === skin ? ' on' : ''}`);
+      dot.style.background = `#${swatchColor(id, k).toString(16).padStart(6, '0')}`;
+      dot.title = SKINS[id][k].name;
+      dot.addEventListener('click', () => {
+        this.skins.set(id, k);
+        face.src = portraitOf(id, k) ?? '';
+        const card = this.cardFaces.get(id);
+        if (card) card.src = portraitOf(id, k) ?? '';
+        lookName.textContent = SKINS[id][k].name;
+        dots.forEach((d, i) => d.classList.toggle('on', i === k));
+        if (this.picked === id) this.opts.onPick({ skin: k });
+      });
+      dots.push(dot);
+      looks.append(dot);
+    }
+    looks.append(lookName);
+
+    // The kit: passive and abilities as tiles; point at one to read it.
+    const kit = el('div', 'showcase-kit');
+    const desc = el('div', 'showcase-desc');
+    const describe = (name: string, key: string, body: string) => {
+      desc.replaceChildren(el('b', '', `${name} `), el('span', 'showcase-key', key), document.createTextNode(` ${body}`));
+    };
+    const tile = (icon: string, key: string, name: string, body: string) => {
+      const t = el('div', 'showcase-tile');
+      t.append(iconEl(icon, 'showcase-icon'), el('kbd', '', key));
+      t.addEventListener('pointerenter', () => describe(name, key === 'P' ? 'Passive' : `[${key}]`, body));
+      kit.append(t);
+    };
+    tile(info.passive.icon, 'P', info.passive.name, info.passive.description);
+    info.abilities.forEach((a, i) => tile(a.icon, SLOT_KEYS[i], a.name, a.description));
+    describe(info.passive.name, 'Passive', info.passive.description);
+
+    text.append(looks, kit, desc);
+    s.append(art, text);
+  }
+
+  /** Picking a champion: a flash, a fanfare and a line from them. Solo games start a moment later. */
+  private lockIn(id: ChampionId): void {
+    if (this.cards.get(id)?.disabled) return;
+    this.show(id);
+    this.opts.onPick({ champion: id, skin: this.skins.get(id) ?? 0 });
+    this.showcase.classList.remove('locked');
+    void this.showcase.offsetWidth;
+    this.showcase.classList.add('locked');
+    const quote = this.showcase.querySelector('.showcase-quote') as HTMLElement | null;
+    if (quote) quote.textContent = `“${emoteLine(id, 'line', Math.floor(Math.random() * 99))}”`;
+    getSound().play('fanfare', 0.6);
+    if (this.opts.solo) {
+      const solo = this.opts.solo;
+      setTimeout(() => this.opts.onStart(solo), 1100);
+    }
   }
 }

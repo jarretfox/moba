@@ -1,6 +1,7 @@
 import type { MatchMode } from '../../shared/protocol';
 import { el } from './dom';
 import { settingsPanel } from '../settings';
+import { logo } from './logo';
 
 export type MenuChoice = { kind: 'solo'; mode: MatchMode } | { kind: 'host' } | { kind: 'join'; code: string };
 
@@ -79,7 +80,7 @@ export function showMenu(root: HTMLElement, error?: string): Promise<{ choice: M
     joinRow.append(codeInput, joinButton);
 
     screen.append(
-      el('div', 'menu-title', 'MOBA'),
+      logo(),
       nameInput,
       button('Play vs Bots', 'You and 2 bots against 3 bots', () => done({ kind: 'solo', mode: 'bots' }), 'primary'),
       button('Host a Lobby', 'Get a code for your friends; bots fill empty slots', () => done({ kind: 'host' })),

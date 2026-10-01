@@ -944,6 +944,53 @@ kbd {
   pointer-events: auto;
 }
 
+/* The logo: crest, name and subtitle, dropping in. */
+.logo {
+  display: grid;
+  justify-items: center;
+  margin-bottom: 14px;
+  animation: logo-drop 0.8s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.logo .crest {
+  width: 104px;
+  height: 104px;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.7));
+  animation: crest-in 0.9s 0.15s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+.logo-word {
+  margin-top: -6px;
+  font: 84px/1 var(--font-display);
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  text-shadow: 0 5px 0 #6b4f16, 0 12px 30px rgba(0, 0, 0, 0.75);
+}
+
+.logo-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: #c9d1dc;
+  text-shadow: 0 2px 4px #000;
+}
+
+@keyframes logo-drop {
+  from {
+    transform: translateY(-40px) scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes crest-in {
+  from {
+    transform: rotate(-25deg) scale(0.3);
+    opacity: 0;
+  }
+}
+
 .menu-title {
   text-align: center;
   font: 76px/1 var(--font-display);
@@ -1155,7 +1202,9 @@ kbd {
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 22px;
+  gap: 16px;
+  overflow-y: auto;
+  padding: 16px 0;
   background: radial-gradient(ellipse at center, rgba(6, 9, 12, 0.82), rgba(6, 9, 12, 0.5));
   backdrop-filter: blur(2px);
   pointer-events: auto;
@@ -1199,18 +1248,183 @@ kbd {
   text-shadow: 0 3px 0 #6b4f16, 0 6px 20px rgba(0, 0, 0, 0.6);
 }
 
+.select-picker {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+}
+
 .select-cards {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 16px;
+  gap: 10px;
   padding: 0 16px;
 }
 
+/* ── The showcase: whoever you're looking at, big. */
+.showcase {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 560px);
+  gap: 22px;
+  align-items: center;
+  padding: 14px 22px 14px 14px;
+  border: 1px solid var(--rim);
+  border-radius: 8px;
+  background: var(--grain), radial-gradient(ellipse at 20% 50%, color-mix(in srgb, var(--champ) 22%, transparent), transparent 60%), linear-gradient(180deg, #1c232c, #0c1015);
+  box-shadow: inset 0 1px 0 rgba(255, 226, 160, 0.16), 0 10px 30px rgba(0, 0, 0, 0.55);
+  --champ: #e8c46a;
+}
+
+.showcase.locked {
+  animation: lock-in 0.9s ease-out;
+}
+
+@keyframes lock-in {
+  0% {
+    box-shadow: 0 0 0 3px #fff, 0 0 60px var(--champ);
+  }
+}
+
+.showcase-art {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: grid;
+  place-items: center;
+}
+
+.showcase-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--champ), transparent 30%, var(--champ) 50%, transparent 80%, var(--champ));
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%, #000 70%, transparent 72%);
+  mask: radial-gradient(circle, transparent 62%, #000 64%, #000 70%, transparent 72%);
+  animation: rays 8s linear infinite;
+  filter: drop-shadow(0 0 12px var(--champ));
+}
+
+.showcase-face {
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  border: 3px solid var(--champ);
+  box-shadow: 0 0 30px color-mix(in srgb, var(--champ) 60%, transparent);
+  animation: float 3.2s ease-in-out infinite;
+}
+
+.showcase.locked .showcase-face {
+  animation: float 3.2s ease-in-out infinite, lock-face 0.6s ease-out;
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-7px) rotate(1.5deg);
+  }
+}
+
+@keyframes lock-face {
+  0% {
+    filter: brightness(2.2);
+    transform: scale(1.12);
+  }
+}
+
+.showcase-quote {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  font-style: italic;
+  color: #fdf6e3;
+  text-shadow: 0 2px 4px #000;
+}
+
+.showcase-quote:empty {
+  display: none;
+}
+
+.showcase-name {
+  font: 40px/1 var(--font-display);
+  letter-spacing: 0.03em;
+  color: var(--champ);
+  text-shadow: 0 3px 0 #000;
+}
+
+.showcase-title {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.showcase-lore {
+  font-size: 14px;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+
+.showcase-kit {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 8px;
+}
+
+.showcase-tile {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 4px;
+  box-sizing: border-box;
+  border: 2px solid #8a6f3e;
+  border-radius: 6px;
+  background: radial-gradient(circle at 50% 35%, #33465f, #111925 75%);
+}
+
+.showcase-tile:hover {
+  border-color: var(--champ);
+  box-shadow: 0 0 12px var(--champ);
+}
+
+.showcase-tile kbd {
+  position: absolute;
+  left: -4px;
+  bottom: -6px;
+  font-size: 9px;
+}
+
+.showcase-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.showcase-desc {
+  min-height: 54px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #d6dde5;
+}
+
+.showcase-desc b {
+  font: 15px var(--font-display);
+  color: var(--gold);
+}
+
+.showcase-key {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--muted);
+}
+
 .select-card {
-  width: 188px;
-  padding: 14px 14px;
-  text-align: left;
+  width: 128px;
+  padding: 10px 8px 9px;
+  text-align: center;
   border: 2px solid var(--rim);
   border-radius: 8px;
   background: var(--grain), linear-gradient(160deg, #1f2c42, #10161f);
@@ -1241,10 +1455,10 @@ kbd {
 }
 
 .select-face {
-  float: right;
-  width: 54px;
-  height: 54px;
-  margin: -4px -4px 4px 6px;
+  display: block;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 6px;
   border-radius: 50%;
   border: 2px solid var(--panel-edge);
 }
@@ -1259,14 +1473,15 @@ kbd {
 }
 
 .select-name {
-  font: 21px/1.1 var(--font-display);
+  font: 16px/1.1 var(--font-display);
   letter-spacing: 0.02em;
 }
 
 .select-sub {
-  font-size: 12px;
+  font-size: 10px;
+  line-height: 1.25;
   color: var(--muted);
-  margin-bottom: 10px;
+  margin-top: 3px;
 }
 
 .select-skins {
