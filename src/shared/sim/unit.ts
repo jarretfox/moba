@@ -1,6 +1,6 @@
 import { DT, type Team } from '../constants';
 import { add, angleOf, clamp, dirTo, dist, lerpVec, scale, sub, type Vec2 } from '../math';
-import type { EntitySnap, StatusKind } from '../protocol';
+import type { DamageType, EntitySnap, StatusKind } from '../protocol';
 import type { Entity } from './entity';
 import type { World } from './world';
 
@@ -113,7 +113,7 @@ export abstract class Unit implements Entity {
     this.statuses = this.statuses.filter((s) => s.until > world.time);
     this.shields = this.shields.filter((s) => s.amount > 0 && s.until > world.time);
     this.stats = this.computeStats(world);
-    this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.hpRegen * DT);
+    this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.hpRegen * DT * (1 - this.strongest('wounds')));
     this.mana = Math.min(this.stats.maxMana, this.mana + this.stats.manaRegen * DT);
     this.think(world);
     this.updateAttack(world);
@@ -135,7 +135,7 @@ export abstract class Unit implements Entity {
   }
 
   isTargetable(): boolean {
-    return !this.dead && !this.has('underground') && !this.has('untargetable');
+    return !this.dead && !this.has('underground') && !this.has('untargetable') && !this.has('stasis');
   }
 
   /** Share of incoming damage that gets through (Master Paris's Café Break takes less). */
@@ -154,12 +154,12 @@ export abstract class Unit implements Entity {
   }
 
   canMove(world: World): boolean {
-    return !this.has('root') && !this.has('stun') && world.time >= this.lockedUntil && !this.windup;
+    return !this.has('root') && !this.has('stun') && !this.has('stasis') && world.time >= this.lockedUntil && !this.windup;
   }
 
   /** Can start an attack or a cast. */
   canAct(world: World): boolean {
-    return !this.has('stun') && !this.has('fear') && world.time >= this.lockedUntil && !this.dash;
+    return !this.has('stun') && !this.has('fear') && !this.has('stasis') && world.time >= this.lockedUntil && !this.dash;
   }
 
   /** Champions and training dummies (which stand in for champions in practice). */
@@ -183,10 +183,25 @@ export abstract class Unit implements Entity {
     return 0;
   }
 
+  /** Tenacity from items, on top of (multiplied with) any the kit gives (see tenacity). */
+  protected itemTenacity(): number {
+    return 0;
+  }
+
+  /** How much of a heal lands: Wounds cut it (items can raise it, see Champion). */
+  healScale(): number {
+    return 1 - this.strongest('wounds');
+  }
+
+  /** How strong a shield put on this unit is. */
+  shieldScale(): number {
+    return 1;
+  }
+
   // ─── Shields and fear ─────────────────────────────────────────────────────
 
   addShield(world: World, amount: number, duration: number): { amount: number; until: number } {
-    const s = { amount, until: world.time + duration };
+    const s = { amount: amount * this.shieldScale(), until: world.time + duration };
     if (!this.dead && amount > 0) this.shields.push(s);
     return s;
   }
@@ -224,13 +239,14 @@ export abstract class Unit implements Entity {
 
   addStatus(world: World, kind: StatusKind, duration: number, amount = 0): void {
     if (this.dead) return;
-    if (kind === 'stun' || kind === 'root' || kind === 'slow' || kind === 'fear') duration *= 1 - this.tenacity(world);
+    if (kind === 'stun' || kind === 'root' || kind === 'slow' || kind === 'fear') duration *= (1 - this.tenacity(world)) * (1 - this.itemTenacity());
     this.statuses.push({ kind, until: world.time + duration, amount });
     if (kind === 'stun') this.cancelWindup();
   }
 
   /** `quiet` skips the floating number, for small constant trickles like lifesteal. */
   heal(world: World, amount: number, quiet = false): void {
+    amount *= this.healScale();
     if (this.dead || amount <= 0) return;
     const healed = Math.min(amount, this.stats.maxHp - this.hp);
     if (healed <= 0) return;
@@ -240,6 +256,12 @@ export abstract class Unit implements Entity {
 
   /** Everything a unit's basic attack does on top of its damage (lifesteal, on-hit buffs). Runs after the hit resolves. */
   onBasicHit(_world: World, _target: Unit, _dealt: number): void {}
+
+  /** This unit just dealt damage (`basic`: with a basic attack; `proc`: from an item effect, which never sets off another). */
+  onDealt(_world: World, _target: Unit, _dealt: number, _type: DamageType, _basic: boolean, _proc: boolean): void {}
+
+  /** A basic attack from `source` just hit this unit (item thorns answer it). */
+  onBasicHitTaken(_world: World, _source: Unit): void {}
 
   // ─── Combat hooks ─────────────────────────────────────────────────────────
 

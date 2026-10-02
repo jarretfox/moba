@@ -7,7 +7,7 @@ import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
 import { MAP, lanePath } from '../map/mapData';
 import { Chud } from './chud';
 import { applyCommand } from './commands';
-import { CHUD_REWARD, STARTING_GOLD, killBounty, xpToNext } from './progression';
+import { CHUD_REWARD, PASSIVE_GOLD, STARTING_GOLD, killBounty, xpToNext } from './progression';
 import { spawnStructures } from './structure';
 import { World } from './world';
 
@@ -160,7 +160,7 @@ describe('gold and experience', () => {
     run(world, 59);
     expect(m.gold).toBe(STARTING_GOLD);
     run(world, 11);
-    expect(m.gold).toBeCloseTo(STARTING_GOLD + 20, 0);
+    expect(m.gold).toBeCloseTo(STARTING_GOLD + 10 * PASSIVE_GOLD.perSecond, 0);
   });
 
   it('pays the whole team when a structure falls', () => {

@@ -168,6 +168,11 @@ export type StatusKind =
   | 'rindBlade'
   /** Daltonomo, invisible after Now You See Me. */
   | 'vanished'
+  /** Items: Wounds (less healing, amount = share cut), Sunder (less armor, amount = share), a Rotroot burn, the Royal Hourglass's stasis. */
+  | 'wounds'
+  | 'sundered'
+  | 'burning'
+  | 'stasis'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. Then the team buffs the map events pay out (sim/eventBuffs.ts). */
 export type BuffKind = 'ember' | 'glowcap' | 'deepPockets' | 'wicksFavor' | 'royalFavor';
@@ -239,6 +244,10 @@ export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster'
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind =
+  /** Item passives: Stormstring's chain lightning (from x, y to x2, y2), a Spellblade hit, the Royal Hourglass going off. */
+  | 'static'
+  | 'spellblade'
+  | 'royalPause'
   | 'aimLine'
   | 'trapSnap'
   | 'roll'

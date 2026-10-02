@@ -46,22 +46,24 @@ describe('the shop', () => {
     expect(c.buy(world, 'shiv')).toBe(true);
   });
 
-  it('refuses when broke, full, doubling boots or doubling a core item, but basics stack', () => {
+  it('refuses when broke, full, doubling boots or doubling a legendary, but basics and epics stack', () => {
     const poor = shopper('marksman', 100);
     expect(poor.c.buy(poor.world, 'shiv')).toBe(false);
 
-    const { world, c } = shopper();
+    const { world, c } = shopper('marksman', 20000);
     expect(c.buy(world, 'treads')).toBe(true);
     expect(c.buy(world, 'treads')).toBe(false); // one pair of boots
+    expect(c.buy(world, 'hamhock')).toBe(true);
+    expect(c.buy(world, 'hamhock')).toBe(false); // one of each legendary
     expect(c.buy(world, 'fang')).toBe(true);
-    expect(c.buy(world, 'fang')).toBe(false); // one of each core item
+    expect(c.buy(world, 'fang')).toBe(true); // epics stack
     expect(c.buy(world, 'shiv')).toBe(true);
     expect(c.buy(world, 'shiv')).toBe(true); // basics stack
-    expect(c.buy(world, 'loaf')).toBe(false); // four slots
-    expect(c.items).toEqual(['treads', 'fang', 'shiv', 'shiv']);
+    expect(c.buy(world, 'loaf')).toBe(false); // six slots
+    expect(c.items).toEqual(['treads', 'hamhock', 'fang', 'fang', 'shiv', 'shiv']);
     // Full, but upgrading the boots uses them up, so there's room.
     expect(c.buy(world, 'striders')).toBe(true);
-    expect(c.items).toEqual(['fang', 'shiv', 'shiv', 'striders']);
+    expect(c.items).toEqual(['hamhock', 'fang', 'fang', 'shiv', 'shiv', 'striders']);
   });
 
   it('builds big items from their parts: cheaper by what you own, the parts used up', () => {
@@ -69,16 +71,16 @@ describe('the shop', () => {
     c.buy(world, 'shiv');
     c.buy(world, 'loaf');
     const gold = c.gold;
-    // Warden's Link is a War Drum (from a Hearty Loaf) and a Rusty Shiv.
+    // Warden's Link is a War Drum (from a Hearty Loaf) and a Chud Mallet (two Shivs): this Shiv is half the Mallet.
     expect(priceFor(c.items, 'link')).toBe(ITEMS.link.cost - ITEMS.shiv.cost - ITEMS.loaf.cost);
     expect(c.buy(world, 'link')).toBe(true);
     expect(c.items).toEqual(['link']);
     expect(c.gold).toBe(gold - (ITEMS.link.cost - ITEMS.shiv.cost - ITEMS.loaf.cost));
-    // Parts of parts: two Shivs make most of a Bloodreaver (one into the Fang, one beside it).
+    // Parts of parts: two Shivs go into a Bloodreaver (one into the Fang, one into the Mallet).
     expect(partsUsed(['shiv', 'shiv'], 'reaver')).toEqual([0, 1]);
     expect(priceFor(['shiv', 'shiv'], 'reaver')).toBe(ITEMS.reaver.cost - 2 * ITEMS.shiv.cost);
     expect(afterBuying(['shiv', 'treads', 'shiv'], 'reaver')).toEqual(['treads', 'reaver']);
-    // A Glowworm Lantern takes two Sagestones; one only knocks one off.
+    // A Glowworm Lantern takes two Sagestones (one in the Charm); one only knocks one off.
     expect(priceFor(['sagestone'], 'lantern')).toBe(ITEMS.lantern.cost - ITEMS.sagestone.cost);
     // Nothing to do with it: full price, nothing used.
     expect(partsUsed(['leather', 'bark'], 'reaver')).toEqual([]);
@@ -205,9 +207,13 @@ describe('bot builds', () => {
     return items;
   };
 
-  it('end with boots and the core items, building up from the parts and selling leftover basics', () => {
-    expect(walk(PROFILES.marksman.build).sort()).toEqual(['link', 'longbow', 'reaver', 'striders']);
-    expect(walk(PROFILES.barbarian.build).sort()).toEqual(['link', 'plate', 'reaver', 'treads']);
+  it('end with boots and the legendaries, building up through the epics and selling leftover parts', () => {
+    expect(walk(PROFILES.marksman.build).sort()).toEqual(['fork', 'longbow', 'reaver', 'stormstring', 'striders']);
+    expect(walk(PROFILES.barbarian.build).sort()).toEqual(['hamhock', 'ironshod', 'link', 'plate', 'trident']);
+    // Every bot's build is a real path: it ends with only finished items and boots.
+    for (const profile of Object.values(PROFILES)) {
+      for (const id of walk(profile.build)) expect(['core', 'boots']).toContain(ITEMS[id].tier);
+    }
   });
 
   it('upgrade boots rather than stacking them, and never sell a part they need', () => {
@@ -240,7 +246,7 @@ describe('bot builds', () => {
     expect(dist(m.pos, world.map.spawns[TEAM.blue])).toBeGreaterThan(1500);
     m.gold = 2000;
     tick(15); // recall and shop
-    // The Shiv went into the Fang and the Treads into the Swiftstriders, so the purse went further.
-    expect(m.items).toEqual(['fang', 'striders']);
+    // The Shiv went into the Rat-Bone Kris, so the purse went further.
+    expect(m.items).toEqual(['treads', 'kris']);
   });
 });

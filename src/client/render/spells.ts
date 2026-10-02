@@ -799,6 +799,30 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       p.burst(14, { shape: 'smoke', glow: false, x, y, life: 0.6, size: 20, size2: 44, color: 0xc9a37a, alpha: 0.4, drag: 0.06 }, [120, 260]);
       return;
     }
+    // ── Item passives
+    case 'static': {
+      // Stormstring: a crackling jump of lightning, blue-white, with sparks where it lands.
+      const x2 = ev.x2 ?? x;
+      const y2 = ev.y2 ?? y;
+      fx.lightning(x, y - 40, x2, y2 - 40, 0x9fd8ff, 0.22, 3);
+      p.burst(8, { shape: 'spark', x: x2, y: y2 - 40, life: 0.3, size: 9, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0x7fc4ff }, [120, 280]);
+      return;
+    }
+    case 'spellblade': {
+      // A Spellblade hit: a ring of light snapping shut on the target, and a bright cut.
+      const r = ev.r ?? 40;
+      fx.shockwave(x, y - r, r * 2.6, 0xbfe9ff, 0.25);
+      fx.flash(x, y - r, r * 1.6, 0xdff4ff, 0.18, 0.8);
+      p.burst(10, { shape: 'mote', x, y: y - r, life: 0.35, size: 9, size2: 2, color: 0xffffff, color2: 0x9fd8ff }, [140, 300]);
+      return;
+    }
+    case 'royalPause': {
+      // The Royal Hourglass: sand pours, a golden sigil, the figure turns to a gold statue (see the views).
+      fx.sigil(x, y, (ev.r ?? 40) * 2.4, GOLD, ev.dur ?? 2.5, 2);
+      fx.pillar(x, y, 60, 0xffe29a, 0.6);
+      p.burst(16, { shape: 'mote', x, y: y - 60, life: 0.9, size: 7, size2: 2, color: 0xfff1b8, color2: GOLD, ay: 220 }, [40, 120]);
+      return;
+    }
     default: {
       // Every effect the simulation can send needs a look here.
       const unhandled: never = ev.fx;
@@ -1046,6 +1070,14 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
         break;
       case 'unchained':
         for (let i = 0; i < fx.rate(25); i++) p.emit({ shape: 'glow', ...around(1.1), vy: rand(-90, -40), drag: 0.6, life: 0.8, size: 16, size2: 3, color: 0xe6fbff, color2: ARCANE, alpha: 0.6, fadeIn: 0.3 });
+        break;
+      case 'burning':
+        // A Rotroot burn: sickly green flames licking up.
+        for (let i = 0; i < fx.rate(16); i++) p.emit({ shape: 'glow', ...around(0.8), vx: rand(-10, 10), vy: rand(-110, -50), drag: 0.5, life: rand(0.35, 0.6), size: rand(14, 22), size2: 3, color: 0xe8ffb0, color2: 0x6fae3a, alpha: 0.8 });
+        break;
+      case 'wounds':
+        // Wounded: dark drops falling.
+        for (let i = 0; i < fx.rate(5); i++) p.emit({ shape: 'mote', glow: false, ...around(0.7), vy: rand(30, 70), life: 0.6, size: 6, size2: 3, color: 0x7a1020 });
         break;
       case 'rot':
         for (let i = 0; i < fx.rate(10); i++) p.emit({ shape: 'ring', ...around(0.8), vy: rand(-50, -20), life: rand(0.5, 0.9), size: 6, size2: 14, color: 0xc9f59a, alpha: 0.8 });

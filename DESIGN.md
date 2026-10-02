@@ -102,26 +102,33 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Uprising:** if Willmore or HunnaG lands the kill, Unchained becomes an Uprising, and every wave also brings a Chud Brute.
   - **HUD and kill feed:** the HUD shows who's Unchained and for how long. The kill feed announces the kill, and names the Warden (or a Shootie) when it kills a champion.
   - **Old Grudge** applies to Willmore and HunnaG by champion id.
-- **Shop** (items in `src/shared/items.ts`): 17 items, 4 inventory slots. Press P, click your gold, or click Old Wick (either button; if you're away from the fountain you walk over to him).
+- **Shop** (items in `src/shared/items.ts`): 39 items in a League-style tree, and 6 inventory slots. Press P, click your gold, or click Old Wick (either button; if you're away from the fountain you walk over to him).
   - You can buy and sell only in your own fountain, or while dead. Selling returns 70% of the price.
-  - **Build paths** (`RECIPES`): the big items are built from the basics.
-    - Owning the parts knocks their price off, and they're used up when you buy it, freeing their slots.
-    - Parts can have parts: two Rusty Shivs make most of a Bloodreaver (one into the Vampiric Fang, one beside it).
-    - Tunnel Treads upgrade into Swiftstriders.
-    - Cards show your price beside the full one, and what each item is made from or goes into.
-    - **Basics** (300–435) stack.
-    - **Boots**: one pair at a time.
-    - **Core items** (1000–3000): one of each.
+  - **The tree** (`RECIPES`). Owning the parts knocks their price off, and they're used up when you buy (freeing their slots). Parts can have parts: a Bloodreaver is a Vampiric Fang (a Shiv) and a Chud Mallet (two Shivs).
+    - **Basics** (250–435, stack): Rusty Shiv (AD), Quickstring (attack speed), Hearty Loaf (health), Chud Leather (armor), Oakbark Cloak (MR), Sagestone (AP), Deep Crystal (mana), Spore Tonic (mana regen).
+    - **Boots** (one pair): Tunnel Treads, upgraded into Swiftstriders (+ attack speed), Ironshod Boots (+ armor; basic attacks hit you 12% softer), Sewer Waders (+ MR; stuns, roots, slows and fears 30% shorter) or Quickthought Clogs (+ haste).
+    - **Epics** (750–1100, built from basics, stack): Vampiric Fang, War Drum (active), Chud Mallet, Rat-Bone Kris, Ironbark Vest (thorns: 8 magic damage back to a champion's basic attack), Mossy Mantle, Hexed Tome, Glowworm Charm, Giant's Ham, Whetstone (Spellblade).
+    - **Legendaries** (2500–3400, built from epics, one of each), most with a unique passive (`PASSIVES`, numbers beside them):
+      - Attack: Pride Longbow (every third attack on a champion adds magic damage), Bloodreaver (lifesteal past full health becomes a shield), Warden's Link (attacks on champions sunder 5% armor, up to 25%), Trident of the Deep (Spellblade at 200% base AD), Rotten Fork (attacks wound: 40% less healing for 3s), Stormstring (every fifth attack chains lightning to four enemies).
+      - Magic: Glowworm Lantern (active), Rotroot Staff (ability damage burns 1% max health a second for 3s), Witchfire Taper (Spellblade with AP), Great Glowcap Hat (+30% AP), Royal Hourglass (active: Royal Pause, 2.5s of stasis, untouchable and stuck).
+      - Defense: Royal Plate (thorns that also wound), Deepstone Aegis (active), Oath of the Old Guard (allies within 700 take 8% less damage), Mossheart (heals and shields on you 25% stronger), Ogre's Hamhock (+800 health; out of combat 6s, regenerate 3% a second).
+    - **Spellblade:** after a cast, the next basic attack within 10s hits harder (every 1.5s); with more than one, the strongest fires.
+    - Item extra damage (thorns, Static, Pride, burns) never sets off another item effect.
+  - **The shop window:** sections for Basics, Boots, Epic and Legendary; filters for Attack, Magic and Defense; each card shows its stats as chips, its passive and active, what it's built from or into, and your price beside the full one.
   - **Undo** takes back the last purchase (every coin and part) or sale, while you're still at the shop.
-  - **Wick suggests:** along the top of the shop, your champion's build (the bots' build for them) is ticked off as you go. It offers the next thing to buy, or the dearest part of it you can afford.
+  - **Wick suggests:** along the top of the shop, your champion's build (the bots' build for them, through the new tree) is ticked off as you go. It offers the next thing to buy, or the dearest part of it you can afford.
   - **Item actives** (`ACTIVES`), on **D** and **F** (the first two in your inventory) or by clicking the slot. The slot shades over as it cools down.
     - **Glowworm Lantern, Light the Way** (60s): throws light up to 1400 away. Your team sees everything within 550 of it, brush and over walls, for 6s. It works as a "ward" only your team knows about (`sim/ward.ts`).
     - **Deepstone Aegis, Deepstone Ward** (75s): a shield of 120 plus 10% of max health for 3s, on you and allies within 600.
     - **War Drum, War Beat** (45s): you and allies within 700 run 30% faster for 3s.
-  - Items add stats, including two that only come from items:
+    - **Royal Hourglass, Royal Pause** (90s): 2.5s of stasis, gold as a statue.
+  - Items add stats, including some that only come from items:
     - **Ability haste:** 100 haste halves cooldowns.
     - **Lifesteal:** heals a share of basic-attack damage, but not against structures.
+    - **Mana regen** (per second).
   - Health and mana from a new item come already filled. Mana items don't raise the Barbarian's Rage cap.
+  - **Economy:** passive gold is 2.5 a second from 1:00 (was 2), so a good match reaches two or three legendaries.
+  - **Bots after the item tree** (192 matches): bots finish boots and two legendaries in a 20-minute match; the Warden's Link, Rotroot Staff and Stormstring are the most built. Win rates 37–63% (Jordini 63%, The Oak 62%; King Rix 37%) after Jordini's range went to 525, King Rix's guards and Dongmaster's Sigma Stare got stronger.
   - Names lean into the lore: Pride Longbow (Logan wants his mane back), Royal Plate (King Rix had it let out twice), Warden's Link, Glowworm Lantern (HunnaG's design).
   - No Flash-style summoner spells in v1. Everyone gets Recall and one shared blink on a long cooldown.
 - **Bounties:** killing a champion pays 300 gold, plus 75 for each kill past two in their streak (up to 750). From three kills without dying they're **WANTED**: a poster over their head shows the gold. Ending the spree is announced as BOUNTY CLAIMED, with the amount.

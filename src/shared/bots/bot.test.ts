@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
+import { seededRandom } from '../balance/simulate';
 import { Barbarian } from '../champions/barbarian';
 import type { Champion } from '../champions/champion';
 import { Marksman } from '../champions/marksman';
@@ -73,6 +74,10 @@ describe('bots in lane', () => {
   });
 
   it('last-hit enemy Chuds', () => {
+    // The sim's own dice (Chud squabbles and the like) seeded, so this plays the same every time.
+    const dice = Math.random;
+    Math.random = seededRandom(7);
+    onTestFinished(() => void (Math.random = dice));
     const { world } = match({ waves: true });
     const [bot] = addBots(world, TEAM.blue, 1);
     let lastHits = 0;
@@ -91,7 +96,7 @@ describe('bots in lane', () => {
     // Two and a half minutes alone in lane: a few waves to farm (with nobody to push back, it spends a lot of
     // that under the enemy Shootie, so it's a handful, not dozens).
     expect(lastHits).toBeGreaterThanOrEqual(2);
-  });
+  }, 30000); // two and a half minutes of match: slow under a busy test run
 
   it('go for the Chud they can finish over one they can merely hit', () => {
     const { world } = match();

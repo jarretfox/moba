@@ -1,6 +1,8 @@
 import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
-import { ACTIVES, AEGIS_WARD, DRUM_BEAT, INVENTORY_SLOTS, LANTERN_LIGHT, hasteMultiplier, partsUsed, priceFor, sellPrice, sumItemStats, whyNot, type ItemId } from '../items';
+import { ACTIVES, AEGIS_WARD, BLOODFILL, DRUM_BEAT, HAMHOCK, HAT_AP, INVENTORY_SLOTS, LANTERN_LIGHT, MOSSHEART, PRIDE, ROT_BURN, ROYAL_PAUSE, SPELLBLADE, STATIC, SUNDER, THORNS, WADERS, WOUNDS, hasteMultiplier, partsUsed, priceFor, sellPrice, sumItemStats, whyNot, type ItemId } from '../items';
+import { enemiesInRadius } from '../sim/query';
+import type { DamageType } from '../protocol';
 import { Ward } from '../sim/ward';
 import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
@@ -55,6 +57,16 @@ export abstract class Champion extends Unit {
   /** This visit's purchases and sales, newest last, for undoing (forgotten once you leave the shop). */
   private undoLog: ({ kind: 'buy'; item: ItemId; paid: number; parts: ItemId[] } | { kind: 'sell'; item: ItemId; got: number; slot: number })[] = [];
   private recallStartedAt: number | null = null;
+  /** Item passives' bookkeeping: a Spellblade charged by the last cast (until when, and when it can next fire), */
+  private spellbladeUntil = -Infinity;
+  private spellbladeReadyAt = 0;
+  /** basic attacks landed (Stormstring), hits in a row on each champion (Pride Longbow), */
+  private attacksLanded = 0;
+  private readonly prideHits = new Map<number, number>();
+  /** Bloodreaver's lifesteal shield, */
+  private bloodShield: { amount: number; until: number } | null = null;
+  /** and who's burning from the Rotroot Staff, until when. */
+  private readonly burning = new Map<Unit, number>();
 
   constructor(
     world: World,
@@ -96,12 +108,16 @@ export abstract class Champion extends Unit {
     const it = this.itemStats;
     s.maxHp += g.maxHp * n + it.maxHp;
     s.hpRegen += g.hpRegen * n + it.hpRegen;
+    // Ogre's Hamhock: a big regen once you've been out of the fight a while.
+    if (this.owns('hamhock') && world.time - this.lastDamagedAt >= HAMHOCK.calmAfter) s.hpRegen += s.maxHp * HAMHOCK.regen;
     // Rage has a fixed cap, so mana items don't raise it.
     if (this.info.resource === 'mana') s.maxMana += g.maxMana * n + it.maxMana;
     s.manaRegen += g.manaRegen * n;
+    if (this.info.resource === 'mana') s.manaRegen += it.manaRegen;
     if (this.has('glowcap') && this.info.resource === 'mana') s.manaRegen += s.maxMana * GLOWCAP.manaRegenPct;
     s.ad += g.ad * n + it.ad;
     s.ap += it.ap;
+    if (this.owns('hat')) s.ap *= 1 + HAT_AP;
     s.armor += g.armor * n + it.armor;
     s.mr += g.mr * n + it.mr;
     s.moveSpeed += it.moveSpeed;
@@ -166,10 +182,119 @@ export abstract class Champion extends Unit {
 
   onBasicHit(world: World, target: Unit, dealt: number): void {
     if (target.kind === 'structure') return;
-    if (this.lifesteal > 0) this.heal(world, dealt * this.lifesteal, true);
+    if (this.lifesteal > 0) this.lifestealHeal(world, dealt * this.lifesteal);
     if (this.has('ember') && target.isTargetable()) {
-      world.damage(this, target, EMBER.damage(this.level), 'true');
+      world.damage(this, target, EMBER.damage(this.level), 'true', { proc: true });
       target.addStatus(world, 'slow', EMBER.slowFor, EMBER.slow);
+    }
+    this.itemsOnHit(world, target);
+  }
+
+  // ─── Item passives ────────────────────────────────────────────────────────
+
+  owns(id: ItemId): boolean {
+    return this.items.includes(id);
+  }
+
+  /** Attack damage from base and levels (what Spellblade multiplies), and the rest (items, buffs). */
+  get baseAd(): number {
+    return this.base.ad + this.growth.ad * (this.level - 1);
+  }
+
+  get bonusAd(): number {
+    return Math.max(0, this.stats.ad - this.baseAd);
+  }
+
+  get bonusArmor(): number {
+    return Math.max(0, this.stats.armor - (this.base.armor + this.growth.armor * (this.level - 1)));
+  }
+
+  protected itemTenacity(): number {
+    return this.owns('waders') ? WADERS : 0;
+  }
+
+  healScale(): number {
+    return super.healScale() * (this.owns('mossheart') ? 1 + MOSSHEART : 1);
+  }
+
+  shieldScale(): number {
+    return this.owns('mossheart') ? 1 + MOSSHEART : 1;
+  }
+
+  /** Lifesteal; past full health, the Bloodreaver banks it as a shield. */
+  private lifestealHeal(world: World, amount: number): void {
+    const room = this.stats.maxHp - this.hp;
+    this.heal(world, amount, true);
+    const spare = amount * this.healScale() - Math.max(0, room);
+    if (!this.owns('reaver') || spare <= 0 || this.dead) return;
+    const cap = BLOODFILL.base + BLOODFILL.perLevel * this.level;
+    if (this.bloodShield && this.bloodShield.amount > 0 && this.bloodShield.until > world.time && this.shields.includes(this.bloodShield)) {
+      this.bloodShield.amount = Math.min(cap, this.bloodShield.amount + spare);
+      this.bloodShield.until = world.time + BLOODFILL.duration;
+    } else {
+      this.bloodShield = this.addShield(world, Math.min(cap, spare), BLOODFILL.duration);
+    }
+  }
+
+  /** What items add to a basic attack that landed. */
+  private itemsOnHit(world: World, target: Unit): void {
+    const champ = target.kind === 'champion';
+    this.attacksLanded++;
+    // Spellblade: the best one you own, charged by your last cast.
+    if (world.time <= this.spellbladeUntil && world.time >= this.spellbladeReadyAt && target.isTargetable()) {
+      this.spellbladeUntil = -Infinity;
+      this.spellbladeReadyAt = world.time + SPELLBLADE.cooldown;
+      if (this.owns('trident')) world.damage(this, target, this.baseAd * SPELLBLADE.trident, 'physical', { proc: true });
+      else if (this.owns('witchfire')) world.damage(this, target, this.baseAd * SPELLBLADE.witchfire.ad + this.stats.ap * SPELLBLADE.witchfire.ap, 'magic', { proc: true });
+      else if (this.owns('whetstone')) world.damage(this, target, this.baseAd * SPELLBLADE.whetstone, 'physical', { proc: true });
+      world.emit({ e: 'fx', fx: 'spellblade', x: Math.round(target.pos.x), y: Math.round(target.pos.y), r: target.radius, team: this.team });
+    }
+    if (champ && this.owns('fork')) target.addStatus(world, 'wounds', WOUNDS.duration, WOUNDS.cut);
+    if (champ && this.owns('link')) target.addStatus(world, 'sundered', SUNDER.duration, Math.min(SUNDER.max, target.strongest('sundered') + SUNDER.perHit));
+    if (champ && this.owns('longbow')) {
+      const n = (this.prideHits.get(target.id) ?? 0) + 1;
+      this.prideHits.clear();
+      this.prideHits.set(target.id, n % PRIDE.every);
+      if (n % PRIDE.every === 0) world.damage(this, target, PRIDE.damage + PRIDE.bonusAdRatio * this.bonusAd, 'magic', { proc: true });
+    }
+    // Stormstring: every fifth landed attack, lightning jumps to the target and on to others near it.
+    if (this.owns('stormstring') && this.attacksLanded % STATIC.every === 0 && target.isTargetable()) {
+      const hit = [target, ...enemiesInRadius(world, this.team, target.pos, STATIC.range).filter((u) => u !== target && u.kind !== 'structure').slice(0, STATIC.chains)];
+      let from = this.pos;
+      for (const u of hit) {
+        world.emit({ e: 'fx', fx: 'static', x: Math.round(from.x), y: Math.round(from.y), x2: Math.round(u.pos.x), y2: Math.round(u.pos.y), team: this.team });
+        world.damage(this, u, STATIC.damage + STATIC.bonusAdRatio * this.bonusAd, 'magic', { proc: true });
+        from = u.pos;
+      }
+    }
+  }
+
+  /** Rotroot Staff: abilities that hurt something set it burning. */
+  onDealt(world: World, target: Unit, _dealt: number, _type: DamageType, basic: boolean, proc: boolean): void {
+    if (basic || proc || !this.owns('staff') || target.dead || (target.kind !== 'champion' && target.kind !== 'monster')) return;
+    const was = this.burning.get(target) ?? -Infinity;
+    this.burning.set(target, world.time + ROT_BURN.duration);
+    target.addStatus(world, 'burning', ROT_BURN.duration);
+    if (was > world.time) return; // already burning: the burn just runs longer
+    const tick = () =>
+      world.schedule(1, () => {
+        const until = this.burning.get(target) ?? -Infinity;
+        if (target.dead || until < world.time - 1e-6) return void this.burning.delete(target);
+        world.damage(this, target, target.stats.maxHp * ROT_BURN.perSecond, 'magic', { proc: true });
+        if (until > world.time + 1e-6) tick();
+        else this.burning.delete(target);
+      });
+    tick();
+  }
+
+  /** Thorns: the Ironbark Vest and the Royal Plate hit back at champions who hit you. */
+  onBasicHitTaken(world: World, source: Unit): void {
+    if (source.kind !== 'champion' || this.dead) return;
+    if (this.owns('plate')) {
+      world.damage(this, source, THORNS.plate + THORNS.plateArmorRatio * this.bonusArmor, 'magic', { proc: true });
+      source.addStatus(world, 'wounds', THORNS.wounds, WOUNDS.cut);
+    } else if (this.owns('vest')) {
+      world.damage(this, source, THORNS.vest, 'magic', { proc: true });
     }
   }
 
@@ -287,6 +412,13 @@ export abstract class Champion extends Unit {
         for (const u of allies(DRUM_BEAT.radius)) u.addStatus(world, 'speed', DRUM_BEAT.duration, DRUM_BEAT.speed);
         world.emit({ e: 'fx', fx: 'drumBeat', x: Math.round(this.pos.x), y: Math.round(this.pos.y), r: DRUM_BEAT.radius, team: this.team });
         break;
+      case 'hourglass':
+        // Time stops: untouchable, and stuck, until it runs out.
+        this.commandStop();
+        this.cancelWindup();
+        this.addStatus(world, 'stasis', ROYAL_PAUSE.duration);
+        world.emit({ e: 'fx', fx: 'royalPause', x: Math.round(this.pos.x), y: Math.round(this.pos.y), r: this.radius, dur: ROYAL_PAUSE.duration, team: this.team });
+        break;
     }
     return true;
   }
@@ -342,6 +474,8 @@ export abstract class Champion extends Unit {
     this.revealedUntil = world.time + REVEAL_TIME;
     if (dist(target, this.pos) > 1) this.facing = angleOf(sub(target, this.pos));
     world.emit({ e: 'cast', src: this.id, slot, x: Math.round(target.x), y: Math.round(target.y) });
+    // A cast charges a Spellblade for the next basic attack.
+    if (this.owns('whetstone') || this.owns('trident') || this.owns('witchfire')) this.spellbladeUntil = world.time + SPELLBLADE.window;
     this.onCastStart(world, slot, target);
 
     if (info.castTime > 0) {

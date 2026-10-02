@@ -1,6 +1,6 @@
 import { PROFILES } from '../shared/bots/profiles';
 import type { ChampionId } from '../shared/champions/types';
-import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, RECIPES, buildsInto, priceFor, sellPrice, statLines, statParts, whyNot, type ItemId, type ItemInfo, type ItemTier } from '../shared/items';
+import { ACTIVES, INVENTORY_SLOTS, ITEMS, ITEM_IDS, PASSIVES, RECIPES, buildsInto, priceFor, sellPrice, statLines, statParts, whyNot, type ItemId, type ItemInfo, type ItemTier } from '../shared/items';
 import type { MeSnap } from '../shared/protocol';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { getSound } from './audio';
@@ -11,8 +11,27 @@ import { WICK_NAME } from './wick';
 const TIERS: [ItemTier, string][] = [
   ['basic', 'Basics'],
   ['boots', 'Boots (one pair)'],
-  ['core', 'Core'],
+  ['epic', 'Epic (built from basics)'],
+  ['core', 'Legendary (one of each)'],
 ];
+
+/** The shop's filters: what kind of stats an item gives. */
+type Filter = 'all' | 'attack' | 'magic' | 'defense';
+const FILTERS: [Filter, string][] = [
+  ['all', 'All'],
+  ['attack', 'Attack'],
+  ['magic', 'Magic'],
+  ['defense', 'Defense'],
+];
+
+function kindOf(id: ItemId): Filter[] {
+  const s = ITEMS[id].stats;
+  const out: Filter[] = [];
+  if (s.ad || s.attackSpeedPct || s.lifesteal) out.push('attack');
+  if (s.ap || s.maxMana || s.manaRegen) out.push('magic');
+  if (s.maxHp || s.armor || s.mr || s.hpRegen) out.push('defense');
+  return out;
+}
 
 const STAT_ROWS: [keyof MeSnap['stats'], string, (v: number) => string][] = [
   ['ad', 'Attack damage', String],
@@ -24,6 +43,13 @@ const STAT_ROWS: [keyof MeSnap['stats'], string, (v: number) => string][] = [
   ['haste', 'Ability haste', String],
   ['ls', 'Lifesteal', (v) => `${v}%`],
 ];
+
+/** A small element with text. */
+function el2(tag: string, text: string): HTMLElement {
+  const e = document.createElement(tag);
+  e.textContent = text;
+  return e;
+}
 
 /** What changed in an inventory: items that turned up (bought) and items that went (sold), with their slots. */
 export function itemChanges(before: readonly ItemId[], after: readonly ItemId[]): { bought: { id: ItemId; slot: number }[]; sold: { id: ItemId; slot: number }[] } {
@@ -178,15 +204,32 @@ export class ShopPanel {
     this.undoButton.addEventListener('click', () => this.onUndo());
 
     const list = this.root.querySelector('.shop-items') as HTMLElement;
+    // Filters: show only items with attack, magic or defensive stats (boots always show).
+    const filters = el('div', 'shop-filters');
+    const sections: { head: HTMLElement; grid: HTMLElement; tier: ItemTier }[] = [];
+    const apply = (f: Filter) => {
+      for (const b of filters.children) b.classList.toggle('on', (b as HTMLElement).dataset.filter === f);
+      for (const [id, card] of this.cards) card.hidden = f !== 'all' && ITEMS[id].tier !== 'boots' && !kindOf(id).includes(f);
+      for (const s of sections) s.head.hidden = s.grid.hidden = ![...s.grid.children].some((c) => !(c as HTMLElement).hidden);
+    };
+    for (const [f, label] of FILTERS) {
+      const b = el('button', 'shop-filter', label);
+      b.dataset.filter = f;
+      b.addEventListener('click', () => apply(f));
+      filters.append(b);
+    }
+    list.append(filters);
     for (const [tier, label] of TIERS) {
       const head = document.createElement('div');
       head.className = 'shop-sub';
       head.textContent = label;
       const grid = document.createElement('div');
-      grid.className = 'shop-grid';
+      grid.className = `shop-grid tier-${tier}`;
       for (const id of ITEM_IDS.filter((i) => ITEMS[i].tier === tier)) grid.appendChild(this.card(id));
       list.append(head, grid);
+      sections.push({ head, grid, tier });
     }
+    apply('all');
 
     const inv = this.root.querySelector('.shop-inv') as HTMLElement;
     for (let i = 0; i < INVENTORY_SLOTS; i++) {
@@ -448,6 +491,21 @@ export class ShopPanel {
     flavor.className = 'card-flavor';
     flavor.textContent = it.flavor;
     el.append(top, stats);
+    // Its unique passive and its active, if it has them.
+    const passive = PASSIVES[id];
+    if (passive) {
+      const p = document.createElement('div');
+      p.className = 'card-passive';
+      p.append(el2('b', `${passive.name}: `), passive.description);
+      el.append(p);
+    }
+    const active = ACTIVES[id];
+    if (active) {
+      const a = document.createElement('div');
+      a.className = 'card-active';
+      a.append(el2('b', `Active (D/F), ${active.name}: `), active.description);
+      el.append(a);
+    }
     // What it's made from, or what it goes into.
     const from = RECIPES[id];
     const into = buildsInto(id);

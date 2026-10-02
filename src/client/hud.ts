@@ -1,6 +1,6 @@
 import { atRank, perRank, type ChampionId, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
-import { ACTIVES, ACTIVE_KEYS, INVENTORY_SLOTS, ITEMS, activeSlots, hasteMultiplier, priceFor, sellPrice, statLines, type ItemId } from '../shared/items';
+import { ACTIVES, ACTIVE_KEYS, INVENTORY_SLOTS, ITEMS, PASSIVES, activeSlots, hasteMultiplier, priceFor, sellPrice, statLines, type ItemId } from '../shared/items';
 import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
 import { DEEP_POCKETS, ROYAL_FAVOR, WICKS_FAVOR } from '../shared/sim/eventBuffs';
@@ -929,6 +929,7 @@ export class Hud {
       ['tt-name', it.name],
       ['tt-meta', `${it.cost} gold · sells for ${sellPrice(id)}`],
       ['tt-desc', statLines(it.stats).join(' · ')],
+      ...(PASSIVES[id] ? [['tt-desc', `${PASSIVES[id]!.name}: ${PASSIVES[id]!.description}`]] : []),
       ...(active ? [['tt-desc', `Use${key >= 0 ? ` [${ACTIVE_KEYS[key]}]` : ''}: ${active.name}. ${active.description} ${active.cooldown}s cooldown.`]] : []),
       ['tt-flavor', it.flavor],
     ]) {

@@ -139,6 +139,126 @@ const PIECES: Record<ItemId, Draw> = {
       inkStroke(l.back, [x * r, top + 0.3 * r, (x + lean * 0.4) * r, top - len * 0.5 * r, (x + lean) * r, top - len * r], 4, { color: 0x4f3a2a, tip: 0.2 });
       inked(l.back, blob((x + lean) * r, top - len * r, 0.05 * r, 0.04 * r, Math.round(x * 100), 0.2, 8), 0x8fd14f, 1.2);
     }
+  },  crystal: (l, r, s) => {
+    // A shard of Deep crystal on a thong round the neck, glowing blue.
+    const y = -s.torso * 0.7 * r;
+    l.torso.circle(-0.02 * r, y, 0.1 * r).fill({ color: 0x7fd0ff, alpha: 0.25 });
+    inked(l.torso, [-0.02 * r, y - 0.09 * r, 0.04 * r, y, -0.02 * r, y + 0.09 * r, -0.08 * r, y], 0x9fe0ff, 1.4);
+  },
+  tonic: (l, r) => {
+    // A little stoppered flask of green tonic at the hip.
+    inked(l.torso, smooth([0.24 * r, -0.04 * r, 0.36 * r, -0.04 * r, 0.38 * r, 0.12 * r, 0.22 * r, 0.12 * r], true, 1), 0x8fd14f, 1.4);
+    l.torso.rect(0.27 * r, -0.1 * r, 0.06 * r, 0.06 * r).fill(0x8a5a2a);
+  },
+  ironshod: (l, r) => {
+    // Iron-capped boots with hobnails.
+    for (const g of [l.footF, l.footB]) {
+      inked(g, [-0.12 * r, 0.02 * r, 0.34 * r, 0.02 * r, 0.32 * r, 0.12 * r, -0.12 * r, 0.12 * r], 0x6a707a, 1.8);
+      g.rect(0.18 * r, 0.0, 0.14 * r, 0.1 * r).fill(STEEL);
+      for (let i = 0; i < 4; i++) g.circle((-0.06 + i * 0.1) * r, 0.12 * r, 0.02 * r).fill(0xdfe5ee);
+    }
+  },
+  waders: (l, r) => {
+    // Rubber waders up to the shin.
+    for (const g of [l.footF, l.footB]) inked(g, [-0.12 * r, -0.24 * r, 0.12 * r, -0.24 * r, 0.14 * r, 0.02 * r, 0.34 * r, 0.04 * r, 0.32 * r, 0.12 * r, -0.12 * r, 0.12 * r], 0x3f6b4a, 1.8);
+  },
+  clogs: (l, r) => {
+    // Wooden clogs, pointy at the toe.
+    for (const g of [l.footF, l.footB]) inked(g, smooth([-0.12 * r, 0.0, 0.3 * r, 0.0, 0.42 * r, -0.06 * r, 0.34 * r, 0.12 * r, -0.12 * r, 0.12 * r], true, 1), 0xc89a5a, 1.6);
+  },
+  mallet: (l, r) => {
+    // A mallet through the belt.
+    inkLine(l.torso, -0.22 * r, -0.3 * r, -0.3 * r, 0.04 * r, 3, { color: 0x6b4a2b, tip: 1 }, 0);
+    inked(l.torso, [-0.36 * r, -0.36 * r, -0.12 * r, -0.4 * r, -0.1 * r, -0.26 * r, -0.34 * r, -0.22 * r], 0x8a8f96, 1.6);
+  },
+  kris: (l, r) => {
+    // A wavy bone dagger tucked in the belt.
+    inkStroke(l.torso, [0.18 * r, -0.28 * r, 0.24 * r, -0.16 * r, 0.2 * r, -0.04 * r, 0.27 * r, 0.1 * r], 3, { color: 0xf2efe6, tip: 0.3 });
+    inkLine(l.torso, 0.14 * r, -0.3 * r, 0.24 * r, -0.32 * r, 2.4, { color: 0x5a3a1a }, 0);
+  },
+  vest: (l, r, s) => {
+    // A vest of ironbark slats over the chest.
+    const t = s.torso;
+    for (let i = 0; i < 4; i++) inked(l.torso, [(-0.08 + i * 0.12) * r, -t * 0.9 * r, (0.02 + i * 0.12) * r, -t * 0.9 * r, (0.0 + i * 0.12) * r, -t * 0.3 * r, (-0.1 + i * 0.12) * r, -t * 0.3 * r], i % 2 ? BARK : shade(BARK, 0.2), 1.4);
+  },
+  mantle: (l, r, s) => {
+    // A mossy mantle over the shoulders.
+    const top = -s.torso * r;
+    inked(l.back, smooth([-0.45 * r, top + 0.05 * r, 0.25 * r, top - 0.02 * r, 0.12 * r, top + 0.3 * r, -0.5 * r, top + 0.35 * r], true, 2), 0x4f7a3a, 2.2);
+    for (const x of [-0.35, -0.15, 0.05]) l.back.circle(x * r, top + 0.08 * r, 0.04 * r).fill(0x8fd14f);
+  },
+  tome: (l, r) => {
+    // A small hexed book on a strap at the hip.
+    inked(l.torso, [-0.4 * r, -0.16 * r, -0.2 * r, -0.16 * r, -0.2 * r, 0.06 * r, -0.4 * r, 0.06 * r], 0x3f7a4a, 1.6);
+    l.torso.circle(-0.3 * r, -0.05 * r, 0.035 * r).fill(0xc8f07a);
+  },
+  charm: (l, r, s) => {
+    // A jar of glowworms on a string round the neck.
+    const y = -s.torso * 0.65 * r;
+    l.torso.circle(0.15 * r, y, 0.12 * r).fill({ color: 0xc8f07a, alpha: 0.25 });
+    inked(l.torso, smooth([0.09 * r, y - 0.07 * r, 0.21 * r, y - 0.07 * r, 0.22 * r, y + 0.08 * r, 0.08 * r, y + 0.08 * r], true, 1), 0x9fe08a, 1.4);
+  },
+  ham: (l, r, s) => {
+    // A ham slung on the back.
+    const y = -s.torso * 0.5 * r;
+    inked(l.back, blob(-0.45 * r, y, 0.16 * r, 0.22 * r, 21, 0.1, 14), 0xc8645a, 2);
+    l.back.rect(-0.48 * r, y + 0.18 * r, 0.06 * r, 0.12 * r).fill(0xf2efe6);
+  },
+  whetstone: (l, r) => {
+    // A whetstone hanging at the belt.
+    inked(l.torso, [0.2 * r, -0.08 * r, 0.36 * r, -0.12 * r, 0.38 * r, -0.02 * r, 0.22 * r, 0.02 * r], 0x8a9aa8, 1.4);
+  },
+  trident: (l, r, s) => {
+    // A trident strapped across the back.
+    const top = -s.torso * 1.2 * r;
+    inkLine(l.back, -0.5 * r, s.torso * 0.1 * r, -0.2 * r, top, 3.5, { color: 0x3a6a7a }, 0);
+    for (const dx of [-0.08, 0, 0.08]) inkLine(l.back, (-0.2 + dx) * r, top + 0.05 * r, (-0.2 + dx * 1.4) * r, top - 0.14 * r, 2.4, { color: 0x9fe0ff }, 0);
+  },
+  fork: (l, r) => {
+    // A big rusty fork in the belt.
+    inkLine(l.torso, -0.25 * r, 0.04 * r, -0.2 * r, -0.36 * r, 2.6, { color: 0x8a6a4a }, 0);
+    for (const dx of [-0.05, 0, 0.05]) inkLine(l.torso, (-0.2 + dx) * r, -0.36 * r, (-0.2 + dx) * r, -0.48 * r, 1.6, { color: 0x8a6a4a }, 0);
+  },
+  stormstring: (l, r) => {
+    // Crackling bowstring coiled at the hip, sparking.
+    l.torso.ellipse(-0.3 * r, -0.1 * r, 0.11 * r, 0.07 * r).stroke({ width: 2.5, color: 0x9fd8ff });
+    inkLine(l.torso, -0.36 * r, -0.2 * r, -0.28 * r, -0.12 * r, 1.4, { color: 0xffffff }, 0.2);
+  },
+  witchfire: (l, r) => {
+    // A lit taper at the belt, its flame burning green.
+    inked(l.torso, [0.27 * r, -0.12 * r, 0.33 * r, -0.12 * r, 0.33 * r, 0.1 * r, 0.27 * r, 0.1 * r], 0xf2efe6, 1.2);
+    l.torso.circle(0.3 * r, -0.18 * r, 0.07 * r).fill({ color: 0x9fe08a, alpha: 0.4 });
+    l.torso.poly([0.27 * r, -0.12 * r, 0.3 * r, -0.25 * r, 0.33 * r, -0.12 * r]).fill(0xc8f07a);
+  },
+  hat: (l, r, s) => {
+    // A towering glowcap mushroom worn on the back like a banner (it won't fit on the head).
+    const top = -s.torso * 1.25 * r;
+    inkLine(l.back, -0.35 * r, -s.torso * 0.3 * r, -0.35 * r, top, 3, { color: 0xe8dcc0 }, 0);
+    inked(l.back, blob(-0.35 * r, top, 0.22 * r, 0.12 * r, 31, 0.1, 14), 0x6fd6ff, 2);
+    for (const dx of [-0.1, 0.05]) l.back.circle((-0.35 + dx) * r, top - 0.02 * r, 0.03 * r).fill(0xffffff);
+  },
+  hourglass: (l, r) => {
+    // A gilded hourglass at the hip.
+    inked(l.torso, [0.22 * r, -0.16 * r, 0.38 * r, -0.16 * r, 0.3 * r, -0.04 * r, 0.38 * r, 0.08 * r, 0.22 * r, 0.08 * r, 0.3 * r, -0.04 * r], 0xf2e2b0, 1.4);
+    l.torso.rect(0.21 * r, -0.19 * r, 0.18 * r, 0.03 * r).fill(GOLD).rect(0.21 * r, 0.08 * r, 0.18 * r, 0.03 * r).fill(GOLD);
+  },
+  oath: (l, r, s) => {
+    // The Old Guard's sash with a crest, over the chest.
+    const t = s.torso;
+    inkStroke(l.torso, [-0.15 * r, -t * 0.95 * r, 0.12 * r, -t * 0.55 * r, 0.38 * r, -t * 0.15 * r], 6, { color: 0x3a5a9a, tip: 0.1 });
+    inked(l.torso, blob(0.12 * r, -t * 0.55 * r, 0.07 * r, 0.08 * r, 4, 0.1, 10), GOLD, 1.4);
+  },
+  mossheart: (l, r, s) => {
+    // A green heart of moss pinned on the chest, beating faint.
+    const y = -s.torso * 0.62 * r;
+    l.torso.circle(0.12 * r, y, 0.12 * r).fill({ color: 0x8fd14f, alpha: 0.25 });
+    inked(l.torso, smooth([0.12 * r, y + 0.08 * r, 0.02 * r, y - 0.02 * r, 0.06 * r, y - 0.08 * r, 0.12 * r, y - 0.04 * r, 0.18 * r, y - 0.08 * r, 0.22 * r, y - 0.02 * r], true, 1), 0x6fae3a, 1.4);
+  },
+  hamhock: (l, r, s) => {
+    // A whole hamhock on the back, bone sticking out.
+    const y = -s.torso * 0.55 * r;
+    inked(l.back, blob(-0.46 * r, y, 0.2 * r, 0.26 * r, 23, 0.12, 14), 0xb8564a, 2.2);
+    inkLine(l.back, -0.46 * r, y + 0.22 * r, -0.5 * r, y + 0.4 * r, 4, { color: 0xf2efe6 }, 0);
   },
 };
 

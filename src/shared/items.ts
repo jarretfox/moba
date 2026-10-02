@@ -1,6 +1,6 @@
 // ─── Tuning: the shop ─────────────────────────────────────────────────────────
 
-export const INVENTORY_SLOTS = 4;
+export const INVENTORY_SLOTS = 6;
 /** Share of an item's price you get back for selling it. */
 export const SELL_BACK = 0.7;
 
@@ -11,6 +11,8 @@ export interface ItemStats {
   maxHp?: number;
   maxMana?: number;
   hpRegen?: number;
+  /** Mana back per second. */
+  manaRegen?: number;
   armor?: number;
   mr?: number;
   /** 0.12 = +12% attack speed. */
@@ -21,7 +23,12 @@ export interface ItemStats {
   lifesteal?: number;
 }
 
-export type ItemTier = 'basic' | 'boots' | 'core';
+/**
+ * Like League: basics are the cheap parts; epics are built from basics; legendaries (`core`) are the
+ * finished items, built from epics and basics, most with a unique passive, one of each at most. Boots:
+ * one pair, upgraded.
+ */
+export type ItemTier = 'basic' | 'boots' | 'epic' | 'core';
 
 export interface ItemInfo {
   id: ItemId;
@@ -34,23 +41,49 @@ export interface ItemInfo {
 }
 
 export type ItemId =
+  // Basics
   | 'shiv'
   | 'quickstring'
   | 'loaf'
   | 'leather'
   | 'bark'
   | 'sagestone'
+  | 'crystal'
+  | 'tonic'
+  // Boots
   | 'treads'
   | 'striders'
+  | 'ironshod'
+  | 'waders'
+  | 'clogs'
+  // Epics
   | 'fang'
   | 'drum'
+  | 'mallet'
+  | 'kris'
+  | 'vest'
+  | 'mantle'
+  | 'tome'
+  | 'charm'
+  | 'ham'
+  | 'whetstone'
+  // Legendaries
   | 'longbow'
   | 'reaver'
   | 'link'
+  | 'trident'
+  | 'fork'
+  | 'stormstring'
+  | 'lantern'
+  | 'staff'
+  | 'witchfire'
+  | 'hat'
+  | 'hourglass'
   | 'plate'
   | 'aegis'
-  | 'lantern'
-  | 'staff';
+  | 'oath'
+  | 'mossheart'
+  | 'hamhock';
 
 const item = (id: ItemId, name: string, cost: number, tier: ItemTier, stats: ItemStats, flavor: string): ItemInfo => ({ id, name, icon: ICONS[id], cost, tier, stats, flavor });
 
@@ -61,37 +94,85 @@ const ICONS: Record<ItemId, string> = {
   leather: '🧥',
   bark: '🌳',
   sagestone: '🔮',
+  crystal: '💎',
+  tonic: '🍶',
   treads: '🥾',
   striders: '👟',
+  ironshod: '👢',
+  waders: '🧦',
+  clogs: '🥿',
   fang: '🦷',
   drum: '🥁',
+  mallet: '🔨',
+  kris: '🦴',
+  vest: '🦺',
+  mantle: '🧣',
+  tome: '📗',
+  charm: '🧿',
+  ham: '🍖',
+  whetstone: '🧱',
   longbow: '🏹',
   reaver: '⚔️',
   link: '⛓️',
-  plate: '🛡️',
-  aegis: '💠',
+  trident: '🔱',
+  fork: '🍴',
+  stormstring: '⚡',
   lantern: '🏮',
   staff: '🌿',
+  witchfire: '🕯️',
+  hat: '👒',
+  hourglass: '⌛',
+  plate: '🛡️',
+  aegis: '💠',
+  oath: '⚜️',
+  mossheart: '💚',
+  hamhock: '🥩',
 };
 
 export const ITEMS: Record<ItemId, ItemInfo> = {
+  // ── Basics
   shiv: item('shiv', 'Rusty Shiv', 350, 'basic', { ad: 10 }, "Every Chud's first weapon. Most never find a second."),
   quickstring: item('quickstring', 'Quickstring', 300, 'basic', { attackSpeedPct: 0.12 }, 'Tighter string, faster shots.'),
   loaf: item('loaf', 'Hearty Loaf', 400, 'basic', { maxHp: 150 }, 'Baked in the royal kitchens. Nobody knows who keeps leaving them here.'),
   leather: item('leather', 'Chud Leather', 300, 'basic', { armor: 15 }, 'Tough, smelly, and surprisingly effective.'),
   bark: item('bark', 'Oakbark Cloak', 400, 'basic', { mr: 20 }, 'Stripped from an Oakner. It still shrugs off spells.'),
   sagestone: item('sagestone', 'Sagestone', 435, 'basic', { ap: 20 }, 'A pebble that hums when magic is near.'),
+  crystal: item('crystal', 'Deep Crystal', 350, 'basic', { maxMana: 250 }, 'Mined in the Deep, where the light still remembers the sun.'),
+  tonic: item('tonic', 'Spore Tonic', 250, 'basic', { manaRegen: 3 }, "HunnaG brews it. She won't say from what."),
+  // ── Boots
   treads: item('treads', 'Tunnel Treads', 300, 'boots', { moveSpeed: 25 }, 'Willmore swears by them. HunnaG swears at them.'),
   striders: item('striders', 'Swiftstriders', 1100, 'boots', { moveSpeed: 45, attackSpeedPct: 0.2 }, 'For people who shoot while running. Or run while shooting.'),
-  fang: item('fang', 'Vampiric Fang', 1000, 'core', { ad: 15, lifesteal: 0.1 }, 'Your attacks heal you for a share of the damage.'),
-  drum: item('drum', 'War Drum', 1100, 'core', { maxHp: 250, haste: 15 }, 'Beat it before a fight. Beat it after, if you won.'),
-  longbow: item('longbow', 'Pride Longbow', 2600, 'core', { ad: 30, attackSpeedPct: 0.35, moveSpeed: 10 }, "Strung with a lion's mane. Logan would like it back."),
+  ironshod: item('ironshod', 'Ironshod Boots', 1100, 'boots', { moveSpeed: 45, armor: 20 }, 'Hobnailed for the Royal Guard. They clank, but they hold.'),
+  waders: item('waders', 'Sewer Waders', 1100, 'boots', { moveSpeed: 45, mr: 25 }, 'Waterproof to the hip. Nothing gets in: not the Deep, not a stun.'),
+  clogs: item('clogs', 'Quickthought Clogs', 950, 'boots', { moveSpeed: 45, haste: 20 }, 'Carved for Master Paris. He thinks faster in them; so does everyone.'),
+  // ── Epics
+  fang: item('fang', 'Vampiric Fang', 1000, 'epic', { ad: 15, lifesteal: 0.1 }, 'Your attacks heal you for a share of the damage.'),
+  drum: item('drum', 'War Drum', 1100, 'epic', { maxHp: 250, haste: 15 }, 'Beat it before a fight. Beat it after, if you won.'),
+  mallet: item('mallet', 'Chud Mallet', 875, 'epic', { ad: 25 }, 'For tenderising. Anything.'),
+  kris: item('kris', 'Rat-Bone Kris', 1000, 'epic', { ad: 15, attackSpeedPct: 0.2 }, 'Whittled from a Rat King. Still quick.'),
+  vest: item('vest', 'Ironbark Vest', 900, 'epic', { armor: 35 }, 'Splinters for anyone who hits it.'),
+  mantle: item('mantle', 'Mossy Mantle', 950, 'epic', { mr: 25, maxHp: 200 }, 'Spells sink into the moss and never come out.'),
+  tome: item('tome', 'Hexed Tome', 900, 'epic', { ap: 40 }, 'Half the pages bite.'),
+  charm: item('charm', 'Glowworm Charm', 900, 'epic', { ap: 25, maxMana: 250, haste: 10 }, 'A jar of glowworms on a string. They like you.'),
+  ham: item('ham', "Giant's Ham", 900, 'epic', { maxHp: 350 }, 'Off something enormous. Best not to ask.'),
+  whetstone: item('whetstone', 'Whetstone', 750, 'epic', { maxMana: 150, haste: 5 }, 'Cast a spell, then strike while the edge still sings.'),
+  // ── Legendaries
+  longbow: item('longbow', 'Pride Longbow', 2700, 'core', { ad: 25, attackSpeedPct: 0.35, moveSpeed: 10 }, "Strung with a lion's mane. Logan would like it back."),
   reaver: item('reaver', 'Bloodreaver', 3000, 'core', { ad: 55, lifesteal: 0.15 }, 'Heavy, hungry, and never quite clean.'),
   link: item('link', "Warden's Link", 2800, 'core', { ad: 40, maxHp: 300, haste: 20 }, "One link of the Warden's chain. It rattles when the Warden stirs."),
-  plate: item('plate', 'Royal Plate', 2400, 'core', { armor: 60, maxHp: 300 }, 'Forged for King Rix. He had it let out twice.'),
-  aegis: item('aegis', 'Deepstone Aegis', 2400, 'core', { mr: 55, maxHp: 300, hpRegen: 2 }, 'Cut from the Deep, where spells go quiet.'),
+  trident: item('trident', 'Trident of the Deep', 3200, 'core', { ad: 30, attackSpeedPct: 0.3, maxHp: 250, haste: 20 }, 'Three prongs: one for each thing it does.'),
+  fork: item('fork', 'Rotten Fork', 2600, 'core', { ad: 30, attackSpeedPct: 0.25 }, 'It was a nice fork once. Wounds from it never quite heal.'),
+  stormstring: item('stormstring', 'Stormstring', 2800, 'core', { ad: 15, attackSpeedPct: 0.4, moveSpeed: 10 }, 'Strung in a thunderstorm. It remembers.'),
   lantern: item('lantern', 'Glowworm Lantern', 2700, 'core', { ap: 75, maxMana: 300, haste: 20 }, "HunnaG's own design. Please return it lit."),
   staff: item('staff', 'Rotroot Staff', 2700, 'core', { ap: 90, maxHp: 200 }, 'Grown in the Deep from a single cursed seed. Still growing.'),
+  witchfire: item('witchfire', 'Witchfire Taper', 3000, 'core', { ap: 80, haste: 10, moveSpeed: 15 }, 'A candle that burns the other way: into whatever you hit next.'),
+  hat: item('hat', 'Great Glowcap Hat', 3400, 'core', { ap: 120 }, 'Mostly mushroom. Entirely magic.'),
+  hourglass: item('hourglass', 'Royal Hourglass', 2900, 'core', { ap: 70, armor: 40 }, "King Rix's. Time stops for royalty."),
+  plate: item('plate', 'Royal Plate', 2700, 'core', { armor: 70, maxHp: 300 }, 'Forged for King Rix. He had it let out twice.'),
+  aegis: item('aegis', 'Deepstone Aegis', 2600, 'core', { mr: 55, maxHp: 300, hpRegen: 2 }, 'Cut from the Deep, where spells go quiet.'),
+  oath: item('oath', 'Oath of the Old Guard', 2500, 'core', { armor: 30, mr: 30, maxHp: 250 }, 'Sworn to the old King. Kept for whoever stands beside you.'),
+  mossheart: item('mossheart', 'Mossheart', 2700, 'core', { mr: 50, maxHp: 400, haste: 10, hpRegen: 2 }, 'A heart of moss, beating slow. It mends whatever you put into it.'),
+  hamhock: item('hamhock', "Ogre's Hamhock", 3000, 'core', { maxHp: 800 }, 'Eat it slowly. You heal while you chew.'),
 };
 
 export const ITEM_IDS = Object.keys(ITEMS) as ItemId[];
@@ -101,19 +182,97 @@ export const isItemId = (v: unknown): v is ItemId => typeof v === 'string' && Ob
 /**
  * What the bigger items are built from. Owning the parts makes the item cheaper by what they cost, and
  * they're used up when you buy it (freeing their slots); the rest of the price pays for the recipe. Parts
- * can have parts of their own: a Bloodreaver can be built up from two Rusty Shivs.
+ * can have parts of their own: a Bloodreaver can be built up from basics.
  */
 export const RECIPES: Partial<Record<ItemId, readonly ItemId[]>> = {
+  // Boots
   striders: ['treads', 'quickstring'],
+  ironshod: ['treads', 'leather'],
+  waders: ['treads', 'bark'],
+  clogs: ['treads', 'tonic'],
+  // Epics
   fang: ['shiv'],
   drum: ['loaf'],
-  longbow: ['quickstring', 'shiv'],
-  reaver: ['fang', 'shiv'],
-  link: ['drum', 'shiv'],
-  plate: ['leather', 'loaf'],
-  aegis: ['bark', 'loaf'],
-  lantern: ['sagestone', 'sagestone'],
-  staff: ['sagestone', 'loaf'],
+  mallet: ['shiv', 'shiv'],
+  kris: ['shiv', 'quickstring'],
+  vest: ['leather', 'leather'],
+  mantle: ['bark', 'loaf'],
+  tome: ['sagestone', 'sagestone'],
+  charm: ['sagestone', 'crystal'],
+  ham: ['loaf', 'loaf'],
+  whetstone: ['crystal'],
+  // Legendaries
+  longbow: ['kris', 'shiv'],
+  reaver: ['fang', 'mallet'],
+  link: ['drum', 'mallet'],
+  trident: ['whetstone', 'kris'],
+  fork: ['mallet', 'quickstring'],
+  stormstring: ['kris', 'quickstring'],
+  lantern: ['charm', 'sagestone'],
+  staff: ['tome', 'loaf'],
+  witchfire: ['whetstone', 'tome'],
+  hat: ['tome', 'tome'],
+  hourglass: ['tome', 'vest'],
+  plate: ['vest', 'loaf'],
+  aegis: ['mantle', 'bark'],
+  oath: ['vest', 'mantle'],
+  mossheart: ['mantle', 'drum'],
+  hamhock: ['ham', 'ham'],
+};
+
+// ─── Tuning: item passives ────────────────────────────────────────────────────
+// What each one does lives in Champion (shared/champions/champion.ts) and World.damage; the numbers live here.
+
+/** Spellblade (Whetstone, Trident, Witchfire): after a cast, the next basic attack within 10s hits harder. */
+export const SPELLBLADE = { window: 10, cooldown: 1.5, whetstone: 1.0, trident: 2.0, witchfire: { ad: 0.75, ap: 0.5 } };
+/** Ironbark Vest and Royal Plate hit back at champions who hit you with basic attacks; the Plate also wounds. */
+export const THORNS = { vest: 8, plate: 10, plateArmorRatio: 0.15, wounds: 3 };
+/** Wounds (Rotten Fork, Royal Plate): healing (and regen) on the wounded is cut. */
+export const WOUNDS = { cut: 0.4, duration: 3 };
+/** Warden's Link: each attack on a champion strips armor, stacking up to the cap. */
+export const SUNDER = { perHit: 0.05, max: 0.25, duration: 6 };
+/** Pride Longbow: every third attack on the same champion. */
+export const PRIDE = { every: 3, damage: 60, bonusAdRatio: 0.25 };
+/** Stormstring: every fifth attack chains lightning to the target and others near it. */
+export const STATIC = { every: 5, damage: 70, bonusAdRatio: 0.4, chains: 3, range: 500 };
+/** Rotroot Staff: ability damage burns a share of max health each second. */
+export const ROT_BURN = { perSecond: 0.01, duration: 3 };
+/** Great Glowcap Hat: ability power multiplied. */
+export const HAT_AP = 0.3;
+/** Oath of the Old Guard: allied champions near its holder take less damage (it doesn't stack). */
+export const OATH = { radius: 700, reduction: 0.08 };
+/** Mossheart: heals and shields on you are stronger. */
+export const MOSSHEART = 0.25;
+/** Ogre's Hamhock: out of combat a while, you regenerate a share of max health each second. */
+export const HAMHOCK = { calmAfter: 6, regen: 0.03 };
+/** Ironshod Boots: basic attacks hit you softer. */
+export const IRONSHOD = 0.12;
+/** Sewer Waders: stuns, roots, slows and fears are shorter. */
+export const WADERS = 0.3;
+/** Bloodreaver: lifesteal past full health becomes a shield, up to this (grows with level). */
+export const BLOODFILL = { base: 50, perLevel: 15, duration: 25 };
+
+const pctOf = (n: number) => `${Math.round(n * 100)}%`;
+
+/** Each item's unique passive, for the shop and tooltips. */
+export const PASSIVES: Partial<Record<ItemId, { name: string; description: string }>> = {
+  ironshod: { name: 'Hobnails', description: `Basic attacks deal ${pctOf(IRONSHOD)} less damage to you.` },
+  waders: { name: 'Watertight', description: `Stuns, roots, slows and fears on you are ${pctOf(WADERS)} shorter.` },
+  vest: { name: 'Splinters', description: `Champions who hit you with a basic attack take ${THORNS.vest} magic damage.` },
+  whetstone: { name: 'Spellblade', description: `After you cast an ability, your next basic attack within ${SPELLBLADE.window}s deals +${pctOf(SPELLBLADE.whetstone)} of your base attack damage (every ${SPELLBLADE.cooldown}s).` },
+  longbow: { name: 'Pride', description: `Every ${PRIDE.every}rd basic attack on the same champion deals ${PRIDE.damage} (+${pctOf(PRIDE.bonusAdRatio)} bonus AD) magic damage.` },
+  reaver: { name: 'Bloodfill', description: `Lifesteal past full health becomes a shield, up to ${BLOODFILL.base} + ${BLOODFILL.perLevel} per level.` },
+  link: { name: 'Sunder', description: `Basic attacks on a champion strip ${pctOf(SUNDER.perHit)} of their armor for ${SUNDER.duration}s, stacking to ${pctOf(SUNDER.max)}.` },
+  trident: { name: 'Spellblade', description: `After you cast an ability, your next basic attack within ${SPELLBLADE.window}s deals +${pctOf(SPELLBLADE.trident)} of your base attack damage (every ${SPELLBLADE.cooldown}s).` },
+  fork: { name: 'Rot', description: `Basic attacks on champions wound them for ${WOUNDS.duration}s: ${pctOf(WOUNDS.cut)} less healing.` },
+  stormstring: { name: 'Static', description: `Every ${STATIC.every}th basic attack chains lightning to the target and up to ${STATIC.chains} enemies near it: ${STATIC.damage} (+${pctOf(STATIC.bonusAdRatio)} bonus AD) magic damage each.` },
+  staff: { name: 'Rotroot', description: `Ability damage burns for ${pctOf(ROT_BURN.perSecond)} of the target's max health each second for ${ROT_BURN.duration}s (magic).` },
+  witchfire: { name: 'Spellblade', description: `After you cast an ability, your next basic attack within ${SPELLBLADE.window}s deals +${pctOf(SPELLBLADE.witchfire.ad)} of your base attack damage +${pctOf(SPELLBLADE.witchfire.ap)} AP as magic damage (every ${SPELLBLADE.cooldown}s).` },
+  hat: { name: 'Overgrown', description: `Your ability power is ${pctOf(HAT_AP)} higher.` },
+  plate: { name: 'Thorns', description: `Champions who hit you with a basic attack take ${THORNS.plate} (+${pctOf(THORNS.plateArmorRatio)} bonus armor) magic damage and are wounded for ${THORNS.wounds}s (${pctOf(WOUNDS.cut)} less healing).` },
+  oath: { name: 'Old Guard', description: `Allied champions within ${OATH.radius} of you take ${pctOf(OATH.reduction)} less damage.` },
+  mossheart: { name: 'Mending', description: `Heals and shields on you are ${pctOf(MOSSHEART)} stronger.` },
+  hamhock: { name: 'Second Helping', description: `After ${HAMHOCK.calmAfter}s without taking damage, regenerate ${pctOf(HAMHOCK.regen)} of your max health each second.` },
 };
 
 /** An item you can use, on a cooldown: D and F use the first two in your inventory. */
@@ -134,6 +293,8 @@ export const LANTERN_LIGHT = { radius: 550, range: 1400, duration: 6 };
 export const AEGIS_WARD = { shield: 120, maxHpShare: 0.1, duration: 3, radius: 600 };
 /** The War Drum's beat: this much faster, for this long, for allies this close. */
 export const DRUM_BEAT = { speed: 0.3, duration: 3, radius: 700 };
+/** The Royal Hourglass: time stops for you. Nothing can touch you, and you can't do a thing. */
+export const ROYAL_PAUSE = { duration: 2.5 };
 
 export const ACTIVES: Partial<Record<ItemId, ItemActive>> = {
   lantern: {
@@ -147,6 +308,12 @@ export const ACTIVES: Partial<Record<ItemId, ItemActive>> = {
     name: 'Deepstone Ward',
     description: `You and allies close by get a shield of ${AEGIS_WARD.shield} + ${AEGIS_WARD.maxHpShare * 100}% of max health for ${AEGIS_WARD.duration}s.`,
     cooldown: 75,
+    targeting: 'self',
+  },
+  hourglass: {
+    name: 'Royal Pause',
+    description: `Time stops for you for ${ROYAL_PAUSE.duration}s: nothing can hurt or target you, and you can't move or act.`,
+    cooldown: 90,
     targeting: 'self',
   },
   drum: {
@@ -210,7 +377,7 @@ export function whyNot(items: readonly ItemId[], gold: number, inShop: boolean, 
   return null;
 }
 
-/** Whether owning `a` rules out buying `b`: only one pair of boots, and one of each core item. */
+/** Whether owning `a` rules out buying `b`: only one pair of boots, and one of each legendary. */
 export function conflicts(a: ItemId, b: ItemId): boolean {
   const A = ITEMS[a];
   const B = ITEMS[b];
@@ -222,7 +389,7 @@ export const sellPrice = (id: ItemId): number => Math.round(ITEMS[id].cost * SEL
 
 /** The summed stats of a set of items. */
 export function sumItemStats(items: readonly ItemId[]): Required<ItemStats> {
-  const total: Required<ItemStats> = { ad: 0, ap: 0, maxHp: 0, maxMana: 0, hpRegen: 0, armor: 0, mr: 0, attackSpeedPct: 0, moveSpeed: 0, haste: 0, lifesteal: 0 };
+  const total: Required<ItemStats> = { ad: 0, ap: 0, maxHp: 0, maxMana: 0, hpRegen: 0, manaRegen: 0, armor: 0, mr: 0, attackSpeedPct: 0, moveSpeed: 0, haste: 0, lifesteal: 0 };
   for (const id of items) {
     for (const [k, v] of Object.entries(ITEMS[id].stats) as [keyof ItemStats, number][]) total[k] += v;
   }
@@ -235,6 +402,7 @@ const STAT_LABELS: Record<keyof ItemStats, [string, (v: number) => string]> = {
   maxHp: ['health', String],
   maxMana: ['mana', String],
   hpRegen: ['health regen', (v) => `${v}/s`],
+  manaRegen: ['mana regen', (v) => `${v}/s`],
   armor: ['armor', String],
   mr: ['magic resist', String],
   attackSpeedPct: ['attack speed', (v) => `${Math.round(v * 100)}%`],
@@ -250,6 +418,7 @@ const STAT_SHORT: Record<keyof ItemStats, string> = {
   maxHp: 'Health',
   maxMana: 'Mana',
   hpRegen: 'Regen',
+  manaRegen: 'Mana/s',
   armor: 'Armor',
   mr: 'MR',
   attackSpeedPct: 'Atk Spd',

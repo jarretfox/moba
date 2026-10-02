@@ -95,7 +95,7 @@ function pokeFarm(ctx: BotContext, chuds: Unit[], slot: Slot, range: number, bel
 
 const marksman: BotProfile = {
   skillOrder: [0, 2, 1],
-  build: ['shiv', 'treads', 'fang', 'striders', 'longbow', 'reaver', 'link'],
+  build: ['shiv', 'treads', 'kris', 'stormstring', 'striders', 'longbow', 'reaver', 'fork'],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -118,7 +118,7 @@ const marksman: BotProfile = {
 
 const barbarian: BotProfile = {
   skillOrder: [0, 2, 1],
-  build: ['shiv', 'treads', 'leather', 'drum', 'link', 'plate', 'reaver'],
+  build: ['shiv', 'treads', 'mallet', 'link', 'ironshod', 'trident', 'plate', 'hamhock'],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -145,7 +145,7 @@ const barbarian: BotProfile = {
 
 const willmore: BotProfile = {
   skillOrder: [0, 2, 1],
-  build: ['shiv', 'treads', 'fang', 'drum', 'link', 'reaver', 'plate'],
+  build: ['shiv', 'treads', 'fang', 'link', 'ironshod', 'reaver', 'plate', 'oath'],
   fight(ctx, foe) {
     const { me, home } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -170,7 +170,7 @@ const willmore: BotProfile = {
 
 const hunnag: BotProfile = {
   skillOrder: [0, 1, 2],
-  build: ['sagestone', 'treads', 'lantern', 'staff', 'aegis', 'drum'],
+  build: ['sagestone', 'treads', 'tome', 'staff', 'clogs', 'lantern', 'hat', 'hourglass'],
   fight(ctx, foe) {
     const { me, world } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -198,7 +198,7 @@ const hunnag: BotProfile = {
 
 const logan: BotProfile = {
   skillOrder: [0, 2, 1],
-  build: ['shiv', 'treads', 'leather', 'drum', 'plate', 'link', 'aegis'],
+  build: ['leather', 'treads', 'vest', 'plate', 'ironshod', 'oath', 'mossheart', 'hamhock'],
   fight(ctx, foe) {
     const { me, world } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -221,7 +221,7 @@ const logan: BotProfile = {
 
 const kingrix: BotProfile = {
   skillOrder: [0, 2, 1],
-  build: ['sagestone', 'treads', 'lantern', 'staff', 'aegis', 'drum'],
+  build: ['sagestone', 'treads', 'charm', 'lantern', 'clogs', 'staff', 'oath', 'hourglass'],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -252,7 +252,7 @@ const kingrix: BotProfile = {
 
 const dongmaster: BotProfile = {
   skillOrder: [0, 2, 1],
-  build: ['leather', 'treads', 'drum', 'plate', 'link', 'aegis'],
+  build: ['loaf', 'treads', 'ham', 'link', 'waders', 'mossheart', 'plate', 'hamhock'],
   fight(ctx, foe) {
     const { me, world } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -276,7 +276,7 @@ const dongmaster: BotProfile = {
 
 const dabber: BotProfile = {
   skillOrder: [2, 0, 1],
-  build: ['shiv', 'treads', 'fang', 'striders', 'longbow', 'reaver', 'link'],
+  build: ['quickstring', 'treads', 'kris', 'stormstring', 'striders', 'fork', 'longbow', 'reaver'],
   fight(ctx, foe) {
     const { me, world } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -300,7 +300,7 @@ const dabber: BotProfile = {
 
 const paris: BotProfile = {
   skillOrder: [0, 2, 1],
-  build: ['shiv', 'treads', 'fang', 'reaver', 'striders', 'link'],
+  build: ['shiv', 'treads', 'mallet', 'fork', 'striders', 'trident', 'reaver', 'link'],
   fight(ctx, foe) {
     const { me, world } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -317,7 +317,7 @@ const paris: BotProfile = {
 
 const havarti: BotProfile = {
   skillOrder: [2, 0, 1],
-  build: ['sagestone', 'treads', 'shiv', 'staff', 'fang', 'link'],
+  build: ['sagestone', 'treads', 'whetstone', 'witchfire', 'striders', 'staff', 'hat', 'mossheart'],
   fight(ctx, foe) {
     const { me, world } = ctx;
     const d = dist(me.pos, foe.pos);
@@ -343,7 +343,7 @@ const havarti: BotProfile = {
 
 const daltonomo: BotProfile = {
   skillOrder: [2, 1, 0],
-  build: ['shiv', 'treads', 'fang', 'reaver', 'striders', 'link'],
+  build: ['shiv', 'treads', 'mallet', 'trident', 'ironshod', 'reaver', 'fork', 'link'],
   fight(ctx, foe) {
     const { me } = ctx;
     const d = dist(me.pos, foe.pos);

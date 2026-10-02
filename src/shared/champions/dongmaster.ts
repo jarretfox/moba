@@ -32,7 +32,7 @@ export const MEWING = {
 };
 export const SIGMA_STARE = {
   cooldown: [12, 11.5, 11, 10.5], castTime: 0.25, range: 450, angle: 70,
-  damage: [40, 65, 90, 115], adRatio: 0.4, fear: [0.75, 0.9, 1.05, 1.2],
+  damage: [55, 85, 115, 145], adRatio: 0.4, fear: [0.75, 0.9, 1.05, 1.2],
 };
 export const ASCENSION = {
   cooldown: [100, 85, 70], duration: [8, 9, 10], size: 1.3, bonusHp: [200, 350, 500], attackSpeed: 0.25,

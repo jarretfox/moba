@@ -14,7 +14,7 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 const BASE_STATS: Stats = {
   maxHp: 620, hpRegen: 3.5, maxMana: 340, manaRegen: 7,
   ad: 59, ap: 0, armor: 26, mr: 30,
-  attackSpeed: 0.68, attackRange: 550, moveSpeed: 330,
+  attackSpeed: 0.68, attackRange: 525, moveSpeed: 330,
 };
 const GROWTH: StatGrowth = { maxHp: 90, hpRegen: 0.55, maxMana: 38, manaRegen: 0.5, ad: 3.2, armor: 3.8, mr: 1, attackSpeedPct: 0.03 };
 const RADIUS = 35;

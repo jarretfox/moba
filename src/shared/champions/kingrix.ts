@@ -33,7 +33,7 @@ export const LEVY = {
 const CALL_THE_GUARD = {
   cost: [70, 75, 80, 85], cooldown: [18, 17, 16, 15], castTime: 0.25,
   count: 2, lifetime: 8, leash: 260,
-  health: (level: number) => 340 + 45 * level, damage: [30, 42, 54, 66], apRatio: 0.15, bounty: 15,
+  health: (level: number) => 340 + 45 * level, damage: [35, 48, 61, 74], apRatio: 0.15, bounty: 15,
 };
 export const KNEEL = {
   cost: [60, 60, 60, 60], cooldown: [14, 13, 12, 11], castTime: 0.25,

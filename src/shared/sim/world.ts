@@ -1,8 +1,9 @@
 import { DT, type PlayerTeam, type Team } from '../constants';
+import { IRONSHOD, OATH, type ItemId } from '../items';
 import type { MapData } from '../map/mapData';
 import { NavGrid } from '../map/navGrid';
 import { Pathfinder } from '../map/pathfind';
-import type { Vec2 } from '../math';
+import { dist, type Vec2 } from '../math';
 import type { DamageType, EntitySnap, GameEvent } from '../protocol';
 import { resolveUnitCollisions } from './collision';
 import { rewardDeath } from './rewards';
@@ -10,6 +11,20 @@ import { recordDamage } from './score';
 import { Vision } from './vision';
 import type { Entity } from './entity';
 import { Unit } from './unit';
+
+/**
+ * What items on (or near) a champion take off incoming damage: Ironshod Boots soften basic attacks, and an
+ * allied Oath of the Old Guard nearby softens everything (one Oath, however many are around).
+ */
+function itemDamageTaken(world: World, target: Unit, basic: boolean): number {
+  if (target.kind !== 'champion') return 1;
+  let scale = 1;
+  const owns = (u: Unit, id: ItemId) => (u as Unit & { items?: readonly ItemId[] }).items?.includes(id) ?? false;
+  if (basic && owns(target, 'ironshod')) scale *= 1 - IRONSHOD;
+  const guarded = world.units().some((u) => u.kind === 'champion' && u.team === target.team && !u.dead && owns(u, 'oath') && dist(u.pos, target.pos) <= OATH.radius);
+  if (guarded) scale *= 1 - OATH.reduction;
+  return scale;
+}
 
 /** Armor and MR cut damage by resist / (100 + resist); negative resist amplifies it instead. */
 export function mitigate(amount: number, resist: number): number {
@@ -115,15 +130,19 @@ export class World {
     return this.pathfinder.find(from, to);
   }
 
-  /** Apply mitigated damage. Returns the amount actually dealt. */
-  damage(source: Unit | null, target: Unit, amount: number, type: DamageType, opts: { basic?: boolean } = {}): number {
+  /**
+   * Apply mitigated damage. Returns the amount actually dealt. `basic`: a basic attack (on-hit effects
+   * follow); `proc`: an item's extra damage, which never sets off another item effect.
+   */
+  damage(source: Unit | null, target: Unit, amount: number, type: DamageType, opts: { basic?: boolean; proc?: boolean } = {}): number {
     if (!target.isTargetable() || amount <= 0) return 0;
     if (target.has('blessed')) return 0; // Havarti's Divine Fondue: nothing gets through
     if (source) amount *= 1 - source.strongest('weaken');
     amount *= 1 + target.strongest('decreed'); // Royal Decree
     amount *= target.incomingDamageScale(this);
-    // Holy Wheel curdles armor and magic resist alike.
-    const resist = (type === 'physical' ? target.stats.armor : type === 'magic' ? target.stats.mr : 0) * (1 - target.strongest('curdled'));
+    amount *= itemDamageTaken(this, target, !!opts.basic);
+    // Holy Wheel curdles armor and magic resist alike; the Warden's Link sunders armor.
+    const resist = (type === 'physical' ? target.stats.armor * (1 - target.strongest('sundered')) : type === 'magic' ? target.stats.mr : 0) * (1 - target.strongest('curdled'));
     const dealt = target.absorb(type === 'true' ? amount : mitigate(amount, resist));
     target.hp -= dealt;
     target.lastDamagedAt = this.time;
@@ -134,6 +153,8 @@ export class World {
       if (target.kind === 'champion' && source.team !== target.team) this.helpCalls.push({ attacker: source, victim: target, time: this.time });
     }
     target.onDamaged(this, source, dealt);
+    if (source && dealt > 0) source.onDealt(this, target, dealt, type, !!opts.basic, !!opts.proc);
+    if (source && opts.basic && !opts.proc && !target.dead) target.onBasicHitTaken(this, source);
     if (target.hp <= 0) {
       const helpers = [...target.championHits]
         .filter(([, t]) => this.time - t <= TAKEDOWN_WINDOW)

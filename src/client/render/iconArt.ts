@@ -664,6 +664,165 @@ const ART: Record<string, Draw> = {
     leaf(g, 8, -16, -4, -15);
     leaf(g, 2, -6, -15, -4);
     leaf(g, 4, -10, 15, 6, GREEN_DARK);
+  },  // ── Items, round two: basics
+  '💎': (g) => {
+    // Deep Crystal: a faceted blue shard.
+    g.poly([0, -28, 18, -8, 10, 26, -10, 26, -18, -8]).fill(BLUE).stroke(ink());
+    g.poly([0, -28, 6, -8, 0, 26, -6, -8]).fill(0x9fd8ff);
+    g.moveTo(-18, -8).lineTo(18, -8).stroke(ink(2));
+    g.moveTo(-8, -18).lineTo(-12, -8).stroke(shine);
+  },
+  '🍶': (g) => {
+    // Spore Tonic: a stoppered flask of green, spores rising.
+    g.moveTo(-8, -16).lineTo(-8, -6).bezierCurveTo(-24, 0, -24, 26, 0, 26).bezierCurveTo(24, 26, 24, 0, 8, -6).lineTo(8, -16).closePath().fill(0xe8e2d0).stroke(ink());
+    g.moveTo(-18, 8).bezierCurveTo(-18, 24, 18, 24, 18, 8).closePath().fill(GREEN);
+    g.roundRect(-10, -26, 20, 10, 3).fill(WOOD).stroke(ink(2.5));
+    for (const [x, y] of [[-6, 12], [5, 16], [0, 6]]) g.circle(x, y, 2.5).fill(0xd8f5b0);
+  },
+  // ── Boots
+  '👢': (g) => {
+    // Ironshod Boots: a boot with an iron cap and hobnails.
+    g.poly([-10, -26, 8, -26, 8, 6, 24, 10, 24, 22, -14, 22]).fill(0x6a707a).stroke(ink());
+    g.poly([8, 6, 24, 10, 24, 22, 8, 22]).fill(STEEL).stroke(ink(2.5));
+    for (const x of [-8, 0, 8, 16]) g.circle(x, 25, 2.5).fill(STEEL_DARK);
+    g.moveTo(-10, -18).lineTo(8, -18).stroke({ width: 3, color: STEEL_DARK });
+  },
+  '🧦': (g) => {
+    // Sewer Waders: tall green rubber waders.
+    g.poly([-12, -28, 8, -28, 8, 8, 22, 12, 22, 24, -12, 24]).fill(0x3f8a5a).stroke(ink());
+    g.moveTo(-12, -20).lineTo(8, -20).stroke({ width: 3, color: 0x2a5a3a });
+    g.moveTo(-6, -14).lineTo(-6, 10).stroke(shine);
+    for (const [x, y] of [[14, 4], [18, -2]]) g.circle(x, y, 3).fill(0x9fd8ff).stroke(ink(1.5));
+  },
+  '🥿': (g) => {
+    // Quickthought Clogs: a wooden clog with a curled toe, and a thought bubble.
+    g.moveTo(-22, 6).lineTo(14, 6).bezierCurveTo(26, 6, 28, 18, 18, 22).lineTo(-22, 22).closePath().fill(0xc89a5a).stroke(ink());
+    g.moveTo(-18, 10).lineTo(-18, 18).stroke({ width: 2, color: WOOD_DARK });
+    g.circle(8, -14, 9).fill(WHITE).stroke(ink(2.5));
+    g.circle(-2, -2, 3).fill(WHITE).stroke(ink(2));
+    g.moveTo(5, -16).lineTo(8, -10).lineTo(11, -16).stroke({ width: 2.5, color: GOLD_DARK, cap: 'round' });
+  },
+  // ── Epics
+  '🔨': (g) => {
+    // Chud Mallet: a stone-headed mallet.
+    rod(g, (g) => g.moveTo(-20, 26).lineTo(8, -8), 5, WOOD);
+    g.poly(rot([-16, -10, 16, -10, 16, 10, -16, 10], -0.78, 10, -12)).fill(0x8a8f96).stroke(ink());
+    g.moveTo(...(rot([-12, -6], -0.78, 10, -12) as [number, number])).lineTo(...(rot([12, -6], -0.78, 10, -12) as [number, number])).stroke(shine);
+  },
+  '🦴': (g) => {
+    // Rat-Bone Kris: a wavy bone blade with a wrapped grip.
+    g.moveTo(0, -28).bezierCurveTo(10, -18, -6, -10, 6, 0).lineTo(-6, 0).bezierCurveTo(-14, -10, 4, -18, 0, -28).closePath().fill(0xf2efe6).stroke(ink());
+    g.roundRect(-12, 0, 24, 6, 2).fill(0x8a6a4a).stroke(ink(2.5));
+    g.roundRect(-4, 6, 8, 18, 3).fill(0x5a3a1a).stroke(ink(2.5));
+    for (const y of [10, 15, 20]) g.moveTo(-4, y).lineTo(4, y + 2).stroke({ width: 1.5, color: PAPER });
+  },
+  '🦺': (g) => {
+    // Ironbark Vest: a vest of bark slats with thorns.
+    g.poly([-10, -24, 0, -16, 10, -24, 22, -16, 20, 24, -20, 24, -22, -16]).fill(0x6b4a2b).stroke(ink());
+    for (const x of [-12, -4, 4, 12]) g.moveTo(x, -14).lineTo(x, 22).stroke({ width: 2, color: WOOD_DARK });
+    for (const [x, y] of [[-22, -6], [22, -6], [-21, 10], [21, 10]]) g.poly([x, y - 4, x + Math.sign(x) * 7, y, x, y + 4]).fill(PAPER).stroke(ink(1.5));
+  },
+  '🧣': (g) => {
+    // Mossy Mantle: a green mantle, moss tufts on it.
+    g.moveTo(-24, -14).quadraticCurveTo(0, -26, 24, -14).lineTo(18, 24).quadraticCurveTo(0, 14, -18, 24).closePath().fill(0x4f8a3a).stroke(ink());
+    for (const [x, y] of [[-10, -6], [6, -2], [-2, 10], [12, 12]]) g.circle(x, y, 4).fill(GREEN).stroke(ink(1.5));
+    g.moveTo(-14, -14).quadraticCurveTo(0, -20, 14, -14).stroke(shine);
+  },
+  '📗': (g) => {
+    // Hexed Tome: a green book with a biting mouth on the cover.
+    g.roundRect(-20, -24, 40, 48, 4).fill(0x3f7a4a).stroke(ink());
+    g.rect(-20, -24, 7, 48).fill(0x2a5a3a);
+    g.moveTo(-4, -2).lineTo(14, -2).stroke(ink(2.5));
+    for (let x = -2; x < 14; x += 5) g.poly([x, -2, x + 2.5, 4, x + 5, -2]).fill(WHITE).stroke(ink(1.2));
+    g.circle(0, -12, 3).fill(GOLD);
+    g.circle(10, -12, 3).fill(GOLD);
+  },
+  '🧿': (g) => {
+    // Glowworm Charm: a glass jar of glowworms on a string.
+    g.moveTo(0, -28).lineTo(0, -18).stroke(ink(2.5));
+    g.roundRect(-16, -18, 32, 42, 8).fill({ color: 0xc8f07a, alpha: 0.45 }).stroke(ink());
+    g.roundRect(-12, -22, 24, 6, 2).fill(WOOD).stroke(ink(2));
+    for (const [x, y] of [[-6, -4], [6, 4], [-2, 12], [7, -10]]) g.circle(x, y, 3.5).fill(0xf5ffb0).stroke({ width: 1, color: GREEN_DARK });
+    g.moveTo(-10, -10).lineTo(-10, 14).stroke(shine);
+  },
+  '🍖': (g) => {
+    // Giant's Ham: a big ham on the bone.
+    g.circle(-4, 2, 20).fill(0xc8645a).stroke(ink());
+    g.circle(-4, 2, 12).fill(0xe8a090);
+    rod(g, (g) => g.moveTo(12, -14).lineTo(24, -26), 5, PAPER);
+    g.circle(25, -27, 4).fill(PAPER).stroke(ink(2));
+  },
+  '🧱': (g) => {
+    // Whetstone: a grey stone with a glinting blade edge drawn across it.
+    g.roundRect(-24, -10, 48, 22, 6).fill(0x8a9aa8).stroke(ink());
+    g.moveTo(-18, -4).lineTo(16, -4).stroke({ width: 2, color: 0xb8c8d6 });
+    rod(g, (g) => g.moveTo(-20, -20).lineTo(22, -14), 3, STEEL);
+    g.moveTo(16, -24).lineTo(22, -14).moveTo(24, -22).lineTo(18, -18).stroke({ width: 2, color: WHITE });
+  },
+  // ── Legendaries
+  '🔱': (g) => {
+    // Trident of the Deep.
+    rod(g, (g) => g.moveTo(0, 28).lineTo(0, -10), 5, 0x3a6a7a);
+    for (const x of [-14, 0, 14]) rod(g, (g) => g.moveTo(x, -6).lineTo(x, -24), 4, 0x9fe0ff);
+    g.moveTo(-14, -8).quadraticCurveTo(0, 4, 14, -8).stroke(ink(4));
+    g.moveTo(-14, -8).quadraticCurveTo(0, 4, 14, -8).stroke({ width: 3, color: 0x9fe0ff });
+    for (const x of [-14, 0, 14]) g.poly([x - 4, -22, x, -30, x + 4, -22]).fill(0x9fe0ff).stroke(ink(2));
+  },
+  '🍴': (g) => {
+    // Rotten Fork: a bent, rusty fork dripping green.
+    rod(g, (g) => g.moveTo(-14, 28).lineTo(4, -6), 5, 0x9a6a3a);
+    for (const dx of [-8, 0, 8]) rod(g, (g) => g.moveTo(4 + dx * 0.6, -6).lineTo(8 + dx, -26), 3, 0x9a6a3a);
+    for (const [x, y] of [[10, -6], [14, 2]]) g.circle(x, y, 3).fill(GREEN).stroke(ink(1.5));
+  },
+  '⚡': (g) => {
+    // Stormstring: a bolt of lightning wrapped in a bowstring.
+    g.poly([6, -28, -12, 2, 0, 2, -6, 28, 14, -6, 2, -6]).fill(0xfff1a8).stroke(ink());
+    g.moveTo(-20, -18).quadraticCurveTo(0, 0, 20, 20).stroke({ width: 2, color: 0x9fd8ff });
+  },
+  '🕯️': (g) => {
+    // Witchfire Taper: a candle with a green flame, wax running.
+    g.roundRect(-8, -6, 16, 32, 3).fill(0xf2efe6).stroke(ink());
+    g.moveTo(-4, -6).lineTo(-4, 4).stroke({ width: 3, color: 0xe0d8c0 });
+    g.moveTo(0, -8).bezierCurveTo(-12, -16, -2, -26, 0, -30).bezierCurveTo(4, -24, 12, -16, 0, -8).closePath().fill(0x9fe08a).stroke(ink(2.5));
+    g.moveTo(0, -12).bezierCurveTo(-4, -16, -1, -21, 0, -23).bezierCurveTo(2, -20, 4, -16, 0, -12).closePath().fill(0xf5ffb0);
+  },
+  '👒': (g) => {
+    // Great Glowcap Hat: an enormous glowing mushroom cap worn as a hat.
+    g.ellipse(0, 4, 28, 10).fill(0xe8dcc0).stroke(ink());
+    g.moveTo(-26, 2).bezierCurveTo(-26, -30, 26, -30, 26, 2).closePath().fill(0x6fd6ff).stroke(ink());
+    for (const [x, y, r] of [[-12, -8, 4], [6, -14, 5], [14, -2, 3], [-2, -2, 3]]) g.circle(x, y, r).fill(WHITE).stroke(ink(1.5));
+    g.moveTo(-18, -10).quadraticCurveTo(-10, -22, 4, -22).stroke(shine);
+  },
+  '⌛': (g) => {
+    // Royal Hourglass: gold frame, sand running.
+    g.rect(-18, -26, 36, 6).fill(GOLD).stroke(ink(2.5));
+    g.rect(-18, 20, 36, 6).fill(GOLD).stroke(ink(2.5));
+    g.moveTo(-14, -20).lineTo(14, -20).lineTo(3, 0).lineTo(14, 20).lineTo(-14, 20).lineTo(-3, 0).closePath().fill({ color: 0xdff4ff, alpha: 0.8 }).stroke(ink());
+    g.poly([-8, -14, 8, -14, 0, -2]).fill(0xe8c46a);
+    g.poly([-10, 18, 10, 18, 0, 8]).fill(0xe8c46a);
+    g.moveTo(0, -2).lineTo(0, 8).stroke({ width: 1.5, color: 0xc8962e });
+  },
+  '⚜️': (g) => {
+    // Oath of the Old Guard: a fleur-de-lis crest on a blue shield.
+    shield(g, GOLD, 0x3a5a9a);
+    g.moveTo(0, -16).bezierCurveTo(-8, -8, -8, 2, 0, 8).bezierCurveTo(8, 2, 8, -8, 0, -16).closePath().fill(GOLD).stroke(ink(2));
+    g.moveTo(-2, 4).bezierCurveTo(-14, -6, -16, 6, -6, 10).stroke({ width: 3, color: GOLD });
+    g.moveTo(2, 4).bezierCurveTo(14, -6, 16, 6, 6, 10).stroke({ width: 3, color: GOLD });
+    g.rect(-8, 10, 16, 4).fill(GOLD).stroke(ink(1.5));
+  },
+  '💚': (g) => {
+    // Mossheart: a heart of moss, leaves sprouting.
+    g.moveTo(0, 24).bezierCurveTo(-30, 2, -22, -26, 0, -12).bezierCurveTo(22, -26, 30, 2, 0, 24).closePath().fill(0x6fae3a).stroke(ink());
+    for (const [x, y] of [[-10, -6], [8, 0], [-2, 10]]) g.circle(x, y, 3.5).fill(GREEN).stroke(ink(1.2));
+    leaf(g, 0, -12, 8, -14);
+    g.moveTo(-14, -10).quadraticCurveTo(-18, 0, -10, 8).stroke({ ...shine, alpha: 0.35 });
+  },
+  '🥩': (g) => {
+    // Ogre's Hamhock: a whole hock, bone out, steam rising.
+    g.moveTo(-20, 18).bezierCurveTo(-30, -6, -6, -24, 10, -12).bezierCurveTo(24, -2, 18, 22, -4, 24).closePath().fill(0xb8564a).stroke(ink());
+    g.moveTo(-14, 12).bezierCurveTo(-18, -2, -4, -14, 6, -8).stroke({ width: 4, color: 0xe8a090 });
+    rod(g, (g) => g.moveTo(-18, 20).lineTo(-26, 28), 5, PAPER);
+    for (const x of [4, 12]) g.moveTo(x, -18).quadraticCurveTo(x - 4, -24, x, -30).stroke({ width: 2, color: WHITE, alpha: 0.6 });
   },
 };
 

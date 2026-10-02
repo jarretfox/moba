@@ -20,7 +20,7 @@ export function canRankUp(slot: Slot, rank: number, level: number): boolean {
 
 export const STARTING_GOLD = 500;
 /** Passive income once the first minute is up. */
-export const PASSIVE_GOLD = { perSecond: 2, from: 60 };
+export const PASSIVE_GOLD = { perSecond: 2.5, from: 60 };
 
 /** For the champion who lands the killing blow on a Chud (gold), and for nearby enemy champions (experience). */
 export const CHUD_REWARD: Record<ChudType, { gold: number; xp: number }> = {

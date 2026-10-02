@@ -572,6 +572,8 @@ export class UnitView implements EntityView {
     this.cast.position.set(this.paceX - light.dx * s.r * stretch * 0.8, -light.dy * s.r * stretch * 0.5);
     this.cast.alpha = 0.6 + 0.4 * Math.min(1, k + night);
     if (this.flash <= 0) rig.root.tint = mix(0xffffff, light.color, Math.min(0.35, k * 0.3));
+    // The Royal Hourglass: turned to a gold statue for a moment.
+    if (s.st?.includes('stasis')) rig.root.tint = 0xffd166;
     if (this.backlight) {
       const h = rig.height;
       this.backlight.visible = !s.dead && k > 0.05;
@@ -915,6 +917,11 @@ export class UnitView implements EntityView {
         g.circle(x * r, y * r + 4, rr * r).fill(0x7a5a38);
       }
     }
+    // Item marks: Sundered (cracked armor: a broken grey ring), Wounds (a dark red ring), the Royal
+    // Hourglass's stasis (a gold disc; the figure turns gold too).
+    if (st.includes('sundered')) for (let i = 0; i < 6; i++) g.moveTo(Math.cos(i * 1.05) * (r + 11), Math.sin(i * 1.05) * (r + 11) * 0.5).lineTo(Math.cos(i * 1.05 + 0.6) * (r + 11), Math.sin(i * 1.05 + 0.6) * (r + 11) * 0.5).stroke({ width: 3, color: 0xb8c0ca, alpha: 0.9 });
+    if (st.includes('wounds')) g.circle(0, 0, r + 4).stroke({ width: 3, color: 0x9a1020, alpha: 0.85 });
+    if (st.includes('stasis')) g.ellipse(0, 0, r * 1.4, r * 0.6).fill({ color: 0xffd166, alpha: 0.35 }).stroke({ width: 3, color: 0xffe29a });
     if (st.includes('rot')) {
       g.circle(0, 0, r + 7).stroke({ width: 3, color: 0x8fd14f, alpha: 0.8 });
       for (let i = 0; i < 5; i++) g.circle(Math.cos(i * 1.3) * (r + 7), Math.sin(i * 1.3) * (r + 7), 3).fill(0xb8f07a);
