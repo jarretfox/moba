@@ -174,6 +174,9 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Recalling builds to its last second: a tightening ring of runes, a climbing column of light, motes, light on the ground, and a flare.
   - Tall grass is chest-high.
 - **Settings:** camera pan speed (40–250%) for playing unlocked, full screen, and the announcer voice.
+- **The Warden hangs off the screen** (`render/wardenDangle.ts`). While he's awake, a little Warden dangles on his chain from an iron clamp on the top edge of the screen. He swings, kicks his boots, taunts you in a speech bubble, and laughs if you click him. Twenty seconds before he wakes he peeks in from above; when he's slain, the chain snaps and he drops out of sight.
+- **Hold Tab for the jungle legend** (`ui/jungleLegend.ts`, portraits in `render/bestiary.ts`), beside the scoreboard: every camp, the Sewer Crab and the Warden. Each has what it pays, its buff, how it comes back, and live status (spawning, each side's camp back in m:ss once your team saw it cleared, the crab arriving, the Warden waking).
+- **Jungle paths:** a cell is walkable if it has 30 units of open ground around its center (it used to close every cell next to a closed one, which shut gaps that looked open). Rocks are drawn past their blocked shape, so no grass shows where you can't walk.
 - **Balance** (bot simulations with `npm run sim`, which now plays the same match as the host through `freshMatch` in `shared/sim/match.ts`, its dice seeded):
   - Two things skewed the old numbers: only The Oak's and HunnaG's bots used abilities on Chud waves, and HunnaG and King Rix were in nearly every bot lineup. Now every bot clears waves with its kit, and lineups are spread so each champion turns up about as often.
   - Tuning, over five rounds of 160–224 matches:

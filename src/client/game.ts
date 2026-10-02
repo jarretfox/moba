@@ -33,6 +33,7 @@ import { Lighting, nightAt, skyAt, type Light } from './render/lighting';
 import { FountainView, crystalSpot } from './render/fountain';
 import { Announcer, type Weight } from './announcer';
 import { JungleLegend } from './ui/jungleLegend';
+import { WardenDangle } from './render/wardenDangle';
 import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
@@ -117,6 +118,8 @@ export class GameClient {
   /** Things the announcer has already said this match. */
   private readonly announced = new Set<string>();
   private wardenWasUp = false;
+  /** The little Warden hanging off the top of the screen while he's awake. */
+  private readonly dangle = new WardenDangle();
   /** Hold Tab: what lives in the jungle, and when the camps are back. */
   private readonly legend: JungleLegend;
   /** When the rain clears up (match seconds), if it does. */
@@ -366,7 +369,7 @@ export class GameClient {
       const resolution = high ? Math.min(window.devicePixelRatio || 1, 2) : 1;
       if (this.app.renderer.resolution !== resolution) this.app.renderer.resize(this.app.screen.width, this.app.screen.height, resolution);
     }));
-    app.stage.addChild(this.view, this.ripple.sprite);
+    app.stage.addChild(this.view, this.ripple.sprite, this.dangle.container);
     this.deathFilter.desaturate();
     this.bindInput();
     app.ticker.add(this.tick, this);
@@ -641,6 +644,7 @@ export class GameClient {
     if (this.myTeam !== TEAM.neutral) this.hud.setKills(this.teamKills[this.myTeam], this.teamKills[this.myTeam === 1 ? 2 : 1]);
     this.hud.setWarden(latest?.warden, this.myTeam);
     this.announceMatch(latest);
+    this.dangle.update(dt, this.app.screen.width, !this.replay && !latest?.winner && !!latest?.warden?.alive, latest?.warden?.wakesIn);
     this.events.update(dt, this.replay ? undefined : latest?.event);
     // The event readout goes under the Warden's lines, however many of them there are.
     const eventHud = this.hudRoot.querySelector<HTMLElement>('.event-hud');
@@ -1720,6 +1724,7 @@ export class GameClient {
     for (const off of this.offs) off();
     this.app.ticker.remove(this.tick, this);
     this.app.stage.removeChild(this.view, this.ripple.sprite);
+    this.dangle.destroy();
     this.view.destroy({ children: true });
     this.hud.destroy();
     this.sound.setWeather(null, 1);
