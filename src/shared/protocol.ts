@@ -59,6 +59,10 @@ export type ClientMessage =
   | { t: 'cmd'; cmd: Command }
   /** Say something: to your team, or to everyone (`all`). */
   | { t: 'chat'; text: string; all: boolean }
+  /** The host starts the draft (draft lobbies). */
+  | { t: 'draft' }
+  /** Your ban, on your turn in a draft. */
+  | { t: 'ban'; champion: ChampionId }
   /** Keep-alive, handled by the network layer; never reaches the game. */
   | { t: 'ping' };
 
@@ -84,11 +88,28 @@ export interface MatchSettings {
   teamSize: number;
   /** ARAM: everyone gets a random champion (with rerolls), or picks as usual. */
   aramPick: 'random' | 'pick';
+  /** Friend lobbies: a draft (a ban each, then picks in turn) instead of everyone picking at once. */
+  draft: boolean;
+}
+
+/** Seconds each player gets for their ban or pick in a draft. */
+export const DRAFT_TURN = 25;
+
+/** A draft under way: bans in turn, then picks in turn (a snake: blue, red, red, blue, blue...). */
+export interface DraftState {
+  phase: 'ban' | 'pick' | 'done';
+  /** Player ids, in turn order for this phase. */
+  order: string[];
+  /** Whose turn it is (an index into `order`). */
+  turn: number;
+  /** Seconds left on the turn. */
+  left: number;
+  bans: ChampionId[];
 }
 
 export const START_GOLD_OPTIONS = [500, 1500, 3000] as const;
 export const TEAM_SIZE_OPTIONS = [3, 4, 5] as const;
-export const DEFAULT_SETTINGS: MatchSettings = { weather: 'random', night: false, gold: START_GOLD_OPTIONS[0], fast: false, map: 'rift', teamSize: 3, aramPick: 'random' };
+export const DEFAULT_SETTINGS: MatchSettings = { weather: 'random', night: false, gold: START_GOLD_OPTIONS[0], fast: false, map: 'rift', teamSize: 3, aramPick: 'random', draft: false };
 /** ARAM All Random: rerolls each player gets. */
 export const ARAM_REROLLS = 2;
 /** Players a side, under these settings. */
@@ -116,6 +137,8 @@ export interface LobbyState {
   players: LobbyPlayer[];
   phase: 'lobby' | 'playing';
   settings: MatchSettings;
+  /** The draft, once the host has started it. */
+  draft?: DraftState;
 }
 
 export type HostMessage =

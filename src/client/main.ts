@@ -145,6 +145,8 @@ async function boot(): Promise<void> {
       onStart: (mode) => conn.send({ t: 'start', mode }),
       onSettings: (settings) => conn.send({ t: 'settings', settings }),
       onReroll: () => conn.send({ t: 'reroll' }),
+      onDraft: () => conn.send({ t: 'draft' }),
+      onBan: (champion) => conn.send({ t: 'ban', champion }),
     });
   let game = newGame();
   let lobby = newLobby();

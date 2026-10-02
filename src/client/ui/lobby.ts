@@ -2,7 +2,7 @@ import { CHAMPION_INFO } from '../../shared/champions/registry';
 import { ROLES, ROLE_INFO, ROLE_ORDER } from '../../shared/champions/roles';
 import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
-import { START_GOLD_OPTIONS, TEAM_SIZE_OPTIONS, teamSizeOf, type LobbyState, type MatchMode, type MatchSettings } from '../../shared/protocol';
+import { START_GOLD_OPTIONS, TEAM_SIZE_OPTIONS, teamSizeOf, type LobbyState, type MatchMode, type MatchSettings, type DraftState } from '../../shared/protocol';
 import { WEATHER_CHANCES } from '../../shared/weather';
 import { titleName } from '../../shared/titles';
 import { SKINS, portraitOf, swatchColor } from '../render/champions';
@@ -28,6 +28,10 @@ export interface LobbyOptions {
   onSettings?(settings: Partial<MatchSettings>): void;
   /** All Random: roll again. */
   onReroll?(): void;
+  /** Draft lobbies: the host starts the draft. */
+  onDraft?(): void;
+  /** Draft lobbies: your ban, on your turn. */
+  onBan?(champion: ChampionId): void;
 }
 
 const WEATHER_NAMES: Record<string, string> = { random: 'Random', clear: 'Clear', rain: 'Rain', storm: 'Storm', mist: 'Mist', snow: 'Snow', autumn: 'Autumn wind' };
@@ -46,6 +50,11 @@ export class LobbyScreen {
   private picked: ChampionId | null = null;
   /** ARAM, All Random: champions are rolled for everyone, not picked. */
   private allRandom = false;
+  /** Draft lobbies: the draft, and whether it's your turn in it. */
+  private draft: DraftState | undefined;
+  private myTurn = false;
+  /** Draft lobbies: whose turn it is, the clock, and the bans so far. */
+  private readonly draftBar = el('div', 'draft-bar');
   /** The big panel showing whichever champion you're looking at. */
   private readonly showcase = el('div', 'showcase');
   private shown: ChampionId | null = null;
@@ -70,6 +79,7 @@ export class LobbyScreen {
     }
     if (!opts.solo) this.screen.append(this.teams);
     this.screen.append(el('div', 'select-title', 'Choose your champion'));
+    if (!opts.solo) this.screen.append(this.draftBar);
     // Solo, the match starts as soon as you pick, so the settings come first.
     // (The footer, solo, only has something in it in All Random: your roll, and Start.)
     if (opts.solo) this.screen.append(this.settingsBar, this.footer);
@@ -95,12 +105,20 @@ export class LobbyScreen {
       this.stage.cheer();
     }
     this.picked = me?.champion ?? null;
+    const drafting = !this.opts.solo && !!lobby.settings?.draft && !this.allRandom;
+    this.draft = drafting ? lobby.draft : undefined;
+    const d = this.draft;
+    this.myTurn = !!d && d.phase !== 'done' && d.order[d.turn] === you;
+    this.drawDraft(lobby, you, drafting);
     for (const [id, card] of this.cards) {
       card.classList.toggle('picked', me?.champion === id);
-      // One of each champion per team: a teammate's pick is off the table.
-      const taken = lobby.players.some((p) => p.id !== you && p.team === me?.team && p.champion === id);
+      // One of each champion per team: a teammate's pick is off the table. In a draft, anyone's pick is,
+      // and so is anything banned.
+      const banned = !!d?.bans.includes(id);
+      const taken = lobby.players.some((p) => p.id !== you && (d ? true : p.team === me?.team) && p.champion === id);
       card.classList.toggle('taken', taken);
-      card.disabled = taken;
+      card.classList.toggle('banned', banned);
+      card.disabled = taken || banned;
     }
 
     this.teams.replaceChildren(
@@ -121,7 +139,7 @@ export class LobbyScreen {
           }
           col.append(row);
         }
-        if (me && me.team !== team && members.length < size) {
+        if (me && me.team !== team && members.length < size && !this.draft) {
           const move = el('button', 'lobby-move', `Join ${team === TEAM.blue ? 'Blue' : 'Red'}`);
           move.addEventListener('click', () => this.opts.onPick({ team }));
           col.append(move);
@@ -153,6 +171,15 @@ export class LobbyScreen {
       }
     }
     if (this.opts.solo) return;
+    if (drafting && (!d || d.phase !== 'done')) {
+      // A draft lobby: the host starts the draft; the match can start once it's done.
+      if (me?.host && !d) {
+        const go = el('button', 'lobby-start', 'Start the draft');
+        go.addEventListener('click', () => this.opts.onDraft?.());
+        this.footer.append(go);
+      } else this.footer.append(el('div', 'lobby-wait', d ? 'Drafting…' : 'Waiting for the host to start the draft…'));
+      return;
+    }
     if (me?.host) {
       const modes = el('div', 'select-modes');
       for (const [mode, label] of [['bots', 'Bots fill empty slots'], ['practice', 'No bots (practice)']] as const) {
@@ -211,9 +238,13 @@ export class LobbyScreen {
     select.disabled = !host;
     select.addEventListener('change', () => change({ weather: select.value as MatchSettings['weather'] }));
     weather.append(select);
+    // Friend lobbies, picking (not All Random): free picks or a draft.
+    const allRandom = aram && s.aramPick === 'random';
+    const picks = !this.opts.solo && !allRandom ? [group('Picks', [[false, 'Free'], [true, 'Draft']] as const, s.draft, (draft) => change({ draft }))] : [];
     bar.append(
       map,
       ...aramGroups,
+      ...picks,
       weather,
       // The Hollow is always at night.
       ...(aram ? [] : [group('Time', [[false, 'Evening'], [true, 'Night']] as const, s.night, (night) => change({ night }))]),
@@ -221,6 +252,53 @@ export class LobbyScreen {
       group('Pace', [[false, 'Normal'], [true, 'Fast']] as const, s.fast, (fast) => change({ fast })),
     );
     bar.title = host ? '' : 'The host picks these';
+  }
+
+  /** The draft's state: who's banning or picking, the clock, the bans so far, the pick order. */
+  private drawDraft(lobby: LobbyState, you: string, drafting: boolean): void {
+    const bar = this.draftBar;
+    bar.hidden = !drafting;
+    if (!drafting) return;
+    bar.replaceChildren();
+    const d = lobby.draft;
+    const name = (id: string) => (id === you ? 'You' : lobby.players.find((p) => p.id === id)?.name ?? '?');
+    if (!d) {
+      bar.append(el('div', 'draft-status', 'Draft: a ban each, then picks in turn (blue, red, red, blue...). The host starts it once everyone’s in.'));
+      return;
+    }
+    const who = d.order[d.turn];
+    const status =
+      d.phase === 'done'
+        ? 'Draft done.'
+        : who === you
+          ? `Your ${d.phase}! Click a champion · ${d.left}s`
+          : `${name(who)} is ${d.phase === 'ban' ? 'banning' : 'picking'}… ${d.left}s`;
+    bar.append(el('div', `draft-status${who === you && d.phase !== 'done' ? ' mine' : ''}`, status));
+    bar.classList.toggle('my-turn', who === you && d.phase !== 'done');
+    // The bans, crossed out.
+    const bans = el('div', 'draft-bans');
+    bans.append(el('span', 'draft-label', 'Banned'));
+    for (const id of d.bans) {
+      const b = el('span', 'draft-ban');
+      const img = el('img', '');
+      img.src = portraitOf(id) ?? '';
+      img.alt = '';
+      img.title = CHAMPION_INFO[id].name;
+      b.append(img);
+      bans.append(b);
+    }
+    if (!d.bans.length) bans.append(el('span', 'draft-none', d.phase === 'ban' ? 'none yet' : 'none'));
+    bar.append(bans);
+    // The pick order, once the picks are on.
+    if (d.phase !== 'ban') {
+      const order = el('div', 'draft-order');
+      d.order.forEach((id, i) => {
+        const p = lobby.players.find((x) => x.id === id);
+        const chip = el('span', `draft-chip ${p?.team === TEAM.red ? 'red' : 'blue'}${i === d.turn && d.phase === 'pick' ? ' now' : ''}`, `${name(id)}${p?.champion ? `: ${CHAMPION_INFO[p.champion].name}` : ''}`);
+        order.append(chip);
+      });
+      bar.append(order);
+    }
   }
 
   showError(message: string): void {
@@ -345,6 +423,18 @@ export class LobbyScreen {
   /** Picking a champion: a flash, a fanfare and a line from them. Solo games start a moment later. */
   private lockIn(id: ChampionId): void {
     if (this.cards.get(id)?.disabled) return;
+    // A draft: on your turn, a click bans or picks; otherwise the cards are just to look at.
+    const d = this.draft;
+    if (d && (d.phase === 'done' || !this.myTurn)) {
+      this.show(id);
+      return;
+    }
+    if (d?.phase === 'ban') {
+      this.show(id);
+      getSound().play('click', 0.6);
+      this.opts.onBan?.(id);
+      return;
+    }
     // All Random: the cards are for looking; your champion is rolled.
     if (this.allRandom) {
       this.show(id);

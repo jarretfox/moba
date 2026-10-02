@@ -3,8 +3,8 @@ import { addBots, laneForNewBot } from '../shared/bots/lineup';
 import { Champion } from '../shared/champions/champion';
 import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
 import { SKIN_COUNT, type ChampionId } from '../shared/champions/types';
-import { TEAM, type PlayerTeam } from '../shared/constants';
-import { ARAM_REROLLS, DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, TEAM_SIZE_OPTIONS, teamSizeOf, MAX_CHAT, NIGHT_CLOCK, START_GOLD_OPTIONS, type MatchSettings, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
+import { TEAM, type PlayerTeam, DT } from '../shared/constants';
+import { ARAM_REROLLS, DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, TEAM_SIZE_OPTIONS, teamSizeOf, MAX_CHAT, NIGHT_CLOCK, START_GOLD_OPTIONS, type MatchSettings, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow, DRAFT_TURN, type DraftState } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { WEATHER_CHANCES, pickWeather, rollClearing } from '../shared/weather';
 import { isTitleId } from '../shared/titles';
@@ -68,6 +68,9 @@ export class HostCore {
   readonly bots: Bot[] = [];
   private readonly lobby = new Map<string, LobbyPlayer>();
   private readonly players = new Map<string, Player>();
+  /** A draft under way (draft lobbies), and the pick order it'll use after the bans. */
+  private draft: DraftState | null = null;
+  private pickOrder: string[] = [];
   /** Each friend's rejoin token, by connection. */
   private readonly tokens = new Map<string, string>();
   /** Friends whose connection dropped mid-match, by their rejoin token: a bot keeps their champion warm. */
@@ -124,6 +127,10 @@ export class HostCore {
         return this.rematch(connId, msg.swap === true);
       case 'reroll':
         return this.reroll(connId);
+      case 'draft':
+        return this.startDraft(connId);
+      case 'ban':
+        return this.ban(connId, msg.champion);
     }
   }
 
@@ -168,11 +175,88 @@ export class HostCore {
     if (isMapId(s.map)) next.map = s.map;
     if ((TEAM_SIZE_OPTIONS as readonly unknown[]).includes(s.teamSize)) next.teamSize = s.teamSize as number;
     if (s.aramPick === 'random' || s.aramPick === 'pick') next.aramPick = s.aramPick;
+    if (typeof s.draft === 'boolean') next.draft = s.draft;
     const wasRandom = this.allRandom;
     this.settings = next;
+    // Changing anything about how champions are chosen starts the draft over.
+    if (this.draft && (!next.draft || this.allRandom)) this.draft = null;
     // Into All Random: everyone gets a champion rolled for them (and a fresh set of rerolls).
     if (this.allRandom && !wasRandom) for (const p of this.lobby.values()) this.rollFor(p, true);
     this.broadcastLobby();
+  }
+
+  /** Drafting: the host has started it and it isn't finished. */
+  private get drafting(): boolean {
+    return !!this.draft && this.draft.phase !== 'done';
+  }
+
+  /** Who's had a champion picked in the draft so far, or banned: off the table for everyone, bots too. */
+  private draftTaken(): ChampionId[] {
+    return [...(this.draft?.bans ?? []), ...[...this.lobby.values()].flatMap((p) => (p.champion ? [p.champion] : []))];
+  }
+
+  /**
+   * The host starts the draft: everyone's pick is cleared and the teams are locked. Bans go round the
+   * teams in turn (blue, red, blue, red...), then picks snake (blue, red, red, blue, blue, red...).
+   */
+  private startDraft(connId: string): void {
+    if (this.phase !== 'lobby' || !this.lobby.get(connId)?.host || !this.settings.draft || this.allRandom || this.drafting) return;
+    const players = [...this.lobby.values()];
+    for (const p of players) p.champion = null;
+    const blue = players.filter((p) => p.team === TEAM.blue).map((p) => p.id);
+    const red = players.filter((p) => p.team === TEAM.red).map((p) => p.id);
+    const bans: string[] = [];
+    for (let i = 0; i < Math.max(blue.length, red.length); i++) bans.push(...(blue[i] ? [blue[i]] : []), ...(red[i] ? [red[i]] : []));
+    this.pickOrder = [];
+    const queues = { [TEAM.blue]: [...blue], [TEAM.red]: [...red] } as Record<PlayerTeam, string[]>;
+    for (let i = 0; this.pickOrder.length < players.length; i++) {
+      // B R R B B R R B...: the team for slot i.
+      const team: PlayerTeam = Math.floor((i + 1) / 2) % 2 === 0 ? TEAM.blue : TEAM.red;
+      const next = queues[team].shift() ?? queues[team === TEAM.blue ? TEAM.red : TEAM.blue].shift();
+      if (next) this.pickOrder.push(next);
+    }
+    this.draft = { phase: 'ban', order: bans, turn: 0, left: DRAFT_TURN, bans: [] };
+    this.broadcastLobby();
+  }
+
+  /** Your ban, on your turn. */
+  private ban(connId: string, champion: unknown): void {
+    const d = this.draft;
+    if (!d || d.phase !== 'ban' || d.order[d.turn] !== connId) return;
+    if (typeof champion !== 'string' || !Object.hasOwn(CHAMPION_INFO, champion) || d.bans.includes(champion as ChampionId)) return;
+    d.bans.push(champion as ChampionId);
+    this.nextDraftTurn();
+  }
+
+  /** On to the next ban or pick (after the bans, the picks; after the picks, done). */
+  private nextDraftTurn(): void {
+    const d = this.draft!;
+    d.turn++;
+    d.left = DRAFT_TURN;
+    if (d.turn >= d.order.length) {
+      if (d.phase === 'ban') Object.assign(d, { phase: 'pick', order: this.pickOrder, turn: 0 });
+      else d.phase = 'done';
+    }
+    this.broadcastLobby();
+  }
+
+  /** The draft clock: a turn that runs out passes (a ban) or picks something at random (a pick). */
+  private tickDraft(): void {
+    const d = this.draft;
+    if (!d || d.phase === 'done') return;
+    const before = Math.ceil(d.left);
+    d.left -= DT;
+    if (d.left > 0) {
+      if (Math.ceil(d.left) !== before) this.broadcastLobby();
+      return;
+    }
+    const who = this.lobby.get(d.order[d.turn]);
+    if (d.phase === 'pick' && who) {
+      const taken = new Set(this.draftTaken());
+      const options = (Object.keys(CHAMPION_INFO) as ChampionId[]).filter((id) => !taken.has(id));
+      if (options.length) who.champion = options[Math.floor(Math.random() * options.length)];
+    }
+    this.nextDraftTurn();
   }
 
   /** ARAM, All Random: champions are rolled, not picked. */
@@ -217,7 +301,24 @@ export class HostCore {
   /** A connection went away: leave the lobby, or hand their champion to a bot mid-match. */
   dropped(connId: string): void {
     if (this.phase === 'lobby') {
-      if (this.lobby.delete(connId)) this.broadcastLobby();
+      if (this.lobby.delete(connId)) {
+        // Gone mid-draft: out of the turn order (their turn passes if it was theirs).
+        const d = this.draft;
+        if (d && d.phase !== 'done') {
+          this.pickOrder = this.pickOrder.filter((id) => id !== connId);
+          const at = d.order.indexOf(connId);
+          if (at >= 0) {
+            d.order = d.order.filter((id) => id !== connId);
+            if (at < d.turn) d.turn--;
+            if (d.turn >= d.order.length) {
+              d.turn = d.order.length - 1;
+              this.nextDraftTurn();
+              return;
+            }
+          }
+        }
+        this.broadcastLobby();
+      }
       return;
     }
     const p = this.players.get(connId);
@@ -273,6 +374,7 @@ export class HostCore {
   private hello(connId: string, name: unknown, title?: unknown): void {
     if (this.lobby.has(connId)) return;
     if (this.phase !== 'lobby') return this.send(connId, { t: 'refused', reason: 'That match has already started.' });
+    if (this.drafting) return this.send(connId, { t: 'refused', reason: 'They’re in the middle of a draft. Try again in a minute.' });
     const team = this.humansOn(TEAM.blue) <= this.humansOn(TEAM.red) ? TEAM.blue : TEAM.red;
     if (this.humansOn(team) >= teamSizeOf(this.settings)) return this.send(connId, { t: 'refused', reason: 'That lobby is full.' });
     const clean = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME) : '';
@@ -285,6 +387,22 @@ export class HostCore {
   private pick(connId: string, team: unknown, champion: unknown, skin?: unknown): void {
     const me = this.lobby.get(connId);
     if (!me || this.phase !== 'lobby') return;
+    if (this.drafting) {
+      // Drafting: the teams are set, and a pick is only yours to make on your turn.
+      const d = this.draft!;
+      if (d.phase === 'pick' && d.order[d.turn] === connId && typeof champion === 'string' && Object.hasOwn(CHAMPION_INFO, champion) && !this.draftTaken().includes(champion as ChampionId)) {
+        me.champion = champion as ChampionId;
+        if (typeof skin === 'number' && Number.isInteger(skin) && skin >= 0 && skin < SKIN_COUNT) me.skin = skin;
+        return this.nextDraftTurn();
+      }
+      if (typeof skin === 'number' && Number.isInteger(skin) && skin >= 0 && skin < SKIN_COUNT) me.skin = skin;
+      return this.broadcastLobby();
+    }
+    // A finished draft: the picks stand (just the look can change).
+    if (this.draft?.phase === 'done') {
+      if (typeof skin === 'number' && Number.isInteger(skin) && skin >= 0 && skin < SKIN_COUNT) me.skin = skin;
+      return this.broadcastLobby();
+    }
     if ((team === TEAM.blue || team === TEAM.red) && team !== me.team && this.humansOn(team) < teamSizeOf(this.settings)) {
       me.team = team;
       if (me.champion && this.takenBy(me.team, me.champion, connId)) {
@@ -309,6 +427,9 @@ export class HostCore {
     if (this.phase !== 'lobby' || !this.lobby.get(connId)?.host) return;
     const everyone = [...this.lobby.values()];
     if (everyone.some((p) => !p.champion)) return;
+    if (this.settings.draft && !this.allRandom && mode !== 'practice' && this.draft?.phase !== 'done') return;
+    const drafted = this.draft?.phase === 'done' ? this.draftTaken() : [];
+    this.draft = null;
     this.phase = 'playing';
     const { settings } = this;
     // The map the host chose (a fresh match on it, if the waiting one is on the other map).
@@ -343,7 +464,7 @@ export class HostCore {
       this.drill = new Map([...this.players.values()].map((p) => [p.unitId, { base: 0, chances: 0 }]));
     } else {
       for (const team of [TEAM.blue, TEAM.red] as const) {
-        const taken = everyone.filter((p) => p.team === team).map((p) => p.champion!);
+        const taken = [...drafted, ...everyone.filter((p) => p.team === team).map((p) => p.champion!)];
         const bots = addBots(this.world, team, size - this.humansOn(team), taken, Math.random);
         for (const b of bots) {
           b.champion.skin = Math.floor(Math.random() * SKIN_COUNT); // bots dress up too
@@ -374,7 +495,7 @@ export class HostCore {
   }
 
   private broadcastLobby(): void {
-    const lobby: LobbyState = { players: [...this.lobby.values()], phase: this.phase, settings: this.settings };
+    const lobby: LobbyState = { players: [...this.lobby.values()], phase: this.phase, settings: this.settings, ...(this.draft ? { draft: { ...this.draft, left: Math.ceil(this.draft.left) } } : {}) };
     for (const id of this.lobby.keys()) this.send(id, { t: 'lobby', lobby, you: id });
   }
 
@@ -388,6 +509,7 @@ export class HostCore {
   // ─── Match ────────────────────────────────────────────────────────────────
 
   step(): void {
+    if (this.phase === 'lobby') return this.tickDraft();
     // The clock runs once the match has started, and freezes on the final snapshot once a Da Base falls
     // (one last snapshot goes out with the winner, however the match was decided).
     if (this.phase !== 'playing' || this.finalSent) return;
