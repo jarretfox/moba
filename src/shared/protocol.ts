@@ -103,7 +103,16 @@ export type HostMessage =
   /** The lobby changed. `you` is the recipient's own player id. */
   | { t: 'lobby'; lobby: LobbyState; you: string }
   /** The match started; this is your champion. */
-  | { t: 'welcome'; unitId: number; team: Team; weather?: Weather; /** Seconds to add to the match clock for the look of the sky (starting at night). */ clock?: number }
+  | {
+      t: 'welcome';
+      unitId: number;
+      team: Team;
+      weather?: Weather;
+      /** When (match seconds) the rain clears up, if it does. */
+      clears?: number;
+      /** Seconds to add to the match clock for the look of the sky (starting at night). */
+      clock?: number;
+    }
   | { t: 'snap'; snap: SnapshotDelta }
   | { t: 'refused'; reason: string }
   /** Who wants a rematch so far (the host starting one sends everyone back to the lobby). */

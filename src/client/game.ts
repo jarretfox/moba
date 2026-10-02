@@ -115,6 +115,8 @@ export class GameClient {
   /** Things the announcer has already said this match. */
   private readonly announced = new Set<string>();
   private wardenWasUp = false;
+  /** When the rain clears up (match seconds), if it does. */
+  private weatherClears: number | undefined;
   /** When each champion last traded blows with another (local clock), for the music. */
   private readonly champFightAt = new Map<number, number>();
   private gameOverPlayed = false;
@@ -368,6 +370,7 @@ export class GameClient {
       this.myId = msg.unitId;
       this.hud.fadeIn();
       if (msg.weather && msg.weather !== 'clear' && !this.weather) this.setWeather(new WeatherView(msg.weather, MAP));
+      this.weatherClears = msg.clears;
       this.clockOffset = msg.clock ?? 0;
       if (msg.team !== this.myTeam) {
         this.myTeam = msg.team;
@@ -393,9 +396,19 @@ export class GameClient {
     w.dustTrees(this.crowns);
     this.canopy.addChild(w.treetops);
     this.view.addChild(w.screen);
-    w.onBolt = () => {
-      this.camera.shake(4);
-      setTimeout(() => this.sound.play('thunder', 0.8), 300 + Math.random() * 1200);
+    w.onBolt = (strike) => {
+      if (strike) {
+        // A strike in view: a blinding flash where it lands, scorched ground, the thunder right on top of it.
+        this.fx.flash(strike.x, strike.y, 160, 0xdfeaff, 0.35, 0.9);
+        this.fx.scar(strike.x, strike.y, 60, 'scorch');
+        this.fx.particles.burst(18, { shape: 'spark', x: strike.x, y: strike.y, life: 0.4, size: 10, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0x9fc4ff }, [200, 520]);
+        this.fx.light(strike.x, strike.y, 500, 0xcfe0ff, 0.5, 1);
+        this.camera.shake(9);
+        this.sound.play('thunder', 1);
+        return;
+      }
+      this.camera.shake(w.kind === 'storm' ? 4 : 2);
+      setTimeout(() => this.sound.play('thunder', w.kind === 'storm' ? 0.8 : 0.55), 300 + Math.random() * 1500);
     };
     this.sound.setWeather(w.kind, this.wind.strength / 0.55);
   }
@@ -570,6 +583,7 @@ export class GameClient {
     this.emissive.scale.copyFrom(this.worldLayer.scale);
     // The look of the hour (starting at night pushes it on), not the match clock.
     const matchTime = this.lookTime();
+    this.clearSkies();
     this.weather?.update(dt, w, h, this.camera, this.wind);
     if (this.weather?.snowy) this.breathe();
     const sky = this.weather ? this.weather.sky(skyAt(matchTime)) : skyAt(matchTime);
@@ -1299,6 +1313,18 @@ export class GameClient {
       g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 14, color, alpha: 0.18 * pulse, cap: 'round' });
       g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 3, color: ours ? 0xffb0a8 : 0xd6ecff, alpha: 0.85 * pulse, cap: 'round' });
       g.circle(t.x, t.y, t.r + 10).stroke({ width: 3, color, alpha: 0.7 * pulse });
+    }
+  }
+
+  /** Rain that clears up partway through: over half a minute from its moment, then the rain's sound and the wind die down. */
+  private clearSkies(): void {
+    const w = this.weather;
+    if (!w || this.weatherClears === undefined || w.cleared) return;
+    const time = this.buffer.latest?.time ?? 0;
+    w.setClearing((time - this.weatherClears) / 30);
+    if (w.cleared) {
+      this.wind.setWeather('clear');
+      this.sound.setWeather('clear', this.wind.strength / 0.55);
     }
   }
 

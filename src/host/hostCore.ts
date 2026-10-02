@@ -7,7 +7,7 @@ import { TEAM, type PlayerTeam } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, MAX_CHAT, NIGHT_CLOCK, START_GOLD_OPTIONS, type MatchSettings, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
-import { WEATHER_CHANCES, pickWeather } from '../shared/weather';
+import { WEATHER_CHANCES, pickWeather, rollClearing } from '../shared/weather';
 import { isTitleId } from '../shared/titles';
 import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
@@ -222,6 +222,8 @@ export class HostCore {
     this.phase = 'playing';
     const { settings } = this;
     const weather = settings.weather === 'random' ? pickWeather(Math.random) : settings.weather;
+    // Random rain may clear up partway through; rain the host asked for stays all match.
+    const clears = settings.weather === 'random' ? rollClearing(weather, Math.random) : undefined;
     if (settings.fast) this.world.rates = { ...FAST_RATES };
 
     for (const p of everyone) {
@@ -231,7 +233,7 @@ export class HostCore {
       champ.gold = settings.gold;
       champ.title = p.title;
       this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
-      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather, ...(settings.night ? { clock: NIGHT_CLOCK } : {}) });
+      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather, ...(clears !== undefined ? { clears } : {}), ...(settings.night ? { clock: NIGHT_CLOCK } : {}) });
     }
     if (mode === 'practice') {
       setupPracticeRange(this.world);

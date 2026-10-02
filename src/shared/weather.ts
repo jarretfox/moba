@@ -13,6 +13,18 @@ export const WEATHER_CHANCES: readonly (readonly [Weather, number])[] = [
   ['mist', 0.14],
 ];
 
+/**
+ * Whether the rain (or a storm) clears up partway through, and when (match seconds), or undefined if it
+ * sets in for the whole match. Rolled with the weather.
+ */
+export const CLEARING = { chance: 0.45, from: 240, to: 600 };
+
+export function rollClearing(weather: Weather, random: () => number): number | undefined {
+  if (weather !== 'rain' && weather !== 'storm') return undefined;
+  if (random() >= CLEARING.chance) return undefined;
+  return Math.round(CLEARING.from + random() * (CLEARING.to - CLEARING.from));
+}
+
 export function pickWeather(random: () => number): Weather {
   let roll = random();
   for (const [w, chance] of WEATHER_CHANCES) {
