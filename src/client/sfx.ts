@@ -149,6 +149,8 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       return null; // champions say it in their own voice (voices.ts)
     case 'ping':
       return { name: ev.kind === 'danger' ? 'pingDanger' : ev.kind === 'missing' ? 'pingMissing' : 'ping', gain: 0.6 };
+    case 'evt':
+      return null; // the map events make their own noise (render/events.ts)
   }
 }
 

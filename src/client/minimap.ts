@@ -2,7 +2,7 @@ import { TEAM, type Team } from '../shared/constants';
 import type { MapData } from '../shared/map/mapData';
 import type { Shape } from '../shared/map/shapes';
 import type { Vec2 } from '../shared/math';
-import type { EntitySnap, PingKind } from '../shared/protocol';
+import type { EntitySnap, EventKind, PingKind } from '../shared/protocol';
 import { PINGS } from './pings';
 import { portraitOf } from './render/champions';
 import { PALETTE } from './render/views';
@@ -16,6 +16,15 @@ export interface MinimapPing {
   kind: PingKind;
   /** Seconds since it was pinged. */
   age: number;
+}
+
+/** The map event's marker (render/events.ts sets it): where, what, how far along, and whose color. */
+export interface MinimapEvent {
+  x: number;
+  y: number;
+  kind: EventKind;
+  phase: 'soon' | 'live' | 'done';
+  color: number;
 }
 
 export interface MinimapView {
@@ -51,6 +60,9 @@ export class Minimap {
   private terrain: HTMLCanvasElement | null = null;
   private readonly faces = new Map<string, HTMLImageElement>();
   private peeking = false;
+  /** The map event to mark, while there is one. */
+  event: MinimapEvent | null = null;
+  private clock = 0;
 
   constructor(parent: HTMLElement, private readonly map: MapData) {
     this.h = Math.round((WIDTH * map.height) / map.width);
@@ -135,8 +147,45 @@ export class Minimap {
       } else if (e.k === 'monster' && !e.dead) {
         if (e.mon === 'warden') dot(g, x, y, 6, '#7fe3ff', '#0b0f0b');
         else if (e.mon === 'crab') dot(g, x, y, 3.5, '#ff8a3d', '#0b0f0b');
+        else if (e.mon === 'coat') dot(g, x, y, 6, '#c9a86a', '#0b0f0b');
         else dot(g, x, y, 3, '#e8c46a', '#0b0f0b');
       }
+    }
+    // The map event: a diamond at its site, pulsing rings while it's on the way, in whoever's winning's color.
+    const ev = this.event;
+    if (ev) {
+      this.clock += 1 / 20;
+      const x = ev.x * s;
+      const y = ev.y * s;
+      const color = css(ev.color);
+      if (ev.phase !== 'done') {
+        for (const k of [0, 0.5]) {
+          const t = (this.clock * (ev.phase === 'soon' ? 1 : 0.5) + k) % 1;
+          g.beginPath();
+          g.arc(x, y, 6 + t * 14, 0, Math.PI * 2);
+          g.strokeStyle = color;
+          g.lineWidth = 2;
+          g.globalAlpha = 1 - t;
+          g.stroke();
+        }
+        g.globalAlpha = 1;
+      }
+      g.beginPath();
+      g.moveTo(x, y - 8);
+      g.lineTo(x + 7, y);
+      g.lineTo(x, y + 8);
+      g.lineTo(x - 7, y);
+      g.closePath();
+      g.fillStyle = color;
+      g.fill();
+      g.strokeStyle = '#0b0f0b';
+      g.lineWidth = 1.5;
+      g.stroke();
+      g.fillStyle = '#0b0f0b';
+      g.font = '900 9px Nunito, sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(ev.kind === 'boss' ? '!' : ev.kind === 'escort' ? '→' : '$', x, y + 0.5);
     }
     // Champions on top, you last.
     const champs = ents.filter((e) => e.k === 'champion' && !e.dead).sort((a) => (a.id === v.myId ? 1 : -1));

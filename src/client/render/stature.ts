@@ -1,6 +1,7 @@
 import type { EntitySnap } from '../../shared/protocol';
-import { beastHeight } from './beasts';
+import { beastHeight, type BeastKind } from './beasts';
 import { BUILDS, UNIT_BUILDS } from './builds';
+import { eventHeight } from './eventFigures';
 import { BUILDING, buildingHeight } from './structures';
 import type { Proportions } from './rig';
 
@@ -21,7 +22,7 @@ function stands(e: Sized): number {
     case 'guard':
       return tall(UNIT_BUILDS.guard.size);
     case 'monster':
-      return e.mon === 'warden' ? tall(UNIT_BUILDS['monster:warden'].size) : beastHeight(e.mon ?? 'rat');
+      return e.mon === 'warden' ? tall(UNIT_BUILDS['monster:warden'].size) : (eventHeight(e.mon) ?? beastHeight((e.mon ?? 'rat') as BeastKind));
     case 'dummy':
       return beastHeight('dummy');
     case 'structure':

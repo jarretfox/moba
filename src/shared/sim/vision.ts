@@ -191,6 +191,8 @@ export class Vision {
         return ev.team === team || this.visible[team][this.grid.cellOf(ev)] === 1;
       case 'zap':
         return ev.team === team || this.visible[team][this.grid.cellOf({ x: ev.x2, y: ev.y2 })] === 1;
+      case 'evt':
+        return ev.all === true || this.visible[team][this.grid.cellOf(ev)] === 1; // announcements for all; the boss's moves where they happen
     }
   }
 

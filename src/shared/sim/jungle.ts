@@ -2,13 +2,14 @@ import { DT, TEAM } from '../constants';
 import type { CampKind, CampSpot } from '../map/mapData';
 import { add, dist, type Vec2 } from '../math';
 import type { BuffKind, EntitySnap, MonsterKind } from '../protocol';
+import { EVENT_BUFFS } from './eventBuffs';
 import { Unit, type Stats } from './unit';
 import type { World, WorldSystem } from './world';
 
 // ─── Tuning: jungle camps ─────────────────────────────────────────────────────
 
-/** Camp monsters (the Warden has its own file). */
-export type CampMonsterKind = Exclude<MonsterKind, 'warden' | 'crab'>;
+/** Camp monsters (the Warden, the crab and the events' monsters have their own files). */
+export type CampMonsterKind = Exclude<MonsterKind, 'warden' | 'crab' | 'coat' | 'looseChud'>;
 
 interface MonsterDef {
   name: string;
@@ -67,6 +68,7 @@ const CORPSE_TIME = 1.5;
 export const BUFFS: Record<BuffKind, { name: string; duration: number }> = {
   ember: { name: "Ember Toad's Heat", duration: 90 },
   glowcap: { name: "Glowcap's Glow", duration: 90 },
+  ...EVENT_BUFFS, // the map events' team buffs (eventBuffs.ts)
 };
 /** Ember: basic attacks on anything but structures burn for bonus true damage and slow briefly. */
 export const EMBER = { damage: (level: number) => 8 + 2 * level, slow: 0.2, slowFor: 1 };

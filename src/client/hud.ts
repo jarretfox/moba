@@ -3,6 +3,7 @@ import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
 import { ACTIVES, ACTIVE_KEYS, INVENTORY_SLOTS, ITEMS, activeSlots, hasteMultiplier, priceFor, sellPrice, statLines, type ItemId } from '../shared/items';
 import type { BuffKind, EntitySnap, MeSnap, ScoreRow, WardenStatus } from '../shared/protocol';
 import { BUFFS, EMBER, GLOWCAP } from '../shared/sim/jungle';
+import { DEEP_POCKETS, ROYAL_FAVOR, WICKS_FAVOR } from '../shared/sim/eventBuffs';
 import { MAX_BASIC_RANK, MAX_ULT_RANK, canRankUp } from '../shared/sim/progression';
 import { portraitOf } from './render/champions';
 import { onSettings, settingsPanel } from './settings';
@@ -58,6 +59,10 @@ const HELP = [
 const BUFF_TEXT: Record<BuffKind, string> = {
   ember: `Basic attacks burn for ${EMBER.damage(1)} + 2 per level true damage and slow ${EMBER.slow * 100}% for ${EMBER.slowFor}s.`,
   glowcap: `+${GLOWCAP.haste} ability haste, and ${GLOWCAP.manaRegenPct * 100}% of max mana back each second.`,
+  // The map events' team buffs (shared/sim/eventBuffs.ts).
+  deepPockets: `Three Chuds in a Coat: +${DEEP_POCKETS.goldPerSecond} gold every second for the whole team.`,
+  wicksFavor: `Old Wick's thanks for his cart: +${WICKS_FAVOR.speed * 100}% move speed, +${WICKS_FAVOR.armor} armor and +${WICKS_FAVOR.mr} magic resist.`,
+  royalFavor: `The Royal Tax Stall's take: +${ROYAL_FAVOR.ad} attack damage, +${ROYAL_FAVOR.ap} ability power and +${ROYAL_FAVOR.attackSpeedPct * 100}% attack speed.`,
 };
 
 const HELP_KEY = 'moba.helpFolded';

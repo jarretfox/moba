@@ -66,6 +66,7 @@ import { WickMood, wickLine, type WickMoment } from './wick';
 import { cantBuy, itemChanges, statGains } from './shop';
 import { ACTIVES, ITEMS, activeSlots, sellPrice, type ItemId } from '../shared/items';
 import { CHUD_DEFS } from '../shared/sim/chud';
+import { EventsView } from './render/events';
 
 /** While right mouse is held, re-send the move target this often. */
 const HOLD_MOVE_INTERVAL = 0.12;
@@ -236,6 +237,8 @@ export class GameClient {
   private readonly skitters = new Map<number, number>();
   /** When the match ends: where Da Base fell, and when, so the camera can go and watch before the scores. */
   private finale: { x: number; y: number; at: number } | null = null;
+  /** The map events: their beacon, cart and stall, the readout under the clock, and their moments (render/events.ts). */
+  private readonly events: EventsView;
 
   private myId = -1;
   private myTeam: Team = TEAM.blue;
@@ -337,6 +340,7 @@ export class GameClient {
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
     this.nightLife = new NightLife(MAP, this.lighting.lanterns);
+    this.events = new EventsView({ fx: this.fx, map: MAP, under: this.underLayer, units: this.unitLayer, hudRoot, minimap: this.minimap, team: () => this.myTeam, announce: (t, d, tone) => this.hud.announce(t, d, tone), cue: (c) => this.playCue(c), shake: (at, k) => this.shakeNear(at, k) });
     this.emissive.addChild(this.nightLife.glow, ...this.wicks.map((w) => w.glow), ...this.fountains.map((f) => f.glow), this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
@@ -633,6 +637,7 @@ export class GameClient {
     if (this.myTeam !== TEAM.neutral) this.hud.setKills(this.teamKills[this.myTeam], this.teamKills[this.myTeam === 1 ? 2 : 1]);
     this.hud.setWarden(latest?.warden, this.myTeam);
     this.announceMatch(latest);
+    this.events.update(dt, this.replay ? undefined : latest?.event);
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
     if (!this.introShown && me && latest?.scores) this.playIntro(latest.scores);
     if (latest?.winner) this.tips.hide();
@@ -928,6 +933,9 @@ export class GameClient {
         this.fx.ping(ev.x, ev.y, info.color, info.glyph, `${ev.name}: ${info.label}`);
         return;
       }
+      case 'evt':
+        if (!this.replay) this.events.onEvent(ev);
+        return;
       case 'kill':
         if (!this.replay && ev.what === 'warden') this.tally.warden[ev.killer] = (this.tally.warden[ev.killer] ?? 0) + 1;
         if (!this.replay && ev.what === 'champion' && !ev.killerChamp) this.tally.executed[ev.victim] = (this.tally.executed[ev.victim] ?? 0) + 1;
