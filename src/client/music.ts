@@ -5,6 +5,9 @@
 // fight layer of drums and a pulsing bass that swells in when you're trading blows with champions. It
 // settles as night comes on, and steps back for the victory or defeat stinger.
 //
+// On the Howling Hollow it turns haunted: the same engine in E harmonic minor (Em, C, Am, B7), a music box
+// for the plucks, and a wavering theremin where the flute would play.
+//
 // Under it, the soundscape: wind everywhere (gusting in a storm or an autumn blow, hushed in the snow,
 // damp and muffled in the mist), rain pattering, water rushing and burbling by the river, crickets and the
 // odd owl in the jungle once dusk falls, the Warden's pit droning, and the faint hum of the crystals on
@@ -34,6 +37,21 @@ const CHORDS: { pad: number[]; bass: number }[] = [
   { pad: [57, 62, 64, 69], bass: 45 }, // Asus
 ];
 const SCALE = [62, 65, 67, 69, 72, 74, 77, 79];
+/** The Howling Hollow: Em, C, Am, B7, and in a fight Em, C, D#dim, B. */
+const HOLLOW_CHORDS: { pad: number[]; bass: number }[] = [
+  { pad: [52, 59, 64, 67], bass: 40 },
+  { pad: [52, 60, 64, 67], bass: 36 },
+  { pad: [57, 60, 64, 69], bass: 45 },
+  { pad: [54, 59, 63, 69], bass: 47 },
+];
+const HOLLOW_FIGHT: { pad: number[]; bass: number }[] = [
+  { pad: [52, 59, 64, 67], bass: 40 },
+  { pad: [48, 55, 60, 64], bass: 36 },
+  { pad: [51, 57, 60, 66], bass: 39 },
+  { pad: [47, 54, 59, 63], bass: 35 },
+];
+/** E harmonic minor. */
+const HOLLOW_SCALE = [64, 66, 67, 71, 72, 75, 76, 79];
 /** Little flute phrases for the calm stretches: [degree of SCALE, step it starts on, steps it lasts]. */
 const MOTIFS: readonly (readonly [number, number, number])[][] = [
   [[4, 0, 3], [3, 3, 3], [2, 6, 6], [4, 12, 4]],
@@ -65,6 +83,8 @@ export class Music {
   private targetIntensity = 0;
   private chord = CHORDS[0];
   private night = 0;
+  /** The Howling Hollow's spooky score. */
+  private haunted = false;
   private on: boolean;
   /** The music volume setting, 0–1. */
   private level = 1;
@@ -131,6 +151,11 @@ export class Music {
     this.night = Math.max(0, Math.min(1, k));
   }
 
+  /** The Howling Hollow: from the next bar, the haunted score. */
+  setHaunted(on: boolean): void {
+    this.haunted = on;
+  }
+
   private applyVolume(): void {
     const g = this.bus.gain;
     g.cancelScheduledValues(this.ctx.currentTime);
@@ -163,15 +188,18 @@ export class Music {
     const epic = Math.max(0, Math.min(1, (fight - 0.6) / 0.4));
     const bar = Math.floor(step / 16);
     // The chord is chosen at the top of each bar and held through it, even if the fight changes mid-bar.
-    if (inBar === 0) this.chord = epic > 0.3 ? FIGHT_CHORDS[bar % FIGHT_CHORDS.length] : CHORDS[bar % CHORDS.length];
+    const chords = this.haunted ? (epic > 0.3 ? HOLLOW_FIGHT : HOLLOW_CHORDS) : epic > 0.3 ? FIGHT_CHORDS : CHORDS;
+    if (inBar === 0) this.chord = chords[bar % chords.length];
     const chord = this.chord;
     if (inBar === 0) {
       for (const n of chord.pad) this.pad(midi(n), at, STEP * 16 + 0.6);
       this.shimmer(chord.pad.slice(2).map((n) => midi(n + 12)), at, STEP * 16 + 0.6);
       this.bass(midi(chord.bass), at, STEP * 16);
       // Every few chords, when it's calm, a little phrase on the flute; between them, now and then, a harp rolls a chord.
-      if (step % 64 === 0 && fight < 0.25 && Math.random() < 0.6) this.phrase(at);
-      else if (step % 32 === 16 && fight < 0.25 && Math.random() < 0.5) this.harp(chord.pad, at);
+      if (step % 64 === 0 && fight < 0.25 && Math.random() < 0.6) {
+        if (this.haunted) this.theremin(at);
+        else this.phrase(at);
+      } else if (step % 32 === 16 && fight < 0.25 && Math.random() < 0.5) this.harp(chord.pad, at);
       // At night, far off, a low horn calls now and then.
       if (step % 128 === 64 && this.night > 0.5 && fight < 0.25) this.horn(midi(chord.bass + 12), at, 3.5, 0.025 * this.night);
       if (epic > 0) {
@@ -192,11 +220,13 @@ export class Music {
       if (epic > 0.2 || step % 2 === 0) this.stab(midi(figure[step % 4] + 12), at, 0.022 * fight);
     }
     // Plucks: sparse and wandering when calm (sparser still at night), a running arpeggio in a fight.
+    const pluck = (f: number, when: number, vol: number) => (this.haunted ? this.musicBox(f * 2, when, vol * 0.8) : this.pluck(f, when, vol));
     if (fight > 0.45 && step % 2 === 0) {
       const arp = [...chord.pad, ...chord.pad.map((n) => n + 12)];
-      this.pluck(midi(arp[(step / 2) % arp.length] + 12), at, 0.05 * fight);
+      pluck(midi(arp[(step / 2) % arp.length] + 12), at, 0.05 * fight);
     } else if (step % 2 === 0 && Math.random() < 0.28 * (1 - 0.4 * this.night)) {
-      this.pluck(midi(SCALE[Math.floor(Math.random() * SCALE.length)]), at, 0.07);
+      const scale = this.haunted ? HOLLOW_SCALE : SCALE;
+      pluck(midi(scale[Math.floor(Math.random() * scale.length)]), at, 0.07);
     }
     // Drums and a pulsing bass for the fight.
     if (fight > 0.05) {
@@ -209,9 +239,60 @@ export class Music {
     }
   }
 
-  /** A rolled chord on the harp: the chord's notes plucked upward one after another. */
+  /** A rolled chord on the harp (a music box on the Hollow): the chord's notes plucked upward one after another. */
   private harp(notes: number[], at: number): void {
-    [...notes, notes[0] + 12, notes[1] + 12].forEach((n, i) => this.pluck(midi(n + 12), at + i * 0.09, 0.045));
+    [...notes, notes[0] + 12, notes[1] + 12].forEach((n, i) => (this.haunted ? this.musicBox(midi(n + 24), at + i * 0.14, 0.035) : this.pluck(midi(n + 12), at + i * 0.09, 0.045)));
+  }
+
+  /** A music box tine: a pure tone with a glassy partial over it, ringing out, slightly out of tune. */
+  private musicBox(f: number, at: number, vol: number): void {
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 1.6);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    g.connect(this.echo);
+    for (const [mult, level, detune] of [[1, 1, -4], [4.07, 0.22, 0], [2, 0.12, 6]] as const) {
+      const o = this.ctx.createOscillator();
+      o.frequency.value = f * mult;
+      o.detune.value = detune;
+      const lv = this.ctx.createGain();
+      lv.gain.value = level;
+      o.connect(lv).connect(g);
+      o.start(at);
+      o.stop(at + 1.65);
+    }
+  }
+
+  /** A theremin line: one wavering voice sliding between notes of the Hollow's scale, swelling and fading. */
+  private theremin(at: number): void {
+    const notes = Array.from({ length: 4 }, () => HOLLOW_SCALE[Math.floor(Math.random() * HOLLOW_SCALE.length)] + 12);
+    const each = STEP * 4;
+    const o = this.ctx.createOscillator();
+    o.frequency.setValueAtTime(midi(notes[0]), at);
+    notes.forEach((n, i) => {
+      if (i) o.frequency.linearRampToValueAtTime(midi(n), at + i * each + 0.3);
+      o.frequency.setValueAtTime(midi(n), at + i * each + 0.3);
+    });
+    const vib = this.ctx.createOscillator();
+    vib.frequency.value = 6;
+    const depth = this.ctx.createGain();
+    depth.gain.value = 9;
+    vib.connect(depth).connect(o.detune);
+    const g = this.ctx.createGain();
+    const end = at + notes.length * each;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(0.03, at + 0.6);
+    g.gain.setValueAtTime(0.03, end - 0.8);
+    g.gain.linearRampToValueAtTime(0.0001, end);
+    o.connect(g);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    o.start(at);
+    vib.start(at);
+    o.stop(end + 0.05);
+    vib.stop(end + 0.05);
   }
 
   /** A soft, far-off horn: a long triangle note with a slow swell. */
@@ -594,6 +675,9 @@ export class Soundscape {
   private gustTarget = 0;
   private rustleAt = 0;
   private rumbleAt = 0;
+  /** The Howling Hollow: wolves howling far off, crows, and the wind moaning through the graves. */
+  private haunted = false;
+  private howlAt = 0;
 
   constructor(
     private readonly ctx: AudioContext,
@@ -691,6 +775,11 @@ export class Soundscape {
     this.night = Math.max(0, Math.min(1, k));
   }
 
+  setHaunted(on: boolean): void {
+    this.haunted = on;
+    this.howlAt = this.ctx.currentTime + 6;
+  }
+
   /** How much of the view is jungle, river, the Warden's pit and structures (0–1 each). */
   setPlace(jungle: number, river: number, pit: number, hum: number): void {
     this.jungle += (jungle - this.jungle) * 0.3;
@@ -735,6 +824,15 @@ export class Soundscape {
     const life = this.jungle * (cold ? 0 : 1) * (1 - this.rain * 0.7);
     if (Math.random() < life * (0.1 + 0.35 * this.night)) this.cricket(now + Math.random() * 0.1);
     if (Math.random() < life * 0.003 * (0.2 + this.night)) this.owl(now);
+    // The Hollow: a wolf now and then, far off; crows bickering; the wind moaning through the graves.
+    if (this.haunted) {
+      if (now > this.howlAt && Math.random() < 0.02) {
+        this.howl(now);
+        this.howlAt = now + 14 + Math.random() * 16;
+      }
+      if (Math.random() < 0.006) this.caw(now);
+      if (Math.random() < 0.004) this.moan(now);
+    }
     // The pit: the drone, and its chains stirring.
     this.pitGain.gain.setTargetAtTime(this.pit * 0.09, now, 0.4);
     if (Math.random() < this.pit * 0.03) this.clink(now);
@@ -772,6 +870,81 @@ export class Soundscape {
       o.start(at + dt);
       o.stop(at + dt + dur + 0.05);
     }
+  }
+
+  /** A wolf howling a long way off: a rising "ooo" that holds, wavers and falls away, sometimes answered. */
+  private howl(at: number, answer = true): void {
+    const spot = this.spot(Math.random() * 1.6 - 0.8, 0.9);
+    const base = 300 + Math.random() * 80;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(base, at);
+    o.frequency.linearRampToValueAtTime(base * 1.7, at + 0.7);
+    o.frequency.setValueAtTime(base * 1.7, at + 1.6);
+    o.frequency.linearRampToValueAtTime(base * 1.2, at + 2.6);
+    const vib = this.ctx.createOscillator();
+    vib.frequency.value = 5;
+    const depth = this.ctx.createGain();
+    depth.gain.value = 18;
+    vib.connect(depth).connect(o.detune);
+    const vowel = this.ctx.createBiquadFilter();
+    vowel.type = 'bandpass';
+    vowel.frequency.value = 650;
+    vowel.Q.value = 3;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(0.03, at + 0.6);
+    g.gain.setValueAtTime(0.03, at + 1.8);
+    g.gain.linearRampToValueAtTime(0.0001, at + 2.7);
+    o.connect(vowel).connect(g).connect(spot);
+    o.start(at);
+    vib.start(at);
+    o.stop(at + 2.8);
+    vib.stop(at + 2.8);
+    if (answer && Math.random() < 0.5) this.howl(at + 2.2 + Math.random(), false);
+  }
+
+  /** A crow: two or three harsh caws. */
+  private caw(at: number): void {
+    const pan = Math.random() * 1.6 - 0.8;
+    for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) {
+      const t = at + i * (0.28 + Math.random() * 0.08);
+      this.burst(t, 'bandpass', 1200 + Math.random() * 300, 0.18, 0.025, 4, pan, 0.4, 0.01);
+      const o = this.ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(620, t);
+      o.frequency.exponentialRampToValueAtTime(470, t + 0.16);
+      const f = this.ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 1300;
+      f.Q.value = 2;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.012, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+      o.connect(f).connect(g).connect(this.spot(pan, 0.4));
+      o.start(t);
+      o.stop(t + 0.18);
+    }
+  }
+
+  /** The wind moaning through the gravestones: a hollow whistle that swells and sinks. */
+  private moan(at: number): void {
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 12;
+    f.frequency.setValueAtTime(320, at);
+    f.frequency.linearRampToValueAtTime(560, at + 1.6);
+    f.frequency.linearRampToValueAtTime(300, at + 3.4);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(0.09, at + 1.4);
+    g.gain.linearRampToValueAtTime(0.0001, at + 3.5);
+    src.connect(f).connect(g).connect(this.spot(Math.random() * 1.2 - 0.6, 0.6));
+    src.start(at, Math.random() * 3);
+    src.stop(at + 3.6);
   }
 
   /** A drop into the river. */

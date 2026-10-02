@@ -47,6 +47,7 @@ describe('the Howling Hollow (ARAM map)', () => {
     c.champion.pos = { ...relics[0].pos };
     step(0.1);
     expect(c.champion.hp).toBeGreaterThan(200 + c.champion.stats.maxHp * RELIC.heal * 0.9);
+    expect(c.champion.score.pumpkins).toBe(1);
     expect(world.all().filter((e) => e instanceof Relic)).toHaveLength(ARAM_MAP.relics!.length - 1);
     c.champion.pos = { x: 600, y: 1700 }; // off the spot, so the next one isn't eaten as it grows
     step(RELIC.respawn + 0.5);

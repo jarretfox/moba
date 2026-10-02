@@ -3,10 +3,13 @@ import type { MapData } from '../../shared/map/mapData';
 import { shapeContains } from '../../shared/map/shapes';
 import type { EntitySnap } from '../../shared/protocol';
 import { propSpots } from './props';
+import { hollowPerches } from './hollow';
 
 // Life on the map: flocks of birds roosting at the edges of the woods that take off when a fight breaks
 // out nearby (or someone walks right under them), bats flitting round the lanterns at night, and frogs
-// at the river's edge that hop away when anyone gets close. Pure decoration.
+// at the river's edge that hop away when anyone gets close. On the Howling Hollow: crows on the gravestones
+// that scatter cawing when someone comes by, bats streaming across the sky now and then, and little ghosts
+// drifting over the graveyard plaza. Pure decoration.
 
 interface Bird {
   dx: number;
@@ -33,6 +36,24 @@ interface Frog {
   dir: { x: number; y: number };
   hop: number;
   gone: number;
+}
+
+interface Crow {
+  /** Which gravestone it's on (in hollowPerches). */
+  perch: number;
+  /** Flying off: how far into it (0–1), and which way. */
+  flight: number;
+  dir: number;
+  /** Seconds before it settles on a gravestone again. */
+  away: number;
+  phase: number;
+}
+
+interface Ghost {
+  cx: number;
+  cy: number;
+  phase: number;
+  speed: number;
 }
 
 interface Bat {
@@ -64,9 +85,21 @@ export class Critters {
   private readonly lanterns: { x: number; y: number }[];
   private clock = 0;
   private night = 0;
+  /** The Howling Hollow's own: crows, a stream of bats now and then, ghosts. */
+  private readonly haunted: boolean;
+  private readonly crows: Crow[] = [];
+  private readonly ghosts: Ghost[] = [];
+  /** A stream of bats crossing the view: where it started, its heading, and how long ago. */
+  private swarm: { x: number; y: number; dx: number; dy: number; age: number } | null = null;
+  private swarmIn = 8;
 
-  constructor(map: MapData) {
+  constructor(private readonly map: MapData) {
     const random = rng(777);
+    this.haunted = map.theme === 'halloween';
+    if (this.haunted) {
+      for (let i = 0; i < 14; i++) this.crows.push({ perch: i * 7, flight: -1, dir: 1, away: 0, phase: random() * 10 });
+      for (let i = 0; i < 3; i++) this.ghosts.push({ cx: map.width / 2 + (i - 1) * 260, cy: map.height / 2 + (i % 2 ? -1 : 1) * 160, phase: random() * 10, speed: 0.25 + random() * 0.2 });
+    }
     const onGround = (x: number, y: number) => map.ground.some((p) => shapeContains(p.shape, x, y));
     // Roosts: in the trees just off the paths, where you can see the birds leave.
     for (let i = 0; i < 6000 && this.roosts.length < 14; i++) {
@@ -106,6 +139,96 @@ export class Critters {
   /** Something loud happened here: nearby birds take off. */
   alarm(x: number, y: number): void {
     for (const f of this.flocks) if (!f.flying && Math.hypot(f.x - x, f.y - y) < 750) this.takeOff(f, x, y);
+  }
+
+  /** The Howling Hollow: crows on the graves, bats streaming over, ghosts drifting round the plaza. */
+  private hollowLife(g: Graphics, dt: number, walkers: EntitySnap[], view: { x: number; y: number; w: number; h: number }, onScreen: (x: number, y: number, pad?: number) => boolean): void {
+    const perches = hollowPerches(this.map);
+    if (perches.length) {
+      for (const c of this.crows) {
+        // Spread along the graves (the perch numbers are fractions of the way along the list).
+        const p = perches[Math.floor(((c.perch % 97) / 97) * perches.length)];
+        if (c.away > 0) {
+          c.away -= dt;
+          if (c.away <= 0) c.perch = (c.perch + 5 + Math.floor(Math.random() * 20)) % 97;
+          continue;
+        }
+        if (c.flight < 0 && walkers.some((w) => Math.hypot(w.x - p.x, w.y - p.y) < 220)) {
+          c.flight = 0;
+          c.dir = Math.random() < 0.5 ? -1 : 1;
+        }
+        let x = p.x;
+        let y = p.y;
+        let flap = 0;
+        if (c.flight >= 0) {
+          c.flight += dt / 1.6;
+          x += c.dir * 500 * c.flight;
+          y -= 420 * c.flight * c.flight + 30 * c.flight;
+          flap = Math.sin(this.clock * 26 + c.phase) * 7;
+          if (c.flight >= 1) {
+            c.flight = -1;
+            c.away = 15 + Math.random() * 25;
+            continue;
+          }
+        }
+        if (!onScreen(x, y)) continue;
+        if (c.flight >= 0) {
+          g.moveTo(x - 18, y + flap).lineTo(x, y).lineTo(x + 18, y + flap).stroke({ width: 5, color: 0x0e0c12, join: 'round', cap: 'round' });
+        } else {
+          // Perched: a hunched black body, a beak, a glint of an eye; a hop and a head-turn now and then.
+          const hop = Math.max(0, Math.sin(this.clock * 0.9 + c.phase) - 0.96) * 60;
+          const look = Math.sin(this.clock * 0.6 + c.phase * 3) > 0 ? 1 : -1;
+          const s = 1.6;
+          const yy = y - hop;
+          g.ellipse(x, yy, 9 * s, 7 * s).fill(0x0e0c12).stroke({ width: 1.5, color: 0x3a3448, alpha: 0.8 });
+          g.circle(x + look * 7 * s, yy - 7 * s, 5 * s).fill(0x0e0c12);
+          g.poly([x + look * 10 * s, yy - 8 * s, x + look * 17 * s, yy - 6 * s, x + look * 10 * s, yy - 4 * s]).fill(0x5a5048);
+          g.circle(x + look * 8 * s, yy - 8.5 * s, 1.6).fill(0xffe08a);
+          g.poly([x - look * 7 * s, yy - 2 * s, x - look * 15 * s, yy + 2 * s, x - look * 7 * s, yy + 3 * s]).fill(0x0e0c12);
+        }
+      }
+    }
+    // Now and then a stream of bats pours across the sky.
+    this.swarmIn -= dt;
+    if (!this.swarm && this.swarmIn <= 0) {
+      const left = Math.random() < 0.5;
+      this.swarm = { x: view.x + (left ? -1 : 1) * (view.w / 2 + 150), y: view.y - view.h * (0.1 + Math.random() * 0.3), dx: left ? 1 : -1, dy: 0.15 + Math.random() * 0.2, age: 0 };
+      this.swarmIn = 18 + Math.random() * 20;
+    }
+    if (this.swarm) {
+      const s = this.swarm;
+      s.age += dt;
+      const travel = 650 * s.age;
+      for (let i = 0; i < 9; i++) {
+        const lag = i * 55;
+        const x = s.x + s.dx * (travel - lag) + Math.sin(this.clock * 3 + i) * 20;
+        const y = s.y + s.dy * (travel - lag) + Math.cos(this.clock * 4 + i * 2) * 26 + (i % 3) * 22;
+        const flap = Math.sin(this.clock * 30 + i) * 5;
+        g.moveTo(x - 15, y + flap).lineTo(x - 6, y - 3).lineTo(x, y + 3).lineTo(x + 6, y - 3).lineTo(x + 15, y + flap);
+        g.stroke({ width: 3.5, color: 0x1a1222, join: 'round', cap: 'round' });
+      }
+      if (travel > view.w + 900) this.swarm = null;
+    }
+    // Ghosts: little sheets drifting in slow loops round the plaza, fading in and out.
+    for (const gh of this.ghosts) {
+      const t = this.clock * gh.speed + gh.phase;
+      const x = gh.cx + Math.sin(t) * 260;
+      const y = gh.cy + Math.sin(t * 1.7) * 120 - 50;
+      if (!onScreen(x, y)) continue;
+      const a = 0.4 + 0.3 * (0.5 + 0.5 * Math.sin(t * 0.8));
+      const bob = Math.sin(this.clock * 2.4 + gh.phase) * 5;
+      const lean = Math.cos(t) * 0.25;
+      const body: number[] = [];
+      for (let k = 0; k <= 10; k++) {
+        const ang = Math.PI + (k / 10) * Math.PI;
+        body.push(x + Math.cos(ang) * 24, y + bob - 14 + Math.sin(ang) * 24);
+      }
+      for (let k = 0; k <= 4; k++) body.push(x + 24 - k * 12 + lean * 14, y + bob + 20 + (k % 2 ? -7 : 3));
+      g.poly(body).fill({ color: 0xe8f4ff, alpha: a }).stroke({ width: 1.5, color: 0xb8d8ff, alpha: a * 0.8 });
+      g.ellipse(x - 7, y + bob - 16, 3.2, 4.5).fill({ color: 0x1a1a2a, alpha: Math.min(1, a * 1.5) });
+      g.ellipse(x + 7, y + bob - 16, 3.2, 4.5).fill({ color: 0x1a1a2a, alpha: Math.min(1, a * 1.5) });
+      g.ellipse(x, y + bob - 6, 3, 4).fill({ color: 0x1a1a2a, alpha: a });
+    }
   }
 
   private takeOff(f: Flock, fromX: number, fromY: number): void {
@@ -198,6 +321,8 @@ export class Critters {
       g.circle(x - 3 * size + fr.dir.x * 4, y - 4 * size + fr.dir.y * 3, 2 * size).fill(0xe8f0c0);
       g.circle(x + 3 * size + fr.dir.x * 4, y - 4 * size + fr.dir.y * 3, 2 * size).fill(0xe8f0c0);
     }
+
+    if (this.haunted) this.hollowLife(g, dt, walkers, view, onScreen);
 
     // Bats: out at night, flitting round the lanterns.
     if (this.night > 0.35) {

@@ -16,6 +16,11 @@ describe('end-of-match awards', () => {
     ]);
   });
 
+  it('crowns a Pumpkin Glutton on the Hollow', () => {
+    const awards = pickAwards([row(1, 'Ann', { pk: 2 }), row(2, 'Bo', { pk: 5 })], none);
+    expect(awards.map((a) => [a.title, a.row.name, a.detail])).toEqual([['Pumpkin Glutton', 'Bo', 'Ate 5 pumpkins']]);
+  });
+
   it('counts the Warden and deaths to Chuds from the tally', () => {
     const rows = [row(1, 'Ann'), row(2, 'Bo')];
     const awards = pickAwards(rows, { warden: { Bo: 2 }, executed: { Ann: 1 } });

@@ -166,6 +166,8 @@ export class Sound {
   muted = loadFlag(MUTE_KEY);
   musicOn = !loadFlag(MUSIC_KEY);
   private music: Music | null = null;
+  /** Playing on the Howling Hollow (see setHaunted). */
+  private haunted = false;
   private scape: Soundscape | null = null;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -250,6 +252,13 @@ export class Sound {
   setNight(k: number): void {
     this.music?.setNight(k);
     this.scape?.setNight(k);
+  }
+
+  /** The Howling Hollow: the music turns spooky, and wolves, crows and moaning wind fill the night. */
+  setHaunted(on: boolean): void {
+    this.haunted = on;
+    this.music?.setHaunted(on);
+    this.scape?.setHaunted(on);
   }
 
   /** The match's weather (null for clear), and how hard its wind blows (1 = an ordinary evening). */
@@ -385,6 +394,8 @@ export class Sound {
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
       this.music = new Music(ctx, this.bed, this.noise, this.musicOn);
       this.scape = new Soundscape(ctx, this.ambBus, this.ambSend);
+      this.music.setHaunted(this.haunted);
+      this.scape.setHaunted(this.haunted);
       this.applyVolumes();
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();

@@ -30,6 +30,7 @@ const AWARDS: { title: string; value: (r: ScoreRow, t: MatchTally) => number; mi
   { title: 'Team Player', value: (r) => r.a, min: 4, detail: (v) => `${v} assists` },
   { title: 'Brick Wall', value: (r) => r.taken, min: 3000, detail: (v) => `${k(v)} damage soaked up` },
   { title: 'Respawn Regular', value: (r) => r.d, min: 4, detail: (v) => `${v} deaths` },
+  { title: 'Pumpkin Glutton', value: (r) => r.pk ?? 0, min: 3, detail: (v) => `Ate ${v} pumpkins` },
   { title: 'Big Spender', value: (r) => r.gold, min: 3000, detail: (v) => `${k(v)} gold earned` },
 ];
 

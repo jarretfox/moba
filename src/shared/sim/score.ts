@@ -15,9 +15,11 @@ export interface Score {
   damageTaken: number;
   /** Everything earned, passive income included; selling doesn't count. */
   goldEarned: number;
+  /** Pumpkins eaten on the Howling Hollow. */
+  pumpkins: number;
 }
 
-export const newScore = (): Score => ({ kills: 0, deaths: 0, assists: 0, cs: 0, damageToChampions: 0, damageToStructures: 0, damageTaken: 0, goldEarned: 0 });
+export const newScore = (): Score => ({ kills: 0, deaths: 0, assists: 0, cs: 0, damageToChampions: 0, damageToStructures: 0, damageTaken: 0, goldEarned: 0, pumpkins: 0 });
 
 /** Damage after armor and shields, credited to whoever's behind it (a king for his guards). */
 export function recordDamage(source: Unit | null, target: Unit, dealt: number): void {
@@ -51,5 +53,6 @@ export function scoreRows(world: World): ScoreRow[] {
       taken: Math.round(c.score.damageTaken),
       gold: Math.round(c.score.goldEarned),
       items: [...c.items],
+      ...(c.score.pumpkins ? { pk: c.score.pumpkins } : {}),
     }));
 }

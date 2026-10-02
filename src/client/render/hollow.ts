@@ -124,6 +124,13 @@ function scarecrow(g: Graphics): void {
   g.addChild(hat);
 }
 
+const PERCHES = new WeakMap<MapData, { x: number; y: number }[]>();
+
+/** The tops of the Hollow's gravestones, once its decor is built (where crows can sit). */
+export function hollowPerches(map: MapData): readonly { x: number; y: number }[] {
+  return PERCHES.get(map) ?? [];
+}
+
 /** The Hollow's decor, in the Rift's landmarks' shape (flat, tall, standing, lights). */
 export function buildHollow(map: MapData): Landmarks {
   const flat = new Container();
@@ -143,6 +150,13 @@ export function buildHollow(map: MapData): Landmarks {
     standing.push(g);
     return g;
   };
+  // Gravestones are where the crows sit (see critters.ts).
+  const perches: { x: number; y: number }[] = [];
+  PERCHES.set(map, perches);
+  const perch = (x: number, y: number) => {
+    perches.push({ x, y: y - 40 });
+    return stand(x, y);
+  };
 
   // Gravestones along both edges of the lane, just off the walkable ground, crooked and in little rows.
   for (let x = 1500; x < map.width - 1500; x += 120 + random() * 160) {
@@ -151,7 +165,7 @@ export function buildHollow(map: MapData): Landmarks {
       for (let tries = 0; tries < 6; tries++) {
         const y = Y + side * (600 + random() * 260);
         if (onGround(x, y) || blocked(x, y)) continue;
-        gravestone(stand(x, y), random);
+        gravestone(perch(x, y), random);
         break;
       }
     }
@@ -165,7 +179,7 @@ export function buildHollow(map: MapData): Landmarks {
       if (random() < 0.3) continue;
       const y = Y + side * (440 + random() * 90);
       if (blocked(x, y) || !clearOf(x, y, 230)) continue;
-      gravestone(stand(x, y), random);
+      gravestone(perch(x, y), random);
     }
   }
   // Underfoot: old grave slabs sunk into the lane, fallen leaves, and candles left burning on the graves.
@@ -251,7 +265,7 @@ export function buildHollow(map: MapData): Landmarks {
     const x = cx + Math.cos(a) * 690;
     const y = Y + Math.sin(a) * 690;
     if (Math.abs(Math.sin(a)) < 0.45) continue; // keep the lane through the plaza clear
-    if (!blocked(x, y)) gravestone(stand(x, y), random);
+    if (!blocked(x, y)) gravestone(perch(x, y), random);
   }
 
   // Jack-o'-lanterns off the lane's edges, every so often, alternating sides; they light the dark orange.

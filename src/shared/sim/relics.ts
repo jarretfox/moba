@@ -1,3 +1,4 @@
+import { Champion } from '../champions/champion';
 import { TEAM } from '../constants';
 import { dist, type Vec2 } from '../math';
 import type { EntitySnap } from '../protocol';
@@ -42,6 +43,7 @@ export class Relic implements Entity {
     if (!eater) return;
     this.removed = true;
     eater.heal(world, eater.stats.maxHp * RELIC.heal);
+    if (eater instanceof Champion) eater.score.pumpkins++;
     if (eater.stats.maxMana > 0 && (eater as { info?: { resource: string } }).info?.resource === 'mana') eater.mana = Math.min(eater.stats.maxMana, eater.mana + eater.stats.maxMana * RELIC.mana);
     world.emit({ e: 'fx', fx: 'relic', x: Math.round(this.pos.x), y: Math.round(this.pos.y), team: eater.team });
     this.onTaken();

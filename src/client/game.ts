@@ -313,6 +313,8 @@ export class GameClient {
     this.visionGrid = new VisionGrid(map, this.nav);
     this.fog = new FogLayer(this.visionGrid);
     this.camera = new Camera(map);
+    // The Howling Hollow sounds haunted.
+    this.sound.setHaunted(map.theme === 'halloween');
     this.lighting = new Lighting(map);
     this.hud = new Hud(hudRoot);
     this.hud.onLevelUp = (slot) => {
@@ -1807,6 +1809,7 @@ export class GameClient {
     this.hud.destroy();
     this.sound.setWeather(null, 1);
     this.sound.setPlace(0, 0, 0, 0);
+    this.sound.setHaunted(false);
     this.app.canvas.classList.remove('cursor-attack', 'cursor-shop');
   }
 

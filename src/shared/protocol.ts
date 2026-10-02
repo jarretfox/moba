@@ -255,6 +255,8 @@ export interface ScoreRow {
   items: ItemId[];
   /** The look they're wearing (left out for the classic one). */
   skin?: number;
+  /** Pumpkins eaten (the Howling Hollow; left out when none). */
+  pk?: number;
 }
 
 /** Everyone's view of the Warden: when it wakes, and which team is Unchained (Uprising if Willmore or HunnaG took it). */
