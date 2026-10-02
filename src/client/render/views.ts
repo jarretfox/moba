@@ -1,3 +1,4 @@
+import { buildFor } from './costumes';
 import { CHUD_DEFS } from '../../shared/sim/chud';
 import { jackOLantern } from './hollow';
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
@@ -16,7 +17,7 @@ import { drawChampionBase, palette } from './champions';
 import { Beast, type BeastKind } from './beasts';
 import { dressChud } from './chudLife';
 import { coatStage, CoatFigure, eventFigure } from './eventFigures';
-import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
+import { UNIT_BUILDS, unitPalette } from './builds';
 import { Rig, type Expression, type Figure, type Posture } from './rig';
 import { flightHeight } from './stature';
 import type { Wind } from './wind';
@@ -261,7 +262,7 @@ export class UnitView implements EntityView {
       drawChampionBase(this.body, r, color, relation === 'self');
       this.champ = s.champ;
       this.pal = palette(s.champ, s.skin ?? 0);
-      this.rig = new Rig(BUILDS[s.champ], r, this.pal);
+      this.rig = new Rig(buildFor(s.champ, s.skin ?? 0), r, this.pal);
       this.side = Math.cos(s.f) < 0 ? -1 : 1;
       this.attackAnim = ATTACK[s.champ];
     } else {

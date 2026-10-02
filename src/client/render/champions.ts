@@ -1,5 +1,5 @@
 import { Container, Graphics, Rectangle, type Renderer } from 'pixi.js';
-import { BUILDS } from './builds';
+import { COSTUMES, buildFor } from './costumes';
 import { Rig } from './rig';
 import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 
@@ -27,8 +27,8 @@ const CLASSIC: Record<ChampionId, Palette> = {
   dongmaster: { skin: 0xe2b48a, skinDark: 0xb98a62, tank: 0x1c1c22, hair: 0x2a1a10, band: 0xe5484d, wrap: 0xf2efe6 },
 };
 
-/** Each champion's looks: the classic one first, then two skins (just different palettes). */
-export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette }[]> = {
+/** Each champion's looks: the classic one first, then two skins (just different palettes), then the Halloween costume. */
+const LOOKS: Record<ChampionId, readonly { name: string; colors: Palette }[]> = {
   marksman: [
     { name: 'By the Book', colors: {} },
     { name: 'Frost Ranger', colors: { cloak: 0x34506e, hood: 0x6fa8d6, quiver: 0x4a5a6a, bow: 0xb8d8f0, face: 0x1a2533, fletch: 0xdff7ff } },
@@ -86,6 +86,10 @@ export const SKINS: Record<ChampionId, readonly { name: string; colors: Palette 
   ],
 };
 
+export const SKINS = Object.fromEntries(
+  (Object.keys(LOOKS) as ChampionId[]).map((id) => [id, [...LOOKS[id], { name: COSTUMES[id].name, colors: COSTUMES[id].colors }]]),
+) as unknown as Record<ChampionId, readonly { name: string; colors: Palette }[]>;
+
 /** The color that sums up each look, for the swatches in champion select. */
 const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret', havarti: 'wheel', daltonomo: 'hatA' };
 
@@ -140,7 +144,7 @@ export function renderPortraits(renderer: Renderer, ids: readonly ChampionId[]):
       const root = new Container();
       const bg = new Graphics().circle(0, 0, R * 1.7).fill(0x10161f);
       // A bust: head and shoulders, standing at ease, a little larger than life.
-      const rig = new Rig(BUILDS[id], R, palette(id, skin));
+      const rig = new Rig(buildFor(id, skin), R, palette(id, skin));
       rig.update({ dt: 0, speed: 0, facing: 1, turn: 0, reach: 0, twist: 0, lunge: 0, grow: 0, stretch: 0, air: 0 });
       const k = (R * 2.9) / (rig.height * 0.62);
       rig.root.scale.set(k);

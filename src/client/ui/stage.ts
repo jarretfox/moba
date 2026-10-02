@@ -1,7 +1,7 @@
+import { buildFor } from '../render/costumes';
 import { Application, Graphics } from 'pixi.js';
 import type { ChampionId } from '../../shared/champions/types';
 import { FIDGETS, castAnim, sample, type Anim } from '../render/animation';
-import { BUILDS } from '../render/builds';
 import { palette } from '../render/champions';
 import { Rig } from '../render/rig';
 
@@ -72,7 +72,7 @@ export class ChampionStage {
     if (!this.started || !this.champ) return;
     this.rig?.root.destroy({ children: true });
     // Drawn big, so it's crisp; scaled to stand in the ring.
-    const rig = new Rig(BUILDS[this.champ], 60, palette(this.champ, this.skin));
+    const rig = new Rig(buildFor(this.champ, this.skin), 60, palette(this.champ, this.skin));
     const k = (this.size * 0.72) / rig.height;
     rig.root.scale.set(k);
     rig.root.position.set(this.size / 2 - 6, this.size - 20);

@@ -1,3 +1,4 @@
+import { COSTUMES, COSTUME_SKIN, buildFor } from './costumes';
 import { describe, expect, it } from 'vitest';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChampionId } from '../../shared/champions/types';
@@ -18,6 +19,15 @@ function run(rig: Rig, input: Partial<RigInput>, frames: number): void {
 }
 
 describe('champion rigs', () => {
+  it('dress every champion in their Halloween costume, the same height as ever', () => {
+    for (const id of IDS) {
+      const rig = new Rig(buildFor(id, COSTUME_SKIN), R, palette(id, COSTUME_SKIN));
+      run(rig, {}, 2);
+      expect(rig.height).toBeCloseTo(new Rig(BUILDS[id], R, palette(id)).height, 6);
+      expect(SKINS[id][COSTUME_SKIN].name).toBe(COSTUMES[id].name);
+    }
+  });
+
   it('build every champion in every look, standing a sensible height', () => {
     for (const id of IDS) {
       expect(BUILDS[id]).toBeDefined();

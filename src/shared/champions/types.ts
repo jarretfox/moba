@@ -1,5 +1,6 @@
 /** How many looks each champion has (the classic one and two skins). Purely cosmetic. */
-export const SKIN_COUNT = 3;
+/** Looks per champion: the classic one, two recolors, and a Halloween costume. */
+export const SKIN_COUNT = 4;
 
 export type ChampionId = 'marksman' | 'barbarian' | 'willmore' | 'hunnag' | 'logan' | 'kingrix' | 'dongmaster' | 'dabber' | 'paris' | 'havarti' | 'daltonomo';
 

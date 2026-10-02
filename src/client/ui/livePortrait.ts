@@ -1,7 +1,7 @@
+import { buildFor } from '../render/costumes';
 import { Application } from 'pixi.js';
 import type { ChampionId } from '../../shared/champions/types';
 import type { ItemId } from '../../shared/items';
-import { BUILDS } from '../render/builds';
 import { palette } from '../render/champions';
 import { Rig, type Expression } from '../render/rig';
 
@@ -46,7 +46,7 @@ export class LivePortrait {
     this.want = { id, skin };
     if (!this.started) return;
     this.rig?.root.destroy({ children: true });
-    const rig = new Rig(BUILDS[id], R, palette(id, skin));
+    const rig = new Rig(buildFor(id, skin), R, palette(id, skin));
     // Framed like the still portraits: head and shoulders, a little larger than life.
     const k = (SIZE * 0.86) / (rig.height * 0.62);
     rig.root.scale.set(k);

@@ -1,7 +1,7 @@
+import { buildFor } from '../render/costumes';
 import { Application, Graphics, Text } from 'pixi.js';
 import type { Team } from '../../shared/constants';
 import type { ScoreRow } from '../../shared/protocol';
-import { BUILDS } from '../render/builds';
 import { palette } from '../render/champions';
 import { endPose, liesDown, type EndPose } from '../render/poses';
 import { Rig, type RigInput } from '../render/rig';
@@ -44,7 +44,7 @@ export class Podium {
     const lost = rows.filter((r) => r.team !== winner);
     const place = (row: ScoreRow, x: number, win: boolean) => {
       const shadow = new Graphics().ellipse(x, H - 34, 30, 7).fill({ color: 0x000000, alpha: 0.4 });
-      const rig = new Rig(BUILDS[row.champ], 60, palette(row.champ, row.skin ?? 0));
+      const rig = new Rig(buildFor(row.champ, row.skin ?? 0), 60, palette(row.champ, row.skin ?? 0));
       rig.setGear(row.items);
       rig.root.scale.set(TALL / rig.height);
       // Lying flat, they stretch out to the right of their spot: shift them back so they stay in it.
