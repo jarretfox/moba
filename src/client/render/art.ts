@@ -52,6 +52,16 @@ export interface ArtIndex {
   champions: Partial<Record<ChampionId, number[]>>;
   fx: Record<string, FlipbookSpec>;
   sprites: Record<string, SpriteSpec>;
+  /** The particle atlas's manifest (particles.json beside particles.png), if there is one. */
+  particles?: string;
+}
+
+/** The particle atlas: textures for the particle engine's shapes (render/particles.ts, dev/fxBake.ts). */
+export interface ParticleAtlas {
+  image: CanvasImageSource & { width: number; height: number };
+  cell: number;
+  /** Each shape: its cells (counted across the atlas, then down) and how big to draw them for their size. */
+  shapes: Record<string, { cells: number[]; scale: number }>;
 }
 
 export interface Flipbook {
@@ -72,6 +82,7 @@ const isFile = (v: unknown): v is string => typeof v === 'string' && /^[\w./-]+$
 export function parseArtIndex(raw: unknown): ArtIndex {
   const out: ArtIndex = { champions: {}, fx: {}, sprites: {} };
   if (!isObj(raw)) return out;
+  if (isFile(raw.particles)) out.particles = raw.particles;
   if (isObj(raw.champions)) {
     for (const [id, skins] of Object.entries(raw.champions)) {
       if (Array.isArray(skins)) out.champions[id as ChampionId] = skins.filter((s): s is number => Number.isInteger(s) && s >= 0 && s < 8);
@@ -131,6 +142,12 @@ export function sheetFrames(sheet: Texture, frames: number, cols: number): Textu
 
 const ROOT = `${import.meta.env.BASE_URL}art/`;
 const looks = new Map<string, PartArt>();
+let atlas: ParticleAtlas | undefined;
+
+/** The particle atlas, if there is one (and it's loaded). */
+export function particleAtlas(): ParticleAtlas | undefined {
+  return atlas;
+}
 const flipbooks = new Map<string, Flipbook>();
 const sprites = new Map<string, SpriteArt>();
 
@@ -193,6 +210,20 @@ export async function loadArt(): Promise<void> {
       (async () => {
         const sheet = await Assets.load<Texture>(`${ROOT}${spec.file}`);
         flipbooks.set(name, { spec, frames: sheetFrames(sheet, spec.frames, spec.cols) });
+      })(),
+    );
+  }
+  if (index.particles) {
+    jobs.push(
+      (async () => {
+        const meta = (await getJson(`${ROOT}${index.particles}`)) as { cell?: unknown; shapes?: unknown };
+        const res = await fetch(`${ROOT}${index.particles!.replace(/\.json$/, '.png')}`);
+        if (!res.ok || typeof meta.cell !== 'number' || !isObj(meta.shapes)) throw new Error('particle atlas');
+        const shapes: ParticleAtlas['shapes'] = {};
+        for (const [name, s] of Object.entries(meta.shapes)) {
+          if (isObj(s) && Array.isArray(s.cells) && typeof s.scale === 'number') shapes[name] = { cells: s.cells.filter((c): c is number => Number.isInteger(c)), scale: s.scale };
+        }
+        atlas = { image: await createImageBitmap(await res.blob()), cell: meta.cell, shapes };
       })(),
     );
   }

@@ -1,71 +1,894 @@
 {
   "sounds": {
-    "atkToken": {
+    "atkBow": {
       "files": [
-        "sfx/kenney/impactMetal_light_000.ogg",
-        "sfx/kenney/impactMetal_light_001.ogg",
-        "sfx/kenney/impactMetal_light_002.ogg",
-        "sfx/kenney/impactMetal_light_003.ogg",
-        "sfx/kenney/impactMetal_light_004.ogg"
+        "sfx/atkBow-1.mp3",
+        "sfx/atkBow-2.mp3"
       ],
-      "gain": 0.19
+      "gain": 0.547
     },
-    "cast:scrimby:1": {
+    "hit:marksman": {
       "files": [
-        "sfx/kenney/impactPlate_heavy_001.ogg",
-        "sfx/kenney/impactPlate_heavy_003.ogg"
+        "sfx/hit-marksman-1.mp3",
+        "sfx/hit-marksman-2.mp3",
+        "sfx/hit-marksman-3.mp3",
+        "sfx/hit-marksman-4.mp3"
       ],
-      "gain": 0.14
+      "gain": 0.713
     },
-    "fx:manhole": {
+    "cast:marksman:0": {
       "files": [
-        "sfx/kenney/impactPlate_light_000.ogg",
-        "sfx/kenney/impactPlate_light_001.ogg",
-        "sfx/kenney/impactPlate_light_002.ogg",
-        "sfx/kenney/impactPlate_light_003.ogg",
-        "sfx/kenney/impactPlate_light_004.ogg"
+        "sfx/cast-marksman-0-1.mp3",
+        "sfx/cast-marksman-0-2.mp3"
+      ],
+      "gain": 1.053,
+      "over": true
+    },
+    "cast:marksman:1": {
+      "files": [
+        "sfx/cast-marksman-1-1.mp3",
+        "sfx/cast-marksman-1-2.mp3"
+      ],
+      "gain": 1.759
+    },
+    "fx:trapSnap": {
+      "files": [
+        "sfx/fx-trapSnap-1.mp3",
+        "sfx/fx-trapSnap-2.mp3"
+      ],
+      "gain": 0.848
+    },
+    "fx:roll": {
+      "files": [
+        "sfx/fx-roll-1.mp3",
+        "sfx/fx-roll-2.mp3",
+        "sfx/fx-roll-3.mp3"
+      ],
+      "gain": 0.102,
+      "over": true
+    },
+    "fx:aimLine": {
+      "files": [
+        "sfx/fx-aimLine-1.mp3",
+        "sfx/fx-aimLine-2.mp3"
+      ],
+      "gain": 0.183,
+      "over": true
+    },
+    "cast:marksman:3": {
+      "files": [
+        "sfx/cast-marksman-3-1.mp3",
+        "sfx/cast-marksman-3-2.mp3"
+      ],
+      "gain": 1.242,
+      "over": true
+    },
+    "atkAxe": {
+      "files": [
+        "sfx/atkAxe-1.mp3",
+        "sfx/atkAxe-2.mp3",
+        "sfx/atkAxe-3.mp3"
+      ],
+      "gain": 0.804
+    },
+    "hit:barbarian": {
+      "files": [
+        "sfx/hit-barbarian-1.mp3",
+        "sfx/hit-barbarian-2.mp3",
+        "sfx/hit-barbarian-3.mp3",
+        "sfx/hit-barbarian-4.mp3"
+      ],
+      "gain": 0.688
+    },
+    "fx:cleave": {
+      "files": [
+        "sfx/fx-cleave-1.mp3",
+        "sfx/fx-cleave-2.mp3",
+        "sfx/fx-cleave-3.mp3"
+      ],
+      "gain": 0.134,
+      "over": true
+    },
+    "fx:warCry": {
+      "files": [
+        "sfx/fx-warCry-1.mp3",
+        "sfx/fx-warCry-2.mp3",
+        "sfx/fx-warCry-3.mp3"
+      ],
+      "gain": 0.343,
+      "over": true
+    },
+    "fx:slam": {
+      "files": [
+        "sfx/fx-slam-1.mp3",
+        "sfx/fx-slam-2.mp3",
+        "sfx/fx-slam-3.mp3"
+      ],
+      "gain": 3.159,
+      "over": true
+    },
+    "fx:berserk": {
+      "files": [
+        "sfx/fx-berserk-1.mp3",
+        "sfx/fx-berserk-2.mp3"
+      ],
+      "gain": 0.345,
+      "over": true
+    },
+    "atkHook": {
+      "files": [
+        "sfx/atkHook-1.mp3",
+        "sfx/atkHook-2.mp3",
+        "sfx/atkHook-3.mp3"
+      ],
+      "gain": 0.502
+    },
+    "hit:willmore": {
+      "files": [
+        "sfx/hit-willmore-1.mp3",
+        "sfx/hit-willmore-2.mp3",
+        "sfx/hit-willmore-3.mp3",
+        "sfx/hit-willmore-4.mp3"
+      ],
+      "gain": 0.928
+    },
+    "cast:willmore:0": {
+      "files": [
+        "sfx/cast-willmore-0-1.mp3",
+        "sfx/cast-willmore-0-2.mp3",
+        "sfx/cast-willmore-0-3.mp3"
+      ],
+      "gain": 0.359,
+      "over": true
+    },
+    "fx:burrow": {
+      "files": [
+        "sfx/fx-burrow-1.mp3",
+        "sfx/fx-burrow-2.mp3"
+      ],
+      "gain": 0.489,
+      "over": true
+    },
+    "fx:surface": {
+      "files": [
+        "sfx/fx-surface-1.mp3",
+        "sfx/fx-surface-2.mp3"
+      ],
+      "gain": 2.973,
+      "over": true
+    },
+    "fx:tunnel": {
+      "files": [
+        "sfx/fx-tunnel-1.mp3",
+        "sfx/fx-tunnel-2.mp3"
+      ],
+      "gain": 0.144,
+      "over": true
+    },
+    "fx:hookPull": {
+      "files": [
+        "sfx/fx-hookPull-1.mp3",
+        "sfx/fx-hookPull-2.mp3"
+      ],
+      "gain": 0.271,
+      "over": true
+    },
+    "atkSpore": {
+      "files": [
+        "sfx/atkSpore-1.mp3",
+        "sfx/atkSpore-2.mp3",
+        "sfx/atkSpore-3.mp3"
+      ],
+      "gain": 0.766
+    },
+    "hit:hunnag": {
+      "files": [
+        "sfx/hit-hunnag-1.mp3",
+        "sfx/hit-hunnag-2.mp3",
+        "sfx/hit-hunnag-3.mp3",
+        "sfx/hit-hunnag-4.mp3"
+      ],
+      "gain": 0.716
+    },
+    "fx:lob": {
+      "files": [
+        "sfx/fx-lob-1.mp3",
+        "sfx/fx-lob-2.mp3"
+      ],
+      "gain": 0.182,
+      "over": true
+    },
+    "fx:rotBurst": {
+      "files": [
+        "sfx/fx-rotBurst-1.mp3",
+        "sfx/fx-rotBurst-2.mp3",
+        "sfx/fx-rotBurst-3.mp3",
+        "sfx/fx-rotBurst-4.mp3"
+      ],
+      "gain": 0.399,
+      "over": true
+    },
+    "fx:pulse": {
+      "files": [
+        "sfx/fx-pulse-1.mp3",
+        "sfx/fx-pulse-2.mp3",
+        "sfx/fx-pulse-3.mp3"
+      ],
+      "gain": 0.269,
+      "over": true
+    },
+    "fx:hop": {
+      "files": [
+        "sfx/fx-hop-1.mp3",
+        "sfx/fx-hop-2.mp3",
+        "sfx/fx-hop-3.mp3"
+      ],
+      "gain": 0.826,
+      "over": true
+    },
+    "fx:deepMark": {
+      "files": [
+        "sfx/fx-deepMark-1.mp3",
+        "sfx/fx-deepMark-2.mp3",
+        "sfx/fx-deepMark-3.mp3"
+      ],
+      "gain": 0.189,
+      "over": true
+    },
+    "fx:deepHands": {
+      "files": [
+        "sfx/fx-deepHands-1.mp3",
+        "sfx/fx-deepHands-2.mp3"
+      ],
+      "gain": 1.644,
+      "over": true,
+      "with": [
+        "fx:deepHands+rock"
+      ]
+    },
+    "fx:deepHands+rock": {
+      "files": [
+        "sfx/fx-deepHands-rock-1.mp3",
+        "sfx/fx-deepHands-rock-2.mp3"
+      ],
+      "gain": 1.427
+    },
+    "atkClaw": {
+      "files": [
+        "sfx/atkClaw-1.mp3",
+        "sfx/atkClaw-2.mp3",
+        "sfx/atkClaw-3.mp3",
+        "sfx/atkClaw-4.mp3"
+      ],
+      "gain": 0.154
+    },
+    "hit:logan": {
+      "files": [
+        "sfx/hit-logan-1.mp3",
+        "sfx/hit-logan-2.mp3",
+        "sfx/hit-logan-3.mp3"
+      ],
+      "gain": 0.609
+    },
+    "fx:pounce": {
+      "files": [
+        "sfx/fx-pounce-1.mp3",
+        "sfx/fx-pounce-2.mp3",
+        "sfx/fx-pounce-3.mp3"
+      ],
+      "gain": 0.344,
+      "over": true
+    },
+    "fx:maul": {
+      "files": [
+        "sfx/fx-maul-1.mp3",
+        "sfx/fx-maul-2.mp3"
+      ],
+      "gain": 0.286,
+      "over": true,
+      "with": [
+        "fx:maul+crunch"
+      ]
+    },
+    "fx:maul+crunch": {
+      "files": [
+        "sfx/fx-maul-crunch-1.mp3",
+        "sfx/fx-maul-crunch-2.mp3",
+        "sfx/fx-maul-crunch-3.mp3"
+      ],
+      "gain": 0.135
+    },
+    "fx:mane": {
+      "files": [
+        "sfx/fx-mane-1.mp3",
+        "sfx/fx-mane-2.mp3",
+        "sfx/fx-mane-3.mp3"
+      ],
+      "gain": 0.351,
+      "over": true
+    },
+    "fx:roar": {
+      "files": [
+        "sfx/fx-roar-1.mp3",
+        "sfx/fx-roar-2.mp3",
+        "sfx/fx-roar-3.mp3"
+      ],
+      "gain": 0.36,
+      "over": true
+    },
+    "fx:lionheart": {
+      "files": [
+        "sfx/fx-lionheart-1.mp3",
+        "sfx/fx-lionheart-2.mp3"
+      ],
+      "gain": 0.151,
+      "over": true
+    },
+    "atkScepter": {
+      "files": [
+        "sfx/atkScepter-1.mp3",
+        "sfx/atkScepter-2.mp3",
+        "sfx/atkScepter-3.mp3",
+        "sfx/atkScepter-4.mp3"
+      ],
+      "gain": 0.581
+    },
+    "hit:kingrix": {
+      "files": [
+        "sfx/hit-kingrix-1.mp3",
+        "sfx/hit-kingrix-2.mp3",
+        "sfx/hit-kingrix-3.mp3"
+      ],
+      "gain": 1.078
+    },
+    "cast:kingrix:0": {
+      "files": [
+        "sfx/cast-kingrix-0-1.mp3",
+        "sfx/cast-kingrix-0-2.mp3"
+      ],
+      "gain": 1.321,
+      "over": true
+    },
+    "fx:summon": {
+      "files": [
+        "sfx/fx-summon-1.mp3",
+        "sfx/fx-summon-2.mp3",
+        "sfx/fx-summon-3.mp3"
+      ],
+      "gain": 0.462,
+      "over": true
+    },
+    "fx:kneel": {
+      "files": [
+        "sfx/fx-kneel-1.mp3",
+        "sfx/fx-kneel-2.mp3"
+      ],
+      "gain": 1.921,
+      "over": true
+    },
+    "fx:decree": {
+      "files": [
+        "sfx/fx-decree-1.mp3",
+        "sfx/fx-decree-2.mp3"
+      ],
+      "gain": 0.424,
+      "over": true,
+      "with": [
+        "fx:decree+gong"
+      ]
+    },
+    "fx:decree+gong": {
+      "files": [
+        "sfx/fx-decree-gong-1.mp3"
+      ],
+      "gain": 0.239
+    },
+    "atkPunch": {
+      "files": [
+        "sfx/atkPunch-1.mp3",
+        "sfx/atkPunch-2.mp3",
+        "sfx/atkPunch-3.mp3",
+        "sfx/atkPunch-4.mp3",
+        "sfx/atkPunch-5.mp3"
+      ],
+      "gain": 0.607
+    },
+    "hit:dongmaster": {
+      "files": [
+        "sfx/hit-dongmaster-1.mp3",
+        "sfx/hit-dongmaster-2.mp3",
+        "sfx/hit-dongmaster-3.mp3",
+        "sfx/hit-dongmaster-4.mp3"
+      ],
+      "gain": 0.614
+    },
+    "fx:chinCheck": {
+      "files": [
+        "sfx/fx-chinCheck-1.mp3",
+        "sfx/fx-chinCheck-2.mp3",
+        "sfx/fx-chinCheck-3.mp3"
+      ],
+      "gain": 0.221,
+      "over": true
+    },
+    "fx:mewing": {
+      "files": [
+        "sfx/fx-mewing-1.mp3"
+      ],
+      "gain": 0.387,
+      "over": true
+    },
+    "fx:sigmaStare": {
+      "files": [
+        "sfx/fx-sigmaStare-1.mp3",
+        "sfx/fx-sigmaStare-2.mp3"
+      ],
+      "gain": 0.163,
+      "over": true
+    },
+    "fx:ascension": {
+      "files": [
+        "sfx/fx-ascension-1.mp3",
+        "sfx/fx-ascension-2.mp3"
+      ],
+      "gain": 0.365,
+      "over": true,
+      "with": [
+        "fx:ascension+brass"
+      ]
+    },
+    "fx:ascension+brass": {
+      "files": [
+        "sfx/fx-ascension-brass-1.mp3",
+        "sfx/fx-ascension-brass-2.mp3"
       ],
       "gain": 0.27
     },
+    "atkRig": {
+      "files": [
+        "sfx/atkRig-1.mp3",
+        "sfx/atkRig-2.mp3"
+      ],
+      "gain": 0.664
+    },
+    "hit:dabber": {
+      "files": [
+        "sfx/hit-dabber-1.mp3",
+        "sfx/hit-dabber-2.mp3",
+        "sfx/hit-dabber-3.mp3"
+      ],
+      "gain": 0.609
+    },
+    "cast:dabber:0": {
+      "files": [
+        "sfx/cast-dabber-0-1.mp3",
+        "sfx/cast-dabber-0-2.mp3"
+      ],
+      "gain": 0.306,
+      "over": true
+    },
+    "cast:dabber:1": {
+      "files": [
+        "sfx/cast-dabber-1-1.mp3",
+        "sfx/cast-dabber-1-2.mp3",
+        "sfx/cast-dabber-1-3.mp3"
+      ],
+      "gain": 0.307,
+      "over": true
+    },
+    "fx:lightItUp": {
+      "files": [
+        "sfx/fx-lightItUp-1.mp3"
+      ],
+      "gain": 3.829,
+      "over": true,
+      "with": [
+        "fx:lightItUp+fire"
+      ]
+    },
+    "fx:lightItUp+fire": {
+      "files": [
+        "sfx/fx-lightItUp-fire-1.mp3",
+        "sfx/fx-lightItUp-fire-2.mp3",
+        "sfx/fx-lightItUp-fire-3.mp3"
+      ],
+      "gain": 2.798
+    },
+    "fx:cloudNine": {
+      "files": [
+        "sfx/fx-cloudNine-1.mp3",
+        "sfx/fx-cloudNine-2.mp3",
+        "sfx/fx-cloudNine-3.mp3"
+      ],
+      "gain": 0.553,
+      "over": true,
+      "with": [
+        "fx:cloudNine+thrust"
+      ]
+    },
+    "fx:cloudNine+thrust": {
+      "files": [
+        "sfx/fx-cloudNine-thrust-1.mp3",
+        "sfx/fx-cloudNine-thrust-2.mp3"
+      ],
+      "gain": 0.45
+    },
+    "atkEpee": {
+      "files": [
+        "sfx/atkEpee-1.mp3",
+        "sfx/atkEpee-2.mp3",
+        "sfx/atkEpee-3.mp3",
+        "sfx/atkEpee-4.mp3"
+      ],
+      "gain": 0.888
+    },
+    "hit:paris": {
+      "files": [
+        "sfx/hit-paris-1.mp3",
+        "sfx/hit-paris-2.mp3",
+        "sfx/hit-paris-3.mp3",
+        "sfx/hit-paris-4.mp3"
+      ],
+      "gain": 0.781
+    },
+    "fx:fleche": {
+      "files": [
+        "sfx/fx-fleche-1.mp3",
+        "sfx/fx-fleche-2.mp3",
+        "sfx/fx-fleche-3.mp3"
+      ],
+      "gain": 0.231,
+      "over": true
+    },
+    "fx:cafeBreak": {
+      "files": [
+        "sfx/fx-cafeBreak-1.mp3",
+        "sfx/fx-cafeBreak-2.mp3",
+        "sfx/fx-cafeBreak-3.mp3"
+      ],
+      "gain": 0.557,
+      "over": true
+    },
+    "fx:touche": {
+      "files": [
+        "sfx/fx-touche-1.mp3",
+        "sfx/fx-touche-2.mp3",
+        "sfx/fx-touche-3.mp3"
+      ],
+      "gain": 0.841,
+      "over": true
+    },
+    "fx:encore": {
+      "files": [
+        "sfx/fx-encore-1.mp3",
+        "sfx/fx-encore-2.mp3"
+      ],
+      "gain": 0.59,
+      "over": true
+    },
+    "atkCheese": {
+      "files": [
+        "sfx/atkCheese-1.mp3",
+        "sfx/atkCheese-2.mp3",
+        "sfx/atkCheese-3.mp3"
+      ],
+      "gain": 0.154
+    },
+    "hit:havarti": {
+      "files": [
+        "sfx/hit-havarti-1.mp3",
+        "sfx/hit-havarti-2.mp3",
+        "sfx/hit-havarti-3.mp3"
+      ],
+      "gain": 0.518
+    },
+    "fx:curdle": {
+      "files": [
+        "sfx/fx-curdle-1.mp3",
+        "sfx/fx-curdle-2.mp3",
+        "sfx/fx-curdle-3.mp3"
+      ],
+      "gain": 1.407,
+      "over": true
+    },
+    "fx:fondue": {
+      "files": [
+        "sfx/fx-fondue-1.mp3"
+      ],
+      "gain": 0.361,
+      "over": true
+    },
+    "fx:rindBlade": {
+      "files": [
+        "sfx/fx-rindBlade-1.mp3",
+        "sfx/fx-rindBlade-2.mp3",
+        "sfx/fx-rindBlade-3.mp3"
+      ],
+      "gain": 0.514,
+      "over": true
+    },
+    "fx:divineFondue": {
+      "files": [
+        "sfx/fx-divineFondue-1.mp3",
+        "sfx/fx-divineFondue-2.mp3"
+      ],
+      "gain": 0.58,
+      "over": true,
+      "with": [
+        "fx:divineFondue+bell"
+      ]
+    },
+    "fx:divineFondue+bell": {
+      "files": [
+        "sfx/fx-divineFondue-bell-1.mp3",
+        "sfx/fx-divineFondue-bell-2.mp3"
+      ],
+      "gain": 0.339
+    },
+    "fx:fondueEruption": {
+      "files": [
+        "sfx/fx-fondueEruption-1.mp3",
+        "sfx/fx-fondueEruption-2.mp3"
+      ],
+      "gain": 3.297,
+      "over": true
+    },
+    "fx:ascend": {
+      "files": [
+        "sfx/fx-ascend-1.mp3"
+      ],
+      "gain": 0.758,
+      "over": true
+    },
+    "atkDagger": {
+      "files": [
+        "sfx/atkDagger-1.mp3",
+        "sfx/atkDagger-2.mp3",
+        "sfx/atkDagger-3.mp3",
+        "sfx/atkDagger-4.mp3"
+      ],
+      "gain": 0.531
+    },
+    "hit:daltonomo": {
+      "files": [
+        "sfx/hit-daltonomo-1.mp3",
+        "sfx/hit-daltonomo-2.mp3",
+        "sfx/hit-daltonomo-3.mp3"
+      ],
+      "gain": 1.006
+    },
+    "fx:nowYouSeeMe": {
+      "files": [
+        "sfx/fx-nowYouSeeMe-1.mp3"
+      ],
+      "gain": 0.177,
+      "over": true
+    },
+    "fx:jackbox": {
+      "files": [
+        "sfx/fx-jackbox-1.mp3",
+        "sfx/fx-jackbox-2.mp3",
+        "sfx/fx-jackbox-3.mp3"
+      ],
+      "gain": 0.759,
+      "over": true
+    },
+    "fx:boxShot": {
+      "files": [
+        "sfx/fx-boxShot-1.mp3",
+        "sfx/fx-boxShot-2.mp3",
+        "sfx/fx-boxShot-3.mp3"
+      ],
+      "gain": 0.31,
+      "over": true
+    },
+    "fx:backstab": {
+      "files": [
+        "sfx/fx-backstab-1.mp3",
+        "sfx/fx-backstab-2.mp3"
+      ],
+      "gain": 1.149,
+      "over": true
+    },
+    "fx:doubleAct": {
+      "files": [
+        "sfx/fx-doubleAct-1.mp3"
+      ],
+      "gain": 2.767,
+      "over": true
+    },
+    "fx:cloneBoom": {
+      "files": [
+        "sfx/fx-cloneBoom-1.mp3",
+        "sfx/fx-cloneBoom-2.mp3",
+        "sfx/fx-cloneBoom-3.mp3"
+      ],
+      "gain": 2.982,
+      "over": true
+    },
+    "cast:daltonomo:2": {
+      "files": [
+        "sfx/cast-daltonomo-2-1.mp3",
+        "sfx/cast-daltonomo-2-2.mp3",
+        "sfx/cast-daltonomo-2-3.mp3"
+      ],
+      "gain": 0.34,
+      "over": true
+    },
+    "atkCoin": {
+      "files": [
+        "sfx/atkCoin-1.mp3",
+        "sfx/atkCoin-2.mp3",
+        "sfx/atkCoin-3.mp3"
+      ],
+      "gain": 0.416
+    },
+    "hit:bigwhale": {
+      "files": [
+        "sfx/hit-bigwhale-1.mp3",
+        "sfx/hit-bigwhale-2.mp3",
+        "sfx/hit-bigwhale-3.mp3",
+        "sfx/hit-bigwhale-4.mp3"
+      ],
+      "gain": 1.888
+    },
+    "fx:tip": {
+      "files": [
+        "sfx/fx-tip-1.mp3"
+      ],
+      "gain": 1.03,
+      "over": true
+    },
+    "fx:cashRain": {
+      "files": [
+        "sfx/fx-cashRain-1.mp3",
+        "sfx/fx-cashRain-2.mp3",
+        "sfx/fx-cashRain-3.mp3"
+      ],
+      "gain": 0.948,
+      "over": true,
+      "with": [
+        "fx:cashRain+coins"
+      ]
+    },
+    "fx:cashRain+coins": {
+      "files": [
+        "sfx/fx-cashRain-coins-1.mp3",
+        "sfx/fx-cashRain-coins-2.mp3"
+      ],
+      "gain": 1.24
+    },
+    "fx:yachtParty": {
+      "files": [
+        "sfx/fx-yachtParty-1.mp3",
+        "sfx/fx-yachtParty-2.mp3",
+        "sfx/fx-yachtParty-3.mp3"
+      ],
+      "gain": 0.291,
+      "over": true
+    },
+    "fx:paperwork": {
+      "files": [
+        "sfx/fx-paperwork-1.mp3",
+        "sfx/fx-paperwork-2.mp3",
+        "sfx/fx-paperwork-3.mp3"
+      ],
+      "gain": 0.816,
+      "over": true,
+      "with": [
+        "fx:paperwork+latch"
+      ]
+    },
+    "fx:paperwork+latch": {
+      "files": [
+        "sfx/fx-paperwork-latch-1.mp3",
+        "sfx/fx-paperwork-latch-2.mp3"
+      ],
+      "gain": 0.582
+    },
+    "fx:breach": {
+      "files": [
+        "sfx/fx-breach-1.mp3",
+        "sfx/fx-breach-2.mp3"
+      ],
+      "gain": 0.431,
+      "over": true
+    },
+    "fx:splashZone": {
+      "files": [
+        "sfx/fx-splashZone-1.mp3",
+        "sfx/fx-splashZone-2.mp3"
+      ],
+      "gain": 2.458,
+      "over": true
+    },
+    "atkToken": {
+      "files": [
+        "sfx/atkToken-1.mp3",
+        "sfx/atkToken-2.mp3",
+        "sfx/atkToken-3.mp3",
+        "sfx/atkToken-4.mp3",
+        "sfx/atkToken-5.mp3"
+      ],
+      "gain": 0.34
+    },
+    "cast:scrimby:1": {
+      "files": [
+        "sfx/cast-scrimby-1-1.mp3",
+        "sfx/cast-scrimby-1-2.mp3"
+      ],
+      "gain": 0.425
+    },
+    "fx:manhole": {
+      "files": [
+        "sfx/fx-manhole-1.mp3",
+        "sfx/fx-manhole-2.mp3",
+        "sfx/fx-manhole-3.mp3",
+        "sfx/fx-manhole-4.mp3",
+        "sfx/fx-manhole-5.mp3"
+      ],
+      "gain": 0.442
+    },
     "fx:steamBurst": {
       "files": [
-        "sfx/kenney/impactPlate_heavy_000.ogg",
-        "sfx/kenney/impactPlate_heavy_002.ogg",
-        "sfx/kenney/impactPlate_heavy_004.ogg"
+        "sfx/fx-steamBurst-1.mp3",
+        "sfx/fx-steamBurst-2.mp3",
+        "sfx/fx-steamBurst-3.mp3"
       ],
-      "gain": 0.3,
-      "over": true
+      "gain": 0.309,
+      "over": true,
+      "with": [
+        "fx:steamBurst+hiss"
+      ]
     },
     "fx:jaywalk": {
       "files": [
-        "sfx/kenney/footstep_concrete_000.ogg",
-        "sfx/kenney/footstep_concrete_001.ogg",
-        "sfx/kenney/footstep_concrete_002.ogg",
-        "sfx/kenney/footstep_concrete_003.ogg",
-        "sfx/kenney/footstep_concrete_004.ogg"
+        "sfx/fx-jaywalk-1.mp3",
+        "sfx/fx-jaywalk-2.mp3",
+        "sfx/fx-jaywalk-3.mp3",
+        "sfx/fx-jaywalk-4.mp3",
+        "sfx/fx-jaywalk-5.mp3"
       ],
-      "gain": 0.25,
+      "gain": 0.435,
       "over": true
     },
     "fx:mustard": {
       "files": [
-        "sfx/kenney/impactSoft_medium_000.ogg",
-        "sfx/kenney/impactSoft_medium_001.ogg",
-        "sfx/kenney/impactSoft_medium_002.ogg",
-        "sfx/kenney/impactSoft_medium_003.ogg",
-        "sfx/kenney/impactSoft_medium_004.ogg"
+        "sfx/fx-mustard-1.mp3",
+        "sfx/fx-mustard-2.mp3",
+        "sfx/fx-mustard-3.mp3",
+        "sfx/fx-mustard-4.mp3",
+        "sfx/fx-mustard-5.mp3"
       ],
-      "gain": 0.18,
+      "gain": 1.432,
       "over": true
     },
     "fx:expressCrash": {
       "files": [
-        "sfx/kenney/impactMetal_heavy_000.ogg",
-        "sfx/kenney/impactMetal_heavy_001.ogg",
-        "sfx/kenney/impactMetal_heavy_003.ogg"
+        "sfx/fx-expressCrash-1.mp3",
+        "sfx/fx-expressCrash-2.mp3",
+        "sfx/fx-expressCrash-3.mp3"
       ],
-      "gain": 0.8,
-      "over": true
+      "gain": 2.84,
+      "over": true,
+      "with": [
+        "fx:expressCrash+crunch"
+      ]
+    },
+    "fx:expressCrash+crunch": {
+      "files": [
+        "sfx/fx-expressCrash-crunch-1.mp3",
+        "sfx/fx-expressCrash-crunch-2.mp3"
+      ],
+      "gain": 1.037
+    },
+    "fx:steamBurst+hiss": {
+      "files": [
+        "sfx/fx-steamBurst-hiss-1.mp3",
+        "sfx/fx-steamBurst-hiss-2.mp3",
+        "sfx/fx-steamBurst-hiss-3.mp3"
+      ],
+      "gain": 0.222
     }
   },
   "voices": {},

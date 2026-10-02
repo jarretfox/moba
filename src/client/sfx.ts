@@ -15,6 +15,8 @@ export interface SoundCue {
    * cast ("cast:scrimby:3"), one effect ("fx:steamBurst"). Without one, the sound's own recording, if any.
    */
   take?: string;
+  /** Play the synthesized sound too, under the recording (a heavy hit's thump). */
+  over?: boolean;
 }
 
 /** Each champion's basic attack, and the signature under their casts. */
@@ -132,7 +134,10 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       // Heavy hits land with more weight; magic stings rather than thumps; a hit on you has a deeper body.
       const heavy = ev.amount >= (t.mhp ?? 1000) * HEAVY_HIT;
       const name: SoundName = heavy ? 'hitHeavy' : ev.type === 'magic' ? 'hitMagic' : ev.target === myId ? 'hitMe' : 'hit';
-      return { name, at: { x: t.x, y: t.y }, gain: ev.target === myId ? 0.75 : 0.4 };
+      // The hitter's own impact, if they have one recorded (a punch, a blade, a splat), over the thump of a heavy one.
+      const by = ev.src !== undefined ? ents.get(ev.src) : undefined;
+      const take = by?.k === 'champion' && by.champ ? `hit:${by.champ}` : undefined;
+      return { name, at: { x: t.x, y: t.y }, gain: ev.target === myId ? 0.75 : 0.4, take, over: heavy };
     }
     case 'death': {
       const t = ents.get(ev.id);

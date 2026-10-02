@@ -1,14 +1,47 @@
 import { Container, Particle, ParticleContainer, Rectangle, Texture } from 'pixi.js';
+import { particleAtlas } from './art';
 
-// A small particle engine for spell effects: thousands of tinted sprites cut from one generated sheet,
-// moved on the CPU and drawn in two batches (glowing additive ones, and plain ones like smoke and dirt).
-// The solid shapes are drawn in the game's inked style: white inside, a gray rim, so whatever color they're
-// tinted, the rim comes out a darker shade of it, like the ink lines on everything else.
+// A small particle engine for spell effects: thousands of tinted sprites cut from one sheet, moved on the
+// CPU and drawn in two batches (glowing additive ones, and plain ones like smoke and dirt). The comic
+// shapes are drawn here in the game's inked style: white inside, a gray rim, so whatever color they're
+// tinted, the rim comes out a darker shade of it, like the ink lines on everything else. The textured ones
+// (soft smoke, streaks, stars, flames, magic circles, slashes, explosions...) come from the particle atlas,
+// free CC0 textures (dev/fxBake.ts), each with several variants picked at random; without the atlas they
+// fall back to the nearest drawn shape.
 
-export type Shape = 'glow' | 'spark' | 'star' | 'smoke' | 'shard' | 'ring' | 'mote' | 'leaf' | 'splat' | 'pow' | 'puff';
+/** The shapes drawn here. */
+type Drawn = 'glow' | 'spark' | 'star' | 'smoke' | 'shard' | 'ring' | 'mote' | 'leaf' | 'splat' | 'pow' | 'puff';
+/** The atlas's own shapes, and the drawn one each stands in for without it. */
+const TEXTURED = {
+  flame: 'glow',
+  magic: 'ring',
+  twirl: 'ring',
+  slash: 'spark',
+  claw: 'spark',
+  circle: 'ring',
+  flare: 'glow',
+  scorch: 'splat',
+  dirt: 'puff',
+  muzzle: 'star',
+  zap: 'spark',
+  heart: 'star',
+  cloud: 'puff',
+  soot: 'smoke',
+  blast: 'glow',
+  flash: 'glow',
+} as const satisfies Record<string, Drawn>;
+export type Shape = Drawn | keyof typeof TEXTURED;
 
-const SHAPES: Shape[] = ['glow', 'spark', 'star', 'smoke', 'shard', 'ring', 'mote', 'leaf', 'splat', 'pow', 'puff'];
+const SHAPES: Drawn[] = ['glow', 'spark', 'star', 'smoke', 'shard', 'ring', 'mote', 'leaf', 'splat', 'pow', 'puff'];
+/** Drawn shapes the atlas has better versions of. */
+const UPGRADED: readonly Drawn[] = ['smoke', 'spark', 'star'];
 const CELL = 64;
+
+/** A shape's textures (variants) and how big to draw them for their size. */
+interface Look {
+  textures: Texture[];
+  scale: number;
+}
 
 export interface Emit {
   shape: Shape;
@@ -41,6 +74,9 @@ export interface Emit {
 
 interface Live {
   p: Particle;
+  /** Its texture's width, and the shape's draw scale. */
+  w: number;
+  k: number;
   e: Emit;
   vx: number;
   vy: number;
@@ -48,11 +84,12 @@ interface Live {
   rot: number;
 }
 
-/** One canvas holding every shape, white so they can be tinted. */
-function buildSheet(): Record<Shape, Texture> {
+/** One canvas holding every shape (the drawn ones in a row along the top, the atlas under them), white so they can be tinted. */
+function buildSheet(): Record<Shape, Look> {
+  const atlas = particleAtlas();
   const canvas = document.createElement('canvas');
-  canvas.width = CELL * SHAPES.length;
-  canvas.height = CELL;
+  canvas.width = Math.max(CELL * SHAPES.length, atlas?.image.width ?? 0);
+  canvas.height = CELL + (atlas?.image.height ?? 0);
   const ctx = canvas.getContext('2d')!;
   const h = CELL / 2;
   const soft = (cx: number, cy: number, r: number, stops: [number, number][]) => {
@@ -161,8 +198,19 @@ function buildSheet(): Record<Shape, Texture> {
     }
     ctx.restore();
   });
+  if (atlas) ctx.drawImage(atlas.image, 0, CELL);
   const source = Texture.from(canvas).source;
-  return Object.fromEntries(SHAPES.map((s, i) => [s, new Texture({ source, frame: new Rectangle(i * CELL, 0, CELL, CELL) })])) as Record<Shape, Texture>;
+  const drawn = Object.fromEntries(SHAPES.map((s, i) => [s, { textures: [new Texture({ source, frame: new Rectangle(i * CELL, 0, CELL, CELL) })], scale: 1 }])) as Record<Drawn, Look>;
+  const fromAtlas = (name: string): Look | null => {
+    const s = atlas?.shapes[name];
+    if (!atlas || !s?.cells.length) return null;
+    const cols = Math.floor(atlas.image.width / atlas.cell);
+    return { textures: s.cells.map((c) => new Texture({ source, frame: new Rectangle((c % cols) * atlas.cell, CELL + Math.floor(c / cols) * atlas.cell, atlas.cell, atlas.cell) })), scale: s.scale };
+  };
+  const sheet = { ...drawn } as Record<Shape, Look>;
+  for (const s of UPGRADED) sheet[s] = fromAtlas(s) ?? drawn[s];
+  for (const [s, stand] of Object.entries(TEXTURED) as [keyof typeof TEXTURED, Drawn][]) sheet[s] = fromAtlas(s) ?? drawn[stand];
+  return sheet;
 }
 
 /** Fills a shape white with a gray rim (tinted, the rim is a darker shade of the color). */
@@ -210,8 +258,8 @@ export class Particles {
 
   constructor() {
     const dynamicProperties = { position: true, rotation: true, vertex: true, color: true, uvs: false };
-    this.solid = new ParticleContainer({ dynamicProperties, texture: this.sheet.glow });
-    this.glow = new ParticleContainer({ dynamicProperties, texture: this.sheet.glow });
+    this.solid = new ParticleContainer({ dynamicProperties, texture: this.sheet.glow.textures[0] });
+    this.glow = new ParticleContainer({ dynamicProperties, texture: this.sheet.glow.textures[0] });
     this.glow.blendMode = 'add';
     // They move all over the map; skip bounds math and never cull them.
     for (const c of [this.solid, this.glow]) c.boundsArea = new Rectangle(-1e5, -1e5, 2e5, 2e5);
@@ -224,8 +272,10 @@ export class Particles {
 
   emit(e: Emit): void {
     if (this.live.length >= this.limit) return;
-    const p = new Particle({ texture: this.sheet[e.shape], anchorX: 0.5, anchorY: 0.5, x: e.x, y: e.y });
-    this.live.push({ p, e, vx: e.vx ?? 0, vy: e.vy ?? 0, age: 0, rot: e.rotation ?? Math.random() * Math.PI * 2 });
+    const look = this.sheet[e.shape];
+    const texture = look.textures[Math.floor(Math.random() * look.textures.length)];
+    const p = new Particle({ texture, anchorX: 0.5, anchorY: 0.5, x: e.x, y: e.y });
+    this.live.push({ p, w: texture.frame.width, k: look.scale, e, vx: e.vx ?? 0, vy: e.vy ?? 0, age: 0, rot: e.rotation ?? Math.random() * Math.PI * 2 });
     this.place(this.live[this.live.length - 1], 0);
     (e.glow === false ? this.solid : this.glow).particleChildren.push(p);
     this.dirty = true;
@@ -270,18 +320,18 @@ export class Particles {
 
   private place(l: Live, t: number): void {
     const e = l.e;
-    const size = e.size + ((e.size2 ?? e.size) - e.size) * t;
+    const size = (e.size + ((e.size2 ?? e.size) - e.size) * t) * l.k;
     const fadeIn = e.fadeIn ?? 0.1;
     const a = (e.alpha ?? 1) * (t < fadeIn ? t / fadeIn : 1 - (t - fadeIn) / (1 - fadeIn));
     const p = l.p;
     if (e.stretch) {
       const speed = Math.hypot(l.vx, l.vy);
       p.rotation = Math.atan2(l.vy, l.vx);
-      p.scaleX = (size + speed * e.stretch) / CELL;
-      p.scaleY = size / CELL;
+      p.scaleX = (size + speed * e.stretch) / l.w;
+      p.scaleY = size / l.w;
     } else {
       p.rotation = l.rot;
-      p.scaleX = p.scaleY = size / CELL;
+      p.scaleX = p.scaleY = size / l.w;
     }
     p.tint = e.color2 === undefined ? e.color : mix(e.color, e.color2, t);
     p.alpha = Math.max(0, a);

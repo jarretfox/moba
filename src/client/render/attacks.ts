@@ -255,6 +255,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.particles.burst(10, { shape: 'shard', glow: false, x: tx, y: ty, life: 0.55, size: 10, size2: 5, color: 0x8a5a2b, drag: 0.1, spin: 12, ay: 420 }, [160, 380], b.a, 2.4);
     fx.particles.burst(8, { shape: 'spark', x: tx, y: ty, life: 0.3, size: 12, size2: 3, stretch: 0.05, color: 0xffe0a0, color2: 0xff5a2a, drag: 0.03 }, [200, 460], b.a, 2.0);
     fx.particles.burst(4, { shape: 'smoke', glow: false, x: tx, y: ty + b.tr * 0.8, life: 0.5, size: 16, size2: 36, color: 0xb9a68a, alpha: 0.35, drag: 0.1 }, [40, 100]);
+    fx.particles.emit({ shape: 'slash', x: tx - Math.cos(b.a) * b.tr * 0.3, y: ty - Math.sin(b.a) * b.tr * 0.3, life: 0.22, size: b.tr * 2.6 * s, size2: b.tr * 3 * s, color: 0xfff1c1, color2: 0xff8a3d, rotation: b.a, fadeIn: 0.03 });
   },
 
   // CLANK: the hook rings off them, grey sparks and a bit of junk knocked loose.
@@ -264,6 +265,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.flash(tx, ty, b.tr * 0.9, 0xc8945a, 0.18, 0.6);
     fx.particles.burst(8, { shape: 'spark', x: tx, y: ty, life: 0.3, size: 10, size2: 3, stretch: 0.06, color: 0xffffff, color2: 0x9aa1ab, drag: 0.03 }, [180, 400]);
     fx.particles.burst(3, { shape: 'shard', glow: false, x: tx, y: ty, life: 0.6, size: 9, size2: 6, color: 0x9aa1ab, drag: 0.1, spin: 10, ay: 400 }, [120, 260], -Math.PI / 2, 1.6);
+    fx.particles.emit({ shape: 'muzzle', x: tx, y: ty, life: 0.18, size: b.tr * 1.6, size2: b.tr * 2.6, color: 0xdfe6ee, rotation: Math.random() * 6, fadeIn: 0.03 });
   },
 
   // Three red claw marks raked across them (or a bite: two rows of teeth snapping shut), and a tuft of fur.
@@ -286,6 +288,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
       });
     } else {
       fx.claws(tx, ty, b.a + (swing % 3 === 1 ? 0.15 : 0.75) * b.face, b.tr * 2.2, 0xff3b3b, 3, 0.4, b.tr * 0.32);
+      fx.particles.emit({ shape: 'claw', x: tx, y: ty, life: 0.28, size: b.tr * 2.4, size2: b.tr * 2.8, color: 0xffffff, color2: 0xff3b3b, rotation: b.a + (swing % 3 === 1 ? 0.15 : 0.75) * b.face, fadeIn: 0.03 });
     }
     fx.particles.burst(5, { shape: 'leaf', glow: false, x: tx, y: ty, life: 0.7, size: 10, size2: 7, color: 0xd98a2b, drag: 0.2, ay: 80, spin: 5 }, [80, 200]);
     fx.particles.burst(5, { shape: 'spark', x: tx, y: ty, life: 0.25, size: 10, size2: 3, stretch: 0.05, color: 0xfff1c1, color2: 0xff9f43 }, [150, 320], b.a, 1.6);
@@ -299,6 +302,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.speedLines(tx, ty, b.tr * 3 * s, 0xffffff, 11, 0.26);
     fx.particles.burst(7, { shape: 'mote', glow: false, x: tx, y: ty, life: 0.5, size: 8, size2: 4, color: 0x9fd6ff, ay: 500, drag: 0.2 }, [120, 300], b.a, 2.2);
     fx.particles.emit({ shape: 'star', x: tx - Math.cos(b.a) * b.tr * 0.5, y: ty - Math.sin(b.a) * b.tr * 0.5, life: 0.3, size: 24, size2: 4, color: 0xffffff, color2: 0xffd166, spin: 5 });
+    fx.particles.emit({ shape: 'muzzle', x: tx, y: ty, life: 0.2, size: b.tr * 2 * s, size2: b.tr * 3.4 * s, color: 0xfff1b8, rotation: Math.random() * 6, fadeIn: 0.03 });
     fx.flash(tx, ty, b.tr * 1.2, 0xffb070, 0.2, 0.7);
   },
 
@@ -309,6 +313,8 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.particles.emit({ shape: 'star', x: tx, y: ty, life: 0.3, size: 26, size2: 6, color: 0xffffff, color2: 0xdfe6ff, spin: 3 });
     fx.particles.burst(4, { shape: 'spark', x: tx, y: ty, life: 0.22, size: 9, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0xff8fb0 }, [150, 300], b.a, 1.2);
     fx.particles.emit({ shape: 'leaf', glow: false, x: tx, y: ty, vx: rand(-30, 30), vy: -40, ay: 60, life: 0.9, size: 9, size2: 7, color: 0xff6b8a, spin: 5 });
+    fx.particles.emit({ shape: 'flare', x: tx, y: ty, life: 0.22, size: b.tr * 1.2, size2: b.tr * 2.2, color: 0xffffff, fadeIn: 0.02 });
+    fx.particles.emit({ shape: 'slash', x: tx, y: ty, life: 0.2, size: b.tr * 2, size2: b.tr * 2.3, color: 0xffffff, color2: 0xff8fb0, rotation: b.a, fadeIn: 0.03 });
   },
 
   // Two knives crossing in an X, the chime of a bell, and a scrap or two of confetti.
@@ -316,6 +322,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     const { fx, tx, ty } = b;
     fx.claws(tx, ty, b.a + 0.65, b.tr * 2, 0xd8dde6, 1, 0.32);
     fx.claws(tx, ty, b.a - 0.65, b.tr * 2, 0xb98be0, 1, 0.32);
+    fx.particles.emit({ shape: 'muzzle', x: tx, y: ty, life: 0.18, size: b.tr * 1.4, size2: b.tr * 2.2, color: 0xe0d0ff, rotation: Math.random() * 6, fadeIn: 0.03 });
     fx.particles.emit({ shape: 'star', x: tx, y: ty, life: 0.3, size: 20, size2: 4, color: 0xffffff, color2: 0xffd166, spin: 6 });
     const colors = [0xff6b8a, 0xffd166, 0x7fe3ff, 0x9be15d, 0xb98be0];
     for (let i = 0; i < 5; i++) {
@@ -330,6 +337,8 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.flash(tx, ty, b.tr * (melee ? 1.1 : 0.8), 0xffe29a, 0.2, 0.7);
     fx.particles.burst(melee ? 8 : 10, { shape: melee ? 'shard' : 'mote', glow: false, x: tx, y: ty, life: 0.55, size: 9, size2: 5, color: 0xf3dc8a, drag: 0.1, ay: 300, spin: 6 }, [100, 260], b.a, 2.4);
     fx.particles.burst(4, { shape: 'glow', x: tx, y: ty, life: 0.4, size: 14, size2: 3, color: 0xfff1b8, color2: 0xff9f43, drag: 0.4 }, [40, 120], -Math.PI / 2, 1.2);
+    fx.particles.emit({ shape: 'flare', x: tx, y: ty, life: 0.3, size: b.tr * 1.4, size2: b.tr * 2.6, color: 0xfff1b8, fadeIn: 0.03 });
+    if (melee) fx.particles.emit({ shape: 'slash', x: tx, y: ty, life: 0.22, size: b.tr * 2.2, size2: b.tr * 2.6, color: 0xfff1b8, color2: 0xffb347, rotation: b.a, fadeIn: 0.03 });
     if (melee) fx.particles.emit({ shape: 'pow', glow: false, x: tx, y: ty, life: 0.18, size: b.tr * 1.2, size2: b.tr * 1.8, color: 0xfff1b8, rotation: Math.random() * 6, fadeIn: 0.05 });
   },
 
@@ -340,6 +349,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.particles.burst(4, { shape: 'spark', x: tx, y: ty, life: 0.25, size: 12, size2: 3, stretch: 0.05, color: 0xffffff, color2: b.color, drag: 0.03 }, [200, 380], b.a + Math.PI, 1.2);
     fx.particles.burst(3, { shape: 'shard', glow: false, x: tx, y: ty, life: 0.8, size: 10, size2: 9, color: 0xf6f0e0, drag: 0.2, ay: 90, spin: 5 }, [60, 160]);
     fx.speedLines(tx, ty, b.tr * 1.8, b.color, 4, 0.2, b.a + Math.PI, 1.4);
+    fx.particles.emit({ shape: 'flare', x: tx, y: ty, life: 0.2, size: b.tr, size2: b.tr * 2, color: 0xffffff, fadeIn: 0.02 });
   },
 
   // A spore bursts softly on them: rings and a drift of green.
@@ -348,6 +358,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.flash(tx, ty, b.tr * 0.9, b.color, 0.25, 0.5);
     for (let i = 0; i < 3; i++) fx.particles.emit({ shape: 'ring', x: tx + rand(-8, 8), y: ty + rand(-8, 8), vy: rand(-40, -10), life: rand(0.35, 0.6), size: 8, size2: 30, color: 0xc9f59a, alpha: 0.8 });
     fx.particles.burst(6, { shape: 'mote', x: tx, y: ty, life: 0.6, size: 9, size2: 2, color: 0xc9f59a, color2: b.color, drag: 0.2, ay: -40 }, [40, 120]);
+    fx.particles.emit({ shape: 'cloud', glow: false, x: tx, y: ty, vy: -20, life: 0.7, size: b.tr * 0.9, size2: b.tr * 2, color: 0xb8e68a, alpha: 0.5, fadeIn: 0.05 });
   },
 
   // BONK: a gold star and a spill of coins.
@@ -356,6 +367,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.particles.emit({ shape: 'pow', glow: false, x: tx, y: ty, life: 0.18, size: b.tr * 1.2, size2: b.tr * 1.7, color: 0xffe29a, rotation: Math.random() * 6, fadeIn: 0.05 });
     fx.particles.burst(5, { shape: 'star', x: tx, y: ty, life: 0.4, size: 14, size2: 2, color: 0xfff1b8, color2: 0xffd166, spin: 6 }, [80, 200]);
     fx.particles.burst(4, { shape: 'mote', glow: false, x: tx, y: ty, life: 0.6, size: 8, size2: 6, color: 0xffd166, ay: 500, drag: 0.2, spin: 8 }, [80, 220], -Math.PI / 2, 1.6);
+    fx.particles.emit({ shape: 'flare', x: tx, y: ty, life: 0.25, size: b.tr * 1.2, size2: b.tr * 2.4, color: 0xffe29a, fadeIn: 0.03 });
     fx.flash(tx, ty, b.tr, 0xffd166, 0.18, 0.7);
   },
 
@@ -365,6 +377,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.particles.burst(6, { shape: 'mote', glow: false, x: tx, y: ty, life: 0.6, size: 9, size2: 5, color: 0xd98a1e, ay: 300, drag: 0.15 }, [60, 180], b.a, 2.0);
     fx.particles.emit({ shape: 'smoke', x: tx, y: ty, vy: -25, life: 0.7, size: 14, size2: 36, color: 0xc8d6b0, color2: 0x7a8a5a, alpha: 0.4 });
     fx.particles.burst(3, { shape: 'spark', x: tx, y: ty, life: 0.3, size: 10, size2: 3, stretch: 0.08, color: 0xffe2a0, color2: 0xd98a1e }, [80, 200]);
+    fx.particles.emit({ shape: 'flame', x: tx, y: ty, vy: -60, life: 0.4, size: b.tr * 1.2, size2: b.tr * 0.4, color: 0xffd08a, color2: 0xff5a1a, rotation: 0 });
     fx.flash(tx, ty, b.tr * 0.7, 0xffb347, 0.15, 0.6);
   },
   // The token pings off them.
@@ -372,6 +385,7 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     const { fx, tx, ty } = b;
     fx.particles.emit({ shape: 'pow', glow: false, x: tx, y: ty, life: 0.16, size: b.tr * 1.1, size2: b.tr * 1.5, color: 0xffd166, rotation: Math.random() * 6, fadeIn: 0.04 });
     fx.particles.burst(5, { shape: 'spark', x: tx, y: ty, life: 0.3, size: 10, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0xffb04a }, [120, 260], b.a, 1.6);
+    fx.particles.emit({ shape: 'star', x: tx, y: ty, life: 0.25, size: b.tr * 1.2, size2: b.tr * 0.4, color: 0xffffff, color2: 0xffd166, spin: 4 });
   },
 
   // Ka-ching: coins bounce off them.
@@ -379,5 +393,6 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     const { fx, tx, ty } = b;
     fx.particles.emit({ shape: 'pow', glow: false, x: tx, y: ty, life: 0.18, size: b.tr * 1.2, size2: b.tr * 1.6, color: 0xffe29a, rotation: Math.random() * 6, fadeIn: 0.05 });
     fx.particles.burst(6, { shape: 'mote', glow: false, x: tx, y: ty, life: 0.6, size: 8, size2: 6, color: 0xffd166, ay: 520, drag: 0.15, spin: 8 }, [80, 220], -Math.PI / 2, 1.6);
+    fx.particles.burst(3, { shape: 'star', x: tx, y: ty, life: 0.35, size: 14, size2: 4, color: 0xffffff, color2: 0xffd166, spin: 5 }, [60, 160]);
   },
 };

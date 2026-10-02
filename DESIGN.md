@@ -530,7 +530,38 @@ Everything below is drawn and synthesized in code. Any piece can now be swapped 
 - **Painted sprites:** any projectile (`projectile:<look>`) and Scrimby's subway car (`scrimby:train`, turned to his heading, mirrored heading left).
 - **Recordings** (`samples.ts`): any sound can have takes (never the same twice running), or narrower ones for one ability's cast (`cast:scrimby:3`) or one effect (`fx:steamBurst`). Champions' voice lines are matched to the words in their bubbles (a take per line, in `emotes.ts` order; grumbles in `failLines.ts` order), and the announcer's to its lines' text, falling back to the mumble and the browser's voice.
 - `public/art/index.json` and `public/audio/index.json` list what exists; nothing else is fetched.
-- **First recordings in:** Scrimby's token, W's clank and the manhole rattle, and layers under his steam burst, jaywalk, mustard splat and train crash, from Kenney's CC0 *Impact Sounds* (28 takes, 284 KB, `.ogg`; a browser that can't play Ogg gets the synth). Each set's gain was matched to the synth sound it replaces or joins, measured through the game's own mix. Credits in `public/CREDITS.md`.
+- **Every champion's sound designed from recordings** (103 sounds, 279 takes, 3 MB): free CC0 packs from Kenney and OpenGameArt, credited in `public/CREDITS.md`.
+  - The design is `sound-design/design.py`: each sound's takes by pack and file, and how it sits with the synth (instead of it, or over it as a layer). It writes `sound-design/recipe.json`.
+  - **The sound bench** (`dev/soundBench.ts`, `bench.build()` in a dev build) masters every take the same way: mono, the silence trimmed, faded, normalized, MP3 (plays everywhere; the lead-in the encoder adds is skipped at playback). Then it sets each sound's level by measuring it against the synth sound it stands for, through the game's own mix. `bench.build(['fx:roar'])` remakes just those.
+  - Sounds can be layered (`with`: the steam burst is a metal thunk plus a hiss), play over the synth (`over`), and every champion's hits have their own impact (`hit:<champion>`, under a heavy hit's thump).
+  - By champion:
+    - **Jordini:** a real bow; a gavel on Objection! and Final Notice; tape tearing (Red Tape); handcuffs snapping (the trap); arrows thunking in.
+    - **The Oak:** heavy swings; an axe chop; timber cracking on Timber!; an ogre's bellow on Wake Up!; rock breaking on the slam; a giant's roar.
+    - **Willmore:** chain whips; bin-lid clangs; junk clattering; sewer splashes and bubbles.
+    - **HunnaG:** spits and splats, burbling sludge, bubbling totems, mud, shades and a monster from the Deep.
+    - **Logan:** snarls on the pounce and maul, a crunch, growls, a roar.
+    - **King Rix:** gem chimes, coin flips, chainmail for the guards, a gong on KNEEL!, a brass hit and a gong on the Decree.
+    - **Dongmaster:** real punches; a force-field hum on the stare; a giant's roar and brass on the Ascension.
+    - **Dark Dabber:** an aerosol hiss (Hotbox), slime, a lighter and fire (Light It Up), fire and thrusters (Cloud Nine).
+    - **Master Paris:** rapier swishes, steel clashing, unsheathing, café cups clinking.
+    - **Havarti:** magic chimes, bubbling fondue, a knife through the rind, a bowl struck on the wheel, bells.
+    - **Daltonomo:** knives, springs (boing!) on the Surprise Box, a teleport, wooden chimes, fireworks.
+    - **Big Whale:** coins, card fans for the bills, sax licks for the Yacht Party, books and a latch for the paperwork, big splashes.
+    - **Scrimby:** the token, the manhole lid, a hiss of steam under the burst, concrete steps, a wet splat, heavy metal under the train crash.
+- **Textured effects** (`render/particles.ts`): a particle atlas of 19 shapes from Kenney's CC0 *Particle Pack* and *Smoke Particles* (`dev/fxBake.ts`, `bakeParticles()`; 1.5 MB). Each shape has several variants, picked at random.
+  - The soft smoke, spark streaks and stars every effect throws now come from it.
+  - New shapes for effects to use: flames, rune circles, swirls, blade crescents (all turned to face the swing), claw marks, rings, flares, scorch, dirt, starbursts, lightning, hearts, white clouds, black soot, explosion fire and flashes.
+  - Shared touches in `spells.ts`: billowing clouds, a real explosion (a flash, rolling fire, embers, soot after), rune circles, rising flames, a blade's swoosh, a starburst of impact.
+  - Every champion's abilities and basic-attack hits got them:
+    - fire for Dabber and The Oak's rage;
+    - explosions for Scrimby's crash, Daltonomo's clone and the fondue eruption;
+    - rune circles for HunnaG, King Rix, Havarti and Dongmaster;
+    - claw marks for Logan;
+    - crescents for The Oak, Paris, Havarti and Daltonomo;
+    - clouds of steam, dust, smoke and spray for slams, burrows, vanishings, Hotbox and Splash Zone;
+    - lightning in the Sigma Stare;
+    - hearts for Paris.
+  - The comic pieces (POW stars, ink splats, cartoon puffs) stay drawn.
 
 
 - **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.

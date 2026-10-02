@@ -14,7 +14,7 @@ export interface AudioIndex {
    * Effects by sound name: the takes, how loud to play them (1 as recorded), and whether they play over
    * the synthesized sound (a recorded clank on top of its whoosh) rather than instead of it.
    */
-  sounds: Record<string, { files: string[]; gain: number; over?: boolean }>;
+  sounds: Record<string, { files: string[]; gain: number; over?: boolean; with?: string[] }>;
   /** Champions' voices: each moment's takes, in the order of their lines (emotes.ts), so the words match the bubble. */
   voices: Partial<Record<ChampionId, Partial<Record<VoiceMoment, string[]>>>>;
   /** The announcer, by the line's text ("First blood!"). */
@@ -33,7 +33,15 @@ export function parseAudioIndex(raw: unknown): AudioIndex {
     for (const [name, s] of Object.entries(raw.sounds)) {
       const files = isObj(s) && Array.isArray(s.files) ? s.files.filter(isFile) : Array.isArray(s) ? s.filter(isFile) : [];
       const gain = isObj(s) && typeof s.gain === 'number' && s.gain > 0 && s.gain <= 4 ? s.gain : 1;
-      if (files.length) out.sounds[name] = isObj(s) && s.over === true ? { files, gain, over: true } : { files, gain };
+      if (!files.length) continue;
+      const entry: AudioIndex['sounds'][string] = { files, gain };
+      if (isObj(s) && s.over === true) entry.over = true;
+      // Other sounds played at the same moment, a layer each (a thunk with a hiss).
+      if (isObj(s) && Array.isArray(s.with)) {
+        const layers = s.with.filter((w): w is string => typeof w === 'string' && w !== name);
+        if (layers.length) entry.with = layers;
+      }
+      out.sounds[name] = entry;
     }
   }
   if (isObj(raw.voices)) {
@@ -51,6 +59,15 @@ export function parseAudioIndex(raw: unknown): AudioIndex {
   return out;
 }
 
+/** Where a recording really starts: the first sample within 34 dB of its peak, less 2 ms (encoders pad the front). */
+export function leadIn(data: Float32Array, sampleRate: number): number {
+  let peak = 0;
+  for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
+  const floor = peak * 0.02;
+  for (let i = 0; i < data.length; i++) if (Math.abs(data[i]) > floor) return Math.max(0, i / sampleRate - 0.002);
+  return 0;
+}
+
 /** Which take to play next: any but the last one played (when there's a choice). */
 export function nextTake(count: number, last: number, rand: () => number = Math.random): number {
   if (count <= 1) return 0;
@@ -64,6 +81,8 @@ const ROOT = `${import.meta.env.BASE_URL}audio/`;
 export class SampleBank {
   private index: AudioIndex = { sounds: {}, voices: {}, announcer: {} };
   private readonly buffers = new Map<string, AudioBuffer>();
+  /** Where each recording's sound really starts (seconds), so it lands on the frame. */
+  private readonly starts = new Map<AudioBuffer, number>();
   private readonly last = new Map<string, number>();
   private loading: Promise<void> | null = null;
 
@@ -84,22 +103,29 @@ export class SampleBank {
       const jobs = [...files].map(async (file) => {
         const res = await fetch(`${ROOT}${file}`);
         if (!res.ok) throw new Error(`${file}: ${res.status}`);
-        this.buffers.set(file, await ctx.decodeAudioData(await res.arrayBuffer()));
+        const buffer = await ctx.decodeAudioData(await res.arrayBuffer());
+        this.buffers.set(file, buffer);
+        this.starts.set(buffer, leadIn(buffer.getChannelData(0), buffer.sampleRate));
       });
       for (const r of await Promise.allSettled(jobs)) if (r.status === 'rejected') console.warn('Recording skipped:', r.reason);
     })();
     return this.loading;
   }
 
-  /** A take of an effect, how loud to play it, and whether over the synth, if it's recorded. */
-  sound(name: string): { buffer: AudioBuffer; gain: number; over: boolean } | null {
+  /** Seconds of silence to skip at the front of a recording. */
+  start(buffer: AudioBuffer): number {
+    return this.starts.get(buffer) ?? 0;
+  }
+
+  /** A take of an effect, how loud to play it, whether over the synth, and its layers, if it's recorded. */
+  sound(name: string): { buffer: AudioBuffer; gain: number; over: boolean; with: readonly string[] } | null {
     const s = this.index.sounds[name];
     if (!s) return null;
     const takes = s.files.filter((f) => this.buffers.has(f));
     if (!takes.length) return null;
     const i = nextTake(takes.length, this.last.get(name) ?? -1);
     this.last.set(name, i);
-    return { buffer: this.buffers.get(takes[i])!, gain: s.gain, over: s.over === true };
+    return { buffer: this.buffers.get(takes[i])!, gain: s.gain, over: s.over === true, with: s.with ?? [] };
   }
 
   /** A champion's line for a moment: the `n`th, matching the words in their bubble (emotes.ts). */

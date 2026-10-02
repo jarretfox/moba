@@ -51,6 +51,10 @@ That writes `art-templates/<id>/<look>/`:
 2. List it in `public/art/index.json`: `"champions": { "scrimby": [0] }`.
 3. `npm run dev` and pick the champion. Every place the champion appears (in a match, champion select, portraits, the podium) uses the painting.
 
+## Effects: textured particles
+
+Most effects are built from particles (`render/particles.ts`). The textured shapes (smoke, streaks, stars, flames, rune circles, swirls, slashes, claws, rings, flares, scorch, dirt, starbursts, lightning, clouds, soot, explosions, flashes) come from `public/art/particles.png`, made by `bakeParticles()` in a dev build from the images listed in `src/client/dev/fxBake.ts`. To add a shape: add its images there (white on transparent, so it can be tinted), name it in `particles.ts` (with the drawn shape it falls back to), bake, and use it in an effect.
+
 ## Effects: flipbooks
 
 Any ability effect (the names in `FxKind`, `src/shared/protocol.ts`) can get a painted animation: a sheet of frames played once where the effect happens, **over** the code effect or **instead of** it.
@@ -87,6 +91,8 @@ A single picture standing in for a drawn object:
 `width` is in world units (a champion is about 64 across).
 
 ## Sound
+
+The game's sounds are built by the **sound bench** from free recordings: `sound-design/design.py` says which takes make each sound (by pack and file) and how it sits with the synth; `bench.build()` in a dev build masters them all the same way and matches their levels in the game's mix (see DESIGN.md). To change a sound, change the design, run `python sound-design/design.py`, then `bench.build(['the:key'])`. Hand-made recordings can also go straight into `public/audio/index.json` as below.
 
 The game's sounds are named in `src/client/audio.ts` (`SoundName`). Which event plays which is in `src/client/sfx.ts`. Any of them can get recordings in `public/audio/index.json`.
 

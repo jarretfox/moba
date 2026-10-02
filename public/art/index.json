@@ -1,5 +1,6 @@
 {
   "champions": {},
   "fx": {},
-  "sprites": {}
+  "sprites": {},
+  "particles": "particles.json"
 }

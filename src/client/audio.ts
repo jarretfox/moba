@@ -310,7 +310,7 @@ export class Sound {
    * Play a sound at `gain` (0..1), panned left/right by `pan` (-1..1), from `far` away (0 right here, 1 at
    * the edge of hearing: duller and wetter the further).
    */
-  play(name: SoundName, gain = 1, pan = 0, far = 0, take?: string): void {
+  play(name: SoundName, gain = 1, pan = 0, far = 0, take?: string, over = false): void {
     if (this.muted || gain * settings.effects < 0.03) return;
     const ctx = this.ensure();
     if (!ctx || ctx.state !== 'running') return;
@@ -326,8 +326,15 @@ export class Sound {
     // A recording of it, if there is one (the particular one first; a different take each time); otherwise
     // it's synthesized.
     const rec = (take ? this.samples.sound(take) : null) ?? this.samples.sound(name);
-    if (rec) v.sample(rec.buffer, at, rec.gain);
-    if (!rec || rec.over) recipe.play(v, at);
+    if (rec) {
+      v.sample(rec.buffer, at, rec.gain, this.samples.start(rec.buffer));
+      // Its layers, each its own take.
+      for (const w of rec.with) {
+        const layer = this.samples.sound(w);
+        if (layer) v.sample(layer.buffer, at, layer.gain, this.samples.start(layer.buffer));
+      }
+    }
+    if (!rec || rec.over || over) recipe.play(v, at);
   }
 
   /**
@@ -342,7 +349,7 @@ export class Sound {
     if (!ctx || ctx.state !== 'running') return true;
     const now = ctx.currentTime;
     if (!this.limiter.allow('speak', now, 0)) return true;
-    this.route('voice', gain, pan, far, 0.15, 1).sample(buffer, now);
+    this.route('voice', gain, pan, far, 0.15, 1).sample(buffer, now, 1, this.samples.start(buffer));
     return true;
   }
 
@@ -352,7 +359,7 @@ export class Sound {
     if (!buffer) return null;
     const ctx = this.ensure();
     if (!ctx || ctx.state !== 'running' || this.muted) return null;
-    this.route('voice', gain, 0, 0, 0.1, 1).sample(buffer, ctx.currentTime);
+    this.route('voice', gain, 0, 0, 0.1, 1).sample(buffer, ctx.currentTime, 1, this.samples.start(buffer));
     return buffer.duration;
   }
 
@@ -460,15 +467,15 @@ class Voice {
     private readonly rate = 1,
   ) {}
 
-  /** A recording, at this voice's pitch wobble. */
-  sample(buffer: AudioBuffer, at: number, gain = 1): void {
+  /** A recording, at this voice's pitch wobble, from `offset` seconds in. */
+  sample(buffer: AudioBuffer, at: number, gain = 1, offset = 0): void {
     const src = this.ctx.createBufferSource();
     src.buffer = buffer;
     src.playbackRate.value = this.rate;
     const g = this.ctx.createGain();
     g.gain.value = gain;
     src.connect(g).connect(this.out);
-    src.start(at);
+    src.start(at, offset);
   }
 
   /** A pitched tone gliding from f0 to f1 over `dur`, fading out; `cutoff` lowpasses it (saws and squares are harsh bare). */

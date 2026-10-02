@@ -1713,10 +1713,10 @@ export class GameClient {
 
   /** Plays a cue where it happened: quieter, duller and wetter the further it is from the middle of the screen, panned left or right. */
   private playCue(cue: SoundCue): void {
-    if (!cue.at) return this.sound.play(cue.name, cue.gain, 0, 0, cue.take);
+    if (!cue.at) return this.sound.play(cue.name, cue.gain, 0, 0, cue.take, cue.over);
     const halfView = this.app.screen.width / 2 / this.camera.zoom;
     const where = spatialize(cue.at.x - this.camera.x, cue.at.y - this.camera.y, halfView);
-    this.sound.play(cue.name, cue.gain * where.gain, where.pan, where.far, cue.take);
+    this.sound.play(cue.name, cue.gain * where.gain, where.pan, where.far, cue.take, cue.over);
   }
 
   /**

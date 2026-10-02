@@ -76,6 +76,10 @@ async function boot(): Promise<void> {
     Object.assign(window, {
       bakeArt: async (id: ChampionId, skin = 0) => (await import('./render/artBake')).bakeArt(app.renderer, id, skin),
     });
+    // The particle atlas (dev/fxBake.ts): `bakeParticles()` remakes public/art/particles.png from the CC0 packs.
+    Object.assign(window, { bakeParticles: async () => (await import('./dev/fxBake')).bakeParticles() });
+    // The sound bench (dev/soundBench.ts): `bench.build()` remakes the recorded sounds from sound-design/recipe.json.
+    void Promise.all([import('./dev/soundBench'), import('./audio')]).then(([b, a]) => Object.assign(window, { bench: b.makeBench(a.getSound()) }));
   }
   Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));
   renderBestiary(app.renderer);

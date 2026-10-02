@@ -1,0 +1,894 @@
+{
+ "atkBow": {
+  "from": [
+   "oga/x_battle_sound_effects_0/battle_sound_effects/Bow.wav",
+   "oga/x_tinysized/sfx-cc0/arrow-feathers-01.wav"
+  ],
+  "level": 1
+ },
+ "hit:marksman": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/impactwood01.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/impactwood02.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/impactwood03.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/impactwood04.mp3.flac"
+  ],
+  "level": 0
+ },
+ "cast:marksman:0": {
+  "from": [
+   "oga/x_100-CC0-wood-metal-SFX/wood_slam_01.ogg",
+   "oga/x_100-CC0-wood-metal-SFX/wood_slam_02.ogg"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "cast:marksman:1": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/cover-paper-tear-01.wav",
+   "oga/x_tinysized/sfx-cc0/cover-paper-tear-02.wav"
+  ]
+ },
+ "fx:trapSnap": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/handcuffs-metal-lock-01.wav",
+   "oga/x_tinysized/sfx-cc0/handcuffs-metal-lock-02.wav"
+  ],
+  "level": 1
+ },
+ "fx:roll": {
+  "from": [
+   "oga/x_swoshes/swosh-03.flac",
+   "oga/x_swoshes/swosh-07.flac",
+   "oga/x_swoshes/swosh-11.flac"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:aimLine": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/arrow-grab-from-quiver-01.wav",
+   "oga/x_tinysized/sfx-cc0/arrow-grab-from-quiver-02.wav"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "cast:marksman:3": {
+  "from": [
+   "oga/x_100-CC0-wood-metal-SFX/wood_slam_03.ogg",
+   "oga/x_100-CC0-wood-metal-SFX/wood_slam_04.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "atkAxe": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/swing.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/swing2.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/swing3.wav"
+  ],
+  "level": 1
+ },
+ "hit:barbarian": {
+  "from": [
+   "kenney/kenney_rpg-audio/Audio/chop.ogg",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/impactwood06.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/impactwood07.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/impactwood08.mp3.flac"
+  ],
+  "level": 1
+ },
+ "fx:cleave": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/crack01.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/crack02.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wood_crack_hit_destruction/wood_impact/crack03.mp3.flac"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "fx:warCry": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/ogre/ogre1.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/ogre/ogre2.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/ogre/ogre3.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:slam": {
+  "from": [
+   "oga/x_sfx_breaking_and_falling/bfh1_rock_breaking_01.ogg",
+   "oga/x_sfx_breaking_and_falling/bfh1_rock_breaking_02.ogg",
+   "oga/x_sfx_breaking_and_falling/bfh1_rock_breaking_03.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:berserk": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/giant/giant1.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/giant/giant2.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "atkHook": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/chain_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/chain_02.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/chain_03.ogg"
+  ],
+  "level": 0
+ },
+ "hit:willmore": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactMetal_medium_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_medium_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_medium_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_medium_003.ogg"
+  ],
+  "level": 0
+ },
+ "cast:willmore:0": {
+  "from": [
+   "oga/x_sfx_breaking_and_falling/bfh1_metal_falling_01.ogg",
+   "oga/x_sfx_breaking_and_falling/bfh1_metal_falling_02.ogg",
+   "oga/x_sfx_breaking_and_falling/bfh1_metal_falling_03.ogg"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:burrow": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/splash_05.ogg",
+   "oga/x_water-splash-slime-sfx/splash_06.ogg"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "fx:surface": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/splash_09.ogg",
+   "oga/x_water-splash-slime-sfx/splash_10.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:tunnel": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/bubble_01.ogg",
+   "oga/x_water-splash-slime-sfx/bubble_02.ogg"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:hookPull": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/chain_02.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/chain_03.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "atkSpore": {
+  "from": [
+   "oga/x_80-CC0-creature-SFX_0/spit_01.ogg",
+   "oga/x_80-CC0-creature-SFX_0/spit_02.ogg",
+   "oga/x_80-CC0-creature-SFX_0/spit_03.ogg"
+  ],
+  "level": 0
+ },
+ "hit:hunnag": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat01.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat02.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat03.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat04.mp3.flac"
+  ],
+  "level": 0
+ },
+ "fx:lob": {
+  "from": [
+   "oga/x_80-CC0-creature-SFX_0/burble_01.ogg",
+   "oga/x_80-CC0-creature-SFX_0/burble_02.ogg"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:rotBurst": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat05.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat06.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat07.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat08.mp3.flac"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:pulse": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/bubble_01.ogg",
+   "oga/x_water-splash-slime-sfx/bubble_02.ogg",
+   "oga/x_water-splash-slime-sfx/bubble_03.ogg"
+  ],
+  "over": true,
+  "level": -3
+ },
+ "fx:hop": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/mud-steps-01.wav",
+   "oga/x_tinysized/sfx-cc0/mud-steps-02.wav",
+   "oga/x_tinysized/sfx-cc0/mud-steps-03.wav"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "fx:deepMark": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/shade/shade3.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/shade/shade5.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/shade/shade9.wav"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "fx:deepHands": {
+  "from": [
+   "oga/x_monster_sfx_pack_2/monster_sfx_pack_2/monster-3.wav",
+   "oga/x_monster_sfx_pack_2/monster_sfx_pack_2/monster-7.wav"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:deepHands+rock"
+  ]
+ },
+ "fx:deepHands+rock": {
+  "from": [
+   "oga/x_sfx_breaking_and_falling/bfh1_rock_falling_01.ogg",
+   "oga/x_sfx_breaking_and_falling/bfh1_rock_falling_02.ogg"
+  ],
+  "level": -4
+ },
+ "atkClaw": {
+  "from": [
+   "oga/x_swoshes/swosh-14.flac",
+   "oga/x_swoshes/swosh-18.flac",
+   "oga/x_swoshes/swosh-22.flac",
+   "oga/x_swoshes/swosh-26.flac"
+  ],
+  "level": 0
+ },
+ "hit:logan": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactPunch_medium_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPunch_medium_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPunch_medium_002.ogg"
+  ],
+  "level": 0
+ },
+ "fx:pounce": {
+  "from": [
+   "oga/x_80-CC0-creature-sfx-2/attack_01.ogg",
+   "oga/x_80-CC0-creature-sfx-2/attack_02.ogg",
+   "oga/x_80-CC0-creature-sfx-2/attack_03.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:maul": {
+  "from": [
+   "oga/x_80-CC0-creature-sfx-2/attack_04.ogg",
+   "oga/x_80-CC0-creature-sfx-2/attack_05.ogg"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:maul+crunch"
+  ]
+ },
+ "fx:maul+crunch": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-break_crunch_impact/impcrunch/impactcrunch01.mp3.flac",
+   "oga/x_independent_nu_ljudbank-break_crunch_impact/impcrunch/impactcrunch02.mp3.flac",
+   "oga/x_independent_nu_ljudbank-break_crunch_impact/impcrunch/impactcrunch03.mp3.flac"
+  ],
+  "level": -3
+ },
+ "fx:mane": {
+  "from": [
+   "oga/x_80-CC0-creature-sfx-2/grunt_06.ogg",
+   "oga/x_80-CC0-creature-sfx-2/grunt_07.ogg",
+   "oga/x_80-CC0-creature-sfx-2/grunt_08.ogg"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:roar": {
+  "from": [
+   "oga/x_80-CC0-creature-SFX_0/roar_01.ogg",
+   "oga/x_80-CC0-creature-SFX_0/roar_02.ogg",
+   "oga/x_80-CC0-creature-sfx-2/roar_05.ogg"
+  ],
+  "over": true,
+  "level": 1
+ },
+ "fx:lionheart": {
+  "from": [
+   "oga/x_80-CC0-creature-SFX_0/breath.ogg",
+   "oga/x_80-CC0-creature-sfx-2/breath_02.ogg"
+  ],
+  "over": true,
+  "level": -3
+ },
+ "atkScepter": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/item_gem_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/item_gem_02.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/item_gem_03.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/item_gem_04.ogg"
+  ],
+  "level": 0
+ },
+ "hit:kingrix": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/metal-small1.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/metal-small2.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/metal-small3.wav"
+  ],
+  "level": -1
+ },
+ "cast:kingrix:0": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/coinflip-01.wav",
+   "oga/x_tinysized/sfx-cc0/coin-spin-fall-01.wav"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "fx:summon": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/chainmail1.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/chainmail2.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/armor-light.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:kneel": {
+  "from": [
+   "oga/x_100-CC0-SFX_0/gong_01.ogg",
+   "oga/x_100-CC0-SFX_0/gong_02.ogg"
+  ],
+  "over": true,
+  "level": 1
+ },
+ "fx:decree": {
+  "from": [
+   "kenney/kenney_music-jingles/Audio/Hit jingles/jingles_HIT00.ogg",
+   "kenney/kenney_music-jingles/Audio/Hit jingles/jingles_HIT03.ogg"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:decree+gong"
+  ]
+ },
+ "fx:decree+gong": {
+  "from": [
+   "oga/x_100-CC0-SFX_0/gong_02.ogg"
+  ],
+  "level": -4
+ },
+ "atkPunch": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit01.mp3.flac",
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit03.mp3.flac",
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit05.mp3.flac",
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit07.mp3.flac",
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit09.mp3.flac"
+  ],
+  "level": 1
+ },
+ "hit:dongmaster": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPunch_heavy_003.ogg"
+  ],
+  "level": 0
+ },
+ "fx:chinCheck": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit20.mp3.flac",
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit24.mp3.flac",
+   "oga/x_independent_nu_ljudbank-hits_and_punches/hits/hit28.mp3.flac"
+  ],
+  "over": true,
+  "level": 1
+ },
+ "fx:mewing": {
+  "from": [
+   "oga/x_80-CC0-creature-SFX_0/breath.ogg"
+  ],
+  "over": true,
+  "level": -3
+ },
+ "fx:sigmaStare": {
+  "from": [
+   "kenney/kenney_sci-fi-sounds/Audio/forceField_000.ogg",
+   "kenney/kenney_sci-fi-sounds/Audio/forceField_001.ogg"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:ascension": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/giant/giant3.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/NPC/giant/giant4.wav"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:ascension+brass"
+  ]
+ },
+ "fx:ascension+brass": {
+  "from": [
+   "kenney/kenney_music-jingles/Audio/Hit jingles/jingles_HIT08.ogg",
+   "kenney/kenney_music-jingles/Audio/Hit jingles/jingles_HIT12.ogg"
+  ],
+  "level": -3
+ },
+ "atkRig": {
+  "from": [
+   "kenney/kenney_sci-fi-sounds/Audio/slime_000.ogg",
+   "kenney/kenney_sci-fi-sounds/Audio/slime_001.ogg"
+  ],
+  "level": 0
+ },
+ "hit:dabber": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat02.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat04.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat06.mp3.flac"
+  ],
+  "level": -1
+ },
+ "cast:dabber:0": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/compressed-air-spray-01.wav",
+   "oga/x_tinysized/sfx-cc0/compressed-air-spray-02.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "cast:dabber:1": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/slime_03.ogg",
+   "oga/x_water-splash-slime-sfx/slime_07.ogg",
+   "oga/x_water-splash-slime-sfx/slime_11.ogg"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "fx:lightItUp": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/lighter-light-01.wav"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:lightItUp+fire"
+  ]
+ },
+ "fx:lightItUp+fire": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/spell_fire_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/spell_fire_02.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/spell_fire_03.ogg"
+  ],
+  "level": -2
+ },
+ "fx:cloudNine": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/spell_fire_05.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/spell_fire_06.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/spell_fire_07.ogg"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:cloudNine+thrust"
+  ]
+ },
+ "fx:cloudNine+thrust": {
+  "from": [
+   "kenney/kenney_sci-fi-sounds/Audio/thrusterFire_000.ogg",
+   "kenney/kenney_sci-fi-sounds/Audio/thrusterFire_002.ogg"
+  ],
+  "level": -4
+ },
+ "atkEpee": {
+  "from": [
+   "oga/x_sword_-_starninjas_1/sword - StarNinjas/sword.1.ogg",
+   "oga/x_sword_-_starninjas_1/sword - StarNinjas/sword.3.ogg",
+   "oga/x_sword_-_starninjas_1/sword - StarNinjas/sword.5.ogg",
+   "oga/x_sword_-_starninjas_1/sword - StarNinjas/sword.7.ogg"
+  ],
+  "level": 0
+ },
+ "hit:paris": {
+  "from": [
+   "oga/x_sword_clash_-_starninjas_0/sword_clash.1.ogg",
+   "oga/x_sword_clash_-_starninjas_0/sword_clash.2.ogg",
+   "oga/x_sword_clash_-_starninjas_0/sword_clash.3.ogg",
+   "oga/x_sword_clash_-_starninjas_0/sword_clash.4.ogg"
+  ],
+  "level": -1
+ },
+ "fx:fleche": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe2.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe3.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:cafeBreak": {
+  "from": [
+   "oga/x_100-CC0-SFX_0/dishes_01.ogg",
+   "oga/x_100-CC0-SFX_0/dishes_02.ogg",
+   "oga/x_100-CC0-SFX_0/dishes_03.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:touche": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/sword-clash-01.wav",
+   "oga/x_tinysized/sfx-cc0/sword-clash-02.wav",
+   "oga/x_tinysized/sfx-cc0/sword-clash-03.wav"
+  ],
+  "over": true,
+  "level": 1
+ },
+ "fx:encore": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe4.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/battle/sword-unsheathe5.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "atkCheese": {
+  "from": [
+   "oga/magical_1_0.ogg",
+   "oga/magical_2.ogg",
+   "oga/magical_4.ogg"
+  ],
+  "level": -2
+ },
+ "hit:havarti": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat01.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat03.mp3.flac",
+   "oga/x_independent_nu_ljudbank-wet_squish_slurp_impacts/impsplat/impactsplat05.mp3.flac"
+  ],
+  "level": -2
+ },
+ "fx:curdle": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/wood-bowl-spoon-01.wav",
+   "oga/x_tinysized/sfx-cc0/wood-bowl-spoon-02.wav",
+   "oga/x_tinysized/sfx-cc0/wood-bowl-spoon-03.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:fondue": {
+  "from": [
+   "oga/cooking_with_cover_01.ogg"
+  ],
+  "over": true,
+  "level": -2,
+  "max": 1.6
+ },
+ "fx:rindBlade": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/apple-cut-01.wav",
+   "oga/x_tinysized/sfx-cc0/apple-cut-02.wav",
+   "oga/x_tinysized/sfx-cc0/apple-cut-03.wav"
+  ],
+  "over": true,
+  "level": 1
+ },
+ "fx:divineFondue": {
+  "from": [
+   "oga/magical_7_0.ogg",
+   "oga/magical_6_0.ogg"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:divineFondue+bell"
+  ]
+ },
+ "fx:divineFondue+bell": {
+  "from": [
+   "oga/x_100-CC0-SFX_0/bell_01.ogg",
+   "oga/x_100-CC0-SFX_0/bell_03.ogg"
+  ],
+  "level": -4
+ },
+ "fx:fondueEruption": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/splash_12.ogg",
+   "oga/x_water-splash-slime-sfx/splash_13.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:ascend": {
+  "from": [
+   "oga/magical_5.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "atkDagger": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/knife-unsheathe-02.wav",
+   "oga/x_swishes/swishes/swish-3.wav",
+   "oga/x_swishes/swishes/swish-6.wav",
+   "oga/x_swishes/swishes/swish-9.wav"
+  ],
+  "level": 0
+ },
+ "hit:daltonomo": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/blade_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/blade_02.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/blade_03.ogg"
+  ],
+  "level": -1
+ },
+ "fx:nowYouSeeMe": {
+  "from": [
+   "oga/teleport.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:jackbox": {
+  "from": [
+   "oga/x_100-CC0-SFX_0/spring_01.ogg",
+   "oga/x_100-CC0-SFX_0/spring_03.ogg",
+   "oga/x_100-CC0-SFX_0/spring_05.ogg"
+  ],
+  "over": true,
+  "level": 1
+ },
+ "fx:boxShot": {
+  "from": [
+   "oga/x_100-CC0-SFX_0/spring_07.ogg",
+   "oga/x_100-CC0-SFX_0/spring_08.ogg",
+   "oga/x_100-CC0-SFX_0/spring_09.ogg"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:backstab": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/blade_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/blade_03.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:doubleAct": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/chimes-wood-rattle.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:cloneBoom": {
+  "from": [
+   "oga/x_25-CC0-bang-sfx/fw_01.ogg",
+   "oga/x_25-CC0-bang-sfx/fw_02.ogg",
+   "oga/x_25-CC0-bang-sfx/fw_03.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "cast:daltonomo:2": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/metal-knife-scrape-01.wav",
+   "oga/x_tinysized/sfx-cc0/metal-knife-scrape-02.wav",
+   "oga/x_tinysized/sfx-cc0/metal-knife-scrape-03.wav"
+  ],
+  "over": true,
+  "level": -1
+ },
+ "atkCoin": {
+  "from": [
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/coin.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/coin2.wav",
+   "oga/x_rpg_sound_pack/RPG Sound Pack/inventory/coin3.wav"
+  ],
+  "level": 0
+ },
+ "hit:bigwhale": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/item_coins_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/item_coins_02.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/item_coins_03.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/item_coins_04.ogg"
+  ],
+  "level": -1
+ },
+ "fx:tip": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/coinflip-01.wav"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:cashRain": {
+  "from": [
+   "kenney/kenney_casino-audio/Audio/card-fan-1.ogg",
+   "kenney/kenney_casino-audio/Audio/card-fan-2.ogg",
+   "kenney/kenney_casino-audio/Audio/card-shuffle.ogg"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:cashRain+coins"
+  ]
+ },
+ "fx:cashRain+coins": {
+  "from": [
+   "oga/x_tinysized/sfx-cc0/coins-shake-01.wav",
+   "oga/x_80-CC0-RPG-SFX_0/item_coins_03.ogg"
+  ],
+  "level": -3
+ },
+ "fx:yachtParty": {
+  "from": [
+   "kenney/kenney_music-jingles/Audio/Sax jingles/jingles_SAX00.ogg",
+   "kenney/kenney_music-jingles/Audio/Sax jingles/jingles_SAX02.ogg",
+   "kenney/kenney_music-jingles/Audio/Sax jingles/jingles_SAX05.ogg"
+  ],
+  "over": true,
+  "level": -1,
+  "max": 2.2
+ },
+ "fx:paperwork": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/book_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/book_02.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/book_03.ogg"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:paperwork+latch"
+  ]
+ },
+ "fx:paperwork+latch": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/lock_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/lock_02.ogg"
+  ],
+  "level": -3
+ },
+ "fx:breach": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/splash_01.ogg",
+   "oga/x_water-splash-slime-sfx/splash_02.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:splashZone": {
+  "from": [
+   "oga/x_water-splash-slime-sfx/splash_14.ogg",
+   "oga/x_water-splash-slime-sfx/splash_15.ogg"
+  ],
+  "over": true,
+  "level": -4
+ },
+ "atkToken": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactMetal_light_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_light_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_light_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_light_003.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_light_004.ogg"
+  ],
+  "level": 1
+ },
+ "cast:scrimby:1": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactPlate_heavy_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPlate_heavy_003.ogg"
+  ],
+  "level": 3
+ },
+ "fx:manhole": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactPlate_light_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPlate_light_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPlate_light_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPlate_light_003.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPlate_light_004.ogg"
+  ],
+  "level": 1
+ },
+ "fx:steamBurst": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactPlate_heavy_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPlate_heavy_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactPlate_heavy_004.ogg"
+  ],
+  "over": true,
+  "level": 0,
+  "with": [
+   "fx:steamBurst+hiss"
+  ]
+ },
+ "fx:steamBurst+hiss": {
+  "from": [
+   "oga/x_steam_hisses/steam_hiss_1.wav",
+   "oga/x_steam_hisses/steam_hiss_2.wav",
+   "oga/x_steam_hisses/steam_hiss_3.wav"
+  ],
+  "level": -1,
+  "max": 1.8
+ },
+ "fx:jaywalk": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/footstep_concrete_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/footstep_concrete_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/footstep_concrete_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/footstep_concrete_003.ogg",
+   "kenney/kenney_impact-sounds/Audio/footstep_concrete_004.ogg"
+  ],
+  "over": true,
+  "level": -2
+ },
+ "fx:mustard": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactSoft_medium_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactSoft_medium_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactSoft_medium_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactSoft_medium_003.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactSoft_medium_004.ogg"
+  ],
+  "over": true,
+  "level": 0
+ },
+ "fx:expressCrash": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/impactMetal_heavy_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_heavy_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/impactMetal_heavy_003.ogg"
+  ],
+  "over": true,
+  "level": -4,
+  "with": [
+   "fx:expressCrash+crunch"
+  ]
+ },
+ "fx:expressCrash+crunch": {
+  "from": [
+   "oga/x_independent_nu_ljudbank-break_crunch_impact/impcrunch/impactcrunch04.mp3.flac",
+   "oga/x_independent_nu_ljudbank-break_crunch_impact/impcrunch/impactcrunch05.mp3.flac"
+  ],
+  "level": -2
+ }
+}

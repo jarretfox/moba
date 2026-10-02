@@ -74,7 +74,7 @@ AI image tools don't yet keep a whole animation consistent across frames. The qu
 
 Record or pick sounds **dry**: the game adds the room, distance and panning.
 
-**Done (first pass):** recordings from Kenney's CC0 *Impact Sounds* pack, matched to the synth's levels: the token (5 takes), W's clank and the manhole rattle, a metal thunk under the steam burst, concrete steps under the jaywalk, a wet thud under the mustard splat, and heavy metal under the train crash. The ones marked "over" in `public/audio/index.json` play on top of the synth sound. Still synthesized: the hot dog throw, the car horn, the door chime, the train horn, and his cast signature. Those need a library with traffic and subway sounds (Freesound, Sonniss).
+**Done (first pass, built by the sound bench from `sound-design/design.py`):** the token (5 takes), W's clank and the manhole rattle, a metal thunk and a hiss of steam under the burst, concrete steps under the jaywalk, a wet thud under the mustard splat, and heavy metal with a crunch under the train crash. Still synthesized: the hot dog throw, the car horn, the door chime, the train horn, and his cast signature. Those need a library with traffic and subway sounds (Freesound, Sonniss).
 
 | Key | What it should sound like | Takes |
 |---|---|---|

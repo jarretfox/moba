@@ -95,6 +95,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       // Final Notice: the big red NO grows under him as he draws, the air pulled into the bow, then loosed.
       const dur = ev.dur ?? 1;
       fx.aimLine(x, y, x2, y2, dur, friendly);
+      rune(fx, x, y, 90, DENY, dur + 0.3, 2);
+      p.emit({ shape: 'flare', x, y: y - 40, life: dur, size: 40, size2: 110, color: 0xfff1b8, alpha: 0.8, fadeIn: 0.7 });
       const R = 90;
       fx.custom(dur + 0.3, (g, t) => {
         const k = Math.min(1, (t * (dur + 0.3)) / dur);
@@ -127,6 +129,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       }, { layer: 'under', from: 1.6, alpha: 0.85 });
       p.burst(12, { shape: 'spark', x, y, life: 0.4, size: 14, size2: 4, stretch: 0.08, color: 0xffffff, color2: DENY, drag: 0.02 }, [220, 480]);
       p.burst(10, { shape: 'shard', glow: false, x, y, life: 0.7, size: 12, size2: 8, color: DENY, drag: 0.15, spin: 16, ay: 200 }, [120, 300]);
+      impact(fx, x, y - 10, 70, DENY);
+      p.emit({ shape: 'circle', x, y, life: 0.4, size: 40, size2: 170, color: 0xffffff, color2: DENY, alpha: 0.8 });
       return;
     case 'roll': {
       // A gust: streaks of wind along the path and a puff where it started.
@@ -137,6 +141,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         p.emit({ shape: 'spark', x: x + (x2 - x) * k - Math.sin(angle) * off, y: y + (y2 - y) * k + Math.cos(angle) * off, vx: Math.cos(angle) * 260, vy: Math.sin(angle) * 260, drag: 0.02, life: rand(0.2, 0.4), size: 10, size2: 3, stretch: 0.12, color: 0xffffff, color2: 0x9bd4ff, alpha: 0.8 });
       }
       p.burst(6, { shape: 'smoke', glow: false, x, y, life: 0.5, size: 22, size2: 50, color: 0xcfc6b4, alpha: 0.45, drag: 0.05 }, [40, 90], angle + Math.PI, 1.6);
+      clouds(fx, x, y, 60, 5, 0xe8dcc4, { alpha: 0.55, rise: 10, life: 0.7 });
       return;
     }
 
@@ -148,6 +153,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         const a = angle - spread / 2 + Math.random() * spread;
         p.emit({ shape: 'spark', x: x + Math.cos(a) * dist * 0.9, y: y + Math.sin(a) * dist * 0.9, vx: Math.cos(a) * rand(150, 350), vy: Math.sin(a) * rand(150, 350), drag: 0.03, life: rand(0.2, 0.4), size: 10, size2: 3, stretch: 0.05, color: 0xfff1c1, color2: FIRE });
       }
+      swoosh(fx, x + Math.cos(angle) * dist * 0.45, y + Math.sin(angle) * dist * 0.45, angle, dist * 1.1, 0xfff1c1, 0xff8a3d);
       return;
     }
     case 'warCry': {
@@ -162,6 +168,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       }, { squash: 0.5, stagger: 0.35 });
       fx.speedLines(x, y - 30, r * 0.5, 0xff5a2a, 10, 0.3);
       p.burst(14, { shape: 'spark', x, y, life: 0.5, size: 14, size2: 4, stretch: 0.04, color: 0xffd9a8, color2: 0xff3b1f, drag: 0.05 }, [300, 600]);
+      p.emit({ shape: 'circle', x, y, life: 0.5, size: 60, size2: r * 1.8, color: 0xffd9a8, color2: 0xff3b1f, alpha: 0.9 });
+      impact(fx, x, y - 40, 90, 0xff7a3a);
       return;
     }
     case 'slam': {
@@ -173,6 +181,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.shockwave(x, y, r, 0xffc27a, 0.4);
       fx.flash(x, y, r * 0.5, 0xffb070, 0.25);
       dirtBurst(fx, x, y, r);
+      clouds(fx, x, y, r * 0.8, 10, 0xd8c4a0, { alpha: 0.65, rise: 20 });
+      p.burst(8, { shape: 'dirt', glow: false, x, y, life: 0.7, size: 30, size2: 50, color: 0x8a6a44, drag: 0.1, ay: 300 }, [150, 350], -Math.PI / 2, 2.5);
       return;
     }
     case 'berserk': {
@@ -207,6 +217,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.pillar(x, y, r, 0xff5a2a, 0.8);
       fx.scar(x, y, r * 1.6, 'scorch');
       flames(fx, x, y, r, 30);
+      flamesUp(fx, x, y, r, 12);
+      p.emit({ shape: 'flash', glow: false, x, y: y - 30, life: 0.3, size: r * 1.5, size2: r * 2.6, color: 0xff8a6a, fadeIn: 0.02 });
       const t = iconTexture('😡');
       if (t) fx.ghost(t, x, y - r * 1.5, { size: r * 2, size2: r * 3.5, dy: -60, life: 0.9, alpha: 0.7 });
       return;
@@ -246,6 +258,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     case 'burrow':
       dirtBurst(fx, x, y, 90);
       fx.shockwave(x, y, 90, 0xa08560, 0.35);
+      clouds(fx, x, y, 80, 6, 0xb8a080, { alpha: 0.6 });
+      p.burst(5, { shape: 'dirt', glow: false, x, y, life: 0.6, size: 24, size2: 40, color: 0x6a5030, ay: 300 }, [100, 260], -Math.PI / 2, 2);
       return;
     case 'surface': {
       const r = ev.r ?? 200;
@@ -253,6 +267,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.scar(x, y, r * 0.9, 'crack');
       fx.shockwave(x, y, r, 0xc8945a, 0.45);
       dirtBurst(fx, x, y, r);
+      clouds(fx, x, y, r * 0.8, 9, 0xb8a080, { alpha: 0.6, rise: 30 });
+      p.burst(9, { shape: 'dirt', glow: false, x, y, life: 0.8, size: 30, size2: 50, color: 0x6a5030, ay: 320 }, [160, 380], -Math.PI / 2, 2.4);
       return;
     }
     case 'hookPull': {
@@ -260,6 +276,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.chain(x, y, x2, y2, dur);
       p.burst(10, { shape: 'spark', x: x2, y: y2, life: 0.3, size: 10, size2: 3, stretch: 0.05, color: 0xffe0b0, color2: 0xc8945a, drag: 0.03 }, [150, 350], angle + Math.PI, 1.4);
       p.burst(5, { shape: 'spark', x, y, life: 0.3, size: 10, size2: 3, stretch: 0.05, color: 0xffe0b0, color2: 0xc8945a, drag: 0.03 }, [100, 250]);
+      impact(fx, x2, y2, 50, 0xffe0b0);
       return;
     }
     case 'tunnel': {
@@ -294,6 +311,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         fx.shockwave(x2, y2, 120, TOXIC, 0.4);
         p.burst(14, { shape: 'mote', glow: false, x: x2, y: y2, life: 0.5, size: 12, size2: 5, color: 0x6fae2e, drag: 0.1, ay: 200 }, [120, 300]);
         fumes(fx, x2, y2, 80, 10);
+        clouds(fx, x2, y2, 90, 7, 0xa8d86a, { alpha: 0.5, rise: 25 });
         fx.scar(x2, y2, 90, 'goo');
       });
       return;
@@ -304,6 +322,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.scar(x, y, r * 1.1, 'goo', 0x4f7a2a, 10);
       fumes(fx, x, y, r, 12);
       fx.flash(x, y, r * 0.6, TOXIC, 0.3, 0.6);
+      clouds(fx, x, y, r, 6, 0x9fd06a, { alpha: 0.5 });
+      rune(fx, x, y, r * 0.7, TOXIC, 0.6);
       return;
     }
     case 'pulse': {
@@ -311,6 +331,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       const r = ev.r ?? 400;
       fx.shockwave(x, y, r, VOID, 0.7);
       fx.motifRing(x, y, r * 0.3, 8, 0.9, (g, i) => drawMushroom(g, 12 + (i % 3) * 3, i, TOXIC), { layer: 'under', squash: 0.5 });
+      p.emit({ shape: 'circle', x, y, life: 0.7, size: 40, size2: r * 2, color: 0xd8b4ff, color2: VOID, alpha: 0.8 });
+      rune(fx, x, y, 70, 0xd8b4ff, 0.8);
       for (let i = 0; i < 30; i++) {
         const a = (i / 30) * Math.PI * 2;
         p.emit({ shape: i % 3 ? 'mote' : 'leaf', x, y, vx: Math.cos(a) * r * 1.3, vy: Math.sin(a) * r * 1.3, drag: 0.08, life: 0.8, size: 12, size2: 4, color: 0xd8b4ff, color2: TOXIC, spin: 5 });
@@ -322,6 +344,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       for (const [px, py] of [[x, y], [x2, y2]] as const) {
         dirtBurst(fx, px, py, 70);
         fx.motifRing(px, py, 60, 6, 0.7, (g, i) => drawMushroom(g, 10 + (i % 2) * 3, i, TOXIC), { layer: 'under', squash: 0.5 });
+        clouds(fx, px, py, 60, 4, 0xb8a080, { alpha: 0.55 });
       }
       return;
     case 'deepMark': {
@@ -329,6 +352,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       const r = ev.r ?? 350;
       const dur = ev.dur ?? 0.75;
       fx.telegraph(x, y, r, dur, TOXIC);
+      rune(fx, x, y, r * 0.75, VOID, dur + 0.2, 1);
       const claws = Array.from({ length: 14 }, (_, i) => ({ a: i * 2.4 + 0.7, d: r * (0.3 + ((i * 41) % 60) / 100) }));
       fx.custom(dur + 0.2, (g, t) => {
         const k = Math.min(1, (t * (dur + 0.2)) / dur);
@@ -359,6 +383,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.scar(x, y, r * 0.7, 'goo');
       fx.shockwave(x, y, r, TOXIC, 0.5);
       fx.flash(x, y, r * 0.6, VOID, 0.4, 0.6);
+      clouds(fx, x, y, r, 10, 0x6a5a8a, { shape: 'soot', alpha: 0.45, rise: 50 });
+      p.emit({ shape: 'flash', glow: false, x, y, life: 0.3, size: r * 0.9, size2: r * 1.7, color: 0xc9f59a, fadeIn: 0.02 });
       const spots = Array.from({ length: 12 }, (_, i) => ({ a: i * 2.4, d: r * (0.25 + ((i * 37) % 70) / 100) }));
       fx.custom(0.8, (g, t) => {
         const rise = t < 0.3 ? t / 0.3 : 1;
@@ -386,10 +412,13 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.motifRing(x, y, 60, 8, 0.5, (g, i) => drawDiamond(g, 11, i), { layer: 'under', spin: 4, squash: 0.5, stagger: 0.2 });
       confetti(fx, x, y, 22, 200);
       for (let i = 0; i < 10; i++) p.emit({ shape: 'smoke', x: x + rand(-25, 25), y: y + rand(-25, 25), vy: rand(-40, -10), life: 1, size: 24, size2: 60, color: 0xd8c8f0, color2: 0x6a3a9a, alpha: 0.5, fadeIn: 0.2 });
+      clouds(fx, x, y, 70, 8, 0xc8a8f0, { alpha: 0.7, rise: 20 });
+      p.emit({ shape: 'flash', glow: false, x, y: y - 30, life: 0.25, size: 60, size2: 120, color: 0xd8b8ff, fadeIn: 0.02 });
       return;
     case 'backstab': {
       fx.flash(x, y, 40, 0xffd166, 0.2);
       p.burst(8, { shape: 'star', x, y, life: 0.4, size: 14, size2: 2, color: 0xffffff, color2: 0xb98be0, spin: 6 }, [100, 220]);
+      swoosh(fx, x, y - 30, rand(0, Math.PI * 2), 90, 0xffffff, 0xb98be0);
       const t = iconTexture('🃏');
       if (t) fx.ghost(t, x, y - 40, { size: 30, size2: 50, dy: -40, life: 0.6, alpha: 0.9 });
       return;
@@ -400,6 +429,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.shockwave(x, y, r, 0xb98be0, 0.45);
       fx.flash(x, y, 60, 0xffd166, 0.3);
       confetti(fx, x, y, 34, 320);
+      impact(fx, x, y - 30, 90, 0xffd166);
+      clouds(fx, x, y, 90, 6, 0xe8d8ff, { alpha: 0.55 });
       const t = iconTexture('🎁');
       if (t) fx.ghost(t, x, y - 30, { size: 40, size2: 80, dy: -50, life: 0.7, alpha: 0.9 });
       return;
@@ -414,6 +445,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         fx.motifRing(cx, cy, 56, 8, 0.6, (g, i) => drawDiamond(g, 10, i), { layer: 'under', spin: -3, squash: 0.5, stagger: 0.2 });
         confetti(fx, cx, cy, 16, 160);
         for (let i = 0; i < 6; i++) p.emit({ shape: 'smoke', x: cx + rand(-20, 20), y: cy + rand(-20, 20), vy: -20, life: 0.9, size: 22, size2: 50, color: 0xd8c8f0, color2: 0x6a3a9a, alpha: 0.5 });
+        clouds(fx, cx, cy, 60, 5, 0xc8a8f0, { alpha: 0.6, rise: 15 });
       }
       const t = iconTexture('🎭');
       if (t) fx.ghost(t, x, y - 70, { size: 50, size2: 90, dy: -40, life: 0.9, alpha: 0.85 });
@@ -426,6 +458,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.shockwave(x, y, r, 0xb98be0, 0.45);
       confetti(fx, x, y, 40, 380);
       p.burst(10, { shape: 'shard', glow: false, x, y, life: 0.6, size: 12, size2: 6, color: 0xd8dde6, drag: 0.05, spin: 10 }, [300, 560]);
+      blast(fx, x, y, r * 0.55, 0xe8d0ff);
       return;
     }
     // ── Havarti
@@ -435,6 +468,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.flash(x, y, r * 1.8, 0xffe29a, 0.3);
       fx.shockwave(x, y, r * 2.4, 0xffd166, 0.35);
       p.burst(14, { shape: 'shard', glow: false, x, y, life: 0.6, size: 9, size2: 5, color: 0xf3dc8a, drag: 0.1, ay: 260, spin: 6 }, [120, 300]);
+      rune(fx, x, y, r * 1.6, 0xffe29a, 0.5, 2);
+      p.emit({ shape: 'flare', x, y, life: 0.3, size: r * 2, size2: r * 3.5, color: 0xfff1b8 });
       return;
     }
     case 'fondue': {
@@ -443,12 +478,14 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       for (const [hx, hy] of dist > 10 ? [[x, y], [x2, y2]] : [[x, y]]) {
         fx.flash(hx, hy, 60, 0xfff1b8, 0.35);
         for (let i = 0; i < 10; i++) p.emit({ shape: i % 3 ? 'mote' : 'star', x: hx + rand(-30, 30), y: hy + rand(-20, 20), vy: rand(-90, -40), life: 0.9, size: 10, size2: 2, color: 0xffffff, color2: 0xa8e6a0, spin: 3 });
+        p.emit({ shape: 'flare', x: hx, y: hy - 30, life: 0.7, size: 50, size2: 120, color: 0xfff1b8, alpha: 0.8 });
       }
       return;
     }
     case 'rindBlade': {
       fx.flash(x, y, 55, 0xffd166, 0.3);
       for (let i = 0; i < 12; i++) p.emit({ shape: 'glow', x: x + rand(-20, 20), y: y + rand(-20, 20), vy: rand(-140, -60), drag: 0.4, life: 0.5, size: 18, size2: 3, color: 0xfff1b8, color2: 0xff9f43, alpha: 0.8 });
+      swoosh(fx, x, y - 20, rand(0, Math.PI * 2), 90, 0xfff1b8, 0xffb347);
       return;
     }
     case 'divineFondue': {
@@ -462,6 +499,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         g.circle(x, y - r * 1.2, r * 0.35).stroke({ width: 4, color: 0xffe29a, alpha: 0.9 * a });
       }, 'mid', true);
       for (let i = 0; i < Math.round(dur * 6); i++) fx.later(i / 6, () => p.emit({ shape: 'star', x: x + rand(-r, r), y: y + rand(-r, r), vy: -30, life: 0.6, size: 12, size2: 2, color: 0xffffff, color2: GOLD, spin: 4 }));
+      rune(fx, x, y, r, GOLD, dur, 0.8);
+      p.emit({ shape: 'flare', x, y: y - r * 1.2, life: dur, size: r * 0.8, size2: r * 1.1, color: 0xfff1b8, alpha: 0.7, fadeIn: 0.1 });
       return;
     }
     case 'fondueEruption': {
@@ -473,6 +512,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.cracks(x, y, r * 0.7, 0xffd166, 1.4, 8);
       p.burst(40, { shape: 'mote', glow: false, x, y, life: 0.9, size: 14, size2: 6, color: 0xf3dc8a, drag: 0.15, ay: 320 }, [200, 620]);
       fx.scar(x, y, r * 0.6, 'goo', 0xc9a23a);
+      blast(fx, x, y, r * 0.4, 0xffe9a0);
+      clouds(fx, x, y, r * 0.6, 8, 0xfff1c8, { alpha: 0.45, rise: 40 });
       return;
     }
     case 'cheeseWave': {
@@ -490,6 +531,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.pillar(x, y, 60 + tier * 20, 0xfff1b8, 1.4);
       fx.shockwave(x, y, 160 + tier * 60, 0xffe29a, 0.6);
       p.burst(16 + tier * 8, { shape: 'leaf', glow: false, x, y, life: 1.4, size: 14, size2: 10, color: 0xfff6dc, drag: 0.2, ay: 40, spin: 3 }, [150, 360]);
+      p.emit({ shape: 'flare', x, y: y - 60, life: 1, size: 120, size2: 280, color: 0xfff1b8, alpha: 0.8 });
+      rune(fx, x, y, 80 + tier * 20, GOLD, 1.2);
       p.burst(12, { shape: 'star', x, y, life: 1, size: 14, size2: 2, color: 0xffffff, color2: GOLD, spin: 4 }, [80, 220]);
       return;
     }
@@ -503,6 +546,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         p.emit({ shape: 'leaf', glow: false, x: x + (x2 - x) * k, y: y + (y2 - y) * k, vx: rand(-50, 50), vy: rand(-60, -10), ay: 40, life: rand(0.6, 1.1), size: 10, size2: 8, color: 0xff6b8a, spin: 5 });
       }
       p.burst(6, { shape: 'star', x: x2, y: y2, life: 0.35, size: 14, size2: 2, color: 0xffffff, color2: 0xff8fb0, spin: 6 }, [120, 260]);
+      swoosh(fx, x2, y2 - 25, angle, 90, 0xffffff, 0xff8fb0);
+      p.emit({ shape: 'flare', x: x2, y: y2 - 25, life: 0.2, size: 40, size2: 100, color: 0xffffff });
       return;
     }
     case 'cafeBreak': {
@@ -511,6 +556,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.shockwave(x, y, r * 1.6, 0xc8a07a, 0.6);
       for (let i = 0; i < 10; i++) fx.later(i * 0.12, () => p.emit({ shape: 'smoke', x: x + rand(-14, 14), y: y - r * 0.6, vx: rand(-10, 10), vy: rand(-50, -30), life: 1.4, size: 10, size2: 26, color: 0xffffff, color2: 0xd8d0c0, alpha: 0.45, fadeIn: 0.3 }));
       const t = iconTexture('☕');
+      for (let i = 0; i < 3; i++) fx.later(0.3 + i * 0.25, () => p.emit({ shape: 'heart', x: x + rand(-20, 20), y: y - r, vy: -40, life: 1.2, size: 14, size2: 22, color: 0xff8fb0, rotation: 0, fadeIn: 0.2 }));
       if (t) fx.ghost(t, x, y - r, { size: 40, size2: 56, dy: -50, life: 1.3, alpha: 0.85 });
       return;
     }
@@ -518,6 +564,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       // His blade catches the light.
       fx.flash(x, y, 50, 0xffffff, 0.25, 0.5);
       p.burst(10, { shape: 'star', x, y, life: 0.5, size: 16, size2: 2, color: 0xffffff, color2: 0xdfe6ff, spin: 7 }, [80, 200]);
+      impact(fx, x, y - 20, 60, 0xffffff);
       const t = iconTexture('✨');
       if (t) fx.ghost(t, x, y - 50, { size: 36, size2: 60, dy: -30, life: 0.7, alpha: 0.8 });
       return;
@@ -533,6 +580,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       for (let i = 0; i < 18; i++) fx.later(i * 0.05, () => p.emit({ shape: 'leaf', glow: false, x: x + rand(-r * 1.5, r * 1.5), y: y - rand(r * 1.2, r * 2.4), vx: rand(-30, 30), vy: rand(60, 140), life: 1.2, size: 12, size2: 10, color: i % 3 ? 0xe5484d : 0xff8fb0, spin: 6 }));
       p.burst(12, { shape: 'star', x, y, life: 0.8, size: 14, size2: 2, color: 0xfff1b8, color2: GOLD, drag: 0.3, spin: 4 }, [100, 260]);
       const t = iconTexture('🌹');
+      p.emit({ shape: 'flare', x, y: y - 40, life: 1.2, size: r * 1.5, size2: r * 2.3, color: 0xfff6e0, alpha: 0.6, fadeIn: 0.15 });
+      for (let i = 0; i < 5; i++) fx.later(i * 0.12, () => p.emit({ shape: 'heart', x: x + rand(-r, r), y: y - rand(r * 0.6, r * 1.4), vy: -30, life: 1, size: 14, size2: 24, color: i % 2 ? 0xe5484d : 0xff8fb0, rotation: 0, fadeIn: 0.2 }));
       if (t) fx.ghost(t, x, y - r, { size: 60, size2: 110, dy: -40, life: 1, alpha: 0.8 });
       return;
     }
@@ -545,6 +594,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         const d = r * Math.sqrt(Math.random());
         p.emit({ shape: 'smoke', x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: Math.cos(a) * rand(10, 40), vy: Math.sin(a) * rand(10, 40) - 15, drag: 0.4, life: rand(1.4, 2.4), size: rand(30, 45), size2: rand(70, 110), color: 0xc8d6b0, color2: 0x5a6a4a, alpha: 0.55, fadeIn: 0.25 });
       }
+      clouds(fx, x, y, r, 10, 0xc8d6b0, { alpha: 0.45, rise: 8, life: 2 });
       return;
     }
     case 'stickyIcky': {
@@ -574,6 +624,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.shockwave(x, y, 60 + stacks * 14, 0xff7a2f, 0.35);
       for (let i = 0; i < 6 + stacks * 4; i++) p.emit({ shape: 'glow', x: x + rand(-25, 25), y: y + rand(-20, 20), vx: rand(-40, 40), vy: rand(-220, -90), drag: 0.3, life: rand(0.4, 0.8), size: rand(18, 30), size2: 4, color: 0xffe0a0, color2: 0xff3a10, alpha: 0.9 });
       p.burst(6 + stacks * 2, { shape: 'spark', x, y, life: 0.35, size: 10, size2: 2, stretch: 0.05, color: 0xfff1b8, color2: 0xff7a2f }, [200, 450]);
+      flamesUp(fx, x, y, 28, 4 + stacks * 2);
+      if (stacks >= 4) blast(fx, x, y, 50 + stacks * 8);
       return;
     }
     case 'cloudNine': {
@@ -585,6 +637,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       }
       p.burst(16, { shape: 'star', x, y, life: 0.9, size: 12, size2: 2, color: 0xffffff, color2: 0xb8f07a, drag: 0.3, spin: 4 }, [80, 240]);
       fx.shockwave(x, y, r * 1.4, 0xb8f07a, 0.6);
+      clouds(fx, x, y, r, 12, 0xd8f0c0, { alpha: 0.5, rise: 20, life: 1.6 });
+      rune(fx, x, y, r * 0.8, 0xb8f07a, 1);
       return;
     }
     // ── Dongmaster
@@ -601,6 +655,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.later(Math.min(0.3, dist / 1600), () => {
         fx.shockwave(x2, y2, 90, 0xffd166, 0.3);
         p.burst(10, { shape: 'star', x: x2, y: y2, life: 0.4, size: 16, size2: 3, color: 0xffffff, color2: GOLD, spin: 6 }, [150, 320]);
+        impact(fx, x2, y2 - 30, 80, 0xffd166);
+        p.emit({ shape: 'flash', glow: false, x: x2, y: y2 - 30, life: 0.18, size: 60, size2: 120, color: 0xffffff, fadeIn: 0.02 });
         dirtBurst(fx, x2, y2, 40);
       });
       return;
@@ -613,6 +669,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         g.circle(x, y, r * (0.9 + 0.1 * t)).fill({ color: 0xfff1b8, alpha: 0.12 * a }).stroke({ width: 4, color: 0xffffff, alpha: 0.8 * a });
       }, 'mid', true);
       for (let i = 0; i < 6; i++) fx.later(i * 0.08, () => p.emit({ shape: 'star', x: x + rand(-r * 0.4, r * 0.6), y: y + rand(-r * 0.5, r * 0.3), life: 0.5, size: 18, size2: 2, color: 0xffffff, color2: GOLD, spin: 5 }));
+      p.emit({ shape: 'flare', x, y: y - r * 0.6, life: 0.8, size: 40, size2: 90, color: 0xfff1b8, alpha: 0.8, fadeIn: 0.2 });
       return;
     }
     case 'sigmaStare': {
@@ -629,6 +686,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         }
       }, 'mid', true);
       const t = iconTexture('😎');
+      for (let i = 0; i < 4; i++) fx.later(i * 0.06, () => p.emit({ shape: 'zap', x: x + Math.cos(angle) * dist * (0.3 + i * 0.18), y: y + Math.sin(angle) * dist * (0.3 + i * 0.18), life: 0.22, size: 50, size2: 70, color: 0xff6b5a, rotation: rand(0, 6) }));
       if (t) fx.ghost(t, x + Math.cos(angle) * 60, y + Math.sin(angle) * 60, { size: 60, size2: 120, life: 0.6, alpha: 0.7 });
       return;
     }
@@ -640,6 +698,9 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.later(0.1, () => fx.shockwave(x, y, r * 0.8, 0xffb070, 0.45));
       fx.cracks(x, y, r * 0.8, 0xffd166, 1.4, 9);
       p.burst(30, { shape: 'mote', x, y, life: 1, size: 12, size2: 2, color: 0xffffff, color2: GOLD, drag: 0.3, ay: -60 }, [150, 420]);
+      p.emit({ shape: 'flare', x, y: y - 80, life: 1.2, size: 140, size2: 280, color: 0xffe29a, alpha: 0.45, fadeIn: 0.1 });
+      rune(fx, x, y, r * 0.6, GOLD, 1.2, 1);
+      impact(fx, x, y - 40, 110, 0xffe29a);
       const t = iconTexture('🗿');
       if (t) fx.ghost(t, x, y - 80, { size: 110, size2: 220, dy: -60, life: 1, alpha: 0.6 });
       return;
@@ -651,6 +712,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         p.emit({ shape: i % 3 ? 'mote' : 'star', x: x + (x2 - x) * k + rand(-14, 14), y: y + (y2 - y) * k + rand(-14, 14), vy: rand(-60, -20), life: rand(0.4, 0.8), size: 10, size2: 2, color: 0xfff1b8, color2: 0xff9f43, spin: 4 });
       }
       fx.stamp(x2, y2, 0.7, (g) => drawPaw(g, 46, GOLD), { layer: 'under', from: 1.6, alpha: 0.9 });
+      p.emit({ shape: 'claw', x: x2, y: y2 - 25, life: 0.32, size: 80, size2: 100, color: 0xfff1b8, color2: GOLD, rotation: angle, fadeIn: 0.04 });
+      clouds(fx, x2, y2, 60, 5, 0xe8d4a8, { alpha: 0.6 });
       dirtBurst(fx, x2, y2, 50);
       return;
     }
@@ -666,6 +729,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         });
       }
       p.burst(12, { shape: 'mote', glow: false, x: x + Math.cos(angle) * dist * 0.8, y: y + Math.sin(angle) * dist * 0.8, life: 0.5, size: 8, size2: 4, color: 0xb3202a, drag: 0.1, ay: 300 }, [100, 260], angle, 1.6);
+      for (let i = 0; i < 2; i++) fx.later(i * 0.07, () => p.emit({ shape: 'claw', x: x + Math.cos(angle) * dist * 0.7, y: y + Math.sin(angle) * dist * 0.7 - 20, life: 0.3, size: dist * 0.9, size2: dist, color: 0xffffff, color2: 0xff3b3b, rotation: angle + rand(-0.4, 0.4), fadeIn: 0.03 }));
       return;
     }
     case 'lionheart': {
@@ -680,6 +744,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       const h = iconTexture('❤️');
       if (h) fx.later(0.3, () => fx.ghost(h, x2, y2 - 40, { size: 40, size2: 80, dy: -40, life: 0.8, alpha: 0.8 }));
       fx.later(0.3, () => fx.flash(x2, y2, 60, GOLD, 0.4));
+      fx.later(0.3, () => p.emit({ shape: 'flare', x: x2, y: y2 - 30, life: 0.7, size: 60, size2: 140, color: 0xfff1b8, alpha: 0.85 }));
       return;
     }
     case 'mane': {
@@ -697,6 +762,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         p.emit({ shape: 'shard', x: x + Math.cos(a) * r * 2.2, y: y + Math.sin(a) * r * 2.2, vx: -Math.cos(a) * r * 4, vy: -Math.sin(a) * r * 4, drag: 0.02, life: 0.3, size: 14, size2: 8, color: 0xfff1b8, color2: GOLD, rotation: a });
       }
       fx.later(0.25, () => fx.burst(x, y, GOLD, r * 1.6));
+      fx.later(0.25, () => p.emit({ shape: 'flare', x, y: y - r * 0.5, life: 0.6, size: r, size2: r * 2.4, color: 0xfff1b8, alpha: 0.8 }));
       return;
     }
     case 'roar': {
@@ -714,6 +780,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         const a = angle + (Math.random() - 0.5) * rad;
         p.emit({ shape: 'spark', x, y, vx: Math.cos(a) * rand(300, 700), vy: Math.sin(a) * rand(300, 700), drag: 0.05, life: rand(0.3, 0.5), size: 12, size2: 3, stretch: 0.04, color: 0xfff1c1, color2: 0xff9f43 });
       }
+      impact(fx, x + Math.cos(angle) * 50, y + Math.sin(angle) * 50 - 30, 110, 0xffd08a);
+      clouds(fx, x + Math.cos(angle) * dist * 0.5, y + Math.sin(angle) * dist * 0.5, dist * 0.4, 6, 0xe8d4a8, { alpha: 0.5, rise: 10 });
       const t = iconTexture('🦁');
       if (t) fx.ghost(t, x + Math.cos(angle) * 40, y + Math.sin(angle) * 40, { size: 90, size2: 220, dx: Math.cos(angle) * dist * 0.6, dy: Math.sin(angle) * dist * 0.6, life: 0.7, alpha: 0.75 });
       return;
@@ -727,6 +795,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.scar(x, y, r * 1.3, 'seal', GOLD, 14);
       fx.pillar(x, y, r * 0.5, GOLD, 1);
       fx.later(0.15, () => fx.shockwave(x, y, r * 1.5, GOLD, 0.5));
+      rune(fx, x, y, r, GOLD, 1.1, 1.2);
+      p.emit({ shape: 'flare', x, y: y - r * 0.6, life: 0.9, size: r, size2: r * 2.4, color: 0xfff1b8, alpha: 0.8 });
       for (let i = 0; i < 24; i++) p.emit({ shape: i % 3 ? 'mote' : 'star', x: x + rand(-r, r) * 0.8, y: y + rand(-r, r) * 0.4, vy: rand(-260, -80), drag: 0.5, life: rand(0.6, 1.1), size: 12, size2: 2, color: 0xfff1b8, color2: GOLD, spin: 4 });
       const t = iconTexture('💂');
       if (t) fx.ghost(t, x, y - r, { size: 60, size2: 110, dy: -50, life: 0.9, alpha: 0.7 });
@@ -745,6 +815,9 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         fx.cracks(mx, my, dist * 0.45, GOLD, 0.9, 6);
         fx.scar(mx, my, dist * 0.45, 'crack', GOLD);
         p.burst(18, { shape: 'star', x: mx, y: my, life: 0.6, size: 16, size2: 3, color: 0xfff1b8, color2: GOLD, drag: 0.05, spin: 6 }, [150, 400]);
+        impact(fx, mx, my - 30, 120, 0xffe29a);
+        p.emit({ shape: 'circle', x: mx, y: my, life: 0.45, size: 40, size2: dist * 0.9, color: 0xfff1b8, color2: GOLD, alpha: 0.9 });
+        clouds(fx, mx, my, dist * 0.35, 6, 0xe8d8b0, { alpha: 0.5, rise: 10 });
       });
       return;
     }
@@ -766,6 +839,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.burst(x, y, GOLD, r * 1.4);
       fx.flash(x, y, r * 0.6, GOLD, 0.4);
       const t = iconTexture('📜');
+      rune(fx, x, y, r * 1.1, GOLD, 1, -1.2);
+      impact(fx, x, y - 20, r * 1.2, 0xfff1b8);
       if (t) fx.ghost(t, x, y - r * 1.2, { size: 120, size2: 60, dy: r * 0.9, life: 0.45, alpha: 0.85 });
       fx.later(0.4, () => p.burst(16, { shape: 'star', x, y, life: 0.6, size: 14, size2: 2, color: 0xffffff, color2: GOLD, drag: 0.05, spin: 6 }, [120, 300]));
       return;
@@ -851,6 +926,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         for (let i = -2; i <= 2; i++) g.moveTo(-r * 0.24, i * r * 0.05).lineTo(r * 0.24, i * r * 0.05).stroke({ width: 1.5, color: 0x5d636d });
       }, { layer: 'under', from: 1, alpha: 1 });
       for (let i = 0; i < 6; i++) fx.later(i * (dur / 6), () => p.emit({ shape: 'smoke', glow: false, x: x + rand(-20, 20), y: y - 6, vy: -60, life: 0.8, size: 14, size2: 40, color: 0xffffff, alpha: 0.4 }));
+      for (let i = 0; i < 4; i++) fx.later(i * (dur / 4), () => clouds(fx, x, y - 6, 40, 1, 0xffffff, { alpha: 0.45, rise: 60, life: 0.8 }));
       return;
     }
     case 'steamBurst': {
@@ -861,6 +937,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       p.burst(26, { shape: 'smoke', glow: false, x, y: y - 20, life: 1.4, size: 30, size2: 90, color: 0xffffff, alpha: 0.45, drag: 0.1, ay: -60 }, [60, 200], -Math.PI / 2, 1.2);
       p.burst(1, { shape: 'shard', glow: false, x, y: y - 30, life: 1.0, size: 26, size2: 26, color: 0x3a3f48, ay: 500, spin: 9 }, [500, 520], -Math.PI / 2, 0.2);
       fx.comic(x, y - r * 0.9, 'FSSSHHH!', 0xeef4ff);
+      clouds(fx, x, y - 20, r * 0.7, 14, 0xffffff, { alpha: 0.65, rise: 160, life: 1.4 });
+      p.emit({ shape: 'flash', glow: false, x, y: y - 30, life: 0.2, size: r * 0.5, size2: r * 0.9, color: 0xeef4ff, fadeIn: 0.02 });
       return;
     }
     case 'jaywalk': {
@@ -873,12 +951,14 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       }, { layer: 'under', spin: 0, alpha: 0.8 });
       fx.speedLines(x2, y2 - 40, 60, 0xffffff, 8, 0.3, a + Math.PI, 0.8);
       fx.comic(x2, y2 - 110, 'HEY!', 0xff8a3d);
+      clouds(fx, x2, y2, 50, 5, 0xe8dcc4, { alpha: 0.6, rise: 10, life: 0.7 });
       return;
     }
     case 'expressHorn': {
       // The horn, headlights on, sparks off the rails.
       fx.flash(x, y - 40, 120, 0xfff1b8, 0.3, 0.9);
       fx.callout(x, y - 150, 'STAND CLEAR!', 0xff8a3d);
+      p.emit({ shape: 'flare', x, y: y - 40, life: 0.6, size: 120, size2: 260, color: 0xfff6c0, alpha: 0.9, fadeIn: 0.05 });
       p.burst(16, { shape: 'spark', x, y, life: 0.4, size: 12, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0x7fd4ff }, [200, 420]);
       return;
     }
@@ -894,12 +974,14 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       p.burst(12, { shape: 'shard', glow: false, x, y: y - 30, life: 1.0, size: 14, size2: 8, color: 0xb8bec6, ay: 600, spin: 10 }, [180, 420], -Math.PI / 2, 2);
       p.burst(10, { shape: 'smoke', glow: false, x, y, life: 1.3, size: 40, size2: 110, color: 0x5a5a60, alpha: 0.45, drag: 0.1 }, [60, 160]);
       fx.comic(x, y - r * 0.8, 'NEXT STOP!', 0xff8a3d, true);
+      blast(fx, x, y, r * 0.6);
       return;
     }
     // ── Big Whale
     case 'tip': {
       // A coin flips up over whoever he just tipped.
       p.burst(3, { shape: 'mote', glow: false, x, y: y - 90, life: 0.7, size: 8, size2: 6, color: 0xffd166, ay: 400, spin: 8 }, [60, 120], -Math.PI / 2, 0.8);
+      p.emit({ shape: 'star', x, y: y - 90, life: 0.4, size: 20, size2: 6, color: 0xffffff, color2: 0xffd166, spin: 4 });
       return;
     }
     case 'cashRain': {
@@ -914,6 +996,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
           p.emit({ shape: 'leaf', glow: false, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 0.5 - 140, vy: 120, life: 1.2, size: 14, size2: 12, color: 0x7ab86a, spin: 4, drag: 0.2 });
         }
         fx.comic(x, y - r * 0.6, 'MAKE IT RAIN!', 0x7ab86a);
+        for (let i = 0; i < 10; i++) fx.later(i * 0.06, () => p.emit({ shape: 'star', x: x + rand(-r, r) * 0.8, y: y + rand(-r, r) * 0.4 - 60, life: 0.5, size: 16, size2: 4, color: 0xffffff, color2: 0xffd166, spin: 5 }));
       });
       return;
     }
@@ -923,12 +1006,15 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.shockwave(x, y, r * 2.4, 0x8ad6ff, 0.35);
       p.burst(12, { shape: 'mote', x, y: y - r, life: 0.9, size: 10, size2: 3, color: 0xffffff, color2: 0x8ad6ff, ay: -80 }, [40, 140]);
       p.burst(8, { shape: 'leaf', glow: false, x, y: y - r * 2, life: 1.0, size: 10, size2: 8, color: [0xff8fb0, 0xffd166, 0x8ad6ff][Math.floor(Math.random() * 3)], ay: 200, spin: 6 }, [80, 200]);
+      p.emit({ shape: 'circle', x, y, life: 0.5, size: 30, size2: r * 3, color: 0xffffff, color2: 0x8ad6ff, alpha: 0.8 });
+      for (let i = 0; i < 4; i++) fx.later(i * 0.1, () => p.emit({ shape: 'star', x: x + rand(-r, r), y: y - r * 1.5 + rand(-r, r) * 0.5, life: 0.5, size: 18, size2: 4, color: 0xffffff, color2: [0xff8fb0, 0xffd166, 0x8ad6ff][i % 3], spin: 5 }));
       return;
     }
     case 'paperwork': {
       // Buried in paperwork: pages swirl round their head while they read the fine print.
       const r = ev.r ?? 40;
       fx.comic(x, y - r * 3, 'SIGN HERE!', 0xf2efe6);
+      impact(fx, x, y - r * 1.5, 60, 0xf6f0e0);
       for (let i = 0; i < 8; i++) {
         const a = (i / 8) * Math.PI * 2;
         p.emit({ shape: 'shard', glow: false, x: x + Math.cos(a) * r, y: y - r * 2.2 + Math.sin(a) * r * 0.4, vx: Math.cos(a + 1.6) * 60, vy: Math.sin(a + 1.6) * 30, life: ev.dur ?? 1, size: 12, size2: 10, color: 0xf6f0e0, spin: 5 });
@@ -940,6 +1026,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       const x2 = ev.x2 ?? x;
       const y2 = ev.y2 ?? y;
       p.burst(16, { shape: 'mote', glow: false, x, y, life: 0.6, size: 10, size2: 4, color: 0xbfe9ff, ay: 600 }, [140, 320], -Math.PI / 2, 1.4);
+      clouds(fx, x, y, 70, 6, 0xd8f0ff, { alpha: 0.6, rise: 40 });
       fx.telegraph(x2, y2, 350, ev.dur ?? 0.6, 0x3d8bfd);
       return;
     }
@@ -950,6 +1037,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.shockwave(x, y, r * 0.7, 0xffffff, 0.4);
       p.burst(40, { shape: 'mote', glow: false, x, y: y - 20, life: 1.1, size: 12, size2: 5, color: 0xbfe9ff, ay: 700, drag: 0.05 }, [200, 520], -Math.PI / 2, 2.4);
       fx.scar(x, y, r * 0.7, 'goo', 0x3d8bfd, 6);
+      clouds(fx, x, y, r * 0.8, 12, 0xd8f0ff, { alpha: 0.6, rise: 50 });
+      p.emit({ shape: 'circle', x, y, life: 0.6, size: 60, size2: r * 2.6, color: 0xffffff, color2: 0x8ad6ff, alpha: 0.85 });
       fx.comic(x, y - r * 0.7, 'SPLOOSH!', 0x8ad6ff, true);
       return;
     }
@@ -1339,4 +1428,63 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
       p.emit({ shape: 'star', x: s.x + Math.cos(a) * (r + 10), y: s.y + Math.sin(a) * (r + 10), life: 0.4, size: 10, size2: 2, color: 0xffffff, color2: GOLD, spin: 5 });
     }
   }
+}
+
+// ─── Textured accents (the particle atlas: render/particles.ts) ─────────────────
+
+/** Soft clouds billowing out and rising: steam, dust, smoke, a vanishing act. `shape` 'soot' for black smoke. */
+function clouds(fx: FxLayer, x: number, y: number, r: number, n: number, color: number, o: { shape?: 'cloud' | 'soot' | 'smoke'; rise?: number; alpha?: number; life?: number } = {}): void {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const d = r * 0.3 * Math.random();
+    fx.particles.emit({
+      shape: o.shape ?? 'cloud',
+      glow: false,
+      x: x + Math.cos(a) * d,
+      y: y + Math.sin(a) * d * 0.6,
+      vx: Math.cos(a) * rand(r * 0.5, r * 1.3),
+      vy: Math.sin(a) * rand(r * 0.25, r * 0.7) - (o.rise ?? 30),
+      drag: 0.15,
+      life: rand(0.7, 1.2) * (o.life ?? 1),
+      size: r * 0.35,
+      size2: r * 0.95,
+      color,
+      alpha: o.alpha ?? 0.7,
+      fadeIn: 0.08,
+      spin: rand(-0.6, 0.6),
+    });
+  }
+}
+
+/** An explosion: a flash, rolling fire (tinted by `tint`), embers flying, black smoke after. */
+function blast(fx: FxLayer, x: number, y: number, r: number, tint = 0xffffff): void {
+  const p = fx.particles;
+  p.emit({ shape: 'flash', glow: false, x, y: y - r * 0.2, life: 0.22, size: r * 0.9, size2: r * 1.6, color: tint, fadeIn: 0.02, rotation: rand(0, 6) });
+  for (let i = 0; i < 9; i++) {
+    p.emit({ shape: 'blast', glow: false, x: x + rand(-r, r) * 0.2, y: y + rand(-r, r) * 0.15, vx: rand(-r, r) * 0.9, vy: rand(-r * 1.1, -r * 0.2), drag: 0.08, life: rand(0.45, 0.8), size: r * 0.45, size2: r * 0.95, color: tint, alpha: 0.95, fadeIn: 0.03, spin: rand(-1, 1) });
+  }
+  p.burst(10, { shape: 'spark', x, y, life: 0.5, size: 12, size2: 3, stretch: 0.06, color: 0xfff1b8, color2: 0xff5a2a, drag: 0.05 }, [250, 600]);
+  fx.later(0.15, () => clouds(fx, x, y - r * 0.2, r, 6, 0x4a4a4a, { shape: 'soot', rise: 60, alpha: 0.55 }));
+}
+
+/** A rune circle on the ground, turning and fading. */
+function rune(fx: FxLayer, x: number, y: number, r: number, color: number, life = 0.8, spin = 1.5): void {
+  fx.particles.emit({ shape: 'magic', x, y, life, size: r * 1.7, size2: r * 2.1, color, alpha: 0.85, spin, rotation: 0, fadeIn: 0.15 });
+}
+
+/** Flames licking up from round (x, y). */
+function flamesUp(fx: FxLayer, x: number, y: number, r: number, n: number, color = 0xffd08a, color2 = 0xff3a10): void {
+  for (let i = 0; i < n; i++) {
+    fx.particles.emit({ shape: 'flame', x: x + rand(-r, r), y: y + rand(-r * 0.3, r * 0.3), vy: rand(-170, -70), drag: 0.4, life: rand(0.4, 0.8), size: rand(r * 0.45, r * 0.7), size2: r * 0.15, color, color2, rotation: 0, alpha: 0.95 });
+  }
+}
+
+/** A blade's crescent swoosh, bulging toward `angle`. */
+function swoosh(fx: FxLayer, x: number, y: number, angle: number, size: number, color: number, color2 = color): void {
+  fx.particles.emit({ shape: 'slash', x, y, life: 0.26, size, size2: size * 1.2, color, color2, rotation: angle, fadeIn: 0.04 });
+}
+
+/** A starburst of impact light. */
+function impact(fx: FxLayer, x: number, y: number, size: number, color: number): void {
+  fx.particles.emit({ shape: 'muzzle', x, y, life: 0.24, size, size2: size * 2, color, rotation: rand(0, 6), fadeIn: 0.03 });
 }
