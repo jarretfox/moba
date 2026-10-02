@@ -32,6 +32,7 @@ import { NightLife, duskAt } from './render/nightlife';
 import { Lighting, nightAt, skyAt, type Light } from './render/lighting';
 import { FountainView, crystalSpot } from './render/fountain';
 import { Announcer, type Weight } from './announcer';
+import { JungleLegend } from './ui/jungleLegend';
 import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
@@ -116,6 +117,8 @@ export class GameClient {
   /** Things the announcer has already said this match. */
   private readonly announced = new Set<string>();
   private wardenWasUp = false;
+  /** Hold Tab: what lives in the jungle, and when the camps are back. */
+  private readonly legend: JungleLegend;
   /** When the rain clears up (match seconds), if it does. */
   private weatherClears: number | undefined;
   /** When each champion last traded blows with another (local clock), for the music. */
@@ -288,6 +291,7 @@ export class GameClient {
     };
     this.hud.onMute = () => this.hud.setMuted(this.sound.toggleMute());
     this.tips = new Tips(hudRoot);
+    this.legend = new JungleLegend(hudRoot, MAP);
     this.tips.onShow = () => this.sound.play('chime', 0.25);
     this.minimap = new Minimap(hudRoot, MAP);
     this.minimap.setTeam(TEAM.blue);
@@ -642,6 +646,7 @@ export class GameClient {
     const eventHud = this.hudRoot.querySelector<HTMLElement>('.event-hud');
     if (eventHud && !eventHud.hidden) eventHud.style.top = `${Math.max(48, this.hud.wardenBottom() + 6 - 30)}px`;
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
+    this.legend.update(this.scoresHeld && !latest?.winner && !this.replay, latest?.time ?? 0, this.myTeam, latest?.warden);
     if (!this.introShown && me && latest?.scores) this.playIntro(latest.scores);
     if (latest?.winner) this.tips.hide();
     else if (me && latest?.me && !this.introUp) this.updateTips(me, latest.me, latest.time);
@@ -878,6 +883,7 @@ export class GameClient {
       case 'death': {
         const t = this.ents.get(ev.id);
         if (!t) return;
+        if (t.k === 'monster' && t.mon && !this.replay) this.legend.noteDeath(t.mon, t.x, t.y, this.buffer.latest?.time ?? 0);
         if (t.k === 'structure') structureCollapse(this.fx, t.x, t.y, t.r, t.role === 'daBase');
         if (t.k === 'structure') this.chudsCheer(t);
         else this.fx.death(t.x, t.y - chestHeight(t) * 0.6, t.r, t.k === 'champion' || t.k === 'monster');

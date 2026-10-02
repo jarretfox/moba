@@ -3,6 +3,7 @@ import { CHAMPION_INFO } from '../shared/champions/registry';
 import type { ChampionId } from '../shared/champions/types';
 import { GameClient } from './game';
 import { PORTRAITS, renderPortraits } from './render/champions';
+import { renderBestiary } from './render/bestiary';
 import { renderIcons } from './render/icons';
 import { installInkUi } from './ui/ink';
 import { MenuBackdrop } from './render/backdrop';
@@ -46,6 +47,7 @@ async function boot(): Promise<void> {
     });
   }
   Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));
+  renderBestiary(app.renderer);
   renderIcons(app.renderer);
   installInkUi();
   await fonts;
