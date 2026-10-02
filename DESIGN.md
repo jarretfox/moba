@@ -529,7 +529,8 @@ Everything below is drawn and synthesized in code. Any piece can now be swapped 
 - **Painted effects:** any ability effect can play a flipbook (a sheet of frames) over the code effect or instead of it (`FxLayer.flipbook`); glows painted on black play as added light.
 - **Painted sprites:** any projectile (`projectile:<look>`) and Scrimby's subway car (`scrimby:train`, turned to his heading, mirrored heading left).
 - **Recordings** (`samples.ts`): any sound can have takes (never the same twice running), or narrower ones for one ability's cast (`cast:scrimby:3`) or one effect (`fx:steamBurst`). Champions' voice lines are matched to the words in their bubbles (a take per line, in `emotes.ts` order; grumbles in `failLines.ts` order), and the announcer's to its lines' text, falling back to the mumble and the browser's voice.
-- `public/art/index.json` and `public/audio/index.json` list what exists; nothing else is fetched, and both are empty until the first assets arrive.
+- `public/art/index.json` and `public/audio/index.json` list what exists; nothing else is fetched.
+- **First recordings in:** Scrimby's token, W's clank and the manhole rattle, and layers under his steam burst, jaywalk, mustard splat and train crash, from Kenney's CC0 *Impact Sounds* (28 takes, 284 KB, `.ogg`; a browser that can't play Ogg gets the synth). Each set's gain was matched to the synth sound it replaces or joins, measured through the game's own mix. Credits in `public/CREDITS.md`.
 
 
 - **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.

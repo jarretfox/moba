@@ -327,7 +327,7 @@ export class Sound {
     // it's synthesized.
     const rec = (take ? this.samples.sound(take) : null) ?? this.samples.sound(name);
     if (rec) v.sample(rec.buffer, at, rec.gain);
-    else recipe.play(v, at);
+    if (!rec || rec.over) recipe.play(v, at);
   }
 
   /**

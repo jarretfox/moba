@@ -10,8 +10,11 @@ import type { VoiceMoment } from './voices';
 // docs/art-bible.md has the specs for recording and naming them.
 
 export interface AudioIndex {
-  /** Effects by sound name: the takes, and how loud to play them (1 as recorded). */
-  sounds: Record<string, { files: string[]; gain: number }>;
+  /**
+   * Effects by sound name: the takes, how loud to play them (1 as recorded), and whether they play over
+   * the synthesized sound (a recorded clank on top of its whoosh) rather than instead of it.
+   */
+  sounds: Record<string, { files: string[]; gain: number; over?: boolean }>;
   /** Champions' voices: each moment's takes, in the order of their lines (emotes.ts), so the words match the bubble. */
   voices: Partial<Record<ChampionId, Partial<Record<VoiceMoment, string[]>>>>;
   /** The announcer, by the line's text ("First blood!"). */
@@ -30,7 +33,7 @@ export function parseAudioIndex(raw: unknown): AudioIndex {
     for (const [name, s] of Object.entries(raw.sounds)) {
       const files = isObj(s) && Array.isArray(s.files) ? s.files.filter(isFile) : Array.isArray(s) ? s.filter(isFile) : [];
       const gain = isObj(s) && typeof s.gain === 'number' && s.gain > 0 && s.gain <= 4 ? s.gain : 1;
-      if (files.length) out.sounds[name] = { files, gain };
+      if (files.length) out.sounds[name] = isObj(s) && s.over === true ? { files, gain, over: true } : { files, gain };
     }
   }
   if (isObj(raw.voices)) {
@@ -88,15 +91,15 @@ export class SampleBank {
     return this.loading;
   }
 
-  /** A take of an effect, and how loud to play it, if it's recorded. */
-  sound(name: string): { buffer: AudioBuffer; gain: number } | null {
+  /** A take of an effect, how loud to play it, and whether over the synth, if it's recorded. */
+  sound(name: string): { buffer: AudioBuffer; gain: number; over: boolean } | null {
     const s = this.index.sounds[name];
     if (!s) return null;
     const takes = s.files.filter((f) => this.buffers.has(f));
     if (!takes.length) return null;
     const i = nextTake(takes.length, this.last.get(name) ?? -1);
     this.last.set(name, i);
-    return { buffer: this.buffers.get(takes[i])!, gain: s.gain };
+    return { buffer: this.buffers.get(takes[i])!, gain: s.gain, over: s.over === true };
   }
 
   /** A champion's line for a moment: the `n`th, matching the words in their bubble (emotes.ts). */

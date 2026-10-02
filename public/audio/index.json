@@ -1,5 +1,73 @@
 {
-  "sounds": {},
+  "sounds": {
+    "atkToken": {
+      "files": [
+        "sfx/kenney/impactMetal_light_000.ogg",
+        "sfx/kenney/impactMetal_light_001.ogg",
+        "sfx/kenney/impactMetal_light_002.ogg",
+        "sfx/kenney/impactMetal_light_003.ogg",
+        "sfx/kenney/impactMetal_light_004.ogg"
+      ],
+      "gain": 0.19
+    },
+    "cast:scrimby:1": {
+      "files": [
+        "sfx/kenney/impactPlate_heavy_001.ogg",
+        "sfx/kenney/impactPlate_heavy_003.ogg"
+      ],
+      "gain": 0.14
+    },
+    "fx:manhole": {
+      "files": [
+        "sfx/kenney/impactPlate_light_000.ogg",
+        "sfx/kenney/impactPlate_light_001.ogg",
+        "sfx/kenney/impactPlate_light_002.ogg",
+        "sfx/kenney/impactPlate_light_003.ogg",
+        "sfx/kenney/impactPlate_light_004.ogg"
+      ],
+      "gain": 0.27
+    },
+    "fx:steamBurst": {
+      "files": [
+        "sfx/kenney/impactPlate_heavy_000.ogg",
+        "sfx/kenney/impactPlate_heavy_002.ogg",
+        "sfx/kenney/impactPlate_heavy_004.ogg"
+      ],
+      "gain": 0.3,
+      "over": true
+    },
+    "fx:jaywalk": {
+      "files": [
+        "sfx/kenney/footstep_concrete_000.ogg",
+        "sfx/kenney/footstep_concrete_001.ogg",
+        "sfx/kenney/footstep_concrete_002.ogg",
+        "sfx/kenney/footstep_concrete_003.ogg",
+        "sfx/kenney/footstep_concrete_004.ogg"
+      ],
+      "gain": 0.25,
+      "over": true
+    },
+    "fx:mustard": {
+      "files": [
+        "sfx/kenney/impactSoft_medium_000.ogg",
+        "sfx/kenney/impactSoft_medium_001.ogg",
+        "sfx/kenney/impactSoft_medium_002.ogg",
+        "sfx/kenney/impactSoft_medium_003.ogg",
+        "sfx/kenney/impactSoft_medium_004.ogg"
+      ],
+      "gain": 0.18,
+      "over": true
+    },
+    "fx:expressCrash": {
+      "files": [
+        "sfx/kenney/impactMetal_heavy_000.ogg",
+        "sfx/kenney/impactMetal_heavy_001.ogg",
+        "sfx/kenney/impactMetal_heavy_003.ogg"
+      ],
+      "gain": 0.8,
+      "over": true
+    }
+  },
   "voices": {},
   "announcer": {}
 }

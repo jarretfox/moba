@@ -4,12 +4,13 @@ import { nextTake, parseAudioIndex } from './samples';
 describe('the recordings index', () => {
   it('keeps what makes sense and drops the rest', () => {
     const index = parseAudioIndex({
-      sounds: { castHonk: { files: ['sfx/scrimby/honk-1.mp3', 'sfx/scrimby/honk-2.mp3', '../x.mp3'], gain: 0.8 }, hit: ['sfx/hit-1.mp3'], empty: { files: [] }, loud: { files: ['a.mp3'], gain: 99 } },
+      sounds: { castHonk: { files: ['sfx/scrimby/honk-1.mp3', 'sfx/scrimby/honk-2.mp3', '../x.mp3'], gain: 0.8 }, 'fx:steamBurst': { files: ['a.ogg'], over: true }, hit: ['sfx/hit-1.mp3'], empty: { files: [] }, loud: { files: ['a.mp3'], gain: 99 } },
       voices: { scrimby: { taunt: ['voice/scrimby/taunt-1.mp3', 'voice/scrimby/taunt-2.mp3'], shout: ['x.mp3'] }, nobody: {} },
       announcer: { 'First blood!': 'voice/announcer/first-blood.mp3', bad: 42 },
     });
     expect(index.sounds.castHonk).toEqual({ files: ['sfx/scrimby/honk-1.mp3', 'sfx/scrimby/honk-2.mp3'], gain: 0.8 });
     expect(index.sounds.hit.files).toEqual(['sfx/hit-1.mp3']);
+    expect(index.sounds['fx:steamBurst']).toEqual({ files: ['a.ogg'], gain: 1, over: true });
     expect(index.sounds.empty).toBeUndefined();
     expect(index.sounds.loud.gain).toBe(1);
     expect(index.voices.scrimby).toEqual({ taunt: ['voice/scrimby/taunt-1.mp3', 'voice/scrimby/taunt-2.mp3'] });
