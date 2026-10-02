@@ -20,10 +20,10 @@ describe('autumn', () => {
     expect(leaves.length).toBeGreaterThan(10);
     // Blowing with the wind, left to right.
     expect(leaves.every((l) => l.vx > 0)).toBe(true);
-    // Plain rain has none of it.
+    // Plain rain has none of it (just its puddles and their glints on the ground).
     const rain = new WeatherView('rain', MAP);
     expect(rain.canopyFilter).toBeNull();
-    expect(rain.ground.children.length).toBe(0);
+    expect(rain.ground.children.length).toBe(2);
   });
 
   it('settles snow on the treetops only when it snows', () => {
