@@ -13,6 +13,8 @@ import { DABBER_INFO, Dabber } from './dabber';
 import { PARIS_INFO, Paris } from './paris';
 import { HAVARTI_INFO, Havarti } from './havarti';
 import { DALTONOMO_INFO, Daltonomo } from './daltonomo';
+import { SCRIMBY_INFO, Scrimby } from './scrimby';
+import { BIG_WHALE_INFO, BigWhale } from './bigwhale';
 
 export const CHAMPION_INFO: Record<ChampionId, ChampionInfo> = {
   marksman: MARKSMAN_INFO,
@@ -26,6 +28,8 @@ export const CHAMPION_INFO: Record<ChampionId, ChampionInfo> = {
   paris: PARIS_INFO,
   havarti: HAVARTI_INFO,
   daltonomo: DALTONOMO_INFO,
+  scrimby: SCRIMBY_INFO,
+  bigwhale: BIG_WHALE_INFO,
 };
 
 const CONSTRUCTORS: Record<ChampionId, new (world: World, team: PlayerTeam) => Champion> = {
@@ -40,6 +44,8 @@ const CONSTRUCTORS: Record<ChampionId, new (world: World, team: PlayerTeam) => C
   paris: Paris,
   havarti: Havarti,
   daltonomo: Daltonomo,
+  scrimby: Scrimby,
+  bigwhale: BigWhale,
 };
 
 export function createChampion(id: ChampionId, world: World, team: PlayerTeam): Champion {

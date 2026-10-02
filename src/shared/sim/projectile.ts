@@ -121,6 +121,23 @@ export class LineProjectile implements Entity {
   snapshot(): EntitySnap {
     return snap(this, angleOf(this.shot.dir), this.shot.vis);
   }
+
+  /** If it would hit someone standing still at `p` (radius `r`) within `horizon` seconds, how soon (bots dodge with this). */
+  threatTo(p: Vec2, r: number, horizon: number): number | null {
+    const s = this.shot;
+    const rx = p.x - this.pos.x;
+    const ry = p.y - this.pos.y;
+    const along = rx * s.dir.x + ry * s.dir.y;
+    if (along < 0 || along > s.range - this.traveled + r) return null;
+    if (Math.abs(rx * s.dir.y - ry * s.dir.x) > this.radius + r) return null;
+    const t = along / s.speed;
+    return t <= horizon ? t : null;
+  }
+
+  /** Which way it's flying. */
+  get heading(): Vec2 {
+    return this.shot.dir;
+  }
 }
 
 function snap(p: Entity, facing: number, vis: string): EntitySnap {

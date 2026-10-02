@@ -150,6 +150,18 @@ export const ATTACKS: Record<ChampionId, readonly Anim[]> = {
     // A hook round the side.
     { dur: 0.3, hit: 0.5, twist: [[0, 0], [0.25, 0.35], [0.5, -0.4], [1, 0]], turn: [[0, 0], [0.25, -0.3], [0.5, 0.2], [1, 0]], reach: [[0, 0], [0.5, 0.45], [1, 0]] },
   ],
+  scrimby: [
+    // Flicks a subway token off the thumb.
+    { dur: 0.28, hit: 0.35, reach: [[0, 0], [0.2, -0.15], [0.35, 0.35], [1, 0]], turn: [[0, 0], [0.35, -0.3], [1, 0]] },
+    // A sidearm toss, still holding the coffee.
+    { dur: 0.3, hit: 0.4, twist: [[0, 0], [0.25, 0.25], [0.4, -0.2], [1, 0]], reach: [[0, 0], [0.4, 0.3], [1, 0]] },
+  ],
+  bigwhale: [
+    // Flips a gold coin at them, not even looking.
+    { dur: 0.32, hit: 0.4, turn: [[0, 0], [0.25, 0.4], [0.4, -0.6], [1, 0]], grow: [[0, 0], [0.4, 0.04], [1, 0]] },
+    // Peels a bill off the wad and flicks it.
+    { dur: 0.3, hit: 0.45, reach: [[0, 0], [0.3, -0.1], [0.45, 0.3], [1, 0]], twist: [[0, 0], [0.45, 0.15], [1, 0]] },
+  ],
 };
 
 /** Each champion's signature blow (the first of their swings). */
@@ -174,10 +186,16 @@ export const CAST: Record<ChampionId, Anim> = {
   paris: { dur: 0.4, turn: [[0, 0], [0.3, -1.2], [0.6, 0.6], [1, 0]] },
   havarti: { dur: 0.45, turn: [[0, 0], [0.35, -1.4], [0.7, -1.4], [1, 0]], grow: [[0, 0], [0.35, 0.1], [1, 0]] },
   daltonomo: { dur: 0.45, twist: [[0, 0], [1, TAU]] },
+  scrimby: { dur: 0.4, reach: [[0, 0], [0.3, 0.4], [1, 0]], turn: [[0, 0], [0.3, -0.8], [1, 0]] },
+  bigwhale: { dur: 0.45, turn: [[0, 0], [0.35, -1.3], [0.7, -1.3], [1, 0]], grow: [[0, 0], [0.35, 0.08], [1, 0]] },
 };
 
 /** Abilities with a move of their own. */
 const SLOT_MOVES: Partial<Record<`${ChampionId}:${Slot}`, Anim>> = {
+  // Express Train: a deep breath and a stamp.
+  'scrimby:3': { dur: 0.45, grow: [[0, 0], [0.4, 0.12], [1, 0]], lunge: [[0, 0], [0.4, -0.1], [0.8, 0.15], [1, 0]] },
+  // Splash Zone: a crouch to breach.
+  'bigwhale:3': { dur: 0.5, grow: [[0, 0], [0.3, -0.12], [0.6, 0.16], [1, 0]] },
   // Cleave: a full spin with the axe out.
   'barbarian:0': { dur: 0.34, twist: [[0, 0], [1, -TAU]], turn: [[0, 0], [0.2, 0.5], [1, 0]] },
   // War Cry: rear up and roar.
@@ -347,6 +365,18 @@ export const FIDGETS: Record<ChampionId, readonly Anim[]> = {
     { dur: 1.8, turn: [[0, 0], [0.3, -2.3], [0.45, -2.15], [0.6, -2.35], [0.75, -2.2], [1, 0]], grow: [[0, 0], [0.3, 0.05], [1, 0]] },
     // Holds the scepter out to admire it.
     { dur: 1.6, reach: [[0, 0], [0.35, 0.3], [0.7, 0.3], [1, 0]], turn: [[0, 0], [0.35, -0.4], [0.5, -0.2], [0.7, -0.4], [1, 0]] },
+  ],
+  scrimby: [
+    // Checks the time, impatient, taps a boot.
+    { dur: 1.4, reach: [[0, 0], [0.25, -0.35], [0.75, -0.35], [1, 0]], twist: [[0, 0], [0.25, 0.2], [0.75, 0.2], [1, 0]] },
+    // A sip of the coffee.
+    { dur: 1.2, turn: [[0, 0], [0.3, -1.4], [0.7, -1.4], [1, 0]] },
+  ],
+  bigwhale: [
+    // Counts his money, slowly, so everyone can see.
+    { dur: 2.0, reach: [[0, 0], [0.2, -0.3], [0.35, -0.2], [0.5, -0.3], [0.65, -0.2], [0.8, -0.3], [1, 0]] },
+    // Laughs at his own joke.
+    { dur: 1.4, grow: [[0, 0], [0.2, 0.06], [0.35, 0], [0.5, 0.06], [0.65, 0], [1, 0]], lunge: [[0, 0], [0.3, -0.08], [1, 0]] },
   ],
 };
 

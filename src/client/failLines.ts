@@ -60,6 +60,16 @@ const LINES: Record<ChampionId, Record<CastFail, readonly string[]>> = {
     cooldown: ['Wait for the punchline!', 'Timing is everything.'],
     target: ['Juggle what, the air?', 'No audience!'],
   },
+  scrimby: {
+    mana: ['I’m runnin’ on empty here.', 'Need a coffee.'],
+    cooldown: ['Hold on, hold on!', 'The train’s delayed, okay?'],
+    target: ['Who am I throwin’ at, the pigeons?', 'Nobody there, pal.'],
+  },
+  bigwhale: {
+    mana: ['I’ll have my people sort that out.', 'Put it on my tab. What do you mean no?'],
+    cooldown: ['Patience. Money takes time.', 'My assistant is on it.'],
+    target: ['Who wants a tip? Anyone? Hello?', 'Nobody’s even looking at me.'],
+  },
 };
 
 export function failLine(champ: ChampionId, why: CastFail, n: number): string {

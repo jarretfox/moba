@@ -84,6 +84,20 @@ const LINES: Record<ChampionId, Record<Said, readonly string[]>> = {
     line: ['Taxes are due.', 'Long live the king.', 'Every crown needs a cage.'],
     kill: ['Your debt is paid.', 'The crown collects.', 'Kneel... forever.'],
   },
+  scrimby: {
+    taunt: ['Ay, I’m walkin’ here!', 'You call that a jungle? I’ve seen the L train at rush hour.'],
+    laugh: ['Heh. Fuhgeddaboudit.', 'Ha! Classic.'],
+    cheer: ['Let’s GO!', 'Stand clear of the closing doors!'],
+    line: ['I took the wrong train, okay?', 'This place needs a bodega.', 'Nobody here knows how to walk.'],
+    kill: ['Next stop: you.', 'Mind the gap.', 'Fuhgeddaboudit.'],
+  },
+  bigwhale: {
+    taunt: ['Do you know how much this blazer cost?', 'I could buy you. Twice.'],
+    laugh: ['Ho ho ho! Ohh, I’m hilarious.', 'Haw haw! Get it? Because I’m rich.'],
+    cheer: ['Drinks are on me! Again!', 'Who wants a tip?!'],
+    line: ['Why did everyone stop talking?', 'I tipped the Warden. He was rude about it.', 'I’m a people person.'],
+    kill: ['Sorry, was that yours? I bought it.', 'Put it on my tab.', 'Liquidated.'],
+  },
 };
 
 /** What they say after beating their rival. */
@@ -107,6 +121,10 @@ const RIVAL: Partial<Record<`${ChampionId}:${ChampionId}`, readonly string[]>> =
   'marksman:hunnag': ['Rot is not up to code.', 'Fungus is a violation.', 'Denied, mushroom.'],
   'willmore:marksman': ['Found something in the gutter: you.', 'File a complaint about THAT.', 'Heh heh... paperwork this.'],
   'hunnag:marksman': ['Everything rots. Even rules.', 'Breathe deep, little clerk.', 'Ripe for the Deep.'],
+  'scrimby:bigwhale': ['Ay, Moneybags! Fuhgeddaboudit.', 'Can’t buy your way outta that one.', 'Tip THAT.'],
+  'bigwhale:scrimby': ['I’ll buy your whole subway, little man.', 'Keep the change.', 'Mind the gap, ho ho!'],
+  'bigwhale:kingrix': ['I outbid the crown.', 'Your treasury called. It’s mine now.', 'Sold, to the whale!'],
+  'kingrix:bigwhale': ['New money.', 'Guards, remove this fish.', 'The crown does not need your tips.'],
 };
 
 /** The line a champion says for an emote; \`n\` picks which, the same on every screen. */

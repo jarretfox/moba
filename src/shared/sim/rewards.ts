@@ -42,7 +42,7 @@ function rewardChud(world: World, chud: Chud, source: Unit | null): void {
   if (source instanceof Champion && source.team !== chud.team) {
     source.gainGold(world, reward.gold);
     source.score.cs++;
-    for (const u of world.units()) if (u instanceof Champion && u !== source && u.team === source.team && !u.dead) u.onAllyLastHit(world, chud);
+    for (const u of world.units()) if (u instanceof Champion && u !== source && u.team === source.team && !u.dead) u.onAllyLastHit(world, chud, source);
   }
   const nearby = world
     .units()

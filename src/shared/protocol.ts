@@ -173,6 +173,8 @@ export type HostMessage =
 export type DamageType = 'physical' | 'magic' | 'true';
 /** Gameplay: root, stun, slow, weaken (deals less damage). Display only: airborne (mid-leap), berserk, recall (channeling home). */
 export type StatusKind =
+  /** Scrimby's Express Train: he's the train. */
+  | 'express'
   | 'root'
   | 'stun'
   | 'slow'
@@ -362,7 +364,21 @@ export type FxKind =
   /** Item actives: the Lantern's light landing, the Aegis's ward going up, the Drum's beat. */
   | 'lanternLight'
   | 'aegisWard'
-  | 'drumBeat';
+  | 'drumBeat'
+  // Scrimby
+  | 'mustard'
+  | 'manhole'
+  | 'steamBurst'
+  | 'jaywalk'
+  | 'expressHorn'
+  | 'expressCrash'
+  // Big Whale
+  | 'tip'
+  | 'cashRain'
+  | 'yachtParty'
+  | 'paperwork'
+  | 'breach'
+  | 'splashZone';
 
 export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }

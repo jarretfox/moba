@@ -6,14 +6,15 @@ import type { World } from '../sim/world';
 import { Bot } from './bot';
 
 /**
- * Who fills a team's slots, in order: a solo top lane, then a duo bot lane (a carry and a partner). Each
- * slot lists the champions that suit it (an empty list: anyone); a bot takes one its team doesn't have yet.
- * The lists are spread so every champion turns up about as often as any other.
+ * Who fills a team's slots, in order: a solo top lane, a bot lane carry, and a jungler (who helps the bot
+ * lane while the camps are down). Each slot lists the champions that suit it (an empty list: anyone); a bot
+ * takes one its team doesn't have yet. The lists are spread so every champion turns up about as often as
+ * any other.
  */
-const SLOTS: { lane: Lane; picks: ChampionId[] }[] = [
+const SLOTS: { lane: Lane; picks: ChampionId[]; jungle?: boolean }[] = [
   { lane: 'top', picks: ['barbarian', 'willmore', 'logan', 'dongmaster', 'paris', 'daltonomo'] },
-  { lane: 'bot', picks: ['marksman', 'dabber', 'hunnag', 'kingrix', 'havarti'] },
-  { lane: 'bot', picks: [] },
+  { lane: 'bot', picks: ['marksman', 'dabber', 'hunnag', 'kingrix', 'havarti', 'scrimby', 'bigwhale'] },
+  { lane: 'bot', picks: [], jungle: true },
 ];
 
 export const TEAM_SIZE = 3;
@@ -32,8 +33,8 @@ export function laneForNewBot(bots: Bot[], team: PlayerTeam, aram = false): Lane
 export function addBots(world: World, team: PlayerTeam, count: number, taken: readonly ChampionId[] = [], random: () => number = () => 0): Bot[] {
   const have = new Set(taken);
   // ARAM: everyone in the one lane, any champion at all.
-  const slots = world.map.aram ? Array.from({ length: count }, () => ({ lane: 'mid' as Lane, picks: [] as ChampionId[] })) : SLOTS.slice(0, count);
-  return slots.map(({ lane, picks }) => {
+  const slots: { lane: Lane; picks: ChampionId[]; jungle?: boolean }[] = world.map.aram ? Array.from({ length: count }, () => ({ lane: 'mid' as Lane, picks: [] as ChampionId[] })) : SLOTS.slice(0, count);
+  return slots.map(({ lane, picks, jungle }) => {
     let options = (picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[])).filter((id) => !have.has(id));
     if (!options.length) options = (Object.keys(CHAMPION_INFO) as ChampionId[]).filter((id) => !have.has(id));
     if (!options.length) options = picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[]); // every champion is taken: a repeat beats an empty slot
@@ -41,6 +42,7 @@ export function addBots(world: World, team: PlayerTeam, count: number, taken: re
     have.add(champion);
     const unit = world.add(createChampion(champion, world, team));
     unit.name = `Bot ${CHAMPION_INFO[champion].name.replace(/^The /, '')}`; // "Bot Oak", not "Bot The Oak"
-    return new Bot(unit, lane, world);
+    // The jungle slot only jungles when the whole team is bots (with people on it, they might want to).
+    return new Bot(unit, lane, world, !!jungle && count >= SLOTS.length && world.map.camps.length > 0);
   });
 }

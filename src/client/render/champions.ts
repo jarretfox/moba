@@ -25,6 +25,8 @@ const CLASSIC: Record<ChampionId, Palette> = {
   paris: { jacket: 0xf2efe6, jacketShade: 0xc9c3b4, beret: 0x1d2b4a, stem: 0x0f1a30, scarf: 0xc0182b, skin: SKIN, mustache: 0x2a1a10, blade: 0xd8dde6, guard: 0xd9a52b, grip: 0x2a1a10 },
   dabber: { fur: 0x7d8a6a, hood: 0x2f4a2a, hoodEdge: 0x1f3320, eyes: 0xff4a4a, ear: 0xd89a9a, tail: 0xd89a9a, nose: 0xe07a8a, rig: 0x9fe6c8, rigEdge: 0x3d6a5a, smoke: 0xb8f07a, wood: 0x5a3a1a, string: 0xe8e0cc },
   dongmaster: { skin: 0xe2b48a, skinDark: 0xb98a62, tank: 0x1c1c22, hair: 0x2a1a10, band: 0xe5484d, wrap: 0xf2efe6 },
+  scrimby: { skin: SKIN, jacket: 0x1d2a44, jacketDark: 0x121a2e, hood: 0x8a8f9a, jeans: 0x3a5a8a, boots: 0xc9963f, sole: 0x5a3a1a, cap: 0x1c2541, logo: 0xffffff, cup: 0x2a5aa8, cupKey: 0xf2efe6, hair: 0x2a1a10 },
+  bigwhale: { whale: 0x5a7a9a, belly: 0xe8e4d8, blazer: 0x1a2a50, trim: 0xd9a52b, hat: 0xf2efe6, band: 0x1a2a50, shades: 0x1a1a22, cash: 0x5a9a4a, cigar: 0x6a4a2a, shoe: 0x6a4a2a },
 };
 
 /** Each champion's looks: the classic one first, then two skins (just different palettes), then the Halloween costume. */
@@ -84,6 +86,16 @@ const LOOKS: Record<ChampionId, readonly { name: string; colors: Palette }[]> = 
     { name: 'Midnight King', colors: { cape: 0x2a2a6a, ermine: 0xd8dce8, crown: 0xc9d1dc, scepter: 0xa8b0bc, orb: 0xc9d1dc, gem: 0x3d8bfd, jewelA: 0x3d8bfd, jewelB: 0xb98be0 } },
     { name: 'Golden Tyrant', colors: { cape: 0xd9a52b, ermine: 0xfff1c1, crown: 0xffd166, gem: 0x8fd14f, jewelA: 0x8fd14f, jewelB: 0xc0182b, scepter: 0xffd166 } },
   ],
+  scrimby: [
+    { name: 'Uptown', colors: {} },
+    { name: 'Queens Boulevard', colors: { cap: 0x002d72, logo: 0xff5910, jacket: 0xff5910, jacketDark: 0xc0400a, hood: 0x002d72, cup: 0x002d72 } },
+    { name: 'Brooklyn Nights', colors: { cap: 0x111114, logo: 0xe5484d, jacket: 0x111114, jacketDark: 0x050508, hood: 0xe5484d, jeans: 0x2a2a30, boots: 0x2a2a30, sole: 0x111114 } },
+  ],
+  bigwhale: [
+    { name: 'Old Money', colors: {} },
+    { name: 'Crypto Whale', colors: { blazer: 0x0a0a0c, trim: 0x39ff14, hat: 0x0a0a0c, band: 0x39ff14, cash: 0x39ff14, shades: 0x0a2a0a } },
+    { name: 'Gilded Whale', colors: { whale: 0x8a9ab0, blazer: 0xd9a52b, trim: 0xffffff, hat: 0xd9a52b, band: 0xffffff } },
+  ],
 };
 
 export const SKINS = Object.fromEntries(
@@ -91,7 +103,7 @@ export const SKINS = Object.fromEntries(
 ) as unknown as Record<ChampionId, readonly { name: string; colors: Palette }[]>;
 
 /** The color that sums up each look, for the swatches in champion select. */
-const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret', havarti: 'wheel', daltonomo: 'hatA' };
+const SWATCH: Record<ChampionId, string> = { marksman: 'cloak', barbarian: 'fur', willmore: 'lid', hunnag: 'cap', logan: 'mane', kingrix: 'cape', dongmaster: 'tank', dabber: 'hood', paris: 'beret', havarti: 'wheel', daltonomo: 'hatA', scrimby: 'cap', bigwhale: 'blazer' };
 
 export function palette(id: ChampionId, skin = 0): Palette {
   return { ...CLASSIC[id], ...(SKINS[id][skin]?.colors ?? {}) };

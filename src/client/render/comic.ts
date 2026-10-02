@@ -15,6 +15,8 @@ export const HIT_WORDS: Record<ChampionId, readonly string[]> = {
   paris: ['SHING!', 'TOUCHÉ!', 'ZING!'],
   havarti: ['SIZZLE!', 'SHLICK!', 'FWOOSH!'],
   daltonomo: ['STAB!', 'TA-DA!', 'HONK!'],
+  scrimby: ['BADA BING!', 'FWAP!', 'YO!'],
+  bigwhale: ['KA-CHING!', 'SPLOOSH!', 'CHA-CHING!'],
 };
 
 const GENERAL: readonly string[] = ['WHACK!', 'CRUNCH!', 'THUD!'];

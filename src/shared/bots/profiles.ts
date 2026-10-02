@@ -360,6 +360,7 @@ const daltonomo: BotProfile = {
     if (ready(ctx, 1) && dist(me.pos, threat.pos) < 400) return cast(1, me.pos);
     return ready(ctx, 0) ? cast(0, add(me.pos, scale(dirTo(me.pos, home), 400))) : null;
   },
+
 };
 
 /** The ability to put the next skill point in: the ultimate whenever it's allowed, then the champion's preferred order. */
@@ -368,4 +369,49 @@ export function nextSkill(champ: ChampionId, ranks: readonly number[], level: nu
   return order.find((slot) => canRankUp(slot, ranks[slot] ?? 0, level)) ?? null;
 }
 
-export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris, havarti, daltonomo };
+const scrimby: BotProfile = {
+  skillOrder: [0, 1, 2],
+  build: ['sagestone', 'treads', 'tome', 'staff', 'witchfire', 'hat', 'clogs', 'hourglass'],
+  fight(ctx, foe) {
+    const { me } = ctx;
+    const d = dist(me.pos, foe.pos);
+    // The express train when they're hurt and close enough to catch.
+    if (ready(ctx, 3) && d < 900 && hpPct(foe) < 0.55) return cast(3, foe.pos);
+    if (ready(ctx, 1) && d < 800) return cast(1, lead(foe, 0.6));
+    if (ready(ctx, 0) && d < 900) return cast(0, lead(foe, 0.4));
+    return null;
+  },
+  escape(ctx) {
+    const { me, home } = ctx;
+    return ready(ctx, 2) ? cast(2, add(me.pos, scale(dirTo(me.pos, home), 380))) : null;
+  },
+  farm(ctx, chuds) {
+    return areaFarm(ctx, chuds, 1, 800, 200, 3);
+  },
+};
+
+const bigwhale: BotProfile = {
+  skillOrder: [0, 2, 1],
+  build: ['sagestone', 'treads', 'charm', 'lantern', 'clogs', 'staff', 'oath', 'mossheart'],
+  fight(ctx, foe) {
+    const { me, world } = ctx;
+    const d = dist(me.pos, foe.pos);
+    if (ready(ctx, 3) && d < 750) {
+      const caught = enemiesInRadius(world, me.team, foe.pos, 350).filter((u) => u.kind === 'champion').length;
+      if (caught >= 2 || hpPct(foe) < 0.45) return cast(3, foe.pos);
+    }
+    if (ready(ctx, 2) && d < 850) return cast(2, lead(foe, 0.4));
+    if (ready(ctx, 0) && d < 800) return cast(0, lead(foe, 0.4));
+    if (ready(ctx, 1) && hpPct(me) < 0.7) return cast(1, me.pos);
+    return null;
+  },
+  escape(ctx) {
+    const { me } = ctx;
+    return ready(ctx, 1) ? cast(1, me.pos) : null;
+  },
+  farm(ctx, chuds) {
+    return areaFarm(ctx, chuds, 0, 800, 230, 4);
+  },
+};
+
+export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris, havarti, daltonomo, scrimby, bigwhale };

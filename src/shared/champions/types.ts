@@ -2,7 +2,7 @@
 /** Looks per champion: the classic one, two recolors, and a Halloween costume. */
 export const SKIN_COUNT = 4;
 
-export type ChampionId = 'marksman' | 'barbarian' | 'willmore' | 'hunnag' | 'logan' | 'kingrix' | 'dongmaster' | 'dabber' | 'paris' | 'havarti' | 'daltonomo';
+export type ChampionId = 'marksman' | 'barbarian' | 'willmore' | 'hunnag' | 'logan' | 'kingrix' | 'dongmaster' | 'dabber' | 'paris' | 'havarti' | 'daltonomo' | 'scrimby' | 'bigwhale';
 
 /** What a champion's second bar holds. Rage starts empty and is earned in combat; mana starts full and regenerates. Some have none. */
 export type Resource = 'mana' | 'rage' | 'none';

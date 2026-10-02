@@ -377,6 +377,73 @@ const ART: Record<string, Draw> = {
     g.circle(-10, -2, 3).fill({ color: WHITE, alpha: 0.6 });
     g.circle(-5, -10, 2).fill({ color: WHITE, alpha: 0.5 });
   },
+  // ── Scrimby
+  '🗽': (g) => {
+    // Lady Liberty: the green crowned head, the torch held high.
+    const TEAL = 0x5fb8a0;
+    g.roundRect(-14, 4, 22, 24, 6).fill(TEAL).stroke(ink());
+    g.circle(-3, -4, 11).fill(TEAL).stroke(ink());
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i - 2) * 0.42;
+      g.poly([-3 + Math.cos(a - 0.12) * 10, -4 + Math.sin(a - 0.12) * 10, -3 + Math.cos(a) * 20, -4 + Math.sin(a) * 20, -3 + Math.cos(a + 0.12) * 10, -4 + Math.sin(a + 0.12) * 10]).fill(TEAL).stroke(ink(2));
+    }
+    rod(g, (h) => h.moveTo(10, 8).lineTo(18, -18), 6, TEAL);
+    g.poly([14, -18, 22, -18, 18, -28]).fill(0xff9a3a).stroke(ink(2));
+  },
+  '🌭': (g) => {
+    g.roundRect(-26, -8, 52, 20, 10).fill(0xe8b86a).stroke(ink());
+    g.roundRect(-28, -4, 56, 10, 5).fill(0xc0502a).stroke(ink(2));
+    g.moveTo(-18, 0).lineTo(-10, 4).lineTo(-2, 0).lineTo(6, 4).lineTo(14, 0).lineTo(20, 3).stroke({ width: 3.5, color: 0xffd23a, cap: 'round', join: 'round' });
+  },
+  '♨': (g) => {
+    g.ellipse(0, 16, 24, 9).fill(0x3a3f48).stroke(ink());
+    for (let i = -2; i <= 2; i++) g.moveTo(-16, 16 + i * 3).lineTo(16, 16 + i * 3).stroke({ width: 1.5, color: 0x5d636d });
+    for (const x of [-11, 0, 11]) g.moveTo(x, 6).bezierCurveTo(x - 7, -2, x + 7, -10, x, -24).stroke({ width: 4, color: WHITE, cap: 'round' });
+  },
+  '🚶': (g) => {
+    for (let i = 0; i < 4; i++) g.rect(-26 + i * 14, 20, 9, 7).fill(WHITE).stroke(ink(2));
+    g.circle(2, -20, 6).fill(0xd6a274).stroke(ink(2));
+    rod(g, (h) => h.moveTo(2, -13).lineTo(-1, 3), 6, 0x1d2a44);
+    rod(g, (h) => h.moveTo(-1, 3).lineTo(-9, 16), 5, 0x3a5a8a);
+    rod(g, (h) => h.moveTo(-1, 3).lineTo(8, 14), 5, 0x3a5a8a);
+    rod(g, (h) => h.moveTo(1, -9).lineTo(12, -2), 4, 0x1d2a44);
+  },
+  '🚇': (g) => {
+    g.roundRect(-22, -24, 44, 48, 8).fill(STEEL).stroke(ink());
+    g.rect(-16, -18, 32, 16).fill(0x2a3a5a).stroke(ink(2));
+    g.circle(0, 8, 8).fill(0xffd23a).stroke(ink(2));
+    g.moveTo(-3, 12).lineTo(-3, 4).lineTo(2, 4).quadraticCurveTo(4, 7, 1, 8).lineTo(4, 12).stroke({ width: 2, color: INK });
+    for (const x of [-15, 15]) g.circle(x, 16, 3.5).fill(0xfff6c0).stroke(ink(1.5));
+  },
+  // ── Big Whale
+  '💵': (g) => {
+    g.roundRect(-26, -14, 52, 30, 3).fill(0x7ab86a).stroke(ink());
+    g.roundRect(-21, -9, 42, 20, 2).stroke({ width: 1.5, color: 0x2a5a1a });
+    g.circle(0, 1, 8).fill(0x9ad08a).stroke({ width: 2, color: 0x2a5a1a });
+    g.moveTo(3, -4).quadraticCurveTo(-4, -4, -1, 0).quadraticCurveTo(4, 3, -3, 5).moveTo(0, -7).lineTo(0, 8).stroke({ width: 1.8, color: 0x2a5a1a });
+  },
+  '🛥': (g) => {
+    g.rect(-28, 14, 56, 12).fill(BLUE).stroke(ink(2));
+    g.poly([-24, 4, 26, 4, 18, 16, -20, 16]).fill(WHITE).stroke(ink());
+    g.rect(-20, 9, 40, 3).fill(0x1a2a50);
+    g.poly([-10, 4, -6, -8, 12, -8, 16, 4]).fill(WHITE).stroke(ink(2));
+    g.rect(-4, -6, 6, 5).fill(0x2a3a5a);
+    g.rect(5, -6, 6, 5).fill(0x2a3a5a);
+  },
+  '💼': (g) => {
+    g.roundRect(-14, -24, 28, 12, 4).stroke(ink(5));
+    g.roundRect(-14, -24, 28, 12, 4).stroke({ width: 3, color: WOOD_DARK });
+    g.roundRect(-26, -14, 52, 36, 5).fill(WOOD).stroke(ink());
+    g.moveTo(-26, 0).lineTo(26, 0).stroke({ width: 2, color: WOOD_DARK });
+    g.rect(-5, -3, 10, 7).fill(GOLD).stroke(ink(2));
+  },
+  '🐋': (g) => {
+    g.moveTo(-26, 8).bezierCurveTo(-26, -16, 18, -18, 24, 2).bezierCurveTo(26, 12, -10, 20, -26, 8).fill(0x5a7a9a).stroke(ink());
+    g.moveTo(-14, 12).bezierCurveTo(-4, 16, 14, 12, 22, 4).stroke({ width: 3, color: 0xe8e4d8 });
+    g.poly([-26, 6, -32, -6, -22, 0, -30, 12]).fill(0x5a7a9a).stroke(ink(2));
+    g.circle(12, -2, 2.5).fill(INK);
+    for (const [dx, h] of [[-4, -22], [0, -26], [4, -22]] as const) g.moveTo(0, -12).quadraticCurveTo(dx, -18, dx * 2, h).stroke({ width: 2.5, color: 0x8ad6ff, cap: 'round' });
+  },
   '🧪': (g) => {
     g.circle(0, 9, 19).fill(GREEN).stroke(ink());
     arc(g, 0, 9, 19, Math.PI * 1.12, Math.PI * 1.88).closePath().fill(0xcfe8ef);

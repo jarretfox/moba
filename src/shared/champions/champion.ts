@@ -575,7 +575,7 @@ export abstract class Champion extends Unit {
   }
 
   /** An ally on the same team just last-hit a Chud (King Rix's Royal Tax listens for this). */
-  onAllyLastHit(_world: World, _victim: Unit): void {}
+  onAllyLastHit(_world: World, _victim: Unit, _source?: Champion): void {}
 
   /** Two Crowns: this champion just killed their rival. */
   takeTrophy(_world: World): void {}

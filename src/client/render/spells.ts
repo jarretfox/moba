@@ -823,6 +823,129 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       p.burst(16, { shape: 'mote', x, y: y - 60, life: 0.9, size: 7, size2: 2, color: 0xfff1b8, color2: GOLD, ay: 220 }, [40, 120]);
       return;
     }
+    // ── Scrimby
+    case 'mustard': {
+      // Splattered: a yellow squiggle of mustard and a splash of hot dog water.
+      const r = ev.r ?? 30;
+      fx.stamp(x, y - r, 0.6, (g) => {
+        g.moveTo(-r, 0).bezierCurveTo(-r * 0.4, -r * 0.6, r * 0.2, r * 0.6, r, -r * 0.2).stroke({ width: 6, color: 0xffd23a, cap: 'round' });
+      }, { from: 0.6, alpha: 0.95 });
+      p.burst(8, { shape: 'mote', glow: false, x, y: y - r, life: 0.5, size: 8, size2: 4, color: 0xd8c09a, ay: 400 }, [80, 200]);
+      fx.comic(x, y - r * 2.4, 'SPLAT!', 0xffd23a);
+      return;
+    }
+    case 'manhole': {
+      // The cover rattles and lifts, steam leaking round it: get off it.
+      const r = ev.r ?? 200;
+      const dur = ev.dur ?? 0.6;
+      fx.telegraph(x, y, r, dur, 0xffb04a);
+      fx.stamp(x, y, dur, (g) => {
+        g.ellipse(0, 0, r * 0.32, r * 0.15).fill(0x3a3f48).stroke({ width: 3, color: 0x1a1d22 });
+        for (let i = -2; i <= 2; i++) g.moveTo(-r * 0.24, i * r * 0.05).lineTo(r * 0.24, i * r * 0.05).stroke({ width: 1.5, color: 0x5d636d });
+      }, { layer: 'under', from: 1, alpha: 1 });
+      for (let i = 0; i < 6; i++) fx.later(i * (dur / 6), () => p.emit({ shape: 'smoke', glow: false, x: x + rand(-20, 20), y: y - 6, vy: -60, life: 0.8, size: 14, size2: 40, color: 0xffffff, alpha: 0.4 }));
+      return;
+    }
+    case 'steamBurst': {
+      // The cover blows sky-high and a column of steam roars up.
+      const r = ev.r ?? 200;
+      fx.shockwave(x, y, r * 1.2, 0xffffff, 0.45);
+      fx.pillar(x, y, r * 0.6, 0xeef4ff, 0.6);
+      p.burst(26, { shape: 'smoke', glow: false, x, y: y - 20, life: 1.4, size: 30, size2: 90, color: 0xffffff, alpha: 0.45, drag: 0.1, ay: -60 }, [60, 200], -Math.PI / 2, 1.2);
+      p.burst(1, { shape: 'shard', glow: false, x, y: y - 30, life: 1.0, size: 26, size2: 26, color: 0x3a3f48, ay: 500, spin: 9 }, [500, 520], -Math.PI / 2, 0.2);
+      fx.comic(x, y - r * 0.9, 'FSSSHHH!', 0xeef4ff);
+      return;
+    }
+    case 'jaywalk': {
+      // Out of the way! Speed lines and a scuffed crosswalk where he went.
+      const x2 = ev.x2 ?? x;
+      const y2 = ev.y2 ?? y;
+      const a = Math.atan2(y2 - y, x2 - x);
+      fx.stamp((x + x2) / 2, (y + y2) / 2, 0.8, (g) => {
+        for (let i = -2; i <= 2; i++) g.rect(-60, i * 14 - 5, 120, 8).fill({ color: 0xffffff, alpha: 0.55 });
+      }, { layer: 'under', spin: 0, alpha: 0.8 });
+      fx.speedLines(x2, y2 - 40, 60, 0xffffff, 8, 0.3, a + Math.PI, 0.8);
+      fx.comic(x2, y2 - 110, 'HEY!', 0xff8a3d);
+      return;
+    }
+    case 'expressHorn': {
+      // The horn, headlights on, sparks off the rails.
+      fx.flash(x, y - 40, 120, 0xfff1b8, 0.3, 0.9);
+      fx.callout(x, y - 150, 'STAND CLEAR!', 0xff8a3d);
+      p.burst(16, { shape: 'spark', x, y, life: 0.4, size: 12, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0x7fd4ff }, [200, 420]);
+      return;
+    }
+    case 'expressCrash': {
+      // The train piles in: a huge blast, twisted metal, sparks everywhere, the ground cracked.
+      const r = ev.r ?? 300;
+      fx.shockwave(x, y, r * 1.3, 0xff8a3d, 0.6);
+      fx.shockwave(x, y, r * 0.8, 0xffffff, 0.35);
+      fx.flash(x, y - 40, r * 0.8, 0xfff1b8, 0.35, 0.9);
+      fx.cracks(x, y, r * 0.9, 0x2a2a2a, 1.2, 9);
+      fx.scar(x, y, r * 0.6, 'scorch');
+      p.burst(24, { shape: 'spark', x, y: y - 30, life: 0.6, size: 16, size2: 3, stretch: 0.05, color: 0xffe0a0, color2: 0xff5a2a, drag: 0.03 }, [260, 640]);
+      p.burst(12, { shape: 'shard', glow: false, x, y: y - 30, life: 1.0, size: 14, size2: 8, color: 0xb8bec6, ay: 600, spin: 10 }, [180, 420], -Math.PI / 2, 2);
+      p.burst(10, { shape: 'smoke', glow: false, x, y, life: 1.3, size: 40, size2: 110, color: 0x5a5a60, alpha: 0.45, drag: 0.1 }, [60, 160]);
+      fx.comic(x, y - r * 0.8, 'NEXT STOP!', 0xff8a3d, true);
+      return;
+    }
+    // ── Big Whale
+    case 'tip': {
+      // A coin flips up over whoever he just tipped.
+      p.burst(3, { shape: 'mote', glow: false, x, y: y - 90, life: 0.7, size: 8, size2: 6, color: 0xffd166, ay: 400, spin: 8 }, [60, 120], -Math.PI / 2, 0.8);
+      return;
+    }
+    case 'cashRain': {
+      // Bills flutter down over the spot.
+      const r = ev.r ?? 230;
+      const dur = ev.dur ?? 0.3;
+      fx.telegraph(x, y, r, dur, 0x5a9a4a);
+      fx.later(dur * 0.6, () => {
+        for (let i = 0; i < 26; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.sqrt(Math.random()) * r;
+          p.emit({ shape: 'leaf', glow: false, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 0.5 - 140, vy: 120, life: 1.2, size: 14, size2: 12, color: 0x7ab86a, spin: 4, drag: 0.2 });
+        }
+        fx.comic(x, y - r * 0.6, 'MAKE IT RAIN!', 0x7ab86a);
+      });
+      return;
+    }
+    case 'yachtParty': {
+      // Streamers and bubbles: party time (for at least one of you).
+      const r = ev.r ?? 40;
+      fx.shockwave(x, y, r * 2.4, 0x8ad6ff, 0.35);
+      p.burst(12, { shape: 'mote', x, y: y - r, life: 0.9, size: 10, size2: 3, color: 0xffffff, color2: 0x8ad6ff, ay: -80 }, [40, 140]);
+      p.burst(8, { shape: 'leaf', glow: false, x, y: y - r * 2, life: 1.0, size: 10, size2: 8, color: [0xff8fb0, 0xffd166, 0x8ad6ff][Math.floor(Math.random() * 3)], ay: 200, spin: 6 }, [80, 200]);
+      return;
+    }
+    case 'paperwork': {
+      // Buried in paperwork: pages swirl round their head while they read the fine print.
+      const r = ev.r ?? 40;
+      fx.comic(x, y - r * 3, 'SIGN HERE!', 0xf2efe6);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        p.emit({ shape: 'shard', glow: false, x: x + Math.cos(a) * r, y: y - r * 2.2 + Math.sin(a) * r * 0.4, vx: Math.cos(a + 1.6) * 60, vy: Math.sin(a + 1.6) * 30, life: ev.dur ?? 1, size: 12, size2: 10, color: 0xf6f0e0, spin: 5 });
+      }
+      return;
+    }
+    case 'breach': {
+      // Up out of the "water" in an arc, spray flying off him.
+      const x2 = ev.x2 ?? x;
+      const y2 = ev.y2 ?? y;
+      p.burst(16, { shape: 'mote', glow: false, x, y, life: 0.6, size: 10, size2: 4, color: 0xbfe9ff, ay: 600 }, [140, 320], -Math.PI / 2, 1.4);
+      fx.telegraph(x2, y2, 350, ev.dur ?? 0.6, 0x3d8bfd);
+      return;
+    }
+    case 'splashZone': {
+      // SPLOOSH: a ring of water, a great wave of spray, and a puddle left behind.
+      const r = ev.r ?? 350;
+      fx.shockwave(x, y, r * 1.2, 0x8ad6ff, 0.6);
+      fx.shockwave(x, y, r * 0.7, 0xffffff, 0.4);
+      p.burst(40, { shape: 'mote', glow: false, x, y: y - 20, life: 1.1, size: 12, size2: 5, color: 0xbfe9ff, ay: 700, drag: 0.05 }, [200, 520], -Math.PI / 2, 2.4);
+      fx.scar(x, y, r * 0.7, 'goo', 0x3d8bfd, 6);
+      fx.comic(x, y - r * 0.7, 'SPLOOSH!', 0x8ad6ff, true);
+      return;
+    }
     // ── The Howling Hollow
     case 'relic': {
       // A pumpkin eaten: it bursts in orange chunks and candlelight, and a green warmth rises off whoever got it.
@@ -927,6 +1050,16 @@ export function championDeath(fx: FxLayer, s: EntitySnap): void {
       p.burst(20, { shape: 'leaf', glow: false, x, y, life: 1.6, size: 11, size2: 9, color: 0xe5484d, drag: 0.25, ay: 50, spin: 5 }, [80, 220]);
       fx.quip(x, top, 'Adieu...', 0xff8fb0);
       return;
+    case 'scrimby':
+      // His cap flies off and the coffee goes everywhere.
+      p.burst(12, { shape: 'mote', glow: false, x, y, life: 0.8, size: 8, size2: 5, color: 0x6a4a2a, ay: 400 }, [100, 240]);
+      fx.quip(x, top, 'I gotta catch my train...', 0xff8a3d);
+      return;
+    case 'bigwhale':
+      // Money everywhere. Nobody picks any of it up for him.
+      p.burst(24, { shape: 'leaf', glow: false, x, y, life: 1.8, size: 13, size2: 11, color: 0x7ab86a, drag: 0.25, ay: 60, spin: 4 }, [100, 260]);
+      fx.quip(x, top, 'Do you know who I am?!', 0x8ad6ff);
+      return;
     case 'havarti':
       // She melts into a puddle of fondue, feathers drifting down.
       fx.scar(x, s.y, r * 1.6, 'goo', 0xc9a23a, 12);
@@ -1004,6 +1137,16 @@ export function projectileTrail(fx: FxLayer, s: EntitySnap, friendly: boolean): 
       return;
     case 'levy':
       spray(fx.rate(55), { shape: 'star', life: 0.5, size: 22, size2: 3, color: 0xffffff, color2: GOLD, spin: 6 }, 12, 30);
+      return;
+    case 'token':
+    case 'coin':
+      spray(fx.rate(50), { shape: 'mote', life: 0.4, size: 9, size2: 2, color: 0xfff1b8, color2: GOLD }, 5, 20);
+      return;
+    case 'hotdog':
+      spray(fx.rate(40), { shape: 'mote', glow: false, life: 0.45, size: 7, size2: 3, color: 0xffd23a, ay: 300 }, 6, 20);
+      return;
+    case 'briefcase':
+      spray(fx.rate(30), { shape: 'shard', glow: false, life: 0.6, size: 10, size2: 8, color: 0xf6f0e0, spin: 4 }, 8, 30);
       return;
     case 'spore':
       spray(fx.rate(60), { shape: 'mote', life: 0.55, size: 12, size2: 3, color: 0xc9f59a, color2: TOXIC }, 8, 30);

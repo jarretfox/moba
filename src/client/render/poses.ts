@@ -116,6 +116,13 @@ const CHEERS: Record<ChampionId, EndPose> = {
       expression: 'grin',
     };
   },
+  scrimby: hooray('scrimby', 0.35),
+  bigwhale: (t) => ({
+    // Throws money in the air, delighted with himself.
+    grow: 0.04 + Math.sin(t * 4) * 0.03,
+    posture: { armF: [-1.4, 0.3], armB: [-1.5, 0.2] },
+    expression: 'grin',
+  }),
 };
 
 type Slump = 'slump' | 'sit' | 'flat';
@@ -133,6 +140,8 @@ const SLUMP: Record<ChampionId, Slump> = {
   paris: 'slump',
   havarti: 'flat',
   daltonomo: 'sit',
+  scrimby: 'sit',
+  bigwhale: 'flat',
 };
 
 function slump(champ: ChampionId, style: Slump): EndPose {

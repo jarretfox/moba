@@ -13,4 +13,6 @@ export const LORE: Record<ChampionId, string> = {
   dabber: 'Down in the Deep, the Rat King’s runaway son found HunnaG’s rot garden and ate everything in it. He came back up giggling, red-eyed and wrapped in a smoke that never quite clears. He has been trying to get a bite of Havarti for years.',
   dongmaster: 'One morning he was simply there, doing pull-ups on the Warden’s chains. He has never skipped a day, never lost a staring contest, and never been seen without his jawline. The Oak is convinced he’s a government plant.',
   kingrix: 'He hid in the treasury while the city burned, then decreed there is only one Lionheart, and he wears the crown. He wants his lion back in its cage.',
+  scrimby: 'Nobody knows how a New Yorker ended up in the Deep. He says he took the wrong train, and he will not stop saying it. He hasn’t taken the boots or the cap off since, he talks to the Chuds like they’re tourists, and when he’s had enough he becomes the express train and leaves.',
+  bigwhale: 'Big Whale bought his way into every party in the realm and got asked to leave every one of them, and he hasn’t noticed. He tips everybody, loudly. He tells the same joke twice. He calls King Rix “buddy.” Nobody invited him to this fight either, but he brought snacks, and the splash he makes is, everyone admits, sort of refreshing.',
 };

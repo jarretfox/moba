@@ -119,6 +119,38 @@ const hookRope: Held = {
   },
 };
 
+/** Scrimby's coffee: the blue paper diner cup, a Greek key round it, steam off the top. */
+const coffeeCup: Held = {
+  hold: -0.35,
+  tip: 0.35,
+  draw(g, r, p) {
+    const cup = [0.02 * r, -0.16 * r, 0.26 * r, -0.16 * r, 0.22 * r, 0.14 * r, 0.06 * r, 0.14 * r];
+    inked(g, cup, p.cup, 2);
+    // The Greek key band, and the lid.
+    g.rect(0.04 * r, -0.08 * r, 0.21 * r, 0.06 * r).fill(p.cupKey);
+    for (let i = 0; i < 4; i++) g.rect((0.06 + i * 0.05) * r, -0.075 * r, 0.025 * r, 0.03 * r).fill(p.cup);
+    g.rect(0.0, -0.2 * r, 0.28 * r, 0.05 * r).fill(0xf2efe6).stroke({ width: 1.5, color: 0x6a6a70 });
+    for (const dx of [0.08, 0.17]) g.moveTo(dx * r, -0.24 * r).quadraticCurveTo((dx + 0.04) * r, -0.32 * r, dx * r, -0.4 * r).stroke({ width: 1.6, color: 0xffffff, alpha: 0.5 });
+  },
+};
+
+/** Big Whale's wad of cash, fanned out, a gold clip on it. */
+const cashWad: Held = {
+  hold: -0.25,
+  tip: 0.4,
+  draw(g, r, p) {
+    // Four bills fanned out from the grip.
+    for (let i = 0; i < 4; i++) {
+      const a = -0.35 + i * 0.22;
+      const c = Math.cos(a);
+      const sn = Math.sin(a);
+      const pts = [[0, -0.08], [0.36, -0.08], [0.36, 0.08], [0, 0.08]].flatMap(([x, y]) => [(x * c - y * sn) * r, (x * sn + y * c) * r]);
+      inked(g, pts, shade(p.cash, i * 0.05), 1.5, 0x1e3a14);
+    }
+    g.rect(0.02 * r, -0.04 * r, 0.08 * r, 0.12 * r).fill(p.trim).stroke({ width: 1.2, color: 0x6a4a10 });
+  },
+};
+
 const staff: Held = {
   hold: -1.45,
   tip: 1.4,
@@ -722,6 +754,126 @@ export const BUILDS: Record<ChampionId, Build> = {
     weapon: dagger(0.4),
     offhand: dagger(0.6),
     gait: { swing: 0.6, bounce: 0.1, lean: 0.12, knee: 1.1, arm: 0.6 },
+  },
+
+  /** Scrimby: a New Yorker, somehow. A puffer jacket, jeans, the boots, a Yankees cap, coffee in hand, no patience. */
+  scrimby: {
+    size: sized(HUMAN, { torso: 0.8, thigh: 0.44, shin: 0.42, legW: 0.3, armW: 0.27 }),
+    arms: [1.0, 0.9, 1.4, 0.35],
+    colors: { sleeve: 'jacket', hand: 'skin', leg: 'jeans', boot: 'boots' },
+    torso(g, r, p) {
+      // The puffer: fat quilted bands, a zip, the hoodie's collar under it.
+      inked(g, trunk(r, 0.8, 0.42, 0.42, 1.08, 1.05, 0.1), p.jacket, 3);
+      for (const y of [-0.62, -0.42, -0.22]) g.moveTo(-0.4 * r, y * r).quadraticCurveTo(0.0, (y + 0.05) * r, 0.42 * r, y * r).stroke({ width: 2, color: p.jacketDark, alpha: 0.8 });
+      g.moveTo(0.3 * r, -0.78 * r).lineTo(0.32 * r, 0.04 * r).stroke({ width: 2, color: 0xb8bec6 });
+      g.ellipse(-0.02 * r, -0.8 * r, 0.32 * r, 0.09 * r).fill(p.hood).stroke({ width: 1.8, color: inkOf(p.hood) });
+    },
+    head(g, r, p) {
+      inked(g, skull(0.08 * r, -0.36 * r, 0.28 * r, 0.32 * r, 21), p.skin, 3);
+      ear(g, -0.1 * r, -0.36 * r, 0.12 * r, p.skin);
+      // A squint, one brow up, and a smirk: "you got a problem?"
+      eye(g, 0.22 * r, -0.42 * r, 0.055 * r, 0x3a2a1a, 0.03 * r);
+      brow(g, 0.22 * r, -0.52 * r, 0.16 * r, -0.045 * r, p.hair);
+      g.poly([0.32 * r, -0.4 * r, 0.42 * r, -0.28 * r, 0.32 * r, -0.27 * r]).fill(p.skin).stroke({ width: 1.5, color: inkOf(p.skin) });
+      g.moveTo(0.18 * r, -0.18 * r).quadraticCurveTo(0.28 * r, -0.16 * r, 0.36 * r, -0.21 * r).stroke({ width: 2, color: 0x1a1414 });
+      // Stubble.
+      for (let i = 0; i < 7; i++) g.circle((0.12 + (i % 4) * 0.07) * r, (-0.14 - Math.floor(i / 4) * 0.05) * r, 1).fill({ color: p.hair, alpha: 0.6 });
+    },
+    dangle: {
+      at: [0.04, -0.6],
+      give: 0.5,
+      draw(g, r, p) {
+        // The cap: navy crown, the bill out front, the interlocking NY in white.
+        inked(g, smooth([-0.28 * r, -0.56 * r, -0.24 * r, -0.8 * r, 0.06 * r, -0.86 * r, 0.3 * r, -0.74 * r, 0.32 * r, -0.56 * r], true, 2), p.cap, 2.5);
+        inked(g, [0.26 * r, -0.6 * r, 0.62 * r, -0.56 * r, 0.6 * r, -0.5 * r, 0.24 * r, -0.54 * r], shade(p.cap, -0.1), 2);
+        g.circle(0.04 * r, -0.86 * r, 0.03 * r).fill(p.cap);
+        const N: number[] = [0.02, -0.6, 0.02, -0.76, 0.12, -0.6, 0.12, -0.76];
+        g.moveTo(N[0] * r, N[1] * r).lineTo(N[2] * r, N[3] * r).lineTo(N[4] * r, N[5] * r).lineTo(N[6] * r, N[7] * r).stroke({ width: 2.2, color: p.logo, cap: 'round', join: 'round' });
+        g.moveTo(0.08 * r, -0.74 * r).lineTo(0.13 * r, -0.67 * r).lineTo(0.18 * r, -0.74 * r).moveTo(0.13 * r, -0.67 * r).lineTo(0.13 * r, -0.58 * r).stroke({ width: 2.2, color: p.logo, cap: 'round', join: 'round' });
+      },
+    },
+    foot(g, r, p) {
+      // The boots: chunky, wheat-colored, a dark sole, the padded collar, laces.
+      g.roundRect(-0.1 * r, -0.2 * r, 0.42 * r, 0.22 * r, 0.06 * r).fill(p.boots).stroke({ width: 2, color: inkOf(p.boots) });
+      g.rect(-0.12 * r, -0.01 * r, 0.46 * r, 0.06 * r).fill(p.sole);
+      g.rect(-0.1 * r, -0.24 * r, 0.2 * r, 0.06 * r).fill(shade(p.sole, 0.2));
+      for (let i = 0; i < 3; i++) g.moveTo((0.06 + i * 0.06) * r, -0.17 * r).lineTo((0.1 + i * 0.06) * r, -0.12 * r).stroke({ width: 1.2, color: 0x5a3a1a });
+    },
+    weapon: coffeeCup,
+    face: { eyes: [[0.22, -0.42, 0.058]], skin: 'skin', mouth: [0.27, -0.18, 0.12] },
+    streak: 0xff8a3d,
+    gait: { swing: 0.6, bounce: 0.05, lean: 0.12, arm: 0.5 },
+  },
+
+  /** Big Whale: very rich, very big, very unwanted. A whale stood up in a yacht blazer, gold chain, shades, a cigar, a captain's hat. */
+  bigwhale: {
+    size: sized(HUMAN, { thigh: 0.3, shin: 0.28, torso: 1.12, shoulder: 0.6, shoulderX: 0.22, upper: 0.34, fore: 0.32, legW: 0.32, armW: 0.24, foot: 0.3, headH: 0.6 }),
+    arms: [0.8, 0.7, 1.5, 0.3],
+    colors: { sleeve: 'blazer', hand: 'whale', leg: 'whale', boot: 'shoe' },
+    back(g, r, p) {
+      // The tail, fluke and all, curling out behind.
+      g.moveTo(-0.4 * r, -0.2 * r).quadraticCurveTo(-0.9 * r, -0.05 * r, -1.0 * r, -0.5 * r).stroke({ width: 16, color: inkOf(p.whale), cap: 'round' });
+      g.moveTo(-0.4 * r, -0.2 * r).quadraticCurveTo(-0.9 * r, -0.05 * r, -1.0 * r, -0.5 * r).stroke({ width: 12, color: p.whale, cap: 'round' });
+      inked(g, smooth([-1.0 * r, -0.5 * r, -1.28 * r, -0.72 * r, -1.08 * r, -0.62 * r, -0.98 * r, -0.86 * r, -0.86 * r, -0.62 * r], true, 1), p.whale, 2.2);
+    },
+    torso(g, r, p) {
+      // A great round body, the pale belly, and the blazer straining over it.
+      const body = blob(0.02 * r, -0.58 * r, 0.56 * r, 0.62 * r, 41, 0.03, 36);
+      inked(g, body, p.whale, 3);
+      g.poly(blob(0.18 * r, -0.5 * r, 0.32 * r, 0.48 * r, 42, 0.04, 24)).fill(p.belly);
+      for (let i = 0; i < 5; i++) g.moveTo((0.06 + i * 0.06) * r, -0.88 * r).lineTo((0.08 + i * 0.06) * r, -0.16 * r).stroke({ width: 1.5, color: shade(p.belly, -0.15), alpha: 0.6 });
+      const blazer = smooth([-0.54 * r, -0.2 * r, -0.56 * r, -0.8 * r, -0.2 * r, -1.08 * r, 0.04 * r, -1.0 * r, 0.1 * r, -0.62 * r, 0.02 * r, -0.12 * r], true, 2);
+      inked(g, blazer, p.blazer, 2.5);
+      g.moveTo(-0.2 * r, -1.06 * r).lineTo(0.1 * r, -0.62 * r).stroke({ width: 3, color: p.trim });
+      for (const y of [-0.5, -0.32]) g.circle(0.04 * r, y * r, 0.035 * r).fill(p.trim).stroke({ width: 1, color: 0x6a4a10 });
+      // The chain, and its dollar sign.
+      g.moveTo(-0.1 * r, -1.02 * r).quadraticCurveTo(0.2 * r, -0.72 * r, 0.42 * r, -0.98 * r).stroke({ width: 3.5, color: p.trim });
+      g.circle(0.2 * r, -0.76 * r, 0.07 * r).fill(p.trim).stroke({ width: 1.5, color: 0x6a4a10 });
+      inkLine(g, 0.2 * r, -0.83 * r, 0.2 * r, -0.69 * r, 1.4, { color: 0x6a4a10 }, 0);
+      g.moveTo(0.23 * r, -0.8 * r).quadraticCurveTo(0.15 * r, -0.8 * r, 0.2 * r, -0.76 * r).quadraticCurveTo(0.25 * r, -0.72 * r, 0.17 * r, -0.72 * r).stroke({ width: 1.4, color: 0x6a4a10 });
+    },
+    head(g, r, p) {
+      // The front of the whale: a big blunt snout, the pale grooved jaw, aviator shades, a cigar.
+      inked(g, smooth([-0.28 * r, 0.0, -0.32 * r, -0.4 * r, 0.0, -0.58 * r, 0.42 * r, -0.5 * r, 0.56 * r, -0.26 * r, 0.5 * r, 0.0], true, 2), p.whale, 3);
+      g.poly(smooth([0.0, -0.08 * r, 0.52 * r, -0.12 * r, 0.48 * r, 0.0, 0.0, 0.02 * r], true, 1)).fill(p.belly);
+      for (let i = 0; i < 4; i++) g.moveTo((0.1 + i * 0.1) * r, -0.06 * r).lineTo((0.1 + i * 0.1) * r, 0.0).stroke({ width: 1.3, color: shade(p.belly, -0.2) });
+      g.moveTo(0.06 * r, -0.12 * r).quadraticCurveTo(0.3 * r, -0.08 * r, 0.54 * r, -0.16 * r).stroke({ width: 2, color: 0x1a1414 });
+      // The blowhole.
+      g.ellipse(-0.06 * r, -0.56 * r, 0.05 * r, 0.02 * r).fill(shade(p.whale, -0.3));
+      // Shades.
+      g.moveTo(0.06 * r, -0.36 * r).lineTo(0.42 * r, -0.38 * r).stroke({ width: 2, color: p.trim });
+      for (const x of [0.2, 0.36]) g.ellipse(x * r, -0.32 * r, 0.07 * r, 0.06 * r).fill(p.shades).stroke({ width: 1.5, color: p.trim });
+      g.ellipse(0.18 * r, -0.34 * r, 0.025 * r, 0.015 * r).fill({ color: 0xffffff, alpha: 0.6 });
+      // The cigar, lit.
+      inkLine(g, 0.46 * r, -0.12 * r, 0.7 * r, -0.16 * r, 6, { color: p.cigar, tip: 0.8 }, 0);
+      g.circle(0.71 * r, -0.16 * r, 0.025 * r).fill(0xff7a2f);
+    },
+    dangle: {
+      at: [0.04, -0.56],
+      give: 0.45,
+      draw(g, r, p) {
+        // A captain's hat (he's never captained anything), anchor badge on the front.
+        inked(g, smooth([-0.26 * r, -0.56 * r, -0.28 * r, -0.74 * r, 0.06 * r, -0.82 * r, 0.32 * r, -0.72 * r, 0.3 * r, -0.56 * r], true, 2), p.hat, 2.5);
+        g.rect(-0.27 * r, -0.62 * r, 0.58 * r, 0.07 * r).fill(p.band);
+        inked(g, [0.22 * r, -0.58 * r, 0.5 * r, -0.54 * r, 0.48 * r, -0.5 * r, 0.2 * r, -0.54 * r], 0x1a1a22, 1.5);
+        g.circle(0.08 * r, -0.7 * r, 0.04 * r).fill(p.trim);
+        g.moveTo(0.08 * r, -0.74 * r).lineTo(0.08 * r, -0.64 * r).moveTo(0.04 * r, -0.66 * r).quadraticCurveTo(0.08 * r, -0.62 * r, 0.12 * r, -0.66 * r).stroke({ width: 1.2, color: 0x6a4a10 });
+      },
+    },
+    hand(g, r, p) {
+      // A flipper.
+      inked(g, smooth([-0.02 * r, -0.08 * r, 0.24 * r, -0.06 * r, 0.3 * r, 0.04 * r, 0.04 * r, 0.1 * r], true, 1), p.whale, 2);
+    },
+    foot(g, r, p) {
+      // Boat shoes.
+      g.roundRect(-0.08 * r, -0.12 * r, 0.36 * r, 0.14 * r, 0.05 * r).fill(p.shoe).stroke({ width: 2, color: inkOf(p.shoe) });
+      g.rect(-0.1 * r, -0.0, 0.4 * r, 0.04 * r).fill(0xf2efe6);
+    },
+    weapon: cashWad,
+    face: { eyes: [[0.2, -0.32, 0.06]], skin: 'whale', mouth: [0.3, -0.1, 0.18] },
+    backSway: { at: [-0.4, -0.2], give: 0.8 },
+    streak: 0x8ad6ff,
+    gait: { swing: 0.5, bounce: 0.1, lean: -0.06, arm: 0.5 },
   },
 };
 

@@ -141,6 +141,8 @@ describe('spell looks', () => {
       encore: true, curdle: true, fondue: true, rindBlade: true, divineFondue: true, fondueEruption: true, cheeseWave: true, ascend: true,
       nowYouSeeMe: true, backstab: true, jackbox: true, boxShot: true, doubleAct: true, cloneBoom: true, lanternLight: true, aegisWard: true, drumBeat: true,
       static: true, spellblade: true, royalPause: true, relic: true,
+      mustard: true, manhole: true, steamBurst: true, jaywalk: true, expressHorn: true, expressCrash: true,
+      tip: true, cashRain: true, yachtParty: true, paperwork: true, breach: true, splashZone: true,
     };
     for (const kind of Object.keys(kinds) as FxKind[]) {
       const { fx, calls, flush } = fakeFx();

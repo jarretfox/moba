@@ -13,6 +13,9 @@ import { pointAlong, progressAlong } from './lanes';
 import { PROFILES, nextSkill, type BotContext } from './profiles';
 import { nextPurchase } from './shopping';
 import { Crab } from '../sim/crab';
+import { Monster } from '../sim/jungle';
+import { LineProjectile } from '../sim/projectile';
+import { Warden } from '../sim/warden';
 import { Relic } from '../sim/relics';
 import { eventOrderFor } from './events';
 
@@ -48,6 +51,15 @@ const MOVE_RESEND = 60;
 export const GROUP_UP_AT = 18 * 60;
 /** Head home to shop once there's this much gold to spend (and it buys the next item). */
 const SHOPPING_TRIP = 900;
+/** Share of enemy skillshots a bot sees coming and steps out of (a decent new player's reflexes). */
+export const DODGE_CHANCE = 0.5;
+/** How far a dodge steps sideways. */
+const DODGE_STEP = 190;
+/** A structure with enemy champions this close to it is under attack: bots within DEFEND_REACH come to help. */
+const UNDER_ATTACK = 900;
+const DEFEND_REACH = 3200;
+/** The jungler heads home a little sooner: camps hit back. */
+const JUNGLE_RETREAT_HP = 0.35;
 
 /**
  * Runs a tick of bot decisions. Every bot decides from the same world state before any orders go in,
@@ -81,6 +93,8 @@ export class Bot {
     readonly champion: Champion,
     readonly lane: Lane,
     world: World,
+    /** Clears its side's camps (and takes crabs) between helping its lane. */
+    readonly jungler = false,
   ) {
     const team = champion.team as PlayerTeam;
     this.current = lane;
@@ -155,15 +169,27 @@ export class Bot {
     if (this.shootieShootingMe(world)) return this.moveTo(out, this.stepBack(400));
 
     // ARAM: nobody goes home much. Fight it out; only the nearly dead back off.
-    const retreatAt = this.aram ? ARAM_RETREAT_HP : RETREAT_HP;
+    const retreatAt = this.aram ? ARAM_RETREAT_HP : this.jungler ? JUNGLE_RETREAT_HP : RETREAT_HP;
     const pressureAt = this.aram ? ARAM_RETREAT_HP : RETREAT_HP_UNDER_PRESSURE;
     if (hp < retreatAt || (nearest && hp < pressureAt) || (!nearest && this.wantsToShop())) this.state = 'retreat';
     if (this.state === 'retreat') return this.retreat(world, out, hp, nearest);
 
+    // A skillshot coming our way: step out of its path (about half the time).
+    const dodge = this.dodge(world);
+    if (dodge) return this.moveTo(out, dodge, true);
+
     if (nearest && this.shouldFight(world, nearest, hp)) return this.fight(world, out, nearest);
 
-    // A Sewer Crab close by with nobody around to contest it: take it.
-    const crab = !nearest && hp > 0.5 ? world.units().find((u) => u instanceof Crab && !u.dead && dist(u.pos, me.pos) < 900) : undefined;
+    // One of our structures under attack nearby: go and defend it together.
+    const defend = this.underAttack(world);
+    if (defend) return this.moveTo(out, defend);
+
+    // The team calls the Warden when it has the numbers.
+    const warden = this.wardenCall(world, hp);
+    if (warden) return this.attack(out, warden);
+
+    // A Sewer Crab close by with nobody around to contest it: take it (the jungler goes further for one).
+    const crab = !nearest && hp > 0.5 ? world.units().find((u) => u instanceof Crab && !u.dead && dist(u.pos, me.pos) < (this.jungler ? 2600 : 900)) : undefined;
     if (crab) return this.attack(out, crab);
 
     // Being hit by a champion we don't want to fight: give ground.
@@ -180,7 +206,92 @@ export class Bot {
     const event = eventOrderFor(world, me, hp);
     if (event) return event.kind === 'attack' ? this.attack(out, event.target) : this.moveTo(out, event.to);
 
+    // The jungler clears its side's camps while any are up; otherwise it helps its lane.
+    if (this.jungler && !nearest && world.time < GROUP_UP_AT) {
+      const camp = this.nextCamp(world);
+      if (camp) {
+        // Basic abilities on the camp; the ultimate's saved for champions.
+        const spell = dist(camp.pos, me.pos) < 650 ? PROFILES[me.info.id].fight(this.ctx(world), camp) : null;
+        if (spell && !(spell.k === 'cast' && spell.slot === 3)) out.push(spell);
+        return this.attack(out, camp);
+      }
+    }
+
     this.farm(world, out);
+  }
+
+  // ─── Smarter fights ───────────────────────────────────────────────────────
+
+  /** An enemy skillshot about to hit us: a spot to the side of its path (we see some coming, not all). */
+  private dodge(world: World): Vec2 | null {
+    const me = this.champion;
+    for (const e of world.all()) {
+      if (!(e instanceof LineProjectile) || e.team === me.team) continue;
+      const t = e.threatTo(me.pos, me.radius, 0.8);
+      if (t === null || t < 0.1) continue;
+      // The same shot is seen (or not) every time we look.
+      if (((e.id * 7919 + me.id * 104729) % 1000) / 1000 >= DODGE_CHANCE) continue;
+      const d = e.heading;
+      const side = (me.pos.x - e.pos.x) * d.y - (me.pos.y - e.pos.y) * d.x >= 0 ? 1 : -1;
+      for (const s of [side, -side]) {
+        const to = { x: me.pos.x + d.y * DODGE_STEP * s, y: me.pos.y - d.x * DODGE_STEP * s };
+        if (world.grid.isWalkable(to)) return to;
+      }
+    }
+    return null;
+  }
+
+  /** One of our structures with enemy champions at it, close enough to come and help with. */
+  private underAttack(world: World): Vec2 | null {
+    const me = this.champion;
+    let best: Structure | null = null;
+    let bestD = DEFEND_REACH;
+    for (const u of world.units()) {
+      if (!(u instanceof Structure) || u.team !== me.team || u.dead) continue;
+      const d = dist(u.pos, me.pos);
+      if (d >= bestD) continue;
+      const raiders = world.units().some((e) => e.kind === 'champion' && e.team !== me.team && !e.dead && dist(e.pos, u.pos) < UNDER_ATTACK && world.vision.canSee(me.team, e));
+      if (raiders) {
+        best = u;
+        bestD = d;
+      }
+    }
+    // Already there: the fight logic takes it from here.
+    return best && bestD > 500 ? best.pos : null;
+  }
+
+  /**
+   * The Warden, when our team calls it: it's awake, we have more champions up than they do, and those of
+   * us who'd go are healthy enough and grown enough to take it.
+   */
+  private wardenCall(world: World, hp: number): Unit | null {
+    const me = this.champion;
+    if (this.aram || hp < 0.55) return null;
+    const warden = world.units().find((u) => u instanceof Warden && !u.dead && u.isTargetable());
+    if (!warden) return null;
+    const alive = (team: number) => world.units().filter((u) => u.kind === 'champion' && u.team === team && !u.dead);
+    const ours = alive(me.team);
+    const theirs = alive(me.team === TEAM.blue ? TEAM.red : TEAM.blue);
+    if (ours.length < 2 || ours.length - theirs.length < 1) return null;
+    const level = ours.reduce((s, u) => s + (u as Champion).level, 0) / ours.length;
+    const health = ours.reduce((s, u) => s + u.hp / u.stats.maxHp, 0) / ours.length;
+    return level >= 9 && health >= 0.6 ? warden : null;
+  }
+
+  /** The jungler's next camp: the nearest monster on our side that's up. */
+  private nextCamp(world: World): Monster | null {
+    const me = this.champion;
+    let best: Monster | null = null;
+    let bestD = Infinity;
+    for (const u of world.units()) {
+      if (!(u instanceof Monster) || u.dead || u.camp.spot.side !== me.team) continue;
+      const d = dist(u.pos, me.pos);
+      if (d < bestD) {
+        best = u;
+        bestD = d;
+      }
+    }
+    return best;
   }
 
   // ─── Going home ───────────────────────────────────────────────────────────
@@ -345,10 +456,10 @@ export class Bot {
     this.lastMove = null;
   }
 
-  private moveTo(out: Command[], p: Vec2): void {
+  private moveTo(out: Command[], p: Vec2, urgent = false): void {
     const me = this.champion;
     if (dist(me.pos, p) < 30) return;
-    if (this.lastMove && dist(this.lastMove, p) < MOVE_RESEND && me.order.kind === 'move') return;
+    if (!urgent && this.lastMove && dist(this.lastMove, p) < MOVE_RESEND && me.order.kind === 'move') return;
     out.push({ k: 'move', x: Math.round(p.x), y: Math.round(p.y) });
     this.lastMove = p;
   }

@@ -24,6 +24,8 @@ export const CAST_COLORS: Record<ChampionId, number> = {
   paris: 0xff8fb0,
   havarti: 0xffe29a,
   daltonomo: 0xb98be0,
+  scrimby: 0xff8a3d,
+  bigwhale: 0x8ad6ff,
 };
 
 /** Where a signature goes: the champion's spot on the ground, their size and color, how tall they stand, and whether it's their ultimate. */
@@ -232,6 +234,24 @@ export const SIGNATURES: Record<ChampionId, Signature> = {
     fx.motifRing(x, y, R, big ? 12 : 10, 0.6, (g, i) => drawDiamond(g, r * 0.3, i), { layer: 'under', spin: 2.5, squash: 0.5, stagger: 0.3 });
     scraps(fx, x, y - chest, big ? 22 : 12, 180);
     fx.particles.burst(2, { shape: 'star', x, y: y - chest * 1.8, life: 0.4, size: 16, size2: 2, color: 0xffffff, color2: 0xffe29a, spin: 6 }, [30, 90]);
+  },
+  // Scrimby: a subway map's colored lines streak out from his feet, and the token glints.
+  scrimby(fx, { x, y, r, chest, big }) {
+    const R = r * (big ? 2.2 : 1.6);
+    fx.stamp(x, y, 0.5, (g) => {
+      for (const [color, a] of [[0xff8a3d, 0], [0x3d8bfd, 1.2], [0x22aa55, 2.4], [0xffd166, 3.6]] as const) {
+        g.moveTo(0, 0).lineTo(Math.cos(a) * R, Math.sin(a) * R * 0.45).stroke({ width: 6, color, cap: 'round' });
+        g.circle(Math.cos(a) * R, Math.sin(a) * R * 0.45, 5).fill(0xffffff).stroke({ width: 2, color });
+      }
+    }, { layer: 'under', from: 0.6, alpha: 0.9 });
+    fx.particles.burst(6, { shape: 'spark', x, y: y - chest, life: 0.35, size: 12, size2: 2, stretch: 0.05, color: 0xfff1b8, color2: 0xff8a3d }, [100, 220]);
+  },
+
+  // Big Whale: a ring of water and a shower of coins.
+  bigwhale(fx, { x, y, r, chest, big }) {
+    const R = r * (big ? 2.2 : 1.6);
+    fx.shockwave(x, y, R, 0x8ad6ff, 0.45);
+    fx.particles.burst(big ? 14 : 8, { shape: 'mote', glow: false, x, y: y - chest, life: 0.8, size: 9, size2: 6, color: 0xffd166, ay: 420, spin: 8 }, [100, 240], -Math.PI / 2, 1.8);
   },
 };
 

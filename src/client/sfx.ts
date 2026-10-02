@@ -15,11 +15,11 @@ export interface SoundCue {
 /** Each champion's basic attack, and the signature under their casts. */
 export const ATTACK_SOUND: Record<ChampionId, SoundName> = {
   marksman: 'atkBow', barbarian: 'atkAxe', willmore: 'atkHook', hunnag: 'atkSpore', logan: 'atkClaw', kingrix: 'atkScepter',
-  dongmaster: 'atkPunch', dabber: 'atkRig', paris: 'atkEpee', havarti: 'atkCheese', daltonomo: 'atkDagger',
+  dongmaster: 'atkPunch', dabber: 'atkRig', paris: 'atkEpee', havarti: 'atkCheese', daltonomo: 'atkDagger', scrimby: 'atkToken', bigwhale: 'atkCoin',
 };
 export const CAST_SOUND: Record<ChampionId, SoundName> = {
   marksman: 'castStamp', barbarian: 'castDrum', willmore: 'castClank', hunnag: 'castBubble', logan: 'castGrowl', kingrix: 'castRoyal',
-  dongmaster: 'castGrunt', dabber: 'castFlick', paris: 'castFlourish', havarti: 'castAngelic', daltonomo: 'castJingle',
+  dongmaster: 'castGrunt', dabber: 'castFlick', paris: 'castFlourish', havarti: 'castAngelic', daltonomo: 'castJingle', scrimby: 'castHonk', bigwhale: 'castCashier',
 };
 
 export const MELEE: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan', 'dongmaster', 'paris', 'daltonomo']);
@@ -85,6 +85,18 @@ export const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   lanternLight: ['lantern', 0.7],
   aegisWard: ['aegis', 0.8],
   drumBeat: ['warDrum', 0.8],
+  expressHorn: ['horn', 0.9],
+  expressCrash: ['boom', 1],
+  manhole: ['castClank', 0.5],
+  steamBurst: ['whoosh', 0.7],
+  jaywalk: ['whoosh', 0.45],
+  mustard: ['hitMagic', 0.4],
+  cashRain: ['kaching', 0.6],
+  tip: ['gold', 0.2],
+  yachtParty: ['chime', 0.5],
+  paperwork: ['snap', 0.6],
+  breach: ['whoosh', 0.8],
+  splashZone: ['quake', 0.9],
 };
 
 /**

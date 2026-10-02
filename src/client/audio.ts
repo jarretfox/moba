@@ -112,6 +112,11 @@ export type SoundName =
   | 'castFlourish'
   | 'castAngelic'
   | 'castJingle'
+  /** Scrimby and Big Whale. */
+  | 'atkToken'
+  | 'atkCoin'
+  | 'castHonk'
+  | 'castCashier'
   /** Your Da Base in danger. */
   | 'heartbeat'
   /** The announcer: good news for your side, and bad. */
@@ -969,6 +974,18 @@ export const RECIPES: Record<SoundName, Recipe> = {
     v.bell(t + 0.02, 2200, 0.25, 0.09, COIN);
     v.noise(t, 'bandpass', 3000, 6000, 0.1, 0.06, 2);
   }, { gap: 0.05, send: 0.2 }),
+  atkToken: fx((v, t) => {
+    // Scrimby: a subway token flicked off the thumb, a brassy little spin.
+    v.click(t, 0.18, 4200);
+    v.bell(t + 0.01, 1760, 0.18, 0.08, COIN);
+    v.tone(t, 'triangle', 1200, 1900, 0.06, 0.06);
+  }, { gap: 0.05 }),
+  atkCoin: fx((v, t) => {
+    // Big Whale: a coin flipped at them, ringing as it goes.
+    v.bell(t, 2900, 0.3, 0.12, COIN);
+    v.bell(t + 0.05, 3400, 0.25, 0.07, COIN);
+    v.noise(t, 'highpass', 5000, 3000, 0.05, 0.04);
+  }, { gap: 0.05, send: 0.15 }),
   atkPunch: fx((v, t) => {
     // Dongmaster: a fist landing, the knuckles, the meat, the air going out.
     v.click(t, 0.3, 2500);
@@ -1026,6 +1043,19 @@ export const RECIPES: Record<SoundName, Recipe> = {
     v.tone(t, 'sawtooth', 92, 72, 0.3, 0.14, 0.04, 600);
   }),
   castRoyal: fx((v, t) => [NOTE.C6, 1318.5, 1568].forEach((f, i) => v.bell(t + i * 0.05, f, 0.35, 0.14)), { send: 0.25, pitch: 0 }),
+  castHonk: fx((v, t) => {
+    // Scrimby: a New York cab horn, twice, impatient.
+    for (const dt of [0, 0.16]) {
+      v.tone(t + dt, 'sawtooth', 370, 370, 0.12, 0.07, 0.02, 1500);
+      v.tone(t + dt, 'sawtooth', 466, 466, 0.12, 0.06, 0.02, 1500);
+    }
+  }, { gap: 0.1, pitch: 0 }),
+  castCashier: fx((v, t) => {
+    // Big Whale: the register drawer, and a coin or two for show.
+    v.click(t, 0.3, 2400);
+    v.bell(t + 0.04, 2650, 0.4, 0.14);
+    v.bell(t + 0.12, 3100, 0.3, 0.07, COIN);
+  }, { send: 0.2 }),
   castGrunt: voice((v, t) => v.vowel(t, 112, 88, 0.18, 0.75, [480, 1400], 0.01)),
   castFlick: fx((v, t) => {
     v.click(t, 0.25, 5500); // the lighter's click

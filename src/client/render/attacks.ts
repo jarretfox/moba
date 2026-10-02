@@ -19,7 +19,7 @@ const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 export const MELEE_LOOK: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmore', 'logan', 'dongmaster', 'paris', 'daltonomo']);
 
 /** How fast each ranged champion's basic attack flies (the same numbers as their kits; only the timing of the hit depends on it). */
-const SHOT_SPEED: Partial<Record<ChampionId, number>> = { marksman: 2200, hunnag: 1500, kingrix: 1700, dabber: 2000, havarti: 1700 };
+const SHOT_SPEED: Partial<Record<ChampionId, number>> = { marksman: 2200, hunnag: 1500, kingrix: 1700, dabber: 2000, havarti: 1700, scrimby: 1600, bigwhale: 1400 };
 
 /** The sim throws the blow (or looses the shot) about this long into an attack: a fifth of the attack time. */
 const WINDUP = 0.22;
@@ -225,6 +225,23 @@ export const LAUNCH: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     for (let i = 0; i < 3; i++) fx.particles.emit({ shape: 'smoke', x: ox + rand(-6, 6), y: b.hy + rand(-6, 6), vx: Math.cos(b.a) * 60 + rand(-20, 20), vy: -30 + rand(-15, 15), drag: 0.3, life: 0.7, size: 12, size2: 32, color: 0xc8d6b0, color2: 0x5a6a4a, alpha: 0.45 });
     fx.flash(ox, b.hy, 12, 0xffb347, 0.15, 0.7);
   },
+  // A subway token spun off the thumb, a glint of brass.
+  scrimby(b) {
+    const { fx } = b;
+    const ox = b.hx + b.face * b.r * 0.3;
+    const oy = b.hy - b.r * 0.4;
+    fx.flash(ox, oy, b.mine ? 16 : 12, 0xffd166, 0.15, 0.8);
+    fx.particles.burst(3, { shape: 'spark', x: ox, y: oy, life: 0.25, size: 10, size2: 2, stretch: 0.05, color: 0xfff1b8, color2: 0xffb04a }, [80, 160]);
+  },
+
+  // A coin flicked off the knuckle, glittering.
+  bigwhale(b) {
+    const { fx } = b;
+    const ox = b.hx + b.face * b.r * 0.4;
+    const oy = b.hy - b.r * 0.4;
+    fx.flash(ox, oy, b.mine ? 20 : 15, 0xffd166, 0.18, 0.85);
+    fx.particles.burst(4, { shape: 'star', x: ox, y: oy, life: 0.4, size: 12, size2: 2, color: 0xffffff, color2: 0xffd166, spin: 6 }, [50, 130]);
+  },
 };
 
 /** The hit landing on the target. */
@@ -349,5 +366,18 @@ export const IMPACT: Record<ChampionId, (b: Blow, melee: boolean) => void> = {
     fx.particles.emit({ shape: 'smoke', x: tx, y: ty, vy: -25, life: 0.7, size: 14, size2: 36, color: 0xc8d6b0, color2: 0x7a8a5a, alpha: 0.4 });
     fx.particles.burst(3, { shape: 'spark', x: tx, y: ty, life: 0.3, size: 10, size2: 3, stretch: 0.08, color: 0xffe2a0, color2: 0xd98a1e }, [80, 200]);
     fx.flash(tx, ty, b.tr * 0.7, 0xffb347, 0.15, 0.6);
+  },
+  // The token pings off them.
+  scrimby(b) {
+    const { fx, tx, ty } = b;
+    fx.particles.emit({ shape: 'pow', glow: false, x: tx, y: ty, life: 0.16, size: b.tr * 1.1, size2: b.tr * 1.5, color: 0xffd166, rotation: Math.random() * 6, fadeIn: 0.04 });
+    fx.particles.burst(5, { shape: 'spark', x: tx, y: ty, life: 0.3, size: 10, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0xffb04a }, [120, 260], b.a, 1.6);
+  },
+
+  // Ka-ching: coins bounce off them.
+  bigwhale(b) {
+    const { fx, tx, ty } = b;
+    fx.particles.emit({ shape: 'pow', glow: false, x: tx, y: ty, life: 0.18, size: b.tr * 1.2, size2: b.tr * 1.6, color: 0xffe29a, rotation: Math.random() * 6, fadeIn: 0.05 });
+    fx.particles.burst(6, { shape: 'mote', glow: false, x: tx, y: ty, life: 0.6, size: 8, size2: 6, color: 0xffd166, ay: 520, drag: 0.15, spin: 8 }, [80, 220], -Math.PI / 2, 1.6);
   },
 };

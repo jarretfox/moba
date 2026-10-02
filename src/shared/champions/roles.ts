@@ -26,7 +26,9 @@ export const ROLES: Record<ChampionId, { main: Role; also?: Role }> = {
   daltonomo: { main: 'assassin' },
   paris: { main: 'assassin', also: 'fighter' },
   hunnag: { main: 'mage', also: 'support' },
+  scrimby: { main: 'mage', also: 'assassin' },
   marksman: { main: 'marksman' },
   dabber: { main: 'marksman', also: 'assassin' },
   kingrix: { main: 'support', also: 'mage' },
+  bigwhale: { main: 'support', also: 'tank' },
 };

@@ -54,6 +54,8 @@ const VOICES: Record<ChampionId, VoiceSpec> = {
   dabber: { pitch: 240, size: 1.15, growl: 0, breath: 0.6, pace: 9, laugh: 'i', talk: ['e', 'i', 'u'], nasal: 2400 },
   dongmaster: { pitch: 88, size: 0.78, growl: 0.15, breath: 0.3, pace: 5, laugh: 'a', talk: ['a', 'o', 'u'] },
   kingrix: { pitch: 135, size: 0.95, growl: 0.05, breath: 0.1, pace: 6, laugh: 'o', talk: ['o', 'a', 'e', 'u'] },
+  scrimby: { pitch: 150, size: 1.0, growl: 0.05, breath: 0.2, pace: 10, laugh: 'a', talk: ['a', 'o', 'e'], nasal: 2300 },
+  bigwhale: { pitch: 95, size: 0.72, growl: 0.05, breath: 0.25, pace: 5, laugh: 'o', talk: ['o', 'a', 'u'] },
 };
 
 /** Tiny seeded random, so the same line mumbles the same way each time. */

@@ -533,6 +533,9 @@ export class UnitView implements EntityView {
     // In the Dark Dabber's smoke, his own side sees him faintly.
     this.body.alpha = this.facing.alpha = under ? 0.22 : s.st?.includes('hazed') || s.st?.includes('vanished') ? 0.4 : s.st?.includes('untargetable') ? 0.55 : 1;
     if (this.rig) this.rig.root.alpha = under ? 0.12 : this.body.alpha;
+    // Scrimby's Express Train: he IS the train.
+    const train = !!s.st?.includes('express');
+    if (train || this.train) this.drawTrain(s, train);
     if (this.rig) {
       this.surroundings(s, ctx, moved);
       this.lightUp(s, ctx);
@@ -812,6 +815,52 @@ export class UnitView implements EntityView {
     this.badge.position.set(0, -(this.rig ? this.headroom : r) - 44);
   }
 
+  /** Scrimby's Express Train: a silver subway car round him, headlights on, the yellow R on the front. */
+  private train: Graphics | null = null;
+  private drawTrain(s: EntitySnap, on: boolean): void {
+    if (!this.train) {
+      this.train = new Graphics();
+      this.container.addChildAt(this.train, this.container.getChildIndex(this.facing) + 1);
+    }
+    const g = this.train.clear();
+    if (this.rig) this.rig.root.visible = !on;
+    if (!on) return;
+    const r = s.r;
+    const L = r * 5.2;
+    const H = r * 2.0;
+    const c = Math.cos(s.f);
+    const sn = Math.sin(s.f);
+    // Drawn side-on along its heading, squashed into the ground's perspective.
+    const pt = (x: number, y: number): [number, number] => [x * c, x * sn * 0.6 + y];
+    const box = (x0: number, x1: number, y0: number, y1: number) => [...pt(x0, y0), ...pt(x1, y0), ...pt(x1, y1), ...pt(x0, y1)];
+    g.poly(box(-L / 2 - 6, L / 2 + 6, -6, 10)).fill({ color: 0x000000, alpha: 0.4 });
+    // The car: brushed steel, an orange stripe, a dark roof line.
+    g.poly(box(-L / 2, L / 2, -H - 12, -8)).fill(0x9aa4b2).stroke({ width: 3.5, color: 0x23262c });
+    g.poly(box(-L / 2, L / 2, -H - 12, -H - 4)).fill(0x5d636d);
+    g.poly(box(-L / 2, L / 2, -H * 0.3 - 10, -H * 0.2 - 10)).fill(0xff8a3d);
+    // Windows and doors down its side.
+    for (let i = 0; i < 5; i++) {
+      const x0 = -L / 2 + 14 + (i * (L - 28)) / 5;
+      const w = (L - 28) / 5 - 10;
+      if (i % 2) g.poly(box(x0 + 2, x0 + w - 2, -H + 2, -14)).fill(0x3a3f48).stroke({ width: 1.5, color: 0x1a1d22 });
+      else g.poly(box(x0, x0 + w, -H + 4, -H * 0.5)).fill(0x1a2a40).stroke({ width: 1.5, color: 0x1a1d22 });
+    }
+    // Wheels.
+    for (const x of [-L * 0.32, -L * 0.18, L * 0.18, L * 0.32]) {
+      const [wx, wy] = pt(x, -6);
+      g.circle(wx, wy, 7).fill(0x1a1d22);
+    }
+    // The front: the yellow R bullet and the headlights.
+    const [fx, fy] = pt(L / 2, -H * 0.62 - 8);
+    g.circle(fx, fy, 12).fill(0xffd23a).stroke({ width: 2.5, color: 0x6a4a10 });
+    g.moveTo(fx - 4, fy + 6).lineTo(fx - 4, fy - 6).lineTo(fx + 2, fy - 6).quadraticCurveTo(fx + 6, fy - 2, fx + 1, fy).lineTo(fx + 5, fy + 6).stroke({ width: 2.4, color: 0x1a1414, join: 'round' });
+    for (const dy of [-H * 0.28, -H * 0.12]) {
+      const [hx, hy] = pt(L / 2, dy - 6);
+      g.circle(hx, hy, 6).fill(0xfff6c0);
+      g.circle(hx, hy, 16).fill({ color: 0xfff6c0, alpha: 0.25 });
+    }
+  }
+
   private drawBars(s: EntitySnap, myAd?: number): void {
     const g = this.bars.clear();
     const w = s.k === 'champion' ? 84 : s.k === 'chud' ? 44 : 70;
@@ -1046,6 +1095,27 @@ export class ProjectileView implements EntityView {
         g.circle(0, 0, 11).fill(0xf3dc8a);
         for (const [hx, hy, hr] of [[-4, -4, 2.5], [4, 3, 2], [-2, 5, 1.5], [5, -5, 1.5]]) g.circle(hx, hy, hr).fill(0xd8b860);
         break;
+      case 'token':
+        // A brass subway token, spinning.
+        g.circle(0, 0, 7).fill(0xd9a52b).stroke({ width: 1.5, color: 0x6a4a10 });
+        g.rect(-3, -1, 6, 2).fill(0x6a4a10);
+        break;
+      case 'coin':
+        g.circle(0, 0, 9).fill({ color: 0xffd166, alpha: 0.3 });
+        g.circle(0, 0, 6).fill(0xffd166).stroke({ width: 1.5, color: 0x8a6a1e });
+        g.circle(-2, -2, 1.5).fill(0xffffff);
+        break;
+      case 'hotdog':
+        // A dirty water dog in its bun, mustard squiggled on.
+        g.roundRect(-14, -6, 28, 12, 6).fill(0xe8b86a).stroke({ width: 1.5, color: 0x8a5a2a });
+        g.roundRect(-16, -3, 32, 6, 3).fill(0xc0502a);
+        g.moveTo(-10, -1).lineTo(-5, 1).lineTo(0, -1).lineTo(5, 1).lineTo(10, -1).stroke({ width: 2, color: 0xffd23a });
+        break;
+      case 'briefcase':
+        g.roundRect(-12, -9, 24, 18, 3).fill(0x5a3a1a).stroke({ width: 2, color: 0x2a1a0a });
+        g.rect(-5, -12, 10, 4).fill(0x2a1a0a);
+        g.rect(-2, -2, 4, 4).fill(0xd9a52b);
+        break;
       case 'cheeseBolt':
         g.poly([8, 0, -6, -6, -6, 6]).fill(0xffe29a).stroke({ width: 1.5, color: 0x8a6a1e });
         g.circle(-1, 0, 1.5).fill(0xd8b860);
@@ -1125,6 +1195,16 @@ export class ZoneView implements EntityView {
         g.ellipse(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.45, 14, 8).fill({ color: 0xffb347, alpha: 0.35 + 0.15 * Math.sin(t * 2 + i) });
       }
       g.circle(-r * 0.25, -r * 0.25, 8).fill({ color: 0xffe2a0, alpha: 0.5 });
+      return;
+    }
+    if (this.s.vis === 'steam') {
+      // The open manhole, steam billowing up out of it.
+      g.circle(0, 0, r).fill({ color: 0xffffff, alpha: 0.12 + 0.05 * Math.sin(t * 5) }).stroke({ width: 2, color: 0xeef4ff, alpha: 0.4 });
+      g.ellipse(0, 0, r * 0.3, r * 0.14).fill(0x0a0a0c).stroke({ width: 3, color: 0x3a3f48 });
+      for (let i = 0; i < 5; i++) {
+        const k = (t * 0.8 + i / 5) % 1;
+        g.circle(Math.sin(i * 2.3 + t) * r * 0.3, -k * r * 0.9, 18 + k * 40).fill({ color: 0xffffff, alpha: 0.28 * (1 - k) });
+      }
       return;
     }
     if (this.s.vis === 'molehole') {

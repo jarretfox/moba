@@ -260,6 +260,48 @@ export const RECALLS: Record<ChampionId, RecallRoutine> = {
       inkLine(g, -0.35 * r, -2.6 * r, 0.65 * r, -2.6 * r, 1.5, { color: 0xffffff, alpha: 0.2 }, -0.25);
     },
   },
+  // Scrimby sits on a subway bench and reads the paper, foot tapping, until his train comes.
+  scrimby: {
+    pose: (t) => ({ sit: appear(t, 0.4), armF: [-0.2, 1.6], armB: [0.1, 1.5], look: 0.2 }),
+    under(g, t, r) {
+      const a = appear(t, 0.35);
+      const seat = -0.45 * r;
+      inked(g, [-0.7 * r, seat, 0.7 * r * a, seat, 0.7 * r * a, seat + 0.12 * r, -0.7 * r, seat + 0.12 * r], 0x6a4a2a, 2.5);
+      for (const x of [-0.6, 0.55]) g.rect(x * r, seat + 0.12 * r, 0.08 * r, 0.33 * r).fill(0x3a3f48).stroke(INK);
+      inked(g, [-0.7 * r, seat - 0.5 * r, 0.7 * r * a, seat - 0.5 * r, 0.7 * r * a, seat - 0.38 * r, -0.7 * r, seat - 0.38 * r], 0x6a4a2a, 2);
+    },
+    over(g, t, r, _p, say) {
+      const a = appear(t, 0.5);
+      // The newspaper, held up.
+      g.rect(0.2 * r, -1.55 * r, 0.62 * r * a, 0.52 * r * a).fill(0xf2efe6).stroke(INK);
+      for (let i = 0; i < 4; i++) g.rect(0.26 * r, (-1.48 + i * 0.1) * r, 0.5 * r * a, 0.03 * r).fill(0x8a8a90);
+      if (t > 3.2) say('MY TRAIN!', 0.2 * r, -2.9 * r, 14, 0xff8a3d, Math.min(1, (t - 3.2) * 5));
+    },
+  },
+
+  // Big Whale lounges in a deck chair with a drink, shades on, and tips the air.
+  bigwhale: {
+    pose: (t) => ({ sit: appear(t, 0.5), lie: 0.25 * appear(t, 0.8), armF: [-0.6, 0.9], armB: [0.6, 1.4], look: -0.2 }),
+    under(g, t, r) {
+      const a = appear(t, 0.4);
+      const seat = -0.4 * r;
+      // A striped deck chair.
+      inked(g, [-0.8 * r, seat, 0.7 * r * a, seat, 0.6 * r * a, seat + 0.1 * r, -0.8 * r, seat + 0.1 * r], 0xf2efe6, 2);
+      for (let i = 0; i < 4; i++) g.rect((-0.8 + i * 0.36) * r, seat, 0.18 * r * a, 0.1 * r).fill(0x3d8bfd);
+      inkLine(g, -0.8 * r, seat, -1.0 * r, seat - 0.9 * r * a, 4, { color: 0x6a4a2a }, 0);
+      for (const x of [-0.6, 0.5]) g.rect(x * r, seat + 0.1 * r, 0.06 * r, 0.3 * r).fill(0x6a4a2a).stroke(INK);
+    },
+    held(g, t, r) {
+      // A cocktail with a little umbrella.
+      const a = appear(t, 0.6);
+      g.poly([0, -0.1 * r * a, 0.18 * r * a, -0.1 * r * a, 0.09 * r, 0.06 * r]).fill({ color: 0xff8fb0, alpha: 0.85 }).stroke(INK);
+      g.moveTo(0.09 * r, 0.06 * r).lineTo(0.09 * r, 0.18 * r).stroke({ width: 2, color: 0x2a2a30 });
+      g.poly([0.12 * r, -0.12 * r, 0.3 * r * a, -0.26 * r * a, 0.24 * r, -0.1 * r]).fill(0xffd166);
+    },
+    fx(fx, s) {
+      if (Math.random() < fx.dt * 2.5) fx.particles.emit({ shape: 'mote', glow: false, x: s.x + rand(-40, 40), y: s.y - rand(60, 120), vy: -40, life: 1.2, size: 10, size2: 6, color: 0x5a9a4a, spin: 3 });
+    },
+  },
 };
 
 /** HunnaG's mushroom ring: the back half behind her, the front half in front. */

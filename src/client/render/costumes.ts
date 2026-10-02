@@ -249,6 +249,35 @@ export const COSTUMES: Record<ChampionId, Costume> = {
       }
     },
   },
+  scrimby: {
+    name: 'Zombie Commuter',
+    colors: { skin: 0x9ab87a, jacket: 0x3a3a40, jacketDark: 0x1e1e22, jeans: 0x4a4a52, hood: 0x5a5a60, cup: 0x5a5a60, hair: 0x2a3a1a },
+    head(g, r) {
+      // Stitches across the brow, a bite out of the ear, dead eyes.
+      inkLine(g, 0.02 * r, -0.56 * r, 0.34 * r, -0.6 * r, 1.8, { color: 0x2a3a1a }, 0.05);
+      for (let i = 0; i < 5; i++) g.moveTo((0.04 + i * 0.07) * r, -0.62 * r).lineTo((0.05 + i * 0.07) * r, -0.54 * r).stroke({ width: 1.4, color: 0x2a3a1a });
+      g.circle(-0.1 * r, -0.46 * r, 0.05 * r).fill(0x5a1a1a);
+      g.circle(0.22 * r, -0.42 * r, 0.03 * r).fill(0xd8e8c0);
+    },
+    torso(g, r) {
+      // The jacket torn open, stuffing spilling out.
+      for (const [x, y] of [[-0.2, -0.5], [0.18, -0.3]] as const) {
+        g.poly([x * r, y * r, (x + 0.1) * r, (y - 0.06) * r, (x + 0.16) * r, (y + 0.04) * r, (x + 0.06) * r, (y + 0.1) * r]).fill(0x1a1a1e);
+        g.circle((x + 0.08) * r, (y + 0.02) * r, 0.03 * r).fill(0xe8e4d8);
+      }
+    },
+  },
+  bigwhale: {
+    name: 'Moby Rich',
+    colors: { whale: 0xe8eef2, belly: 0xffffff, blazer: 0x2a3a3a, trim: 0x8fffc8, hat: 0x2a3a3a, band: 0x8fffc8, shades: 0x0a1a14, cash: 0x8fffc8 },
+    head(g, r) {
+      // The harpoon he swears he doesn't notice, and the barnacles.
+      inkLine(g, -0.1 * r, -0.5 * r, -0.62 * r, -0.98 * r, 4, { color: 0x6a4a2a, tip: 0.2 }, 0);
+      g.poly([-0.1 * r, -0.5 * r, -0.02 * r, -0.62 * r, -0.2 * r, -0.56 * r]).fill(0x9aa1ab).stroke({ width: 1.2, color: 0x3a3f48 });
+      g.moveTo(-0.62 * r, -0.98 * r).quadraticCurveTo(-0.9 * r, -0.8 * r, -0.8 * r, -0.5 * r).stroke({ width: 1.6, color: 0xc8b890 });
+      for (const [x, y] of [[0.36, -0.46], [0.46, -0.34], [0.06, -0.5]] as const) g.circle(x * r, y * r, 0.03 * r).fill(0xc8c0b0).stroke({ width: 1, color: 0x6a6460 });
+    },
+  },
 };
 
 const costumed = new Map<ChampionId, Build>();
