@@ -1,6 +1,6 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { MapData } from '../../shared/map/mapData';
-import { blob, inkLine, inkLoop, inkOf, inkStroke, inked, mix, rng, roughen, shade, shapeOutline, shard, smooth, type Pts } from './organic';
+import { blade, blob, inkLine, inkLoop, inkOf, inkStroke, inked, mix, rng, roughen, shade, shapeOutline, shard, smooth, type Pts } from './organic';
 import type { FlickerLight } from './props';
 import { buildHollow } from './hollow';
 
@@ -10,6 +10,10 @@ import { buildHollow } from './hollow';
 // of the river, and HunnaG's rot blooms at the bottom. Round the pit are the newcomers' haunts: Master
 // Paris's café, Dongmaster's outdoor gym, the royal cellar Havarti came out of, and the Dabber's den. A
 // faint name is cut into the ground by each.
+//
+// Each sits in the jungle rather than on it: the earth round it is worn bare and footpaths lead to it
+// (painted into the ground, see loreGround.ts), grass grows up over its edges, and its clutter spreads
+// out into the grass round about.
 //
 // Drawn in the inked style. Flat things lie on the ground (above the water, under everyone); things that
 // stand up (the cage, the plinth, the café table, crates, toadstools) are pieces of their own, sorted in
@@ -90,7 +94,7 @@ export function buildLandmarks(map: MapData): Landmarks {
   rotBloom(ground, stand, at.rot.x, at.rot.y);
   label('THE ROT', at.rot.x, at.rot.y + 160);
   petitCafe(ground, stand, at.cafe.x, at.cafe.y);
-  label('LE PETIT CAFÉ', at.cafe.x, at.cafe.y + 140);
+  label('LE PETIT CAFÉ', at.cafe.x, at.cafe.y + 150);
   ironParadise(ground, stand, at.gym.x, at.gym.y);
   label('IRON PARADISE', at.gym.x, at.gym.y + 140);
   royalCellar(ground, stand, at.cellar.x, at.cellar.y);
@@ -144,6 +148,47 @@ function drum(g: Graphics, x: number, r: number, h: number, body: number, top = 
   g.ellipse(x, -h, r, r * 0.35).fill(top).stroke({ width: 2, color: inkOf(body) });
 }
 
+const GRASS = [0x4c7a3d, 0x5f8f48, 0x3f6a33];
+
+/** A clump of grass blades fanning from one root. */
+function tuft(g: Graphics, x: number, y: number, h: number, random: () => number): void {
+  const n = 3 + Math.floor(random() * 3);
+  g.ellipse(x + 2, y + 1.5, h * 0.5, h * 0.18).fill({ color: 0x000000, alpha: 0.2 });
+  for (let i = 0; i < n; i++) {
+    const k = i / (n - 1) - 0.5;
+    blade(g, x + k * h * 0.5, y, h * (0.75 + random() * 0.5), k * h * 1.1 + (random() - 0.5) * 4, 3 + random() * 1.5, shade(GRASS[Math.floor(random() * 3)], 0.22 - (i / n) * 0.3));
+  }
+}
+
+/** Grass grown up over an edge: tufts along an outline, so the thing sits in the ground, not on it. */
+function overgrow(g: Graphics, outline: Pts, random: () => number, spacing = 42, chance = 0.75): void {
+  const n = outline.length / 2;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const ax = outline[i * 2];
+    const ay = outline[i * 2 + 1];
+    const len = Math.hypot(outline[j * 2] - ax, outline[j * 2 + 1] - ay);
+    for (let d = random() * spacing; d < len; d += spacing * (0.6 + random() * 0.8)) {
+      if (random() > chance) continue;
+      const t = d / len;
+      tuft(g, ax + (outline[j * 2] - ax) * t + (random() - 0.5) * 10, ay + (outline[j * 2 + 1] - ay) * t + (random() - 0.5) * 8, 9 + random() * 9, random);
+    }
+  }
+}
+
+/** Ivy climbing from (x, y) up `h`: a wandering stem with leaves along it. */
+function vine(g: Graphics, x: number, y: number, h: number, random: () => number): void {
+  const pts: Pts = [];
+  for (let k = 0; k <= 6; k++) pts.push(x + Math.sin(k * 1.7 + x) * 6, y - (h * k) / 6);
+  inkStroke(g, pts, 2.5, { color: 0x2f5a28, tip: 0.3 });
+  for (let k = 1; k < 6; k++) {
+    const side = k % 2 ? -1 : 1;
+    const lx = pts[k * 2] + side * 6;
+    const ly = pts[k * 2 + 1];
+    g.ellipse(lx, ly, 5 + random() * 2, 3).fill(GRASS[k % 3]).stroke({ width: 1, color: 0x1e3a18 });
+  }
+}
+
 /** A toadstool: a pale stem and a spotted cap. */
 function toadstool(g: Graphics, x: number, h: number, r: number, cap: number, seed: number): void {
   g.poly([x - r * 0.22, 0, x + r * 0.22, 0, x + r * 0.17, -h, x - r * 0.17, -h]).fill(0xe8dcc0).stroke({ width: 1.8, color: 0x5a5040 });
@@ -161,6 +206,20 @@ function royalCage(g: Graphics, stand: Stand, x: number, y: number): void {
   g.ellipse(x + 18, y + 20, w + 30, 100).fill({ color: 0x000000, alpha: 0.28 });
   inked(g, slab(x, y, w * 2, 150, 1), STONE_DARK, 3);
   for (const [x0, y0, x1, y1] of [[-90, -40, -30, -10], [20, 30, 80, 50], [-40, 40, 10, 15]]) inkLine(g, x + x0, y + y0, x + x1, y + y1, 2.5, { color: 0x3a3630, alpha: 0.8 }, 0.1);
+  // Years of nobody sweeping: moss in the corners, weeds up through the cracks, grass over the edge.
+  const random = rng(101);
+  for (const [mx, my, mr] of [[x - 110, y - 50, 26], [x + 105, y + 52, 22], [x - 95, y + 55, 16]]) inked(g, blob(mx, my, mr, mr * 0.6, mx, 0.35, 14), MOSS, 1.8);
+  for (const [wx, wy] of [[x - 40, y + 40], [x + 80, y + 50], [x - 30, y - 10]]) tuft(g, wx, wy, 8, random);
+  overgrow(g, slab(x, y, w * 2, 150, 1), random, 38, 0.8);
+  // His straw, blown out across the grass the way he went.
+  for (let i = 0; i < 34; i++) {
+    const d = 170 + random() * 230;
+    const a = (random() - 0.5) * 2.2;
+    const sx = x + Math.cos(a) * d * 1.1;
+    const sy = y + 20 + Math.sin(a) * d * 0.55;
+    const r = random() * Math.PI;
+    inkLine(g, sx, sy, sx + Math.cos(r) * 14, sy + Math.sin(r) * 6, 2.2, { color: 0xc9a85a, alpha: 0.75 - (d - 170) / 460 }, 0.2);
+  }
   // Old straw, and the claw marks he left on the way out.
   for (let i = 0; i < 26; i++) {
     const a = i * 2.4;
@@ -197,6 +256,8 @@ function royalCage(g: Graphics, stand: Stand, x: number, y: number): void {
   inkStroke(c, [-w, -H, w, -H], 9, { color: inkOf(GOLD), tip: 1 });
   inkStroke(c, [-w, -H, w, -H], 6, { color: GOLD, tip: 1 });
   inkStroke(c, [-w, -2, w, -2], 8, { color: inkOf(IRON), tip: 1 });
+  // Ivy up the corners and a bar or two at the back.
+  for (const [vx, vh] of [[-w + 2, H * 0.8], [w - 2, H * 0.55], [-w + w / 2 + lean, H * 0.6]] as const) vine(c, vx, vx === -w + w / 2 + lean ? back : -2, vh, random);
   // A crown plaque on top.
   inked(c, [-22, -H - 4, -24, -H - 32, -12, -H - 20, 0, -H - 38, 12, -H - 20, 24, -H - 32, 22, -H - 4], 0xffe29a, 2);
   // The door, torn half off its hinges, hanging out to the right.
@@ -209,7 +270,10 @@ function royalCage(g: Graphics, stand: Stand, x: number, y: number): void {
 function fallenKing(g: Graphics, stand: Stand, x: number, y: number): void {
   // The body face down: the stone cape spread out, arms flung, cracked across the middle.
   g.ellipse(x + 50, y + 16, 150, 70).fill({ color: 0x000000, alpha: 0.25 });
-  inked(g, smooth([x - 40, y - 50, x + 120, y - 70, x + 170, y - 10, x + 140, y + 60, x - 30, y + 55, x - 60, y], true, 1), STONE, 3);
+  const body = smooth([x - 40, y - 50, x + 120, y - 70, x + 170, y - 10, x + 140, y + 60, x - 30, y + 55, x - 60, y], true, 1);
+  // Where he hit the ground: earth thrown up in a lip round the far side.
+  inkStroke(g, [x + 150, y - 80, x + 200, y - 20, x + 180, y + 60], 9, { color: 0x3a2c1c, alpha: 0.7, tip: 0.4 });
+  inked(g, body, STONE, 3);
   inkStroke(g, [x + 40, y - 62, x + 55, y - 10, x + 35, y + 55], 4, { color: STONE_DARK });
   for (const side of [-1, 1]) inked(g, smooth([x + 10, y + side * 62 - 12, x + 100, y + side * 58 - 12, x + 100, y + side * 58 + 12, x + 10, y + side * 62 + 12], true, 1), STONE, 2.5);
   inked(g, blob(x + 120, y + 74, 14, 13, 3, 0.1, 12), STONE, 2);
@@ -227,6 +291,14 @@ function fallenKing(g: Graphics, stand: Stand, x: number, y: number): void {
   g.circle(x + 255, y - 40, 5).fill(STONE_DARK);
   const random = rng(17);
   for (const [rx, ry, rr] of [[x + 190, y + 40, 10], [x + 205, y + 10, 7], [x - 50, y + 80, 9], [x + 280, y + 10, 8]]) inked(g, smooth(shard(rx, ry, rr, random, 5, 0.75), true, 1), STONE_DARK, 1.8);
+  // Chips of him scattered wide, and the grass already growing over his edges.
+  for (let i = 0; i < 16; i++) {
+    const a = random() * Math.PI * 2;
+    const d = 200 + random() * 180;
+    inked(g, smooth(shard(x + 60 + Math.cos(a) * d, y + 20 + Math.sin(a) * d * 0.5, 4 + random() * 5, random, 5, 0.75), true, 1), random() < 0.5 ? STONE : STONE_DARK, 1.5);
+  }
+  overgrow(g, body, random, 48, 0.55);
+  for (const [tx, ty] of [[x - 200, y + 60], [x - 60, y + 66], [x - 130, y + 66]]) tuft(g, tx, ty, 12, random);
 
   // The plinth stands where he stood, REX cut in its face, his boots snapped off at the ankle on top.
   const p = stand(x - 130, y + 50);
@@ -244,6 +316,8 @@ function fallenKing(g: Graphics, stand: Stand, x: number, y: number): void {
     p.ellipse(bx - 1, -127, 15, 5).fill(STONE_DARK);
   }
   inked(p, blob(46, -84, 16, 10, 4, 0.3, 12), MOSS, 1.8);
+  vine(p, 58, -2, 62, random);
+  vine(p, -64, -2, 44, random);
 }
 
 /** The Warden's pit: four great chains from the walls to the broken shackle where it sleeps. */
@@ -329,9 +403,39 @@ function sewerMouth(g: Graphics, stand: Stand, x: number, y: number): void {
 
 /** Master Paris's café: a little round table for two under a striped parasol, chairs either side, a fencing strip beside it. */
 function petitCafe(g: Graphics, stand: Stand, x: number, y: number): void {
-  // The piste, chalked out on the grass.
-  g.poly(slab(x, y + 72, 300, 34, 5, 2)).fill({ color: 0xe8e0cc, alpha: 0.5 });
-  for (const t of [-100, -50, 0, 50, 100]) inkLine(g, x + t, y + 57, x + t, y + 87, 2, { color: 0x8a8070, alpha: 0.7 }, 0);
+  const random = rng(303);
+  // The terrace's edge: a ring of little stones round the gravel (painted into the ground).
+  for (let i = 0; i < 34; i++) {
+    const a = (i / 34) * Math.PI * 2 + random() * 0.1;
+    inked(g, smooth(shard(x + Math.cos(a) * 118, y - 4 + Math.sin(a) * 70, 5 + random() * 3, random, 5, 0.75), true, 1), 0xb1a998, 1.4);
+  }
+  // The piste, chalked on the grass and worn half away: its edges and lines broken, grass through it.
+  for (const py of [y + 78, y + 108]) {
+    for (let px = x - 150; px < x + 150; px += 26 + random() * 18) inkLine(g, px, py + (random() - 0.5) * 3, px + 16 + random() * 14, py + (random() - 0.5) * 3, 3, { color: 0xe8e0cc, alpha: 0.55 }, 0.05);
+  }
+  for (const t of [-150, -75, 0, 75, 150]) inkLine(g, x + t, y + 78, x + t, y + 108, 2.5, { color: 0xe8e0cc, alpha: 0.5 }, 0);
+  for (let i = 0; i < 7; i++) tuft(g, x - 140 + random() * 280, y + 76 + random() * 36, 9 + random() * 5, random);
+  // Leaves off the plane tree, and a napkin that blew away.
+  for (let i = 0; i < 14; i++) {
+    const lx = x + (random() - 0.5) * 380;
+    const ly = y + (random() - 0.5) * 200;
+    g.ellipse(lx, ly, 5, 3).fill({ color: [0xc8901a, 0x9a6a2a, 0xd8b04a][i % 3], alpha: 0.85 });
+  }
+  inked(g, [x + 150, y - 30, x + 166, y - 36, x + 172, y - 20, x + 156, y - 16], 0xf2efe6, 1.2);
+  // A planter of red geraniums, and the chalkboard with today's special.
+  const planter = stand(x + 130, y - 40);
+  inked(planter, [-34, 0, 34, 0, 38, -26, -38, -26], 0x8a5a3a, 2);
+  planter.rect(-38, -30, 76, 6).fill(0x6a4228);
+  for (let i = 0; i < 6; i++) {
+    const fx = -28 + i * 11;
+    blade(planter, fx, -28, 14 + (i % 2) * 5, (i - 2.5) * 2, 4, 0x3f6a33);
+    planter.circle(fx + (i - 2.5) * 1.5, -44 - (i % 2) * 5, 5).fill(0xd82a3a).stroke({ width: 1.2, color: 0x6a1018 });
+  }
+  const board = stand(x - 140, y - 20);
+  inkLine(board, -18, 0, -10, -56, 3, { color: 0x6a4228, tip: 1 }, 0);
+  inkLine(board, 18, 0, 10, -56, 3, { color: 0x6a4228, tip: 1 }, 0);
+  inked(board, [-20, -12, 20, -12, 14, -58, -14, -58], 0x24282a, 2, 0x6a4228);
+  for (const [ly, lw] of [[-48, 18], [-40, 12], [-32, 16], [-24, 10]] as const) inkLine(board, -lw / 2, ly, lw / 2, ly, 1.6, { color: 0xe8e0cc, alpha: 0.8 }, 0.1);
   g.ellipse(x + 12, y + 6, 70, 20).fill({ color: 0x000000, alpha: 0.25 });
   // Bistro chairs either side, facing in.
   for (const side of [-1, 1]) {
@@ -368,8 +472,38 @@ function petitCafe(g: Graphics, stand: Stand, x: number, y: number): void {
 
 /** Dongmaster's outdoor gym: a rubber mat, a bench with a loaded bar, a dumbbell rack, chalk everywhere. */
 function ironParadise(g: Graphics, stand: Stand, x: number, y: number): void {
-  inked(g, slab(x, y, 280, 180, 6, 3), 0x2a2a30, 3);
-  for (const [cx, cy, cr] of [[x - 90, y + 50, 26], [x + 70, y - 50, 20], [x + 20, y + 60, 16]]) g.poly(blob(cx, cy, cr, cr * 0.6, cx, 0.3, 14)).fill({ color: 0xffffff, alpha: 0.14 }); // chalk
+  const random = rng(404);
+  // Scavenged rubber floor tiles laid on the bare earth: sun-faded, scuffed, one gone missing and one
+  // kicked askew, grass growing up between them.
+  const tw = 92;
+  const th = 88;
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 3; col++) {
+      if (row === 0 && col === 2) continue; // missing
+      const cx = x - tw + col * tw + (random() - 0.5) * 6;
+      const cy = y - th / 2 + row * th + (random() - 0.5) * 6;
+      const tilt = row === 1 && col === 0 ? 0.22 : (random() - 0.5) * 0.06;
+      const c = Math.cos(tilt);
+      const sn = Math.sin(tilt);
+      const tile = slab(0, 0, tw - 5, th - 5, row * 3 + col + 1, 2);
+      const pts = tile.map((v, i) => (i % 2 ? cy + tile[i - 1] * sn + v * c : cx + v * c - tile[i + 1] * sn));
+      inked(g, pts, shade(0x45454a, (random() - 0.5) * 0.2), 2.5, 0x16161a);
+      g.poly(blob(cx + (random() - 0.5) * 30, cy + (random() - 0.5) * 20, 26, 16, row * 7 + col, 0.4, 12)).fill({ color: 0x6a6a70, alpha: 0.3 });
+      overgrow(g, pts, random, 46, 0.3);
+    }
+  }
+  for (let i = 0; i < 5; i++) tuft(g, x + tw - 30 + random() * 70, y - th + 10 + random() * 70, 10 + random() * 6, random);
+  for (const [cx, cy, cr] of [[x - 90, y + 50, 26], [x + 70, y - 50, 20], [x + 20, y + 60, 16], [x - 190, y + 10, 22], [x + 200, y + 40, 18]]) g.poly(blob(cx, cy, cr, cr * 0.6, cx, 0.3, 14)).fill({ color: 0xffffff, alpha: 0.14 }); // chalk
+  // A tractor tire lying in the grass for flipping, and a kettlebell left out.
+  g.ellipse(x - 200, y - 70, 54, 34).fill({ color: 0x1a1a1e }).stroke({ width: 3, color: 0x0a0a0c });
+  g.ellipse(x - 200, y - 72, 26, 15).fill(0x4e3e29).stroke({ width: 2.5, color: 0x0a0a0c });
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    inkLine(g, x - 200 + Math.cos(a) * 32, y - 71 + Math.sin(a) * 19, x - 200 + Math.cos(a) * 50, y - 70 + Math.sin(a) * 31, 2, { color: 0x3a3a3e }, 0);
+  }
+  const kb = stand(x + 190, y - 30);
+  inked(kb, blob(0, -14, 15, 14, 9, 0.04, 16), 0x2a2a30, 2);
+  kb.poly(smooth([-10, -24, -12, -40, 12, -40, 10, -24], false, 1)).stroke({ width: 5, color: 0x2a2a30 });
   // The bench, and the bar racked over it, loaded heavy.
   const b = stand(x - 30, y + 30);
   for (const lx of [-50, 50]) inkLine(b, lx, 0, lx, -30, 6, { color: 0x4a4f58, tip: 1 }, 0);
@@ -396,6 +530,13 @@ function ironParadise(g: Graphics, stand: Stand, x: number, y: number): void {
 
 /** Havarti's birthplace: the hatch to the royal cellar thrown open, stairs into the dark, wheels of cheese and candles. */
 function royalCellar(g: Graphics, stand: Stand, x: number, y: number): void {
+  const random = rng(505);
+  // Old stones round the hatch, set in the mound of earth, the grass creeping in.
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
+    inked(g, smooth(shard(x + Math.cos(a) * 82, y + Math.sin(a) * 62, 13 + random() * 5, random, 6, 0.8), true, 1), i % 3 ? STONE : STONE_DARK, 1.8);
+  }
+  overgrow(g, shapeOutline({ type: 'circle', x, y, r: 100 }, 16, 0), random, 44, 0.6);
   // The hatch: the opening dark, stairs going down, its door flung back on the grass.
   inked(g, slab(x, y, 120, 90, 7, 3), 0x120c08, 3);
   for (let i = 0; i < 4; i++) g.rect(x - 52 + i * 6, y - 38 + i * 18, 104 - i * 12, 10).fill({ color: 0x5a4632, alpha: 0.9 - i * 0.2 });
@@ -433,11 +574,36 @@ function royalCellar(g: Graphics, stand: Stand, x: number, y: number): void {
   wheel(stackC, 0, 0);
   candle(stackC, 4, -22);
   for (const [cx, cy] of [[x - 75, y - 60], [x + 70, y - 60]]) candle(stand(cx, cy), 0, 0);
+  // Rind and crumbs trodden out along the path, and wax dripped in the grass.
+  for (let i = 0; i < 14; i++) {
+    const d = 140 + random() * 200;
+    const a = Math.PI * 0.6 + (random() - 0.5) * 1.2;
+    g.ellipse(x + Math.cos(a) * d, y - Math.sin(a) * d * 0.7, 4 + random() * 3, 3).fill({ color: random() < 0.5 ? 0xf3dc8a : 0xd9a52b, alpha: 0.85 });
+  }
 }
 
 /** The Dark Dabber's den: crates and barrels in a ring, an old mattress, a lantern, and a haze that never lifts. */
 function ratDen(g: Graphics, top: Graphics, stand: Stand, x: number, y: number): void {
+  const random = rng(606);
   inked(g, slab(x, y, 100, 60, 9, 4), 0x6a5a4a, 2.5); // the mattress
+  overgrow(g, slab(x, y, 100, 60, 9, 4), random, 36, 0.4);
+  // An old fire ring off to one side, black with ash, stones round it.
+  g.poly(blob(x - 205, y + 30, 46, 32, 7, 0.2, 16)).fill({ color: 0x1a1612, alpha: 0.75 });
+  g.poly(blob(x - 205, y + 30, 24, 16, 8, 0.3, 12)).fill({ color: 0x5a5650, alpha: 0.6 });
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    inked(g, smooth(shard(x - 205 + Math.cos(a) * 50, y + 30 + Math.sin(a) * 34, 9 + random() * 4, random, 5, 0.8), true, 1), STONE_DARK, 1.6);
+  }
+  // Litter blown out into the grass: husks, crushed cans, papers.
+  for (let i = 0; i < 26; i++) {
+    const a = random() * Math.PI * 2;
+    const d = 150 + random() * 120;
+    const lx = x + Math.cos(a) * d;
+    const ly = y + Math.sin(a) * d * 0.7;
+    if (i % 3 === 0) inked(g, [lx - 5, ly - 3, lx + 6, ly - 4, lx + 5, ly + 3, lx - 6, ly + 3], 0x9aa1ab, 1.2);
+    else if (i % 3 === 1) inked(g, [lx - 6, ly - 4, lx + 6, ly - 5, lx + 7, ly + 4, lx - 5, ly + 5], 0xe8e0cc, 1);
+    else g.ellipse(lx, ly, 3, 2).fill(0x3a2a1a);
+  }
   for (const [sx, sy] of [[x - 30, y - 10], [x + 15, y + 8]]) g.poly(blob(sx, sy, 10, 7, sx, 0.3, 10)).fill({ color: 0x4a3a2a, alpha: 0.8 }); // stains
   for (let i = 0; i < 18; i++) g.ellipse(x - 90 + ((i * 37) % 180), y + 50 + ((i * 23) % 30), 3, 2).fill(0x3a2a1a); // seed husks
   for (let i = 0; i < 6; i++) {

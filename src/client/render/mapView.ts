@@ -29,6 +29,7 @@ import {
   type StrokeStyle,
 } from './organic';
 import { paintProps, propSpots } from './props';
+import { loreGround } from './loreGround';
 
 // The map, painted once at load. Everything decorative is placed by a seeded random generator, so the
 // map looks the same for everyone and every match. Gameplay shapes (ground, walls, brush) come straight
@@ -363,6 +364,11 @@ function paintGround(map: MapData, myTeam: Team, t: Terrain, trees: Tree[], rock
   c.fill(map.camps.map((cp, i) => blob(cp.pos.x, cp.pos.y + 20, 130, 105, 60 + i, 0.25)), 0x4b3a26, 0.4, 12);
   c.fill(map.brush.map((b, i) => roughen(shapeOutline(b, 16, 16), 10, 1 / 50, 80 + i)), 0x0c220a, 0.65, 14);
   c.fill(map.brush.map((b, i) => roughen(shapeOutline(b, 16, 2), 10, 1 / 50, 80 + i)), PAL.brush, 1, 3);
+  // The story landmarks' worn ground and the footpaths out to them (see loreGround.ts).
+  const lore = loreGround(map);
+  for (const p of lore.patches) c.fill([p.pts], p.color, p.alpha, p.blur);
+  c.fill(lore.trails, 0x3a2e1e, 0.22, 26);
+  c.fill(lore.trails, 0x5a4a32, 0.55, 7);
 
   // Brush dabs over everything walkable (and a few beyond), each in a nudged copy of the color under it.
   // Lighter and darker dabs cluster, so the ground has passes of light rather than salt-and-pepper.
@@ -482,6 +488,7 @@ function inkRuns(g: Graphics, pts: Pts, keep: (x: number, y: number) => boolean,
 
 /** Grass tufts, flowers and mushrooms in the jungle; pebbles and cracks in the lanes. */
 function paintGroundDetail(g: Graphics, map: MapData, t: Terrain, random: () => number): void {
+  const lore = loreGround(map);
   for (let i = 0; i < 8000; i++) {
     const x = random() * map.width;
     const y = random() * map.height;
@@ -489,6 +496,12 @@ function paintGroundDetail(g: Graphics, map: MapData, t: Terrain, random: () => 
     if (t.distanceToGround(x, y) > 1) continue;
     const style = t.styleAt(x, y);
     if (!style || t.blocked(x, y) || t.inBrush(x, y)) continue;
+    // Worn paths and bare earth: the odd pebble, no flowers.
+    const worn = style === 'jungle' ? lore.wear(x, y) : 0;
+    if (worn > 0 && roll < worn) {
+      if (roll < worn * 0.4) pebble(g, x, y, random);
+      continue;
+    }
     if (style === 'jungle') {
       if (roll < 0.6) tuft(g, x, y, 9 + random() * 7, PAL.tuft, random);
       else if (roll < 0.72) flowers(g, x, y, random);

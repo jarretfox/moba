@@ -508,6 +508,12 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
   - Abilities, passives and items use emoji icons. Only emoji up to version 12 are used, so they show on Windows 10 too.
   - **Character:** champions fidget when they stand still (`FIDGETS` in `render/animation.ts`) and talk in synthesized gibberish voices on emotes, ultimates, big hits and deaths (`src/client/voices.ts`).
   - **Story landmarks** (`render/landmarks.ts`): Logan's broken Royal Cage, the Fallen King statue, the Warden's chains in the pit, Willmore's sewer (the Deep) and HunnaG's Rot; and round the pit, Master Paris's Le Petit Café, Dongmaster's Iron Paradise, Havarti's Royal Cellar and the Dark Dabber's Hotbox. They're decoration only (no collision), kept clear of brush.
+  - **They sit in the jungle, not on it** (`render/loreGround.ts`):
+    - The earth round each landmark is worn bare: a gravel terrace under the café, dust round the gym, a mound round the cellar, earth torn up where the king fell. The Deep and the Rot stain the river.
+    - Footpaths lead to the landmarks from the back doors, the camps and the mouths of the Warden's pit. Paths and bare earth are painted into the ground under the same brushwork as the lanes, so grass and flowers keep off them.
+    - Grass grows up over the edges of the slabs, tiles and mats. Ivy climbs the cage and the plinth.
+    - Each landmark's clutter spreads out into the grass: Logan's straw, chips of the king, the café's leaves, a geranium planter and a chalkboard, a tractor tire and a kettlebell by the gym, cheese rind along the cellar path, the Hotbox's litter and an old fire ring.
+    - The gym's mat is now scavenged floor tiles, one missing and one kicked askew.
   - **Play of the Game** (`src/client/highlights.ts`): the client keeps the last few seconds of snapshots, scores each play, and replays the best one before the scores.
 - **Sound is synthesized** with Web Audio (`src/client/audio.ts`): every effect is a few oscillators, filtered noise and envelopes, so there are no audio files either.
   - Which event makes which sound is in `src/client/sfx.ts`: attacks (swings, shots, Shootie zaps), hits on you or by you, deaths, casts, the big moments (slams, roars, digging, telegraph warnings), level-ups, gold, the kill feed, and a victory or defeat jingle.
