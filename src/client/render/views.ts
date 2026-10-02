@@ -1,3 +1,4 @@
+import { spriteArt } from './art';
 import { buildFor } from './costumes';
 import { CHUD_DEFS } from '../../shared/sim/chud';
 import { jackOLantern } from './hollow';
@@ -817,6 +818,8 @@ export class UnitView implements EntityView {
 
   /** Scrimby's Express Train: a silver subway car round him, headlights on, the yellow R on the front. */
   private train: Graphics | null = null;
+  /** The painted car, where there is one (art.ts: "scrimby:train", drawn side-on, front to the right). */
+  private trainPaint: Sprite | null = null;
   private drawTrain(s: EntitySnap, on: boolean): void {
     if (!this.train) {
       this.train = new Graphics();
@@ -824,12 +827,32 @@ export class UnitView implements EntityView {
     }
     const g = this.train.clear();
     if (this.rig) this.rig.root.visible = !on;
-    if (!on) return;
     const r = s.r;
     const L = r * 5.2;
     const H = r * 2.0;
     const c = Math.cos(s.f);
     const sn = Math.sin(s.f);
+    const art = spriteArt('scrimby:train');
+    if (art) {
+      if (!this.trainPaint) {
+        this.trainPaint = new Sprite(art.texture);
+        const [ax, ay] = art.spec.anchor ?? [0.5, 1];
+        this.trainPaint.anchor.set(ax, ay);
+        this.container.addChildAt(this.trainPaint, this.container.getChildIndex(this.train) + 1);
+      }
+      const t = this.trainPaint;
+      t.visible = on;
+      if (!on) return;
+      // Its shadow, then the car along its heading (squashed into the ground's perspective), turned
+      // round rather than upside down when it heads left.
+      g.ellipse(0, 0, L * 0.55, H * 0.35).fill({ color: 0x000000, alpha: 0.4 });
+      const k = art.spec.width / art.texture.width;
+      const left = c < 0;
+      t.scale.set(left ? -k : k, k);
+      t.rotation = left ? Math.atan2(-sn * 0.6, -c) : Math.atan2(sn * 0.6, c);
+      return;
+    }
+    if (!on) return;
     // Drawn side-on along its heading, squashed into the ground's perspective.
     const pt = (x: number, y: number): [number, number] => [x * c, x * sn * 0.6 + y];
     const box = (x0: number, x1: number, y0: number, y1: number) => [...pt(x0, y0), ...pt(x1, y0), ...pt(x1, y1), ...pt(x0, y1)];
@@ -1022,6 +1045,8 @@ export class ProjectileView implements EntityView {
   /** The projectile itself, up in the air at chest height; its shadow stays on the ground. */
   private readonly body = new Graphics();
   private readonly lift: number;
+  /** A painted one, where there is one (art.ts: "projectile:<look>"), flying over the drawn tail. */
+  private readonly paint: Sprite | null = null;
 
   constructor(s: EntitySnap, relation: Relation) {
     const g = this.body;
@@ -1030,6 +1055,16 @@ export class ProjectileView implements EntityView {
     this.container.addChild(g);
     g.y = -this.lift;
     drawTail(g, s.vis ?? 'arrow', relation);
+    const art = spriteArt(`projectile:${s.vis}`);
+    if (art) {
+      const p = (this.paint = new Sprite(art.texture));
+      const [ax, ay] = art.spec.anchor ?? [0.5, 0.5];
+      p.anchor.set(ax, ay);
+      p.scale.set(art.spec.width / art.texture.width);
+      p.y = -this.lift;
+      this.container.addChild(p);
+      return;
+    }
     switch (s.vis) {
       case 'shootie': {
         const color = relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
@@ -1144,6 +1179,7 @@ export class ProjectileView implements EntityView {
   update(s: EntitySnap): void {
     this.container.position.set(s.x, s.y);
     this.body.rotation = s.f;
+    if (this.paint) this.paint.rotation = s.f;
   }
 }
 

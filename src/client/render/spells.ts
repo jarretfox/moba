@@ -1,4 +1,5 @@
 import type { EntitySnap, GameEvent } from '../../shared/protocol';
+import { fxArt } from './art';
 import type { FxLayer } from './fx';
 import { iconTexture } from './icons';
 import type { Emit } from './particles';
@@ -76,6 +77,12 @@ function fumes(fx: FxLayer, x: number, y: number, r: number, n: number): void {
 
 /** Plays one fx event from the simulation. */
 export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
+  // A painted version of the effect, if there is one: over the drawn one, or instead of it (art.ts).
+  const book = fxArt(ev.fx);
+  if (book) {
+    fx.flipbook(ev.x, ev.y, book, book.spec.absolute ? book.spec.size : book.spec.size * (ev.r ?? 100));
+    if (book.spec.replace) return;
+  }
   const p = fx.particles;
   const { x, y } = ev;
   const x2 = ev.x2 ?? x;

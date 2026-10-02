@@ -46,7 +46,11 @@ export class Announcer {
   private voice: SpeechSynthesisVoice | null = null;
   private readonly synth: SpeechSynthesis | null = typeof speechSynthesis === 'undefined' ? null : speechSynthesis;
 
-  constructor(private readonly muted: () => boolean) {
+  /** `recorded` plays a recording of a line if there is one, saying how long it runs (else null: the browser's voice says it). */
+  constructor(
+    private readonly muted: () => boolean,
+    private readonly recorded: (text: string) => number | null = () => null,
+  ) {
     const synth = this.synth;
     if (!synth) return;
     const choose = () => {
@@ -99,6 +103,16 @@ export class Announcer {
     let line: Line | undefined;
     while ((line = this.queue.shift()) && now - line.at > STALE) line = undefined;
     if (!line) return;
+    // A recording of the line, if there is one.
+    const runs = this.recorded(line.text);
+    if (runs !== null) {
+      this.speaking = true;
+      setTimeout(() => {
+        this.speaking = false;
+        this.next();
+      }, runs * 1000 + 150);
+      return;
+    }
     const u = new SpeechSynthesisUtterance(line.text);
     if (this.voice) u.voice = this.voice;
     u.lang = this.voice?.lang ?? 'en-GB';

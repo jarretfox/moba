@@ -1,3 +1,4 @@
+import { loadArt } from './render/art';
 import { MAP, type MapData } from '../shared/map/mapData';
 import { MAPS } from '../shared/map/maps';
 import { Application } from 'pixi.js';
@@ -67,6 +68,13 @@ async function boot(): Promise<void> {
         const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/png'));
         return blob ? (await fetch(`__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob })).text() : 'no picture';
       },
+    });
+  }
+  // Painted art, where there is some, before the first figure (and portrait) is drawn.
+  await loadArt();
+  if (import.meta.env.DEV) {
+    Object.assign(window, {
+      bakeArt: async (id: ChampionId, skin = 0) => (await import('./render/artBake')).bakeArt(app.renderer, id, skin),
     });
   }
   Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));

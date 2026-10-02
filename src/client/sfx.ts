@@ -10,6 +10,11 @@ export interface SoundCue {
   name: SoundName;
   at?: Vec2;
   gain: number;
+  /**
+   * A more particular recording to look for first (samples.ts), for sounds the synth shares: one ability's
+   * cast ("cast:scrimby:3"), one effect ("fx:steamBurst"). Without one, the sound's own recording, if any.
+   */
+  take?: string;
 }
 
 /** Each champion's basic attack, and the signature under their casts. */
@@ -141,7 +146,7 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
     }
     case 'cast': {
       const src = ents.get(ev.src);
-      return src ? { name: src.champ ? CAST_SOUND[src.champ] : 'cast', at: { x: src.x, y: src.y }, gain: src.id === myId ? 0.5 : 0.35 } : null;
+      return src ? { name: src.champ ? CAST_SOUND[src.champ] : 'cast', at: { x: src.x, y: src.y }, gain: src.id === myId ? 0.5 : 0.35, take: src.champ ? `cast:${src.champ}:${ev.slot}` : undefined } : null;
     }
     case 'castFail':
       return ev.src === myId ? { name: 'deny', gain: 0.5 } : null;
@@ -153,7 +158,7 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       return { name: 'kill', gain: 0.5 };
     case 'fx': {
       const s = FX_SOUNDS[ev.fx];
-      return s ? { name: s[0], at: { x: ev.x, y: ev.y }, gain: s[1] } : null;
+      return s ? { name: s[0], at: { x: ev.x, y: ev.y }, gain: s[1], take: `fx:${ev.fx}` } : null;
     }
     case 'zap':
       return { name: 'tower', at: { x: ev.x2, y: ev.y2 }, gain: 0.9 };

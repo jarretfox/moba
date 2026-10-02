@@ -98,7 +98,8 @@ describe('sound cues', () => {
   });
 
   it('give the big moments their own sound, where they happen', () => {
-    expect(cueFor({ e: 'fx', fx: 'wardenSlam', x: 10, y: 20 }, ents, ME)).toEqual({ name: 'wardenSlam', at: { x: 10, y: 20 }, gain: 1 });
+    // (Each also names its own recording to look for first.)
+    expect(cueFor({ e: 'fx', fx: 'wardenSlam', x: 10, y: 20 }, ents, ME)).toEqual({ name: 'wardenSlam', at: { x: 10, y: 20 }, gain: 1, take: 'fx:wardenSlam' });
     expect(cueFor({ e: 'fx', fx: 'roar', x: 0, y: 0 }, ents, ME)).toMatchObject({ name: 'roar' });
     expect(cueFor({ e: 'fx', fx: 'burrow', x: 0, y: 0 }, ents, ME)).toMatchObject({ name: 'dig' });
     expect(cueFor({ e: 'fx', fx: 'deepMark', x: 0, y: 0 }, ents, ME)).toMatchObject({ name: 'warn' });

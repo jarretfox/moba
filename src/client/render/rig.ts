@@ -1,5 +1,6 @@
-import { Container, Graphics, GraphicsContext } from 'pixi.js';
+import { Container, Graphics, GraphicsContext, Sprite } from 'pixi.js';
 import type { ItemId } from '../../shared/items';
+import type { PartArt } from './art';
 import { drawGear, type GearLayers } from './gear';
 import { inkOf, shade, type Pts } from './organic';
 
@@ -99,6 +100,8 @@ export interface Build {
   streak?: number;
   /** How they walk: leg swing (radians), bounce (in r), forward lean, knee bend. */
   gait?: { swing?: number; bounce?: number; lean?: number; knee?: number; arm?: number };
+  /** Painted parts to show instead of the drawn ones, where there are some (see art.ts). */
+  art?: PartArt;
 }
 
 /** Anything upright the unit view can pose: a rigged figure (rig.ts) or a simpler creature (beasts.ts). */
@@ -227,7 +230,7 @@ function spring(s: Spring, target: number, dt: number, stiff = 60, damp = 7): vo
 
 /** A piece knocked loose when they die: falls (or floats), bounces once, settles. */
 interface Loose {
-  g: Graphics;
+  g: Container;
   vx: number;
   vy: number;
   spin: number;
@@ -272,6 +275,9 @@ export class Rig implements Figure {
   /** What they've bought, worn on the figure (made the first time they buy something). */
   private gear: GearLayers | null = null;
   private gearKey = '';
+  /** Painted parts, each following the drawn part it stands in for (which is still posed, just not shown). */
+  private readonly painted: { part: PartName; sprite: Sprite; origin: readonly [number, number] }[] = [];
+  private pxPerR = 1;
 
   /**
    * `share` names a look many units have in common (a Chud of one team and size): those draw their parts
@@ -300,6 +306,7 @@ export class Rig implements Figure {
     }
     if (build.dangle) this.part.dangle.pivot.set(build.dangle.at[0] * r, build.dangle.at[1] * r);
     if (build.backSway) this.part.back.pivot.set(build.backSway.at[0] * r, build.backSway.at[1] * r);
+    if (build.art) this.usePaint(build.art);
     if (cached) return;
     if (share) SHARED.set(share, made);
     const { sleeve, hand, leg, boot: bootColor } = build.colors;
@@ -505,8 +512,43 @@ export class Rig implements Figure {
       follow(this.gear.footF, this.part.frontFoot);
       follow(this.gear.footB, this.part.backFoot);
     }
+    this.followPaint();
     this.updateFace(input, dt, dead > 0, pose);
     this.updateLoose(dead, dt);
+  }
+
+  /** Puts a painted image over each part it has one for; the drawn part is still posed, just not shown. */
+  private usePaint(art: PartArt): void {
+    this.pxPerR = art.pxPerR;
+    for (const [name, a] of Object.entries(art.parts) as [PartName, NonNullable<PartArt['parts'][PartName]>][]) {
+      const part = this.part[name];
+      if (!part) continue;
+      const sprite = new Sprite(a.texture);
+      this.z.addChildAt(sprite, this.z.getChildIndex(part) + 1);
+      part.renderable = false;
+      this.painted.push({ part: name, sprite, origin: a.origin });
+    }
+    if (art.face === false && this.face) this.face.root.renderable = false;
+    this.followPaint();
+  }
+
+  /**
+   * Each painted image takes its part's pose. A part maps its own point L to position + R·S·(L − pivot);
+   * the image's pixel P is the part's point origin·r + P·r/pxPerR, so the image gets the same position and
+   * rotation, scale S·r/pxPerR, and its pivot (in pixels) at (pivot/r − origin)·pxPerR.
+   */
+  private followPaint(): void {
+    const k = this.r / this.pxPerR;
+    for (const { part, sprite, origin } of this.painted) {
+      const g = this.part[part];
+      sprite.position.copyFrom(g.position);
+      sprite.rotation = g.rotation;
+      sprite.scale.set(g.scale.x * k, g.scale.y * k);
+      sprite.pivot.set((g.pivot.x / this.r - origin[0]) * this.pxPerR, (g.pivot.y / this.r - origin[1]) * this.pxPerR);
+      sprite.visible = g.visible;
+      sprite.alpha = g.alpha;
+      sprite.tint = g.tint;
+    }
   }
 
   /**
@@ -580,10 +622,12 @@ export class Rig implements Figure {
     if (dead > 0 && !this.loose.length && (this.build.weapon || this.build.offhand || this.build.dangle)) {
       const knock = (part: Graphics, floats: boolean, vx: number, vy: number, spin: number) => {
         this.z.updateLocalTransform();
-        part.updateLocalTransform();
-        const g = new Graphics(part.context);
+        const paint = this.painted.find((p) => this.part[p.part] === part)?.sprite;
+        const shown = paint ?? part;
+        shown.updateLocalTransform();
+        const g = paint ? new Sprite(paint.texture) : new Graphics(part.context);
         g.tint = part.tint;
-        g.setFromMatrix(this.z.localTransform.clone().append(part.localTransform));
+        g.setFromMatrix(this.z.localTransform.clone().append(shown.localTransform));
         this.root.addChild(g);
         part.visible = false;
         this.loose.push({ g, vx, vy, spin, floats, age: 0, bounced: false, ground: (Math.random() - 0.5) * 0.2 * this.r });

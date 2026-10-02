@@ -1,5 +1,6 @@
 import type { Graphics } from 'pixi.js';
 import type { ChampionId } from '../../shared/champions/types';
+import { partArt } from './art';
 import { BUILDS } from './builds';
 import { blob, inkLine, inked, shade, smooth, type Pts } from './organic';
 import type { Build, Dangle, Palette } from './rig';
@@ -282,8 +283,24 @@ export const COSTUMES: Record<ChampionId, Costume> = {
 
 const costumed = new Map<ChampionId, Build>();
 
+/**
+ * The figure for a champion's look: its build, with the Halloween costume over it for the fourth look,
+ * and its painted parts where it has some (`drawn` leaves those off: the art templates are made from it).
+ */
+export function buildFor(id: ChampionId, skin = 0, drawn = false): Build {
+  const build = drawnBuild(id, skin);
+  const art = drawn ? undefined : partArt(id, skin);
+  if (!art) return build;
+  const key = `${id}:${skin}`;
+  let b = painted.get(key);
+  if (!b || b.art !== art) painted.set(key, (b = { ...build, art }));
+  return b;
+}
+
+const painted = new Map<string, Build>();
+
 /** The build to draw a champion in a look: the costume's pieces on top of the usual figure for the Halloween one. */
-export function buildFor(id: ChampionId, skin = 0): Build {
+function drawnBuild(id: ChampionId, skin: number): Build {
   const base = BUILDS[id];
   if (skin !== COSTUME_SKIN) return base;
   let b = costumed.get(id);

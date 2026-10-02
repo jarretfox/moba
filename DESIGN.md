@@ -521,6 +521,17 @@ Every champion's fourth look is a Halloween costume (`render/costumes.ts`). It's
 
 ## Art and sound
 
+### Painted art and recorded sound (the hybrid route) 🚧 pipelines in, assets coming
+
+Everything below is drawn and synthesized in code. Any piece can now be swapped for a painted image or a recording, one at a time, with the code version kept for anything that has none. The specs are in `docs/art-bible.md`; Scrimby is the first champion getting the full treatment (`docs/scrimby-assets.md`).
+- **Painted figures** (`render/art.ts`): a champion look can have an image per body part, pinned at the part's joint, so the rig poses the painting exactly as it posed the drawing: walking, swinging, flinching, dying (the cap and cup fly off as paintings). `buildFor` hands them to every place the champion appears: in a match, champion select, portraits, the podium.
+- **Templates:** `bakeArt('scrimby', 0)` in a dev build's console writes each part as drawn now, at 320 px per r, cut out where the rig pins it, plus the whole figure, a guide with the joints marked and the manifest (`render/artBake.ts`, saved through a dev-only `/__save` endpoint). Scrimby's are in `art-templates/scrimby/0/`.
+- **Painted effects:** any ability effect can play a flipbook (a sheet of frames) over the code effect or instead of it (`FxLayer.flipbook`); glows painted on black play as added light.
+- **Painted sprites:** any projectile (`projectile:<look>`) and Scrimby's subway car (`scrimby:train`, turned to his heading, mirrored heading left).
+- **Recordings** (`samples.ts`): any sound can have takes (never the same twice running), or narrower ones for one ability's cast (`cast:scrimby:3`) or one effect (`fx:steamBurst`). Champions' voice lines are matched to the words in their bubbles (a take per line, in `emotes.ts` order; grumbles in `failLines.ts` order), and the announcer's to its lines' text, falling back to the mumble and the browser's voice.
+- `public/art/index.json` and `public/audio/index.json` list what exists; nothing else is fetched, and both are empty until the first assets arrive.
+
+
 - **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.
   - **The style is painterly and hand-inked** (chosen 2026-10-01 to get away from flat, perfectly round shapes): soft painted ground, and everything with an edge outlined in wobbly ink lines that swell and taper, darker shades of the fill rather than black, with hatching and stipple for shade. Light comes from the top-left. The toolkit is `render/organic.ts`: seeded noise, roughened outlines, ink strokes, hatching.
   - **The map** (`src/client/render/mapView.ts`) is painted once at load from MapData, with decoration placed by a seeded random generator so it looks the same for everyone:

@@ -7,7 +7,7 @@ import { NavGrid } from '../shared/map/navGrid';
 import { Pathfinder } from '../shared/map/pathfind';
 import { nextSkill } from '../shared/bots/profiles';
 import { SelfPrediction } from './prediction';
-import { failLine } from './failLines';
+import { failLine, failLineTake } from './failLines';
 import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
 import { dist, segmentDistance, type Vec2 } from '../shared/math';
@@ -146,7 +146,7 @@ export class GameClient {
   private readonly hud: Hud;
   private readonly sound = getSound();
   /** The announcer's voice for the big moments. */
-  private readonly announcer = new Announcer(() => this.sound.isMuted);
+  private readonly announcer = new Announcer(() => this.sound.isMuted, (text) => this.sound.announce(text));
   /** Things the announcer has already said this match. */
   private readonly announced = new Set<string>();
   private wardenWasUp = false;
@@ -1705,15 +1705,18 @@ export class GameClient {
     this.spokeAt.set(u.id, t);
     const halfView = this.app.screen.width / 2 / this.camera.zoom;
     const where = spatialize(u.x - this.camera.x, u.y - this.camera.y, halfView);
-    this.sound.speak(utterance(u.champ, moment, n), (u.id === this.myId ? 0.75 : 0.6) * where.gain, where.pan, where.far);
+    const gain = (u.id === this.myId ? 0.75 : 0.6) * where.gain;
+    // Their recorded line, if there is one; otherwise the mumble.
+    if (this.sound.say(u.champ, moment, n, gain * 1.3, where.pan, where.far)) return;
+    this.sound.speak(utterance(u.champ, moment, n), gain, where.pan, where.far);
   }
 
   /** Plays a cue where it happened: quieter, duller and wetter the further it is from the middle of the screen, panned left or right. */
   private playCue(cue: SoundCue): void {
-    if (!cue.at) return this.sound.play(cue.name, cue.gain);
+    if (!cue.at) return this.sound.play(cue.name, cue.gain, 0, 0, cue.take);
     const halfView = this.app.screen.width / 2 / this.camera.zoom;
     const where = spatialize(cue.at.x - this.camera.x, cue.at.y - this.camera.y, halfView);
-    this.sound.play(cue.name, cue.gain * where.gain, where.pan, where.far);
+    this.sound.play(cue.name, cue.gain * where.gain, where.pan, where.far, cue.take);
   }
 
   /**
@@ -2124,7 +2127,8 @@ export class GameClient {
     if (t - this.grumbledAt < 2.5) return;
     this.grumbledAt = t;
     this.bubbles.say(me.id, failLine(me.champ, why, this.grumbles), 0xe8c46a, true);
-    this.speak(me, 'grumble', this.grumbles++, true);
+    // (A recorded grumble is picked to say the same words: failLineTake.)
+    this.speak(me, 'grumble', failLineTake(me.champ, why, this.grumbles++), true);
   }
 
   private castAimed(): void {

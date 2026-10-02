@@ -76,3 +76,17 @@ export function failLine(champ: ChampionId, why: CastFail, n: number): string {
   const lines = LINES[champ][why];
   return lines[Math.abs(n) % lines.length];
 }
+
+/**
+ * Which recorded grumble says that line: their lines counted through in the order they're written here
+ * (out of mana, then on cooldown, then nothing to aim at), so the voice says what the bubble does.
+ */
+export function failLineTake(champ: ChampionId, why: CastFail, n: number): number {
+  const all = LINES[champ];
+  let before = 0;
+  for (const w of Object.keys(all) as CastFail[]) {
+    if (w === why) break;
+    before += all[w].length;
+  }
+  return before + (Math.abs(n) % all[why].length);
+}

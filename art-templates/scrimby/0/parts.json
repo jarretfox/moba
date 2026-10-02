@@ -1,0 +1,117 @@
+{
+  "pxPerR": 320,
+  "parts": {
+    "backUpper": {
+      "file": "backUpper.png",
+      "origin": [
+        -0.286,
+        -0.2894
+      ]
+    },
+    "backFore": {
+      "file": "backFore.png",
+      "origin": [
+        -0.2662,
+        -0.2691
+      ]
+    },
+    "backHand": {
+      "file": "backHand.png",
+      "origin": [
+        -0.2412,
+        -0.2612
+      ]
+    },
+    "backThigh": {
+      "file": "backThigh.png",
+      "origin": [
+        -0.3006,
+        -0.3044
+      ]
+    },
+    "backShin": {
+      "file": "backShin.png",
+      "origin": [
+        -0.2787,
+        -0.2819
+      ]
+    },
+    "backFoot": {
+      "file": "backFoot.png",
+      "origin": [
+        -0.2512,
+        -0.36
+      ]
+    },
+    "frontThigh": {
+      "file": "frontThigh.png",
+      "origin": [
+        -0.3006,
+        -0.3044
+      ]
+    },
+    "frontShin": {
+      "file": "frontShin.png",
+      "origin": [
+        -0.2787,
+        -0.2819
+      ]
+    },
+    "frontFoot": {
+      "file": "frontFoot.png",
+      "origin": [
+        -0.2512,
+        -0.36
+      ]
+    },
+    "torso": {
+      "file": "torso.png",
+      "origin": [
+        -0.5527,
+        -1.0381
+      ]
+    },
+    "head": {
+      "file": "head.png",
+      "origin": [
+        -0.3471,
+        -0.8117
+      ]
+    },
+    "dangle": {
+      "file": "dangle.png",
+      "origin": [
+        -0.4006,
+        -1.01
+      ]
+    },
+    "weapon": {
+      "file": "weapon.png",
+      "origin": [
+        -0.1434,
+        -0.5454
+      ]
+    },
+    "frontUpper": {
+      "file": "frontUpper.png",
+      "origin": [
+        -0.286,
+        -0.2894
+      ]
+    },
+    "frontFore": {
+      "file": "frontFore.png",
+      "origin": [
+        -0.2662,
+        -0.2691
+      ]
+    },
+    "frontHand": {
+      "file": "frontHand.png",
+      "origin": [
+        -0.2412,
+        -0.2612
+      ]
+    }
+  }
+}

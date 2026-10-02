@@ -1,5 +1,5 @@
-// Sound effects, synthesized on the fly with Web Audio: no files to load or license, and every sound is
-// a few lines of oscillators, noise and envelopes below. Music and the ambient soundscape are in music.ts;
+// Sound effects, synthesized on the fly with Web Audio: every sound is a few lines of oscillators, noise
+// and envelopes below, unless there's a recording of it (samples.ts), which plays instead. Music and the ambient soundscape are in music.ts;
 // the plain arithmetic of the mix (buses, distance, the crowd limit, the room) is in mix.ts.
 //
 // The desk: effects, interface and voices each have a bus; the music and the ambience share a "bed" that
@@ -9,8 +9,10 @@
 
 import { Music, Soundscape } from './music';
 import { type Bus, RateLimiter, type SoundInfo, busLevels, distanceCues, impulseResponse, pitchJitter, resolveInfo } from './mix';
+import { SampleBank } from './samples';
 import { onSettings, settings } from './settings';
-import type { Syllable } from './voices';
+import type { ChampionId } from '../shared/champions/types';
+import type { Syllable, VoiceMoment } from './voices';
 import type { Weather } from '../shared/weather';
 
 export type SoundName =
@@ -187,6 +189,8 @@ export class Sound {
   private reverb: ConvolverNode | null = null;
   private noise: AudioBuffer | null = null;
   private readonly limiter = new RateLimiter();
+  /** Recordings standing in for synthesized sounds and voices, where there are some. */
+  private readonly samples = new SampleBank();
 
   constructor() {
     // Browsers only allow audio after the player has interacted with the page.
@@ -306,7 +310,7 @@ export class Sound {
    * Play a sound at `gain` (0..1), panned left/right by `pan` (-1..1), from `far` away (0 right here, 1 at
    * the edge of hearing: duller and wetter the further).
    */
-  play(name: SoundName, gain = 1, pan = 0, far = 0): void {
+  play(name: SoundName, gain = 1, pan = 0, far = 0, take?: string): void {
     if (this.muted || gain * settings.effects < 0.03) return;
     const ctx = this.ensure();
     if (!ctx || ctx.state !== 'running') return;
@@ -318,7 +322,38 @@ export class Sound {
     // The big ones push the music and ambience down for a moment, when they're close.
     if (info.duck > 0) this.duck(info.duck * Math.min(1, gain) * (1 - far));
     // Effects start a hair late at random, so three Chuds swinging in the same frame don't land as one flat chord.
-    recipe.play(v, now + (info.bus === 'fx' ? Math.random() * 0.012 : 0));
+    const at = now + (info.bus === 'fx' ? Math.random() * 0.012 : 0);
+    // A recording of it, if there is one (the particular one first; a different take each time); otherwise
+    // it's synthesized.
+    const rec = (take ? this.samples.sound(take) : null) ?? this.samples.sound(name);
+    if (rec) v.sample(rec.buffer, at, rec.gain);
+    else recipe.play(v, at);
+  }
+
+  /**
+   * A champion's recorded line for the moment, the `n`th (the one their bubble shows). False if there's no
+   * recording, and the game has them mumble instead (speak).
+   */
+  say(champ: ChampionId, moment: VoiceMoment, n: number, gain = 1, pan = 0, far = 0): boolean {
+    const buffer = this.samples.voice(champ, moment, n);
+    if (!buffer) return false;
+    if (this.muted || gain * settings.effects < 0.03) return true;
+    const ctx = this.ensure();
+    if (!ctx || ctx.state !== 'running') return true;
+    const now = ctx.currentTime;
+    if (!this.limiter.allow('speak', now, 0)) return true;
+    this.route('voice', gain, pan, far, 0.15, 1).sample(buffer, now);
+    return true;
+  }
+
+  /** The announcer's recording of `text`, if there is one: plays it and says how long it runs (seconds). */
+  announce(text: string, gain = 1): number | null {
+    const buffer = this.samples.announcer(text);
+    if (!buffer) return null;
+    const ctx = this.ensure();
+    if (!ctx || ctx.state !== 'running' || this.muted) return null;
+    this.route('voice', gain, 0, 0, 0.1, 1).sample(buffer, ctx.currentTime);
+    return buffer.duration;
   }
 
   /** One sound's path to its bus: gain, the dullness of distance, pan, and a send into the hall. */
@@ -402,6 +437,7 @@ export class Sound {
       this.music.setHaunted(this.haunted);
       this.scape.setHaunted(this.haunted);
       this.applyVolumes();
+      void this.samples.load(ctx);
     }
     if (this.ctx.state === 'suspended') void this.ctx.resume();
     return this.ctx;
@@ -423,6 +459,17 @@ class Voice {
     private readonly noiseBuf: AudioBuffer,
     private readonly rate = 1,
   ) {}
+
+  /** A recording, at this voice's pitch wobble. */
+  sample(buffer: AudioBuffer, at: number, gain = 1): void {
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    src.playbackRate.value = this.rate;
+    const g = this.ctx.createGain();
+    g.gain.value = gain;
+    src.connect(g).connect(this.out);
+    src.start(at);
+  }
 
   /** A pitched tone gliding from f0 to f1 over `dur`, fading out; `cutoff` lowpasses it (saws and squares are harsh bare). */
   tone(at: number, type: OscillatorType, f0: number, f1: number, dur: number, vol: number, attack = 0.005, cutoff?: number): void {

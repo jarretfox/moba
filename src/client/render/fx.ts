@@ -1,5 +1,6 @@
 import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import type { DamageType } from '../../shared/protocol';
+import type { Flipbook } from './art';
 import type { Light } from './lighting';
 import { arc } from './draw';
 import { inkOf, inkStroke, noise2 } from './organic';
@@ -902,6 +903,19 @@ export class FxLayer {
         }
       }
     });
+  }
+
+  /** A painted effect (see art.ts): its frames played once at (x, y), `width` world units across. */
+  flipbook(x: number, y: number, book: Flipbook, width: number): void {
+    const { spec, frames } = book;
+    const sprite = new Sprite(frames[0]);
+    const [ax, ay] = spec.anchor ?? [0.5, 1];
+    sprite.anchor.set(ax, ay);
+    sprite.scale.set(width / frames[0].width);
+    sprite.position.set(x, y);
+    if (spec.glow) sprite.blendMode = 'add';
+    // The frames are shared by every playing of it: only the sprite goes when it's done.
+    this.add(sprite, frames.length / (spec.fps ?? 24), (t) => (sprite.texture = frames[Math.min(frames.length - 1, Math.floor(t * frames.length))]), spec.layer ?? 'mid');
   }
 
   private add(obj: Container, life: number, tick: (t: number) => void, layer: Layer = 'mid'): void {
