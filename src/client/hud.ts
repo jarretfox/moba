@@ -70,6 +70,15 @@ const BUFF_TEXT: Record<BuffKind, string> = {
 
 const HELP_KEY = 'moba.helpFolded';
 
+/** How the last-hit drill rates you, once there's been something to rate. */
+export function drillGrade(pct: number | null, chances: number): string {
+  if (pct === null || chances < 3) return 'Finish off enemy Chuds as they die: right-click when the bar lights up.';
+  if (pct >= 90) return 'Chud Reaper.';
+  if (pct >= 75) return 'Sharp. Very sharp.';
+  if (pct >= 50) return 'Getting there.';
+  return 'The Chuds are laughing at you.';
+}
+
 /** Seconds a kill-feed line stays up. */
 const FEED_TIME = 7;
 
@@ -94,6 +103,9 @@ export class Hud {
   /** Your stats right now, for working out the numbers in tooltips. */
   private liveStats: LiveStats = { ad: 0, ap: 0, bad: 0, bhp: 0, mhp: 0 };
   private haste = 0;
+  /** Practice Range: last hits so far (to pop the number when it goes up). */
+  private drillHits = 0;
+  private readonly drillBox: HTMLElement;
   /** The next item in your build, when you're at the shop and can afford it (the chip buys it). */
   private nextBuyReady: ItemId | null = null;
   private readonly debug: HTMLElement;
@@ -183,6 +195,7 @@ export class Hud {
       <div class="scoreboard" hidden></div>
       <div class="gameover" hidden><div class="gameover-rays"></div><div class="gameover-title"></div><div class="gameover-sub"></div><div class="gameover-scores"></div><div class="gameover-actions"><button class="gameover-copy" hidden>Copy match report</button><button class="gameover-rematch">Rematch</button><button class="gameover-swap" hidden>Rematch, swap sides</button><button class="gameover-again">Back to menu</button></div><div class="gameover-votes"></div></div>
       <div class="buffs"></div>
+      <div class="drill" hidden><div class="drill-title">Last-hit drill</div><div class="drill-nums"><b class="drill-hits">0</b> hit · <b class="drill-missed">0</b> missed · <b class="drill-pct">–</b></div><div class="drill-grade"></div></div>
       <div class="bar" hidden>
         <div class="portrait"><img class="face" alt="" /><span class="initial"></span><span class="stacks"></span><span class="lvl">1</span></div>
         <div class="center">
@@ -203,6 +216,7 @@ export class Hud {
       <div class="tooltip" hidden></div>`;
     const q = (sel: string, parent: ParentNode = root) => parent.querySelector(sel) as HTMLElement;
     this.debug = q('.debug');
+    this.drillBox = q('.drill');
     try {
       if (localStorage.getItem(HELP_KEY) === '1') q('.help').classList.add('folded');
     } catch {
@@ -357,6 +371,7 @@ export class Hud {
       this.set(parts.cd, 'background', cd > 0 ? `conic-gradient(rgba(0, 0, 0, 0.7) ${(cd / active!.cooldown) * 360}deg, transparent 0)` : '');
     });
     this.shop.update(me);
+    this.updateDrill(me);
     this.updateNextBuy(me);
     this.updateBuffs(me);
     this.set(this.stacks, 'text', me.passiveStacks ? String(me.passiveStacks) : '');
@@ -538,6 +553,23 @@ export class Hud {
    * The next buy, over the purse: what your recommended build wants next (or a part of it you can afford),
    * how much more gold it needs, and a glow once you can buy it. Click it to open the shop.
    */
+  /** Practice Range: last hits against chances, and a grade. */
+  private updateDrill(me: MeSnap): void {
+    const d = me.drill;
+    const box = this.drillBox;
+    if (box.hidden === !!d) box.hidden = !d;
+    if (!d) return;
+    const q = (sel: string) => box.querySelector(sel) as HTMLElement;
+    if (d.hits > this.drillHits) this.pop(q('.drill-hits'), 'bump');
+    this.drillHits = d.hits;
+    const chances = d.hits + d.missed;
+    const pct = chances ? Math.round((d.hits / chances) * 100) : null;
+    this.set(q('.drill-hits'), 'text', String(d.hits));
+    this.set(q('.drill-missed'), 'text', String(d.missed));
+    this.set(q('.drill-pct'), 'text', pct === null ? '–' : `${pct}%`);
+    this.set(q('.drill-grade'), 'text', drillGrade(pct, chances));
+  }
+
   private updateNextBuy(me: MeSnap): void {
     const nb = this.nextBuy;
     const { next, toward } = this.info ? suggest(PROFILES[this.info.id].build, me.items, me.gold) : { next: null, toward: null };

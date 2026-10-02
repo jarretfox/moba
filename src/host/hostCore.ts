@@ -35,6 +35,9 @@ function newToken(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
 }
 
+/** Practice Range: an enemy Chud dying this close to you was yours to last-hit. */
+export const DRILL_REACH = 800;
+
 /** Remote players get an update every this many ticks (15 a second); events in between are batched, never dropped. */
 const REMOTE_SEND_EVERY = 2;
 /** Refresh the scoreboard this often (ticks). */
@@ -69,6 +72,8 @@ export class HostCore {
   private readonly tokens = new Map<string, string>();
   /** Friends whose connection dropped mid-match, by their rejoin token: a bot keeps their champion warm. */
   private readonly away = new Map<string, { unitId: number; team: PlayerTeam; lobby: LobbyPlayer }>();
+  /** Practice Range: each champion's last hits when the drill started, and the Chud deaths near them since. */
+  private drill: Map<number, { base: number; chances: number }> | null = null;
   /** What every welcome says about the match (the weather, the map, the clock), for rejoins. */
   private look: Omit<Extract<HostMessage, { t: 'welcome' }>, 't' | 'unitId' | 'team'> = {};
   private waves: WaveSpawner;
@@ -332,8 +337,10 @@ export class HostCore {
       if (token) this.tokens.set(p.id, token);
       this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, ...this.look, ...(token ? { rejoin: token } : {}) });
     }
+    this.drill = null;
     if (mode === 'practice') {
       setupPracticeRange(this.world);
+      this.drill = new Map([...this.players.values()].map((p) => [p.unitId, { base: 0, chances: 0 }]));
     } else {
       for (const team of [TEAM.blue, TEAM.red] as const) {
         const taken = everyone.filter((p) => p.team === team).map((p) => p.champion!);
@@ -347,6 +354,19 @@ export class HostCore {
       }
     }
     this.broadcastLobby();
+  }
+
+  /** Practice Range: every enemy Chud that died close to a player was a chance at a last hit. */
+  private countLastHitChances(ev: readonly GameEvent[]): void {
+    for (const e of ev) {
+      if (e.e !== 'death') continue;
+      const chud = this.world.getUnit(e.id);
+      if (chud?.kind !== 'chud') continue;
+      for (const [unitId, d] of this.drill!) {
+        const champ = this.world.getUnit(unitId);
+        if (champ && !champ.dead && champ.team !== chud.team && Math.hypot(champ.pos.x - chud.pos.x, champ.pos.y - chud.pos.y) <= DRILL_REACH) d.chances++;
+      }
+    }
   }
 
   private humansOn(team: PlayerTeam): number {
@@ -383,6 +403,7 @@ export class HostCore {
     this.finalSent = this.world.winner !== null;
 
     const ev = this.world.drainEvents();
+    if (this.drill) this.countLastHitChances(ev);
     const sendRemote = this.world.tick % REMOTE_SEND_EVERY === 0 || this.world.winner !== null;
     const views = new Map<PlayerTeam, EntitySnap[]>();
     const warden = this.lair?.status(this.world);
@@ -394,12 +415,14 @@ export class HostCore {
       if (p.remote && !sendRemote) continue;
       if (!views.has(p.team)) views.set(p.team, this.world.visibleTo(p.team));
       const me = this.world.getUnit(p.unitId);
+      const drill = this.drill?.get(p.unitId);
+      const hits = drill && me instanceof Champion ? me.score.cs - drill.base : 0;
       const snap = p.encoder.encode({
         tick: this.world.tick,
         time: this.world.time,
         ents: views.get(p.team)!,
         ev: p.pendingEv,
-        me: me instanceof Champion ? me.meSnapshot(this.world) : undefined,
+        me: me instanceof Champion ? { ...me.meSnapshot(this.world), ...(drill ? { drill: { hits, missed: Math.max(0, drill.chances - hits) } } : {}) } : undefined,
         nextWave: Math.ceil(this.waves.secondsUntilNextWave(this.world)),
         winner: this.world.winner ?? undefined,
         warden,

@@ -444,6 +444,8 @@ export interface MeSnap {
   id: number;
   /** The ability waiting to go off: pressed a moment early, or walking into reach to cast it. */
   queued?: Slot;
+  /** Practice Range: your last hits on enemy Chuds, and the ones that died near you to something else. */
+  drill?: { hits: number; missed: number };
   abilities: AbilitySnap[];
   passiveStacks: number;
   empowered: boolean;
