@@ -315,7 +315,9 @@ export class GameClient {
     this.emissive.addChild(this.nightLife.glow, ...this.wicks.map((w) => w.glow), this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
-    this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35 })];
+    // The blend has to be on the blur too: a filtered sprite is laid down with its filter's blend, and the
+    // default ("normal") let dark parts of the glowing layer draw as a murky copy of it over the view.
+    this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35, blendMode: 'add' })];
     this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive, this.bloom);
     // Low graphics: no glow pass, fewer particles and raindrops, and a plain-resolution canvas.
     this.offs.push(onSettings((s) => {
@@ -1576,7 +1578,7 @@ export class GameClient {
     this.hud.destroy();
     this.sound.setWeather(null, 1);
     this.sound.setPlace(0, 0, 0, 0);
-    this.app.canvas.classList.remove('attack', 'shop');
+    this.app.canvas.classList.remove('cursor-attack', 'cursor-shop');
   }
 
   /** What the end screen's Rematch does (`swap`: change sides too). */
@@ -1759,8 +1761,8 @@ export class GameClient {
   private setCursor(c: string): void {
     if (c === this.cursor) return;
     this.cursor = c;
-    this.app.canvas.classList.toggle('attack', c === 'attack');
-    this.app.canvas.classList.toggle('shop', c === 'shop');
+    this.app.canvas.classList.toggle('cursor-attack', c === 'attack');
+    this.app.canvas.classList.toggle('cursor-shop', c === 'shop');
   }
 
   setTitle(title: string): void {

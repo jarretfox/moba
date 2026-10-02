@@ -34,6 +34,17 @@ async function boot(): Promise<void> {
     resolution: Math.min(window.devicePixelRatio || 1, 2),
   });
   document.getElementById('stage')!.appendChild(app.canvas);
+  // Dev only: shot('name', scale) saves the game's picture (not the HTML interface) to .shots/name.png.
+  if (import.meta.env.DEV) {
+    Object.assign(window, {
+      shot: async (name = 'shot', scale = 0.6) => {
+        app.render();
+        const canvas = app.renderer.extract.canvas({ target: app.stage, frame: app.screen, resolution: scale, clearColor: '#121811' }) as HTMLCanvasElement;
+        const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/png'));
+        return blob ? (await fetch(`__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: blob })).text() : 'no picture';
+      },
+    });
+  }
   Object.assign(PORTRAITS, renderPortraits(app.renderer, Object.keys(CHAMPION_INFO) as ChampionId[]));
   renderIcons(app.renderer);
   installInkUi();

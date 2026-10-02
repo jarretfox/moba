@@ -42,12 +42,12 @@ canvas,
   cursor: var(--cursor) !important;
 }
 
-/* Over Old Wick: a gold coin, to shop. */
-canvas.shop {
+/* Over Old Wick: a gold coin, to shop. (Not plain ".shop": that is the shop panel, and the canvas would take its frame and size.) */
+canvas.cursor-shop {
   cursor: var(--cursor-shop) !important;
 }
 
-canvas.attack {
+canvas.cursor-attack {
   cursor: var(--cursor-attack) !important;
 }
 
