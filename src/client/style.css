@@ -1485,6 +1485,72 @@ html.colorblind .gold-peak.theirs {
   color: var(--muted);
 }
 
+/* Recent matches on the profile. */
+.profile-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 230px;
+  margin-bottom: 8px;
+  overflow: auto;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 52px 80px 64px 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-left: 3px solid #e5484d;
+  border-radius: 4px;
+  background: rgba(229, 72, 77, 0.08);
+  font-size: 13px;
+  color: #e8dcc0;
+}
+
+.history-row.won {
+  border-left-color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.history-face {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #1b2440;
+}
+
+.history-what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.history-what span {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-result {
+  font: 15px var(--font-display);
+}
+
+.history-row.won .history-result {
+  color: #4ade80;
+}
+
+.history-row.lost .history-result {
+  color: #ff8a8d;
+}
+
+.history-mvp {
+  font: 12px var(--font-display);
+  color: #ffd166;
+}
+
 .profile-titles {
   display: flex;
   flex-wrap: wrap;

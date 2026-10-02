@@ -518,7 +518,7 @@ export class GameClient {
       a: mine.a,
       cs: mine.cs,
       mvp: pickMvp(rows, winner)?.id === mine.id,
-    });
+    }, { at: Date.now(), map: this.map.id, length: Math.round(this.buffer.latest?.time ?? 0), ...(mine.skin ? { skin: mine.skin } : {}) });
     saveProfile(profile);
     if (unlocked.length) {
       this.hud.titlesUnlocked(unlocked.map((t) => t.name));

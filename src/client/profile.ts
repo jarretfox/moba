@@ -1,3 +1,5 @@
+import type { MapId } from '../shared/map/mapData';
+import { CHAMPION_INFO } from '../shared/champions/registry';
 import type { ChampionId } from '../shared/champions/types';
 import { DEFAULT_TITLE, TITLES, isTitleId, type TitleDef } from '../shared/titles';
 
@@ -17,7 +19,23 @@ export interface Profile {
   champs: Partial<Record<ChampionId, { games: number; wins: number }>>;
   /** The title you wear. */
   title: string;
+  /** Your most recent matches, newest first (up to HISTORY_LENGTH). */
+  history: HistoryEntry[];
 }
+
+/** One match in your history. */
+export interface HistoryEntry extends MatchRecord {
+  /** When it ended (milliseconds since 1970). */
+  at: number;
+  map: MapId;
+  /** How long it ran, in seconds. */
+  length: number;
+  /** Which look the champion wore. */
+  skin?: number;
+}
+
+/** How many matches the history keeps. */
+export const HISTORY_LENGTH = 20;
 
 /** One match, from your point of view. */
 export interface MatchRecord {
@@ -32,7 +50,13 @@ export interface MatchRecord {
 
 const KEY = 'moba.profile';
 
-export const emptyProfile = (): Profile => ({ games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, cs: 0, mvps: 0, flawless: 0, champs: {}, title: DEFAULT_TITLE });
+export const emptyProfile = (): Profile => ({ games: 0, wins: 0, kills: 0, deaths: 0, assists: 0, cs: 0, mvps: 0, flawless: 0, champs: {}, title: DEFAULT_TITLE, history: [] });
+
+/** A saved history entry that still makes sense (older saves, or hand-edited ones, may not). */
+function isEntry(e: unknown): e is HistoryEntry {
+  const h = e as Partial<HistoryEntry> | null;
+  return !!h && typeof h === 'object' && typeof h.champ === 'string' && Object.hasOwn(CHAMPION_INFO, h.champ) && typeof h.won === 'boolean' && typeof h.at === 'number' && typeof h.length === 'number' && (h.map === 'rift' || h.map === 'aram');
+}
 
 export function loadProfile(): Profile {
   try {
@@ -40,6 +64,7 @@ export function loadProfile(): Profile {
     if (!raw || typeof raw !== 'object') return emptyProfile();
     const p = { ...emptyProfile(), ...raw };
     if (!isTitleId(p.title)) p.title = DEFAULT_TITLE;
+    p.history = Array.isArray(p.history) ? p.history.filter(isEntry).slice(0, HISTORY_LENGTH) : [];
     return p;
   } catch {
     return emptyProfile(); // storage blocked or garbled: start fresh
@@ -72,8 +97,8 @@ export function earned(p: Profile): Set<string> {
   return ids;
 }
 
-/** Adds a match to the record, and says which titles it newly unlocked. */
-export function recordMatch(p: Profile, m: MatchRecord): { profile: Profile; unlocked: TitleDef[] } {
+/** Adds a match to the record (and, with `entry`, to the history), and says which titles it newly unlocked. */
+export function recordMatch(p: Profile, m: MatchRecord, entry?: Omit<HistoryEntry, keyof MatchRecord>): { profile: Profile; unlocked: TitleDef[] } {
   const before = earned(p);
   const champ = p.champs[m.champ] ?? { games: 0, wins: 0 };
   const profile: Profile = {
@@ -87,6 +112,7 @@ export function recordMatch(p: Profile, m: MatchRecord): { profile: Profile; unl
     mvps: p.mvps + (m.mvp ? 1 : 0),
     flawless: p.flawless + (m.won && m.d === 0 ? 1 : 0),
     champs: { ...p.champs, [m.champ]: { games: champ.games + 1, wins: champ.wins + (m.won ? 1 : 0) } },
+    history: entry ? [{ ...m, ...entry }, ...p.history].slice(0, HISTORY_LENGTH) : p.history,
   };
   const now = earned(profile);
   return { profile, unlocked: TITLES.filter((t) => now.has(t.id) && !before.has(t.id)) };
