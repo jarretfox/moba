@@ -65,7 +65,7 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
       return;
     }
     case 'recall':
-      unit.startRecall(world);
+      if (!world.map.aram) unit.startRecall(world); // no Recall in ARAM
       return;
     case 'use': {
       const p = toPoint(world, cmd.x, cmd.y);

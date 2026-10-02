@@ -140,7 +140,9 @@ export function introLines(rows: readonly ScoreRow[], n: number): IntroLine[] {
 
 /** Shows the intro over `root`. Calls `onDone` once it's gone, whether it ran out or was skipped. */
 export function showIntro(root: HTMLElement, rows: readonly ScoreRow[], myTeam: Team, meId: number, n: number, onDone: () => void): () => void {
-  const box = el('div', 'intro');
+  // More than three a side (ARAM): smaller cards, so all five fit.
+  const big = Math.max(...[true, false].map((ours) => rows.filter((r) => (r.team === myTeam) === ours).length)) > 3;
+  const box = el('div', `intro${big ? ' big' : ''}`);
   const side = (ours: boolean) => {
     const col = el('div', `intro-side ${ours ? 'ours' : 'theirs'}`);
     col.append(el('div', 'intro-team', ours ? 'Your team' : 'Enemy team'));

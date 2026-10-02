@@ -18,8 +18,9 @@ const SLOTS: { lane: Lane; picks: ChampionId[] }[] = [
 
 export const TEAM_SIZE = 3;
 
-/** A lane for a bot taking over a champion mid-match: top if no bot of that team is there yet, else the duo lane. */
-export function laneForNewBot(bots: Bot[], team: PlayerTeam): Lane {
+/** A lane for a bot taking over a champion mid-match: top if no bot of that team is there yet, else the duo lane (ARAM: the one lane). */
+export function laneForNewBot(bots: Bot[], team: PlayerTeam, aram = false): Lane {
+  if (aram) return 'mid';
   return bots.some((b) => b.champion.team === team && b.lane === 'top') ? 'bot' : 'top';
 }
 
@@ -30,7 +31,9 @@ export function laneForNewBot(bots: Bot[], team: PlayerTeam): Lane {
  */
 export function addBots(world: World, team: PlayerTeam, count: number, taken: readonly ChampionId[] = [], random: () => number = () => 0): Bot[] {
   const have = new Set(taken);
-  return SLOTS.slice(0, count).map(({ lane, picks }) => {
+  // ARAM: everyone in the one lane, any champion at all.
+  const slots = world.map.aram ? Array.from({ length: count }, () => ({ lane: 'mid' as Lane, picks: [] as ChampionId[] })) : SLOTS.slice(0, count);
+  return slots.map(({ lane, picks }) => {
     let options = (picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[])).filter((id) => !have.has(id));
     if (!options.length) options = (Object.keys(CHAMPION_INFO) as ChampionId[]).filter((id) => !have.has(id));
     if (!options.length) options = picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[]); // every champion is taken: a repeat beats an empty slot

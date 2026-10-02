@@ -1,5 +1,5 @@
 import type { PlayerTeam } from '../constants';
-import { lanePath, type Lane } from '../map/mapData';
+import { lanePath, lanesOf, type Lane } from '../map/mapData';
 import type { ChudType } from '../protocol';
 import { Chud } from './chud';
 import { Structure } from './structure';
@@ -30,7 +30,8 @@ export class WaveSpawner implements WorldSystem {
 
   constructor(
     private readonly teams: PlayerTeam[] = [1, 2],
-    private readonly lanes: Lane[] = ['top', 'bot'],
+    /** Which lanes get waves (every lane the map has, unless told otherwise). */
+    private readonly lanes?: Lane[],
   ) {}
 
   update(world: World): void {
@@ -38,7 +39,7 @@ export class WaveSpawner implements WorldSystem {
     this.waveNumber++;
     this.nextWaveAt += WAVE_INTERVAL;
     for (const team of this.teams) {
-      for (const lane of this.lanes) {
+      for (const lane of this.lanes ?? lanesOf(world.map)) {
         const route = lanePath(world.map, team, lane);
         const buff = world.unchained[team];
         const unchained = world.time < buff.until;

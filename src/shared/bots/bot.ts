@@ -14,6 +14,7 @@ import { pointAlong, progressAlong } from './lanes';
 import { PROFILES, type BotContext } from './profiles';
 import { nextPurchase } from './shopping';
 import { Crab } from '../sim/crab';
+import { Relic } from '../sim/relics';
 import { eventOrderFor } from './events';
 
 // ─── Tuning: a "decent new player" ────────────────────────────────────────────
@@ -22,6 +23,8 @@ import { eventOrderFor } from './events';
 const THINK_INTERVAL = 0.2;
 /** Head home below this share of health... */
 const RETREAT_HP = 0.25;
+/** ARAM: back off only when nearly dead (there's no Recall, and fights decide the game). */
+const ARAM_RETREAT_HP = 0.15;
 /** ...or below this one with an enemy champion nearby. */
 const RETREAT_HP_UNDER_PRESSURE = 0.35;
 /** Back to lane once healed this far. */
@@ -72,6 +75,8 @@ export class Bot {
   private current: Lane;
   private route: Vec2[];
   private readonly home: Vec2;
+  /** ARAM: no Recall, no trips home to shop. */
+  private readonly aram: boolean;
 
   constructor(
     readonly champion: Champion,
@@ -82,6 +87,7 @@ export class Bot {
     this.current = lane;
     this.route = lanePath(world.map, team, lane);
     this.home = world.map.spawns[team];
+    this.aram = world.map.aram === true;
     // Stagger bots so they don't all think on the same tick.
     this.nextThinkAt = (champion.id % Math.round(THINK_INTERVAL / DT)) * DT;
   }
@@ -130,9 +136,10 @@ export class Bot {
     out.push({ k: 'buy', item: plan.item });
   }
 
-  /** A full purse that buys the next item: time to go home and spend it. */
+  /** A full purse that buys the next item: time to go home and spend it (not in ARAM: there you shop when you die). */
   private wantsToShop(): boolean {
     const me = this.champion;
+    if (this.aram) return false;
     const plan = nextPurchase(PROFILES[me.info.id].build, me.items);
     return plan !== null && me.gold >= SHOPPING_TRIP && me.gold >= plan.net;
   }
@@ -149,7 +156,10 @@ export class Bot {
     // Never stand in a Shootie's fire.
     if (this.shootieShootingMe(world)) return this.moveTo(out, this.stepBack(400));
 
-    if (hp < RETREAT_HP || (nearest && hp < RETREAT_HP_UNDER_PRESSURE) || (!nearest && this.wantsToShop())) this.state = 'retreat';
+    // ARAM: nobody goes home much. Fight it out; only the nearly dead back off.
+    const retreatAt = this.aram ? ARAM_RETREAT_HP : RETREAT_HP;
+    const pressureAt = this.aram ? ARAM_RETREAT_HP : RETREAT_HP_UNDER_PRESSURE;
+    if (hp < retreatAt || (nearest && hp < pressureAt) || (!nearest && this.wantsToShop())) this.state = 'retreat';
     if (this.state === 'retreat') return this.retreat(world, out, hp, nearest);
 
     if (nearest && this.shouldFight(world, nearest, hp)) return this.fight(world, out, nearest);
@@ -161,6 +171,12 @@ export class Bot {
     // Being hit by a champion we don't want to fight: give ground.
     const hitBy = foes.find((f) => (me.championHits.get(f.id) ?? -Infinity) > world.time - 1);
     if (hitBy) return this.moveTo(out, this.stepBack(350));
+
+    // ARAM: a pumpkin within reach when we're hurt and nobody's about.
+    if (this.aram && !nearest && hp < 0.75) {
+      const relic = world.all().find((e) => e instanceof Relic && dist(e.pos, me.pos) < 700);
+      if (relic) return this.moveTo(out, relic.pos);
+    }
 
     // A map event close by (a boss to hit, a cart to push, a stall to hold): the two nearest of us go (bots/events.ts).
     const event = eventOrderFor(world, me, hp);
@@ -180,6 +196,11 @@ export class Bot {
     }
     const chased = nearest !== undefined && dist(nearest.pos, me.pos) < 1200;
     const hurtLately = world.time - me.lastDamagedAt < 1.5;
+    // ARAM: no Recall. A pumpkin close by is the quicker fix; otherwise it's the long walk home.
+    if (this.aram && !chased) {
+      const relic = world.all().find((e) => e instanceof Relic && dist(e.pos, me.pos) < 900 && dist(e.pos, this.home) < dist(me.pos, this.home) + 300);
+      return this.moveTo(out, relic ? relic.pos : this.home);
+    }
     if (!chased && !hurtLately) {
       if (!me.recalling) {
         out.push({ k: 'recall' });
@@ -201,6 +222,14 @@ export class Bot {
     const me = this.champion;
     if (dist(me.pos, foe.pos) > ENGAGE_RANGE) return false;
     if (this.unsafe(world, foe.pos)) return false; // no tower dives
+    if (this.aram) {
+      // One lane, everyone together: go in when our side has the numbers here, or we're not the weaker.
+      const near = (team: number) => world.units().filter((u) => u.kind === 'champion' && u.team === team && !u.dead && dist(u.pos, foe.pos) < 1100).length;
+      const us = near(me.team);
+      const them = near(foe.team);
+      const theirHp = foe.hp / foe.stats.maxHp;
+      return us > them || (us === them && hp >= theirHp - 0.2) || theirHp < 0.3;
+    }
     const theirHp = foe.hp / foe.stats.maxHp;
     const enemyChudsNear = this.enemyChuds(world).filter((c) => dist(c.pos, me.pos) < 500).length;
     if (enemyChudsNear >= CHUD_AGGRO_LIMIT && hp < 0.7 && theirHp > 0.3) return false;

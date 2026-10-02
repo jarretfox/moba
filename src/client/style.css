@@ -1802,6 +1802,24 @@ html.colorblind .gold-peak.theirs {
   background: var(--grain), linear-gradient(180deg, #2a3a22, #141d10);
 }
 
+/* The Howling Hollow (ARAM): night purple, a pumpkin grin of a label. */
+.menu-button.spooky {
+  border-color: #6a3fa0;
+  background: var(--grain), linear-gradient(180deg, #2a1838, #140a1c);
+}
+
+.menu-button.spooky:hover {
+  border-color: #ffb04a;
+}
+
+.menu-button.spooky .menu-button-label {
+  color: #ffb04a;
+}
+
+.menu-button.spooky .menu-button-label::before {
+  content: '🎃 ';
+}
+
 .menu-button-label {
   font: 19px var(--font-display);
   letter-spacing: 0.03em;
@@ -1959,6 +1977,60 @@ html.colorblind .gold-peak.theirs {
 
 .lobby-wait {
   color: var(--muted);
+}
+
+/* All Random (ARAM): your roll and the reroll dice. */
+.lobby-roll {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border: 1px solid #6a3fa0;
+  border-radius: 10px;
+  background: rgba(30, 14, 40, 0.8);
+  pointer-events: auto;
+}
+
+.lobby-roll-label {
+  font: 13px var(--font-display);
+  letter-spacing: 0.04em;
+  color: #c9a0ff;
+}
+
+.lobby-roll-name {
+  font: 20px var(--font-display);
+  color: #ffb04a;
+}
+
+.lobby-reroll {
+  padding: 5px 12px;
+  border: 1px solid #ffb04a;
+  border-radius: 8px;
+  background: #2a1608;
+  color: #ffd27a;
+  font: 800 14px Nunito, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.lobby-reroll:disabled {
+  border-color: var(--panel-edge);
+  color: var(--muted);
+  cursor: default;
+}
+
+/* The Howling Hollow's lobby: purple night and pumpkin orange. */
+.select.hollow .select-title {
+  color: #ffb04a;
+  text-shadow: 0 0 18px rgba(160, 80, 255, 0.6);
+}
+
+.select.hollow .lobby-settings {
+  background: rgba(24, 10, 34, 0.7);
+}
+
+/* All Random: the cards are just to look at; yours is lit. */
+.select.all-random .select-card:not(.picked) {
+  filter: saturate(0.6) brightness(0.85);
 }
 
 /* ─── Champion select ───────────────────────────────────────────────── */
@@ -4106,6 +4178,35 @@ html.colorblind .intro-side.theirs .intro-card {
   background: rgba(0, 0, 0, 0.3);
 }
 
+.intro.big {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.intro.big .intro-cards {
+  width: 100%;
+  justify-content: center;
+  gap: 8px;
+}
+
+.intro.big .intro-card {
+  flex: 0 1 112px;
+  min-width: 0;
+  width: auto;
+  padding: 10px 5px 9px;
+}
+
+.intro.big .intro-champ {
+  font-size: clamp(12px, 1.1vw, 16px);
+}
+
+.intro.big .intro-title {
+  display: none;
+}
+
+.intro.big .intro-player {
+  font-size: 11px;
+}
+
 .intro-champ {
   margin-top: 8px;
   font: clamp(16px, 1.6vw, 21px) var(--font-display);
@@ -4389,6 +4490,13 @@ html.colorblind .event-fill.theirs {
   height: 38px;
   border-radius: 50%;
   border: 2px solid #2b3440;
+}
+
+.legend-emoji {
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  line-height: 1;
 }
 
 .legend-text {

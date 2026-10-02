@@ -1,10 +1,11 @@
+import type { MapId } from '../../shared/map/mapData';
 import type { MatchMode } from '../../shared/protocol';
 import { el } from './dom';
 import { settingsPanel } from '../settings';
 import { logo } from './logo';
 import { showProfile } from './profileScreen';
 
-export type MenuChoice = { kind: 'solo'; mode: MatchMode } | { kind: 'host' } | { kind: 'join'; code: string };
+export type MenuChoice = { kind: 'solo'; mode: MatchMode; map?: MapId } | { kind: 'host' } | { kind: 'join'; code: string };
 
 const NAME_KEY = 'moba.name';
 
@@ -88,6 +89,7 @@ export function showMenu(root: HTMLElement, error?: string): Promise<{ choice: M
       logo(),
       nameInput,
       button('Play vs Bots', 'You and 2 bots against 3 bots', () => done({ kind: 'solo', mode: 'bots' }), 'primary'),
+      button('Howling Hollow (ARAM)', 'All Random, All Mid: 5v5 with bots on a haunted graveyard', () => done({ kind: 'solo', mode: 'bots', map: 'aram' }), 'spooky'),
       button('Host a Lobby', 'Get a code for your friends; bots fill empty slots', () => done({ kind: 'host' })),
       el('div', 'menu-or', 'or join a friend'),
       joinRow,

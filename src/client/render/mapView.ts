@@ -122,7 +122,7 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
   paintBases(detail, map, myTeam, terrain, random);
   paintGroundDetail(detail, map, terrain, random);
   paintRipples(detail, map, random);
-  paintPit(detail, map, random);
+  if (!map.aram) paintPit(detail, map, random);
   for (const c of map.camps) paintNest(detail, c.pos.x, c.pos.y, random);
   root.addChild(detail);
   const forest = new Graphics();
@@ -134,7 +134,7 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
 
   // Light pooled on the Warden's seal and the base plazas.
   const lights = new Container();
-  lights.addChild(glow(map.width / 2, map.height / 2, 460, 0x8fd14f, 0.16));
+  if (!map.aram) lights.addChild(glow(map.width / 2, map.height / 2, 460, 0x8fd14f, 0.16));
   for (const piece of map.ground) {
     if (piece.style !== 'base' || piece.shape.type !== 'circle') continue;
     lights.addChild(glow(piece.shape.x, piece.shape.y, piece.shape.r, groundColor('base', piece.shape, map, myTeam) === PAL.allyBase ? 0x3d8bfd : 0xe5484d, 0.14));
@@ -157,12 +157,19 @@ export function buildMap(map: MapData, myTeam: Team = TEAM.blue): MapLayers {
     sway.push(patch);
   }
 
-  for (const [text, y] of [['TOP LANE', 1100], ['BOT LANE', map.height - 1100]] as const) {
+  for (const [text, y] of map.aram ? [] : ([['TOP LANE', 1100], ['BOT LANE', map.height - 1100]] as const)) {
     const t = new Text({ text, style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 60, fill: 0xffffff, letterSpacing: 6 } });
     t.alpha = 0.06;
     t.anchor.set(0.5);
     t.position.set(map.width / 2, y);
     root.addChild(t);
+  }
+  // Halloween: everything graded toward a cold purple night; the woods go nearly black.
+  if (map.theme === 'halloween') {
+    for (const child of root.children) child.tint = 0xb0a2cc;
+    forest.tint = canopy.tint = 0x6c5c8c;
+    walls.tint = wallTops.tint = 0xa49ac0;
+    for (const patch of sway) patch.tint = 0x8a7aa8;
   }
   const crowns = trees.filter((t) => !t.shrub).map(({ x, y, r, deep }) => ({ x, y, r, deep }));
   return { ground: root, wallTops, canopy, sway, standing, crowns };

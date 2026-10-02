@@ -3,6 +3,7 @@
 // (PeerJS) and are relayed to it by that tab. Nothing from a client is trusted.
 import type { ChampionId } from './champions/types';
 import type { PlayerTeam, Slot, Team } from './constants';
+import type { MapId } from './map/mapData';
 import type { ItemId } from './items';
 import type { Weather } from './weather';
 import type { StructureRole } from './map/mapData';
@@ -50,6 +51,8 @@ export type ClientMessage =
   | { t: 'settings'; settings: Partial<MatchSettings> }
   /** After the match: play again (the host can swap the teams' sides). */
   | { t: 'rematch'; swap?: boolean }
+  /** ARAM All Random: swap your random champion for another (while rerolls last). */
+  | { t: 'reroll' }
   | { t: 'cmd'; cmd: Command }
   /** Say something: to your team, or to everyone (`all`). */
   | { t: 'chat'; text: string; all: boolean }
@@ -72,10 +75,21 @@ export interface MatchSettings {
   gold: number;
   /** A quicker game: more gold and experience, shorter death timers. */
   fast: boolean;
+  /** The map: the Rift (3v3), or the Howling Hollow for ARAM. */
+  map: MapId;
+  /** ARAM: players a side, bots filling the gaps (the Rift is always 3). */
+  teamSize: number;
+  /** ARAM: everyone gets a random champion (with rerolls), or picks as usual. */
+  aramPick: 'random' | 'pick';
 }
 
 export const START_GOLD_OPTIONS = [500, 1500, 3000] as const;
-export const DEFAULT_SETTINGS: MatchSettings = { weather: 'random', night: false, gold: START_GOLD_OPTIONS[0], fast: false };
+export const TEAM_SIZE_OPTIONS = [3, 4, 5] as const;
+export const DEFAULT_SETTINGS: MatchSettings = { weather: 'random', night: false, gold: START_GOLD_OPTIONS[0], fast: false, map: 'rift', teamSize: 3, aramPick: 'random' };
+/** ARAM All Random: rerolls each player gets. */
+export const ARAM_REROLLS = 2;
+/** Players a side, under these settings. */
+export const teamSizeOf = (s: MatchSettings): number => (s.map === 'aram' ? s.teamSize : 3);
 /** How much a fast game speeds things up. */
 export const FAST_RATES = { gold: 1.5, xp: 1.5, respawn: 0.5 };
 /** Starting at night: how far into the evening the look starts (deep night, the moon up). */
@@ -91,6 +105,8 @@ export interface LobbyPlayer {
   host: boolean;
   /** The title they wear (an id from shared/titles.ts). */
   title?: string;
+  /** ARAM All Random: rerolls left. */
+  rerolls?: number;
 }
 
 export interface LobbyState {
@@ -110,6 +126,8 @@ export type HostMessage =
       weather?: Weather;
       /** When (match seconds) the rain clears up, if it does. */
       clears?: number;
+      /** The map the match is on (the Rift if left out). */
+      map?: MapId;
       /** Seconds to add to the match clock for the look of the sky (starting at night). */
       clock?: number;
     }
@@ -244,6 +262,8 @@ export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster'
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind =
+  /** ARAM: a pumpkin (health relic) eaten. */
+  | 'relic'
   /** Item passives: Stormstring's chain lightning (from x, y to x2, y2), a Spellblade hit, the Royal Hourglass going off. */
   | 'static'
   | 'spellblade'

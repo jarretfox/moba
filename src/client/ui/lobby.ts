@@ -2,7 +2,7 @@ import { CHAMPION_INFO } from '../../shared/champions/registry';
 import { ROLES, ROLE_INFO, ROLE_ORDER } from '../../shared/champions/roles';
 import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
-import { START_GOLD_OPTIONS, type LobbyState, type MatchMode, type MatchSettings } from '../../shared/protocol';
+import { START_GOLD_OPTIONS, TEAM_SIZE_OPTIONS, teamSizeOf, type LobbyState, type MatchMode, type MatchSettings } from '../../shared/protocol';
 import { WEATHER_CHANCES } from '../../shared/weather';
 import { titleName } from '../../shared/titles';
 import { SKINS, portraitOf, swatchColor } from '../render/champions';
@@ -17,8 +17,6 @@ import { ChampionStage } from './stage';
 /** How long (ms) the pointer rests on a champion's card before the showcase changes to them. */
 const HOVER_SETTLE = 220;
 
-const TEAM_SIZE = 3;
-
 export interface LobbyOptions {
   /** Solo: skip the lobby — picking a champion starts the match straight away in this mode. */
   solo?: MatchMode;
@@ -28,6 +26,8 @@ export interface LobbyOptions {
   onStart(mode: MatchMode): void;
   /** The host changed a match setting. */
   onSettings?(settings: Partial<MatchSettings>): void;
+  /** All Random: roll again. */
+  onReroll?(): void;
 }
 
 const WEATHER_NAMES: Record<string, string> = { random: 'Random', clear: 'Clear', rain: 'Rain', storm: 'Storm', mist: 'Mist', snow: 'Snow', autumn: 'Autumn wind' };
@@ -44,6 +44,8 @@ export class LobbyScreen {
   /** The look chosen on each card (0 is the classic one). */
   private readonly skins = new Map<ChampionId, number>();
   private picked: ChampionId | null = null;
+  /** ARAM, All Random: champions are rolled for everyone, not picked. */
+  private allRandom = false;
   /** The big panel showing whichever champion you're looking at. */
   private readonly showcase = el('div', 'showcase');
   private shown: ChampionId | null = null;
@@ -69,7 +71,8 @@ export class LobbyScreen {
     if (!opts.solo) this.screen.append(this.teams);
     this.screen.append(el('div', 'select-title', 'Choose your champion'));
     // Solo, the match starts as soon as you pick, so the settings come first.
-    if (opts.solo) this.screen.append(this.settingsBar);
+    // (The footer, solo, only has something in it in All Random: your roll, and Start.)
+    if (opts.solo) this.screen.append(this.settingsBar, this.footer);
     this.screen.append(this.championCards());
     if (!opts.solo) this.screen.append(this.settingsBar, this.footer);
     root.append(this.screen);
@@ -80,6 +83,17 @@ export class LobbyScreen {
   update(lobby: LobbyState, you: string): void {
     const me = lobby.players.find((p) => p.id === you);
     this.drawSettings(lobby.settings, !!me?.host);
+    const size = lobby.settings ? teamSizeOf(lobby.settings) : 3;
+    this.allRandom = lobby.settings?.map === 'aram' && lobby.settings.aramPick === 'random';
+    this.screen.classList.toggle('all-random', this.allRandom);
+    this.screen.classList.toggle('hollow', lobby.settings?.map === 'aram');
+    const title = this.screen.querySelector('.select-title');
+    if (title) title.textContent = this.allRandom ? 'All Random: the dice choose your champion' : 'Choose your champion';
+    // A new roll: show it off.
+    if (this.allRandom && me?.champion && me.champion !== this.picked) {
+      this.show(me.champion);
+      this.stage.cheer();
+    }
     this.picked = me?.champion ?? null;
     for (const [id, card] of this.cards) {
       card.classList.toggle('picked', me?.champion === id);
@@ -94,7 +108,7 @@ export class LobbyScreen {
         const col = el('div', `lobby-team ${team === TEAM.blue ? 'blue' : 'red'}`);
         col.append(el('div', 'lobby-team-title', team === TEAM.blue ? 'Blue' : 'Red'));
         const members = lobby.players.filter((p) => p.team === team);
-        for (let i = 0; i < TEAM_SIZE; i++) {
+        for (let i = 0; i < size; i++) {
           const p = members[i];
           const row = el('div', `lobby-slot${p?.id === you ? ' you' : ''}`);
           if (p) {
@@ -107,7 +121,7 @@ export class LobbyScreen {
           }
           col.append(row);
         }
-        if (me && me.team !== team && members.length < TEAM_SIZE) {
+        if (me && me.team !== team && members.length < size) {
           const move = el('button', 'lobby-move', `Join ${team === TEAM.blue ? 'Blue' : 'Red'}`);
           move.addEventListener('click', () => this.opts.onPick({ team }));
           col.append(move);
@@ -117,6 +131,28 @@ export class LobbyScreen {
     );
 
     this.footer.replaceChildren();
+    if (this.allRandom && me) {
+      // Your roll, and the dice to roll again.
+      const roll = el('div', 'lobby-roll');
+      roll.append(el('span', 'lobby-roll-label', 'You rolled'), el('span', 'lobby-roll-name', me.champion ? CHAMPION_INFO[me.champion].name : '…'));
+      const left = me.rerolls ?? 0;
+      const reroll = el('button', 'lobby-reroll', `🎲 Reroll (${left})`);
+      reroll.disabled = left <= 0;
+      reroll.addEventListener('click', () => this.opts.onReroll?.());
+      roll.append(reroll);
+      this.footer.append(roll);
+      if (this.opts.solo) {
+        const solo = this.opts.solo;
+        const start = el('button', 'lobby-start', 'Start match');
+        start.disabled = !me.champion;
+        start.addEventListener('click', () => {
+          getSound().play('fanfare', 0.6);
+          this.opts.onStart(solo);
+        });
+        this.footer.append(start);
+      }
+    }
+    if (this.opts.solo) return;
     if (me?.host) {
       const modes = el('div', 'select-modes');
       for (const [mode, label] of [['bots', 'Bots fill empty slots'], ['practice', 'No bots (practice)']] as const) {
@@ -155,6 +191,14 @@ export class LobbyScreen {
       }
       return g;
     };
+    const aram = s.map === 'aram';
+    const map = group('Map', [['rift', 'The Rift'], ['aram', 'Howling Hollow (ARAM)']] as const, s.map, (m) => change({ map: m }));
+    const aramGroups = aram
+      ? [
+          group('Size', TEAM_SIZE_OPTIONS.map((n) => [n, `${n}v${n}`] as const), s.teamSize, (teamSize) => change({ teamSize })),
+          group('Champions', [['random', 'All Random'], ['pick', 'Pick']] as const, s.aramPick, (aramPick) => change({ aramPick })),
+        ]
+      : [];
     const weather = el('div', 'set-group');
     weather.append(el('span', 'set-label', 'Weather'));
     const select = el('select', 'set-select');
@@ -168,8 +212,11 @@ export class LobbyScreen {
     select.addEventListener('change', () => change({ weather: select.value as MatchSettings['weather'] }));
     weather.append(select);
     bar.append(
+      map,
+      ...aramGroups,
       weather,
-      group('Time', [[false, 'Evening'], [true, 'Night']] as const, s.night, (night) => change({ night })),
+      // The Hollow is always at night.
+      ...(aram ? [] : [group('Time', [[false, 'Evening'], [true, 'Night']] as const, s.night, (night) => change({ night }))]),
       group('Starting gold', START_GOLD_OPTIONS.map((g) => [g, String(g)] as const), s.gold, (gold) => change({ gold })),
       group('Pace', [[false, 'Normal'], [true, 'Fast']] as const, s.fast, (fast) => change({ fast })),
     );
@@ -298,6 +345,11 @@ export class LobbyScreen {
   /** Picking a champion: a flash, a fanfare and a line from them. Solo games start a moment later. */
   private lockIn(id: ChampionId): void {
     if (this.cards.get(id)?.disabled) return;
+    // All Random: the cards are for looking; your champion is rolled.
+    if (this.allRandom) {
+      this.show(id);
+      return;
+    }
     clearTimeout(this.hoverTimer);
     this.show(id);
     this.opts.onPick({ champion: id, skin: this.skins.get(id) ?? 0 });

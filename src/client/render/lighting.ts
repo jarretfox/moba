@@ -257,6 +257,9 @@ export class Lighting {
           break;
         }
         case 'pickup':
+          if (e.vis === 'pumpkin') put({ x: e.x, y: e.y - 16, r: 200, color: 0xff9a3a, alpha: 0.6 });
+          else put({ x: e.x, y: e.y, r: 140, color: 0xc9f59a, alpha: 0.35 });
+          break;
         case 'zone':
           put({ x: e.x, y: e.y, r: 140, color: 0xc9f59a, alpha: 0.35 });
           break;

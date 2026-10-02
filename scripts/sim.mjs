@@ -1,4 +1,4 @@
-// Balance simulator runner: `npm run sim -- --games 120 --seed 1 --workers 8 --json out.json`
+// Balance simulator runner: `npm run sim -- --games 120 --seed 1 --workers 8 --json out.json` (ARAM: `--map aram --size 5`)
 // Runs bots-only matches with random lineups across worker threads, then prints per-champion numbers.
 // The simulation itself is TypeScript in src/shared/balance/simulate.ts, bundled to .sim/ by `npm run sim`.
 import { writeFileSync } from 'node:fs';
@@ -8,7 +8,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 const sim = await import('../.sim/simulate.js');
 
 if (!isMainThread) {
-  for (const seed of workerData.seeds) parentPort.postMessage(sim.simulateMatch(seed, workerData.maxMinutes));
+  for (const seed of workerData.seeds) parentPort.postMessage(sim.simulateMatch(seed, workerData.maxMinutes, workerData.map, workerData.size));
 } else {
   const args = Object.fromEntries(
     process.argv
@@ -31,7 +31,7 @@ if (!isMainThread) {
     Array.from({ length: workers }, (_, w) => {
       const mine = seeds.filter((_, i) => i % workers === w);
       return new Promise((resolve, reject) => {
-        const worker = new Worker(new URL(import.meta.url), { workerData: { seeds: mine, maxMinutes } });
+        const worker = new Worker(new URL(import.meta.url), { workerData: { seeds: mine, maxMinutes, map: args.map ?? 'rift', size: Number(args.size ?? (args.map === 'aram' ? 5 : 3)) } });
         worker.on('message', (r) => {
           results.push(r);
           process.stdout.write(`\r${results.length}/${games} done`);

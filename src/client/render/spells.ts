@@ -823,6 +823,15 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       p.burst(16, { shape: 'mote', x, y: y - 60, life: 0.9, size: 7, size2: 2, color: 0xfff1b8, color2: GOLD, ay: 220 }, [40, 120]);
       return;
     }
+    // ── The Howling Hollow
+    case 'relic': {
+      // A pumpkin eaten: it bursts in orange chunks and candlelight, and a green warmth rises off whoever got it.
+      fx.flash(x, y - 20, 70, 0xffb04a, 0.25, 0.8);
+      p.burst(12, { shape: 'shard', x, y: y - 16, life: 0.6, size: 9, size2: 4, color: 0xe8771f, color2: 0xa84a10, ay: 600 }, [140, 300]);
+      p.burst(10, { shape: 'mote', x, y: y - 30, life: 0.9, size: 8, size2: 2, color: 0xffd27a, color2: 0x8fffc8, ay: -120 }, [30, 90]);
+      fx.comic(x, y - 110, 'YUM!', 0xffa040);
+      return;
+    }
     default: {
       // Every effect the simulation can send needs a look here.
       const unhandled: never = ev.fx;

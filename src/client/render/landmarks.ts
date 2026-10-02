@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from 'pixi.js';
 import type { MapData } from '../../shared/map/mapData';
 import { blob, inkLine, inkLoop, inkOf, inkStroke, inked, mix, rng, roughen, shade, shapeOutline, shard, smooth, type Pts } from './organic';
 import type { FlickerLight } from './props';
+import { buildHollow } from './hollow';
 
 // Story landmarks: places on the map that tell the champions' tale. Logan's royal cage stands broken open
 // on blue's side of the jungle, and the statue of King Rix lies toppled on red's. Great chains run from the
@@ -56,6 +57,8 @@ export function landmarkSpots(map: MapData): Record<'cage' | 'statue' | 'sewer' 
 }
 
 export function buildLandmarks(map: MapData): Landmarks {
+  // The Howling Hollow (ARAM) has its own Halloween decor instead.
+  if (map.theme === 'halloween') return buildHollow(map);
   const flat = new Container();
   const ground = new Graphics();
   const tall = new Graphics();

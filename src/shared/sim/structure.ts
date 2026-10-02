@@ -36,6 +36,9 @@ export const STRUCTURE_DEFS: Record<StructureRole, { name: string; radius: numbe
   daBase: { name: 'Da Base', radius: 140, stats: structureStats(4000, 20), regrow: Infinity },
 };
 
+/** ARAM: structures have this share of their usual health. */
+export const ARAM_STRUCTURE_HP = 0.5;
+
 export const isShootie = (role: StructureRole): boolean =>
   role === 'outerShootie' || role === 'innerShootie' || role === 'baseShootie';
 
@@ -58,7 +61,9 @@ export class Structure extends Unit {
 
   constructor(world: World, spot: StructureSpot) {
     const def = STRUCTURE_DEFS[spot.role];
-    super(world.newId(), spot.team, spot.pos, def.radius, def.stats, def.name);
+    // ARAM's structures are frailer, so a won fight turns into a push and matches end.
+    const stats = world.map.aram ? { ...def.stats, maxHp: Math.round(def.stats.maxHp * ARAM_STRUCTURE_HP) } : def.stats;
+    super(world.newId(), spot.team, spot.pos, def.radius, stats, def.name);
     this.role = spot.role;
     this.lane = spot.lane;
     this.grid = world.grid;

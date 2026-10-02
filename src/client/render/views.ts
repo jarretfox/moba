@@ -1,3 +1,4 @@
+import { jackOLantern } from './hollow';
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import type { FigureLight } from './lighting';
 import { mix } from './organic';
@@ -1173,13 +1174,22 @@ export class WardView implements EntityView {
   }
 }
 
-/** Something to pick up: Willmore's scrap. */
+/** Something to pick up: Willmore's scrap, or a pumpkin on the Howling Hollow. */
 export class PickupView implements EntityView {
   readonly container = new Graphics();
   private age = 0;
+  private readonly pumpkin: boolean;
 
   constructor(s: EntitySnap) {
     const g = this.container;
+    this.pumpkin = s.vis === 'pumpkin';
+    if (this.pumpkin) {
+      // A jack-o'-lantern, grinning, that heals whoever gets to it first; it pops up out of the ground.
+      g.circle(0, 0, 46).fill({ color: 0xffa040, alpha: 0.12 });
+      jackOLantern(g, 20);
+      g.scale.set(0.2);
+      return;
+    }
     // A little pile: a bolt, a bent plate and a cog.
     g.circle(0, 0, s.r * 0.7).fill({ color: 0x000000, alpha: 0.25 });
     g.roundRect(-14, -4, 18, 8, 2).fill(0x9aa1ab).stroke({ width: 1.5, color: 0x3a3f48 });
@@ -1190,6 +1200,14 @@ export class PickupView implements EntityView {
 
   update(s: EntitySnap, dt: number): void {
     this.age += dt;
+    if (this.pumpkin) {
+      // Pops up with a little overshoot, then sits and breathes.
+      const t = Math.min(1, this.age / 0.45);
+      const pop = t < 1 ? 1 + Math.sin(t * Math.PI) * 0.25 - (1 - t) * 0.8 : 1 + 0.03 * Math.sin(this.age * 3);
+      this.container.scale.set(pop, pop * (2 - pop) ** 0.2);
+      this.container.position.set(s.x, s.y);
+      return;
+    }
     this.container.position.set(s.x, s.y - 3 * Math.sin(this.age * 4));
   }
 }

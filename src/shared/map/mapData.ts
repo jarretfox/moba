@@ -9,7 +9,10 @@ export interface GroundPiece {
   shape: Shape;
 }
 
-export type Lane = 'top' | 'bot';
+export type Lane = 'top' | 'bot' | 'mid';
+
+/** Which map: the Rift (two lanes, a jungle, the Warden) or the Howling Hollow (ARAM: one lane, Halloween). */
+export type MapId = 'rift' | 'aram';
 export type StructureRole = 'outerShootie' | 'innerShootie' | 'oakner' | 'baseShootie' | 'daBase';
 
 export type CampKind = 'gutterRats' | 'mossback' | 'emberToad' | 'glowcap';
@@ -41,6 +44,13 @@ export interface EventSite {
 }
 
 export interface MapData {
+  id: MapId;
+  /** How it's drawn: the usual dusk, or Halloween (pumpkins, dead trees, a purple night). */
+  theme: 'classic' | 'halloween';
+  /** ARAM: no Recall (walk home or wait to die), and its own pace (see shared/sim/match.ts). */
+  aram?: boolean;
+  /** Where health relics (pumpkins) grow, if the map has any (see sim/relics.ts). */
+  relics?: Vec2[];
   width: number;
   height: number;
   /** Nav grid resolution in world units. */
@@ -55,7 +65,7 @@ export interface MapData {
   /** Jungle camps. */
   camps: CampSpot[];
   /** Chud routes, written from blue's side (blue Da Base → red Da Base). Use lanePath for either team. */
-  lanes: Record<Lane, Vec2[]>;
+  lanes: Partial<Record<Lane, Vec2[]>>;
   spawns: Record<PlayerTeam, Vec2>;
   /** Where the match's events can turn up; left out, the map has none. */
   eventSites?: EventSite[];
@@ -63,7 +73,13 @@ export interface MapData {
 
 /** The route a team's Chuds march down a lane, starting beside their own Da Base. */
 export function lanePath(map: MapData, team: PlayerTeam, lane: Lane): Vec2[] {
-  return team === 1 ? map.lanes[lane] : [...map.lanes[lane]].reverse();
+  const path = map.lanes[lane] ?? [];
+  return team === 1 ? path : [...path].reverse();
+}
+
+/** The lanes a map has. */
+export function lanesOf(map: MapData): Lane[] {
+  return (Object.keys(map.lanes) as Lane[]).filter((l) => (map.lanes[l]?.length ?? 0) > 0);
 }
 
 const W = 12000;
@@ -155,6 +171,8 @@ function mirrorStructure(s: StructureSpot, mx: boolean, my: boolean): StructureS
 }
 
 export const MAP: MapData = {
+  id: 'rift',
+  theme: 'classic',
   width: W,
   height: H,
   cellSize: 50,

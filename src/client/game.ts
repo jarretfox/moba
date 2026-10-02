@@ -2,7 +2,7 @@ import { BlurFilter, ColorMatrixFilter, Container, DisplacementFilter, Graphics,
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { atRank, type ChampionInfo } from '../shared/champions/types';
 import { TEAM, type PlayerTeam, type Slot, type Team } from '../shared/constants';
-import { MAP } from '../shared/map/mapData';
+import { MAP, type MapData } from '../shared/map/mapData';
 import { NavGrid } from '../shared/map/navGrid';
 import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
@@ -51,7 +51,7 @@ import { PINGS, PingWheel } from './pings';
 import type { Tone } from './hud';
 import { drawIndicator } from './render/indicator';
 import { HEIGHT, buildMap, buildNavOverlay, destroyMapLayer, elevate, type MapLayers } from './render/mapView';
-import { lanePath } from '../shared/map/mapData';
+import { lanePath, lanesOf } from '../shared/map/mapData';
 import { PALETTE, WardView, enemyLight, setColorblind, PickupView, ProjectileView, StructureView, TrapView, UnitView, ZoneView, type EntityView, type Relation, type ViewContext } from './render/views';
 import { SnapshotDecoder } from '../shared/snapshotCodec';
 import { SnapshotBuffer } from './snapshotBuffer';
@@ -98,16 +98,16 @@ export class GameClient {
   private markOn = 0;
   private markT = 0;
   private readonly fx = new FxLayer();
-  private readonly ambience = new Ambience(MAP);
-  private readonly water = new Water(MAP);
+  private readonly ambience: Ambience;
+  private readonly water: Water;
   /** Birds, bats and frogs. */
-  private readonly critters = new Critters(MAP);
+  private readonly critters: Critters;
   private navOverlay: Graphics | null = null;
-  private readonly nav = new NavGrid(MAP);
-  private readonly visionGrid = new VisionGrid(MAP, this.nav);
-  private readonly fog = new FogLayer(this.visionGrid);
+  private readonly nav: NavGrid;
+  private readonly visionGrid: VisionGrid;
+  private readonly fog: FogLayer;
 
-  private readonly camera = new Camera(MAP);
+  private readonly camera: Camera;
   private readonly buffer: SnapshotBuffer;
   private readonly decoder = new SnapshotDecoder();
   private readonly views = new Map<number, EntityView>();
@@ -128,7 +128,7 @@ export class GameClient {
   private readonly champFightAt = new Map<number, number>();
   private gameOverPlayed = false;
   /** Dusk and the lights in it, laid over the world. */
-  private readonly lighting = new Lighting(MAP);
+  private readonly lighting: Lighting;
   /** Spell glows: drawn above the lighting so they shine in the dark. Follows the camera like the world. */
   private readonly emissive = new Container();
   /** World, lighting and glows together, so the whole view can go grey while you're dead. */
@@ -263,7 +263,17 @@ export class GameClient {
     private readonly app: Application,
     private readonly conn: Connection,
     private readonly hudRoot: HTMLElement,
+    /** The map this match is on (the welcome says which). */
+    readonly map: MapData = MAP,
   ) {
+    this.ambience = new Ambience(map);
+    this.water = new Water(map);
+    this.critters = new Critters(map);
+    this.nav = new NavGrid(map);
+    this.visionGrid = new VisionGrid(map, this.nav);
+    this.fog = new FogLayer(this.visionGrid);
+    this.camera = new Camera(map);
+    this.lighting = new Lighting(map);
     this.hud = new Hud(hudRoot);
     this.hud.onLevelUp = (slot) => {
       this.sound.play('rankUp', 0.6);
@@ -294,9 +304,9 @@ export class GameClient {
     };
     this.hud.onMute = () => this.hud.setMuted(this.sound.toggleMute());
     this.tips = new Tips(hudRoot);
-    this.legend = new JungleLegend(hudRoot, MAP);
+    this.legend = new JungleLegend(hudRoot, this.map);
     this.tips.onShow = () => this.sound.play('chime', 0.25);
-    this.minimap = new Minimap(hudRoot, MAP);
+    this.minimap = new Minimap(hudRoot, this.map);
     this.minimap.setTeam(TEAM.blue);
     this.minimap.onPeek = (p) => (this.peek = p);
     this.minimap.onMove = (p) => {
@@ -324,14 +334,14 @@ export class GameClient {
       this.projectileLayer,
     );
     this.fountains = [TEAM.blue, TEAM.red].map((team) => {
-      const view = new FountainView(MAP.spawns[team], crystalSpot(MAP, team));
+      const view = new FountainView(this.map.spawns[team], crystalSpot(this.map, team));
       this.underLayer.addChildAt(view.ground, 0);
       this.unitLayer.addChild(view.body);
       this.lighting.addLight(view.light);
       return view;
     });
     this.wicks = [TEAM.blue, TEAM.red].map((team) => {
-      const at = wickSpot(MAP, team);
+      const at = wickSpot(this.map, team);
       const wick = new Shopkeeper(at.x, at.y, at.facing, this.fx);
       this.underLayer.addChild(wick.ground);
       this.unitLayer.addChild(wick.body);
@@ -340,14 +350,14 @@ export class GameClient {
     });
     // Story landmarks: flat parts with the traps and zones, standing parts sorted in with the units, a few
     // bits on the pit walls raised with the wall tops.
-    const landmarks = buildLandmarks(MAP);
+    const landmarks = buildLandmarks(this.map);
     this.underLayer.addChildAt(landmarks.flat, 0);
     this.underLayer.addChild(this.targetMark);
     this.wallTops.addChild(landmarks.tall);
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
-    this.nightLife = new NightLife(MAP, this.lighting.lanterns);
-    this.events = new EventsView({ fx: this.fx, map: MAP, under: this.underLayer, units: this.unitLayer, hudRoot, minimap: this.minimap, team: () => this.myTeam, announce: (t, d, tone) => this.hud.announce(t, d, tone), say: (line, weight) => this.announcer.say(line, weight), cue: (c) => this.playCue(c), shake: (at, k) => this.shakeNear(at, k) });
+    this.nightLife = new NightLife(this.map, this.lighting.lanterns);
+    this.events = new EventsView({ fx: this.fx, map: this.map, under: this.underLayer, units: this.unitLayer, hudRoot, minimap: this.minimap, team: () => this.myTeam, announce: (t, d, tone) => this.hud.announce(t, d, tone), say: (line, weight) => this.announcer.say(line, weight), cue: (c) => this.playCue(c), shake: (at, k) => this.shakeNear(at, k) });
     this.emissive.addChild(this.nightLife.glow, ...this.wicks.map((w) => w.glow), ...this.fountains.map((f) => f.glow), this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
@@ -380,7 +390,7 @@ export class GameClient {
     if (msg.t === 'welcome') {
       this.myId = msg.unitId;
       this.hud.fadeIn();
-      if (msg.weather && msg.weather !== 'clear' && !this.weather) this.setWeather(new WeatherView(msg.weather, MAP));
+      if (msg.weather && msg.weather !== 'clear' && !this.weather) this.setWeather(new WeatherView(msg.weather, this.map));
       this.weatherClears = msg.clears;
       this.clockOffset = msg.clock ?? 0;
       if (msg.team !== this.myTeam) {
@@ -435,7 +445,7 @@ export class GameClient {
 
   /** (Re)paints the map, tinted for the viewer's team. */
   private setMap(team: Team): void {
-    const layers = buildMap(MAP, team);
+    const layers = buildMap(this.map, team);
     const replace = (parent: Container, child: Container) => {
       if (parent.children.length) destroyMapLayer(parent.removeChildAt(0));
       parent.addChildAt(child, 0);
@@ -708,7 +718,7 @@ export class GameClient {
     const ctx: ViewContext = {
       me: me && !me.dead ? me : undefined,
       inBrush: (x, y) => this.visionGrid.brushAt({ x, y }) > 0,
-      inWater: (x, y) => MAP.ground.some((p) => p.style === 'river' && shapeContains(p.shape, x, y)),
+      inWater: (x, y) => this.map.ground.some((p) => p.style === 'river' && shapeContains(p.shape, x, y)),
       wind: this.wind,
       light: (x, y) => this.lighting.lightAt(x, y, nightAt(this.lookTime())),
       night: nightAt(this.lookTime()),
@@ -732,7 +742,7 @@ export class GameClient {
     const time = performance.now() / 1000;
     // Forget footsteps of things that are gone (dead Chuds pile up over a match).
     if (this.frameCount % 300 === 0) for (const id of this.steps.keys()) if (!this.ents.has(id)) this.steps.delete(id);
-    for (const b of propSpots(MAP).braziers) {
+    for (const b of propSpots(this.map).braziers) {
       if (Math.abs(b.x - this.camera.x) < halfW && Math.abs(b.y - this.camera.y) < halfH) brazierFire(this.fx, b.x, b.y - FIRE_HEIGHT);
     }
     for (const s of this.ents.values()) {
@@ -785,8 +795,8 @@ export class GameClient {
         layer = this.unitLayer;
         if (s.k === 'champion') (view as UnitView).wear(this.lastScores?.find((row) => row.id === s.id)?.items ?? []);
         // Fresh Chuds pop out of the portal near their base.
-        if (s.k === 'chud' && (['top', 'bot'] as const).some((lane) => {
-          const at = lanePath(MAP, s.tm as 1 | 2, lane)[0];
+        if (s.k === 'chud' && lanesOf(this.map).some((lane) => {
+          const at = lanePath(this.map, s.tm as 1 | 2, lane)[0];
           return Math.hypot(at.x - s.x, at.y - s.y) < 500;
         })) {
           this.fx.burst(s.x, s.y, s.tm === this.myTeam ? 0x7cc4ff : enemyLight(), 70);
@@ -1204,7 +1214,7 @@ export class GameClient {
     last.y = s.y;
     if (moved < 1 || time < last.next) return;
     last.next = time + (s.k === 'champion' ? 0.16 : 0.32);
-    const style = MAP.ground.find((p) => shapeContains(p.shape, s.x, s.y))?.style;
+    const style = this.map.ground.find((p) => shapeContains(p.shape, s.x, s.y))?.style;
     if (style === 'river') return; // the water has its own ripples
     const inBrush = this.visionGrid.brushAt({ x: s.x, y: s.y }) > 0;
     footstep(this.fx, s.x, s.y, s.r, inBrush ? 'brush' : style === 'lane' || style === 'base' ? 'dust' : 'grass');
@@ -1304,8 +1314,8 @@ export class GameClient {
     const halfH = this.app.screen.height / 2 / this.camera.zoom + 300;
     for (const team of [TEAM.blue, TEAM.red] as const) {
       const color = team === this.myTeam ? PALETTE.ally : PALETTE.enemy;
-      for (const lane of ['top', 'bot'] as const) {
-        const at = lanePath(MAP, team, lane)[0];
+      for (const lane of lanesOf(this.map)) {
+        const at = lanePath(this.map, team, lane)[0];
         if (Math.abs(at.x - this.camera.x) > halfW || Math.abs(at.y - this.camera.y) > halfH) continue;
         this.fx.sigil(at.x, at.y, 150, color, 1.8, 2);
         this.fx.pillar(at.x, at.y, 60, color, 1.4);
@@ -1430,12 +1440,12 @@ export class GameClient {
     for (const [dx, dy] of spots) {
       const x = this.camera.x + dx;
       const y = this.camera.y + dy;
-      const style = MAP.ground.find((p) => shapeContains(p.shape, x, y))?.style;
+      const style = this.map.ground.find((p) => shapeContains(p.shape, x, y))?.style;
       if (style === 'river') river++;
       else if (style !== 'lane' && style !== 'base') jungle++; // jungle paths and the woods off them
     }
     // The pit drones within a screen or so of the map's center; the crystals hum near a standing structure.
-    const pit = Math.max(0, 1 - Math.hypot(this.camera.x - MAP.width / 2, this.camera.y - MAP.height / 2) / 1300);
+    const pit = this.map.aram ? 0 : Math.max(0, 1 - Math.hypot(this.camera.x - this.map.width / 2, this.camera.y - this.map.height / 2) / 1300);
     let hum = 0;
     for (const s of this.ents.values()) {
       if (s.k !== 'structure' || s.dead) continue;

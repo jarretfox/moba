@@ -2,6 +2,7 @@ import type { PlayerTeam, Team } from '../../shared/constants';
 import type { CampKind, MapData } from '../../shared/map/mapData';
 import type { WardenStatus } from '../../shared/protocol';
 import { CRAB } from '../../shared/sim/crab';
+import { RELIC } from '../../shared/sim/relics';
 import { BUFFS, CAMPS, EMBER, FIRST_CAMP_SPAWN, GLOWCAP, MONSTERS } from '../../shared/sim/jungle';
 import { UNCHAINED, WARDEN } from '../../shared/sim/warden';
 import { bestiaryPortrait, type BestiaryKey } from '../render/bestiary';
@@ -16,7 +17,9 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 const LEADER: Record<CampKind, BestiaryKey> = { gutterRats: 'ratKing', mossback: 'mossback', emberToad: 'emberToad', glowcap: 'glowcap' };
 
 interface Entry {
-  key: BestiaryKey;
+  /** Its portrait in the bestiary (or `emoji` instead). */
+  key?: BestiaryKey;
+  emoji?: string;
   name: string;
   /** What it pays, in a line. */
   pays: string;
@@ -58,25 +61,43 @@ function entries(): Entry[] {
   ];
 }
 
+/** The Howling Hollow has no jungle: just the pumpkins. */
+function hollowEntries(): Entry[] {
+  return [
+    {
+      emoji: '🎃',
+      name: 'Pumpkins',
+      pays: `${Math.round(RELIC.heal * 100)}% health and ${Math.round(RELIC.mana * 100)}% mana to whoever gets there first`,
+      buff: 'No recalling on the Hollow: eat pumpkins to keep going, or walk home to the fountain',
+      timing: `from ${mmss(RELIC.firstAt)}, back ${mmss(RELIC.respawn)} after one's eaten`,
+    },
+  ];
+}
+
 export class JungleLegend {
   private readonly root = el('div', 'jungle-legend');
   /** Each entry's status line, by name. */
   private readonly status = new Map<string, HTMLElement>();
   /** When each camp (by its index in the map) is back, as far as we've seen. */
   private readonly campBack = new Map<number, number>();
-  private readonly list = entries();
+  private readonly list: Entry[];
 
   constructor(
     hudRoot: HTMLElement,
     private readonly map: MapData,
   ) {
+    this.list = map.aram ? hollowEntries() : entries();
     this.root.hidden = true;
-    this.root.append(el('div', 'legend-title', 'The Jungle'));
+    this.root.append(el('div', 'legend-title', map.aram ? 'The Howling Hollow' : 'The Jungle'));
     for (const e of this.list) {
       const row = el('div', 'legend-row');
-      const face = el('img', 'legend-face') as HTMLImageElement;
-      face.src = bestiaryPortrait(e.key) ?? '';
-      face.alt = '';
+      let face: HTMLElement;
+      if (e.key) {
+        const img = el('img', 'legend-face') as HTMLImageElement;
+        img.src = bestiaryPortrait(e.key) ?? '';
+        img.alt = '';
+        face = img;
+      } else face = el('div', 'legend-face legend-emoji', e.emoji ?? '');
       const text = el('div', 'legend-text');
       const pays = el('div', 'legend-pays', e.pays);
       pays.append(el('span', 'legend-timing', ` · ${e.timing}`));
@@ -88,7 +109,7 @@ export class JungleLegend {
       row.append(face, text);
       this.root.append(row);
     }
-    this.root.append(el('div', 'legend-foot', 'Kill whoever has a jungle buff to take it. Timers start when your team sees a camp cleared.'));
+    if (!map.aram) this.root.append(el('div', 'legend-foot', 'Kill whoever has a jungle buff to take it. Timers start when your team sees a camp cleared.'));
     hudRoot.append(this.root);
   }
 
@@ -117,6 +138,8 @@ export class JungleLegend {
           .join(' · ');
       } else if (e.key === 'crab') {
         text = time < CRAB.firstAt ? `Arrives in ${mmss(CRAB.firstAt - time)}` : '';
+      } else if (e.emoji === '🎃') {
+        text = time < RELIC.firstAt ? `Grow in ${mmss(RELIC.firstAt - time)}` : '';
       } else if (e.key === 'warden') {
         text = warden?.alive ? 'Awake in his pit' : warden?.wakesIn !== undefined ? `Wakes in ${mmss(warden.wakesIn)}` : '';
       }

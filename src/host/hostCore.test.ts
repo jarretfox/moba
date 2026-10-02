@@ -264,13 +264,13 @@ describe('match settings', () => {
     core.receive('peer:a', { t: 'hello', name: 'Al' });
     expect(lastLobby('peer:a')?.settings).toEqual(DEFAULT_SETTINGS);
     core.receive(LOCAL_CONN, { t: 'settings', settings: { weather: 'snow', night: true, gold: 1500, fast: true } });
-    expect(lastLobby('peer:a')?.settings).toEqual({ weather: 'snow', night: true, gold: 1500, fast: true });
+    expect(lastLobby('peer:a')?.settings).toEqual({ ...DEFAULT_SETTINGS, weather: 'snow', night: true, gold: 1500, fast: true });
     // Not the host: nothing.
     core.receive('peer:a', { t: 'settings', settings: { weather: 'rain' } });
     expect(lastLobby('peer:a')?.settings.weather).toBe('snow');
     // Nonsense: nothing.
     core.receive(LOCAL_CONN, { t: 'settings', settings: { weather: 'lava', gold: 99999, night: 'yes', fast: 1 } as never });
-    expect(lastLobby(LOCAL_CONN)?.settings).toEqual({ weather: 'snow', night: true, gold: 1500, fast: true });
+    expect(lastLobby(LOCAL_CONN)?.settings).toEqual({ ...DEFAULT_SETTINGS, weather: 'snow', night: true, gold: 1500, fast: true });
   });
 
   it('start the match with them: the weather, the clock at night, everyone\'s gold, the pace', () => {

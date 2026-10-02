@@ -196,6 +196,35 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
     - Havarti: +25 health, +2 armor, 61 AD, stronger Holy Wheel and Rind Blade, a shorter Fondue Blessing cooldown, and her tiers come earlier (4, 8, 11).
   - Result (224 matches): every champion wins 41–65% (it was 27–74%), sides 116–108, median match 20 minutes. Jordini (65%), The Oak and HunnaG (61%) are still the strongest bots; King Rix and Havarti (41%) the weakest. Bots aren't people: check these in real games.
 
+## ARAM: the Howling Hollow
+
+A second map and mode: All Random, All Mid, on a haunted graveyard at night (`shared/map/aramMap.ts`).
+
+- **The map:** one long lane, Da Base at each end, with grassy alcoves and brush off its sides and a wide graveyard plaza in the middle. Each side has five structures in a row: an outer and an inner Shootie, an Oakner, a base Shootie and Da Base. It has no jungle, crabs, Warden or map events.
+- **Pumpkins** (`shared/sim/relics.ts`) grow at eight spots from 1:00. The first champion to touch one gets 15% health and 15% mana. It grows back 40 seconds later.
+- **The rules:**
+  - Everyone starts at level 3 with at least 1400 gold.
+  - Gold ×1.35, experience ×1.3 and respawn timers ×0.7.
+  - No recalling: walk home, or eat pumpkins.
+  - Structures have half health.
+- **Lobby:**
+  - The host picks the map, the team size (3v3, 4v4 or 5v5) and whether champions are All Random or picked. Bots fill the empty slots.
+  - In All Random, everyone is rolled a champion nobody on their team has, with two rerolls. The cards are only for looking, but you still pick your champion's look.
+  - The main menu has a Howling Hollow button that goes straight to a 5v5 All Random lobby against bots.
+  - The Rift stays 3v3.
+- **The look** (`render/hollow.ts`): the same inked style as the Rift, graded toward a cold purple night.
+  - Crooked gravestones line the lane, and carved jack-o'-lanterns light it orange. Old grave slabs, fallen leaves and candle clusters lie underfoot.
+  - The plaza has an iron fence and a cobbled round with a pale moon set into it, ringed by candles and ghost lights.
+  - Dead trees stand in the alcoves, and a pumpkin-headed scarecrow in a witch's hat keeps watch on each side.
+  - It's always night. Random weather is mist, or sometimes a thunderstorm that doesn't clear.
+  - Pumpkins are grinning jack-o'-lanterns that pop out of the ground and burst when eaten.
+- **Bots:**
+  - All bots go mid.
+  - They fight when their side has more champions close by, or as many and are about as healthy.
+  - They retreat at 15% health, to a pumpkin if one is near, or else home.
+  - They don't go home to shop.
+- **Balance** (120 bots-only 5v5 matches): every match finished, with a median of 17 minutes (10–27). Sides split 63–57. Champions won 34–60%. HunnaG (60%) and the marksmen thrive in the teamfights. Master Paris (34%) and Daltonomo (42%), assassins with nobody alone to pick off, are weakest. The Rift's tuning is unchanged.
+
 ## Playing with friends
 
 - **Chat:** Enter talks to your team, Shift+Enter to everyone (Tab switches while typing).

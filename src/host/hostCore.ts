@@ -1,10 +1,10 @@
 import { Bot, runBots } from '../shared/bots/bot';
-import { TEAM_SIZE, addBots, laneForNewBot } from '../shared/bots/lineup';
+import { addBots, laneForNewBot } from '../shared/bots/lineup';
 import { Champion } from '../shared/champions/champion';
 import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
 import { SKIN_COUNT, type ChampionId } from '../shared/champions/types';
 import { TEAM, type PlayerTeam } from '../shared/constants';
-import { DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, MAX_CHAT, NIGHT_CLOCK, START_GOLD_OPTIONS, type MatchSettings, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
+import { ARAM_REROLLS, DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, TEAM_SIZE_OPTIONS, teamSizeOf, MAX_CHAT, NIGHT_CLOCK, START_GOLD_OPTIONS, type MatchSettings, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { WEATHER_CHANCES, pickWeather, rollClearing } from '../shared/weather';
 import { isTitleId } from '../shared/titles';
@@ -14,7 +14,9 @@ import { WardenLair } from '../shared/sim/warden';
 import { scoreRows } from '../shared/sim/score';
 import { WaveSpawner } from '../shared/sim/waves';
 import { World } from '../shared/sim/world';
-import { freshMatch } from '../shared/sim/match';
+import { ARAM, freshMatch } from '../shared/sim/match';
+import { isMapId } from '../shared/map/maps';
+import { xpToNext } from '../shared/sim/progression';
 import { setupPracticeRange } from './practice';
 
 interface Player {
@@ -40,6 +42,13 @@ const MAX_NAME = 16;
 export const CHAT_LIMIT = 5;
 const CHAT_WINDOW = 6;
 
+/** ARAM starts everyone further along: experience up to `level` (skill points to spend come with it). */
+function startAtLevel(world: World, champ: Champion, level: number): void {
+  let xp = 0;
+  for (let l = champ.level; l < level; l++) xp += xpToNext(l);
+  champ.gainXp(world, xp / world.rates.xp);
+}
+
 /**
  * The authoritative game. Runs wherever the host is — a Web Worker in the hosting player's tab — and
  * talks to players only through messages. Every message may come from someone else's browser, so
@@ -52,7 +61,8 @@ export class HostCore {
   private readonly lobby = new Map<string, LobbyPlayer>();
   private readonly players = new Map<string, Player>();
   private waves: WaveSpawner;
-  private lair: WardenLair;
+  /** The Warden (none on the ARAM map). */
+  private lair: WardenLair | null;
   /** The match's map events (public for the dev hook that forces one). */
   events: MapEvents;
   private scores: ScoreRow[] | null = null;
@@ -95,6 +105,8 @@ export class HostCore {
         return this.changeSettings(connId, msg.settings);
       case 'rematch':
         return this.rematch(connId, msg.swap === true);
+      case 'reroll':
+        return this.reroll(connId);
     }
   }
 
@@ -113,7 +125,8 @@ export class HostCore {
       return;
     }
     // Back to the lobby with everyone's picks and the settings as they were; a fresh match waiting.
-    ({ world: this.world, waves: this.waves, lair: this.lair, events: this.events } = freshMatch());
+    ({ world: this.world, waves: this.waves, lair: this.lair, events: this.events } = freshMatch(this.settings.map));
+    if (this.allRandom) for (const p of this.lobby.values()) this.rollFor(p, true);
     this.bots.length = 0;
     this.players.clear();
     this.scores = null;
@@ -133,7 +146,35 @@ export class HostCore {
     if (typeof s.night === 'boolean') next.night = s.night;
     if ((START_GOLD_OPTIONS as readonly unknown[]).includes(s.gold)) next.gold = s.gold as number;
     if (typeof s.fast === 'boolean') next.fast = s.fast;
+    if (isMapId(s.map)) next.map = s.map;
+    if ((TEAM_SIZE_OPTIONS as readonly unknown[]).includes(s.teamSize)) next.teamSize = s.teamSize as number;
+    if (s.aramPick === 'random' || s.aramPick === 'pick') next.aramPick = s.aramPick;
+    const wasRandom = this.allRandom;
     this.settings = next;
+    // Into All Random: everyone gets a champion rolled for them (and a fresh set of rerolls).
+    if (this.allRandom && !wasRandom) for (const p of this.lobby.values()) this.rollFor(p, true);
+    this.broadcastLobby();
+  }
+
+  /** ARAM, All Random: champions are rolled, not picked. */
+  private get allRandom(): boolean {
+    return this.settings.map === 'aram' && this.settings.aramPick === 'random';
+  }
+
+  /** Rolls a random champion for a player, one nobody on their team has (and not the one they had). `fresh` resets their rerolls. */
+  private rollFor(p: LobbyPlayer, fresh = false): void {
+    const ids = (Object.keys(CHAMPION_INFO) as ChampionId[]).filter((id) => id !== p.champion && !this.takenBy(p.team, id, p.id));
+    if (ids.length) p.champion = ids[Math.floor(Math.random() * ids.length)];
+    p.skin = 0;
+    if (fresh) p.rerolls = ARAM_REROLLS;
+  }
+
+  /** ARAM, All Random: swap your champion for another roll, while you have rerolls left. */
+  private reroll(connId: string): void {
+    const me = this.lobby.get(connId);
+    if (!me || this.phase !== 'lobby' || !this.allRandom || (me.rerolls ?? 0) <= 0) return;
+    me.rerolls = (me.rerolls ?? 0) - 1;
+    this.rollFor(me);
     this.broadcastLobby();
   }
 
@@ -166,7 +207,7 @@ export class HostCore {
     const unit = p && this.world.getUnit(p.unitId);
     if (unit instanceof Champion) {
       unit.name = `${unit.name} (bot)`;
-      this.bots.push(new Bot(unit, laneForNewBot(this.bots, unit.team as PlayerTeam), this.world));
+      this.bots.push(new Bot(unit, laneForNewBot(this.bots, unit.team as PlayerTeam, this.world.map.aram), this.world));
     }
   }
 
@@ -176,9 +217,10 @@ export class HostCore {
     if (this.lobby.has(connId)) return;
     if (this.phase !== 'lobby') return this.send(connId, { t: 'refused', reason: 'That match has already started.' });
     const team = this.humansOn(TEAM.blue) <= this.humansOn(TEAM.red) ? TEAM.blue : TEAM.red;
-    if (this.humansOn(team) >= TEAM_SIZE) return this.send(connId, { t: 'refused', reason: 'That lobby is full.' });
+    if (this.humansOn(team) >= teamSizeOf(this.settings)) return this.send(connId, { t: 'refused', reason: 'That lobby is full.' });
     const clean = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME) : '';
     this.lobby.set(connId, { id: connId, name: clean || 'Player', team, champion: null, skin: 0, host: connId === LOCAL_CONN, ...(isTitleId(title) ? { title } : {}) });
+    if (this.allRandom) this.rollFor(this.lobby.get(connId)!, true);
     this.broadcastLobby();
   }
 
@@ -186,11 +228,15 @@ export class HostCore {
   private pick(connId: string, team: unknown, champion: unknown, skin?: unknown): void {
     const me = this.lobby.get(connId);
     if (!me || this.phase !== 'lobby') return;
-    if ((team === TEAM.blue || team === TEAM.red) && team !== me.team && this.humansOn(team) < TEAM_SIZE) {
+    if ((team === TEAM.blue || team === TEAM.red) && team !== me.team && this.humansOn(team) < teamSizeOf(this.settings)) {
       me.team = team;
-      if (me.champion && this.takenBy(me.team, me.champion, connId)) me.champion = null;
+      if (me.champion && this.takenBy(me.team, me.champion, connId)) {
+        me.champion = null;
+        if (this.allRandom) this.rollFor(me);
+      }
     }
-    if (typeof champion === 'string' && Object.hasOwn(CHAMPION_INFO, champion) && !this.takenBy(me.team, champion as ChampionId, connId)) {
+    // In All Random the champion is rolled, not picked (the look is still yours to choose).
+    if (!this.allRandom && typeof champion === 'string' && Object.hasOwn(CHAMPION_INFO, champion) && !this.takenBy(me.team, champion as ChampionId, connId)) {
       me.champion = champion as ChampionId;
     }
     if (typeof skin === 'number' && Number.isInteger(skin) && skin >= 0 && skin < SKIN_COUNT) me.skin = skin;
@@ -208,29 +254,38 @@ export class HostCore {
     if (everyone.some((p) => !p.champion)) return;
     this.phase = 'playing';
     const { settings } = this;
-    const weather = settings.weather === 'random' ? pickWeather(Math.random) : settings.weather;
+    // The map the host chose (a fresh match on it, if the waiting one is on the other map).
+    const mapId = mode === 'practice' ? 'rift' : settings.map;
+    if (this.world.map.id !== mapId) ({ world: this.world, waves: this.waves, lair: this.lair, events: this.events } = freshMatch(mapId));
+    const aram = this.world.map.aram === true;
+    const startGold = aram ? Math.max(settings.gold, ARAM.startGold) : settings.gold;
+    const size = mode === 'practice' ? 3 : teamSizeOf(settings);
+    // The Hollow's random weather is graveyard mist, or now and then a thunderstorm that doesn't let up.
+    const weather = settings.weather !== 'random' ? settings.weather : aram ? (Math.random() < 0.75 ? 'mist' : 'storm') : pickWeather(Math.random);
     // Random rain may clear up partway through; rain the host asked for stays all match.
-    const clears = settings.weather === 'random' ? rollClearing(weather, Math.random) : undefined;
-    if (settings.fast) this.world.rates = { ...FAST_RATES };
+    const clears = settings.weather === 'random' && !aram ? rollClearing(weather, Math.random) : undefined;
+    if (settings.fast) this.world.rates = aram ? { gold: this.world.rates.gold * 1.3, xp: this.world.rates.xp * 1.3, respawn: this.world.rates.respawn * 0.6 } : { ...FAST_RATES };
 
     for (const p of everyone) {
       const champ = this.world.add(createChampion(p.champion!, this.world, p.team));
       champ.name = p.name;
       champ.skin = p.skin;
-      champ.gold = settings.gold;
+      champ.gold = startGold;
       champ.title = p.title;
+      if (aram) startAtLevel(this.world, champ, ARAM.startLevel);
       this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
-      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather, ...(clears !== undefined ? { clears } : {}), ...(settings.night ? { clock: NIGHT_CLOCK } : {}) });
+      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather, map: mapId, ...(clears !== undefined ? { clears } : {}), ...(settings.night || aram ? { clock: NIGHT_CLOCK } : {}) });
     }
     if (mode === 'practice') {
       setupPracticeRange(this.world);
     } else {
       for (const team of [TEAM.blue, TEAM.red] as const) {
         const taken = everyone.filter((p) => p.team === team).map((p) => p.champion!);
-        const bots = addBots(this.world, team, TEAM_SIZE - this.humansOn(team), taken, Math.random);
+        const bots = addBots(this.world, team, size - this.humansOn(team), taken, Math.random);
         for (const b of bots) {
           b.champion.skin = Math.floor(Math.random() * SKIN_COUNT); // bots dress up too
-          b.champion.gold = settings.gold;
+          b.champion.gold = startGold;
+          if (aram) startAtLevel(this.world, b.champion, ARAM.startLevel);
         }
         this.bots.push(...bots);
       }
@@ -274,7 +329,7 @@ export class HostCore {
     const ev = this.world.drainEvents();
     const sendRemote = this.world.tick % REMOTE_SEND_EVERY === 0 || this.world.winner !== null;
     const views = new Map<PlayerTeam, EntitySnap[]>();
-    const warden = this.lair.status(this.world);
+    const warden = this.lair?.status(this.world);
     const event = this.events.status(this.world);
     // The scoreboard only needs to move every couple of seconds; the codec sends it only when it changes.
     if (this.world.tick % SCORES_EVERY === 0 || this.world.winner !== null || !this.scores) this.scores = scoreRows(this.world);

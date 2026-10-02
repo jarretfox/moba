@@ -5,7 +5,9 @@ import type { ChampionId } from '../champions/types';
 import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
 import type { Lane } from '../map/mapData';
 import type { ScoreRow } from '../protocol';
-import { freshMatch } from '../sim/match';
+import { ARAM, freshMatch } from '../sim/match';
+import { xpToNext } from '../sim/progression';
+import type { MapId } from '../map/mapData';
 import { scoreRows } from '../sim/score';
 
 // The balance simulator: bots-only matches with random lineups, boiled down to per-champion numbers.
@@ -29,22 +31,31 @@ export function seededRandom(seed: number): () => number {
 }
 
 /** One full bots-only match. Odd seeds create red's bots first, so neither side is always first. */
-export function simulateMatch(seed: number, maxMinutes = 45): MatchResult {
+export function simulateMatch(seed: number, maxMinutes = 45, map: MapId = 'rift', size = 3): MatchResult {
   // The sim's own dice (crab wanders, map events) are seeded too, so a seed always plays the same match.
   const dice = Math.random;
   Math.random = seededRandom(seed * 7919 + 13);
   try {
-    return playMatch(seed, maxMinutes);
+    return playMatch(seed, maxMinutes, map, size);
   } finally {
     Math.random = dice;
   }
 }
 
-function playMatch(seed: number, maxMinutes: number): MatchResult {
-  const { world } = freshMatch();
+function playMatch(seed: number, maxMinutes: number, map: MapId, size: number): MatchResult {
+  const { world } = freshMatch(map);
   const random = seededRandom(seed);
   const order: PlayerTeam[] = seed % 2 ? [TEAM.red, TEAM.blue] : [TEAM.blue, TEAM.red];
-  const bots = order.flatMap((team) => addBots(world, team, 3, [], random));
+  const bots = order.flatMap((team) => addBots(world, team, size, [], random));
+  // ARAM starts everyone at level 3 with more gold, like the host does.
+  if (world.map.aram) {
+    for (const b of bots) {
+      b.champion.gold = ARAM.startGold;
+      let xp = 0;
+      for (let l = 1; l < ARAM.startLevel; l++) xp += xpToNext(l);
+      b.champion.gainXp(world, xp / world.rates.xp);
+    }
+  }
   const ticks = Math.round(maxMinutes * 60 * TICK_RATE);
   for (let i = 0; i < ticks && !world.winner; i++) {
     runBots(world, bots);

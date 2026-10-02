@@ -1,3 +1,5 @@
+import { MAP, type MapData } from '../shared/map/mapData';
+import { MAPS } from '../shared/map/maps';
 import { Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import type { ChampionId } from '../shared/champions/types';
@@ -102,9 +104,9 @@ async function boot(): Promise<void> {
   }
 
   backdrop.destroy();
-  const title = choice.kind === 'solo' && choice.mode === 'practice' ? 'Practice Range' : choice.kind === 'solo' ? 'Match vs Bots' : `Lobby ${code}`;
-  const newGame = () => {
-    const g = new GameClient(app, conn, hudRoot);
+  const title = choice.kind === 'solo' && choice.mode === 'practice' ? 'Practice Range' : choice.kind === 'solo' ? (choice.map === 'aram' ? 'ARAM vs Bots' : 'Match vs Bots') : `Lobby ${code}`;
+  const newGame = (map: MapData = MAP) => {
+    const g = new GameClient(app, conn, hudRoot, map);
     if (import.meta.env.DEV) Object.assign(window, { game: g }); // poke at it from devtools
     g.setTitle(title);
     g.onRematch = (swap) => {
@@ -120,11 +122,13 @@ async function boot(): Promise<void> {
       onPick: (pick) => conn.send({ t: 'pick', ...pick }),
       onStart: (mode) => conn.send({ t: 'start', mode }),
       onSettings: (settings) => conn.send({ t: 'settings', settings }),
+      onReroll: () => conn.send({ t: 'reroll' }),
     });
   let game = newGame();
   let lobby = newLobby();
   /** A match has been played on this screen: the next lobby is a rematch, on a fresh one. */
   let played = false;
+  let isHost = false;
 
   // Team and all chat, for the whole session (over the HUD, so it outlasts the match screens).
   const chat = new ChatBox(document.body, (text, all) => conn.send({ t: 'chat', text, all }));
@@ -136,7 +140,8 @@ async function boot(): Promise<void> {
     } else if (msg.t === 'lobby') {
       const me = msg.lobby.players.find((p) => p.id === msg.you);
       if (me) chat.setTeam(me.team);
-      game.setHost(!!me?.host);
+      isHost = !!me?.host;
+      game.setHost(isHost);
       if (msg.lobby.phase === 'lobby') {
         if (played) {
           // Rematch: a fresh match screen and lobby, picks and settings as they were.
@@ -159,6 +164,14 @@ async function boot(): Promise<void> {
       if (msg.t === 'welcome') {
         lobby.close();
         played = true;
+        // The match is on another map than the screen was built for (the Howling Hollow): build it afresh.
+        const map = msg.map ? MAPS[msg.map] : MAP;
+        if (map !== game.map) {
+          game.destroy();
+          hudRoot.replaceChildren();
+          game = newGame(map);
+          game.setHost(isHost);
+        }
         if (msg.team === 1 || msg.team === 2) chat.setTeam(msg.team);
       }
       game.handle(msg);
@@ -169,6 +182,8 @@ async function boot(): Promise<void> {
     game.showNotice('Disconnected', reason);
   });
   conn.send({ t: 'hello', name, title: loadProfile().title });
+  // ARAM from the menu: the Howling Hollow, five a side, All Random (all still changeable in the lobby).
+  if (choice.kind === 'solo' && choice.map === 'aram') conn.send({ t: 'settings', settings: { map: 'aram', teamSize: 5, aramPick: 'random' } });
 }
 
 void boot();
