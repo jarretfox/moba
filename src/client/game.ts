@@ -19,6 +19,8 @@ import { announceSound, cueFor, spatialize, type SoundCue } from './sfx';
 import { EMOTE_ANIM, attackAnim, wardenWindup } from './render/animation';
 import { attackLook, nextSwing } from './render/attacks';
 import { castSignature } from './render/signatures';
+import { CAST_SOUND } from './sfx';
+import type { ChampionId } from '../shared/champions/types';
 import { Bubbles } from './render/bubbles';
 import { typing } from './ui/chat';
 import { loadProfile, recordMatch, saveProfile } from './profile';
@@ -81,6 +83,12 @@ const CLICK_SLOP = 20;
 const SLOT_BY_CODE: Record<string, Slot> = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
 
 /** Everything the player sees and touches. Reads host snapshots; sends commands. Never simulates. */
+/**
+ * Abilities that need someone to land on (see canCastAt in each champion): with nobody in reach they walk in
+ * or fail, so they aren't shown early on press.
+ */
+const NEEDS_TARGET: Partial<Record<ChampionId, Slot[]>> = { logan: [0], paris: [0], daltonomo: [2], willmore: [3], kingrix: [3], dabber: [2] };
+
 /** While any of these is on, you can't walk: your own champion is drawn where the host says. */
 const PINNED: ReadonlySet<StatusKind> = new Set<StatusKind>(['stun', 'root', 'fear', 'stasis', 'airborne', 'underground', 'recall']);
 
@@ -272,6 +280,10 @@ export class GameClient {
   private readonly reachRing = new Graphics();
   /** Playing over the network: your own champion moves on your screen the moment you click (see prediction.ts). */
   private readonly prediction: SelfPrediction | null;
+  /** Over the network: a cast already shown on press, so the host's word on it doesn't play it twice. */
+  private earlyCast: { slot: Slot; at: number } | null = null;
+  /** Over the network: what you just right-clicked to attack, marked before the host confirms it. */
+  private pendingTarget: { id: number; until: number } | null = null;
   private readonly finder: Pathfinder;
   /** When your champion last grumbled about a cast that couldn't go, and how many times so far. */
   private grumbledAt = -Infinity;
@@ -522,7 +534,10 @@ export class GameClient {
    */
   private drawTargetMark(dt: number, me: EntitySnap | undefined): void {
     const mine = this.buffer.latest?.me;
-    const tgt = mine?.tgt !== undefined ? this.ents.get(mine.tgt) : undefined;
+    const pending = this.pendingTarget && performance.now() / 1000 < this.pendingTarget.until ? this.pendingTarget.id : undefined;
+    if (pending !== undefined && mine?.tgt === pending) this.pendingTarget = null;
+    const tgtId = pending ?? mine?.tgt;
+    const tgt = tgtId !== undefined ? this.ents.get(tgtId) : undefined;
     const g = this.targetMark;
     if (!me || me.dead || !mine || !tgt || tgt.dead || this.replay) {
       if (this.markOn > 0) g.clear();
@@ -585,8 +600,9 @@ export class GameClient {
     this.syncViews(dt);
     this.emitTrails();
     for (const ev of events) {
+      const early = ev.e === 'cast' && ev.src === this.myId && this.earlyCast?.slot === ev.slot && performance.now() / 1000 - this.earlyCast.at < 1.5;
       this.playEvent(ev);
-      const cue = cueFor(ev, this.ents, this.myId);
+      const cue = early ? null : cueFor(ev, this.ents, this.myId);
       if (cue && ev.e !== 'kill') this.playCue(cue); // the announcer voices kills
     }
     this.fx.update(dt);
@@ -1018,9 +1034,11 @@ export class GameClient {
         return;
       case 'cast': {
         const caster = this.ents.get(ev.src);
-        this.views.get(ev.src)?.onCast?.(ev.slot);
+        // Already shown the moment you pressed it (over the network)? Then just the bookkeeping.
+        const shown = ev.src === this.myId && this.takeEarlyCast(ev.slot);
+        if (!shown) this.views.get(ev.src)?.onCast?.(ev.slot);
         // Their own mark on the ground and round the body (the Oak splits the earth, Daltonomo's diamonds spin...).
-        if (caster) castSignature(this.fx, caster, ev.slot);
+        if (caster && !shown) castSignature(this.fx, caster, ev.slot);
         if (ev.src === this.myId) this.casts++;
         if (caster?.champ) this.damageLog.noteCast(ev.src, CHAMPION_INFO[caster.champ].abilities[ev.slot].name, performance.now() / 1000);
         if (caster?.champ && ev.slot === 3) {
@@ -1938,11 +1956,13 @@ export class GameClient {
     if (target) {
       this.send({ k: 'attack', target: target.id });
       this.prediction?.release();
+      if (this.prediction) this.pendingTarget = { id: target.id, until: performance.now() / 1000 + 0.8 };
       if (initial) this.fx.clickMarker(target.x, target.y, true);
       return;
     }
     this.send({ k: 'move', x: Math.round(p.x), y: Math.round(p.y) });
     this.predictWalk(p);
+    this.pendingTarget = null;
     if (initial) this.fx.clickMarker(p.x, p.y, false);
   }
 
@@ -2015,6 +2035,25 @@ export class GameClient {
     }
   }
 
+  /** Plays your cast on press, before the host's word on it arrives: the wind-up, your mark, the sound, a flash where you aimed. */
+  private castNow(slot: Slot, at: Vec2): void {
+    const me = this.ents.get(this.myId);
+    if (!me?.champ || me.dead) return;
+    this.views.get(me.id)?.onCast?.(slot);
+    castSignature(this.fx, me, slot);
+    this.sound.play(CAST_SOUND[me.champ], 0.5);
+    if (this.myInfo?.abilities[slot].targeting.kind !== 'self') this.fx.flash(at.x, at.y, 34, CAST_COLORS[me.champ], 0.25, 0.5);
+    this.earlyCast = { slot, at: performance.now() / 1000 };
+  }
+
+  /** Whether the host's cast of `slot` is one already shown on press (and forget it, either way it's done). */
+  private takeEarlyCast(slot: Slot): boolean {
+    const e = this.earlyCast;
+    if (!e || e.slot !== slot) return false;
+    this.earlyCast = null;
+    return performance.now() / 1000 - e.at < 1.5;
+  }
+
   /** Your champion mutters why a cast didn't go (only you hear it, and not every time). */
   private grumble(why: CastFail): void {
     const me = this.ents.get(this.myId);
@@ -2049,6 +2088,9 @@ export class GameClient {
     const p = this.mouseWorld();
     this.send({ k: 'cast', slot, x: Math.round(p.x), y: Math.round(p.y) });
     this.prediction?.release();
+    // Over the network, show it going off now rather than a round trip later (if it's ready to go, and
+    // isn't one that needs someone to land on: those might walk in first).
+    if (this.prediction && cd <= 0 && !NEEDS_TARGET[this.myInfo.id]?.includes(slot)) this.castNow(slot, p);
   }
 
   /** The enemy under the cursor that a right-click would attack. Shielded structures don't count. */
