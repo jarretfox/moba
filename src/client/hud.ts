@@ -669,6 +669,11 @@ export class Hud {
     this.muteButton.classList.toggle('off', muted);
   }
 
+  /** Where the Warden's lines under the clock end (screen pixels), so the event readout can sit below them. */
+  wardenBottom(): number {
+    return this.warden.childElementCount ? this.warden.getBoundingClientRect().bottom : 0;
+  }
+
   /** Under the clock: when the Warden wakes (the last two minutes), and who's Unchained. */
   setWarden(w: WardenStatus | undefined, myTeam: Team): void {
     const lines: [string, string][] = [];

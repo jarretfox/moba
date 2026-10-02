@@ -11,18 +11,18 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 // Every number for this champion lives here. Arrays are per rank (rank 1 first).
 
 const BASE_STATS: Stats = {
-  maxHp: 700, hpRegen: 4, maxMana: 100, manaRegen: 0, // "mana" is Rage for him
-  ad: 66, ap: 0, armor: 34, mr: 32,
+  maxHp: 680, hpRegen: 4, maxMana: 100, manaRegen: 0, // "mana" is Rage for him
+  ad: 64, ap: 0, armor: 34, mr: 32,
   attackSpeed: 0.7, attackRange: 125, moveSpeed: 345,
 };
-const GROWTH: StatGrowth = { maxHp: 105, hpRegen: 0.8, maxMana: 0, manaRegen: 0, ad: 3.8, armor: 4.4, mr: 1.4, attackSpeedPct: 0.025 };
+const GROWTH: StatGrowth = { maxHp: 100, hpRegen: 0.8, maxMana: 0, manaRegen: 0, ad: 3.6, armor: 4.1, mr: 1.4, attackSpeedPct: 0.025 };
 const RADIUS = 38;
 const FREE = [0, 0, 0, 0];
 
 const RAGE = { max: 100, perAttack: 8, perAbilityHit: 5, perHitTaken: 2, decayAfter: 6, decayPerSecond: 10 };
 const CLEAVE = {
   cooldown: [5, 4.5, 4, 3.5], castTime: 0.15, range: 300, angle: 110,
-  damage: [40, 70, 100, 130], adRatio: 1.0, healPerEnemy: 10, healPerChampion: [30, 40, 50, 60],
+  damage: [35, 60, 85, 110], adRatio: 0.9, healPerEnemy: 6, healPerChampion: [25, 32, 40, 48],
   brutal: { range: 380, damageMult: 1.5, healMult: 2 },
 };
 const WAR_CRY = {

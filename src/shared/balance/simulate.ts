@@ -4,15 +4,9 @@ import { CHAMPION_INFO } from '../champions/registry';
 import type { ChampionId } from '../champions/types';
 import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
 import type { Lane } from '../map/mapData';
-import { MAP } from '../map/mapData';
 import type { ScoreRow } from '../protocol';
-import { Fountain } from '../sim/fountain';
-import { Jungle } from '../sim/jungle';
+import { freshMatch } from '../sim/match';
 import { scoreRows } from '../sim/score';
-import { spawnStructures } from '../sim/structure';
-import { WardenLair } from '../sim/warden';
-import { WaveSpawner } from '../sim/waves';
-import { World } from '../sim/world';
 
 // The balance simulator: bots-only matches with random lineups, boiled down to per-champion numbers.
 // `npm run sim` runs it across all CPU cores (scripts/sim.mjs); this file is the part that's tested.
@@ -36,12 +30,18 @@ export function seededRandom(seed: number): () => number {
 
 /** One full bots-only match. Odd seeds create red's bots first, so neither side is always first. */
 export function simulateMatch(seed: number, maxMinutes = 45): MatchResult {
-  const world = new World(MAP);
-  spawnStructures(world);
-  world.addSystem(new WaveSpawner());
-  world.addSystem(new Fountain());
-  world.addSystem(new Jungle(world));
-  world.addSystem(new WardenLair());
+  // The sim's own dice (crab wanders, map events) are seeded too, so a seed always plays the same match.
+  const dice = Math.random;
+  Math.random = seededRandom(seed * 7919 + 13);
+  try {
+    return playMatch(seed, maxMinutes);
+  } finally {
+    Math.random = dice;
+  }
+}
+
+function playMatch(seed: number, maxMinutes: number): MatchResult {
+  const { world } = freshMatch();
   const random = seededRandom(seed);
   const order: PlayerTeam[] = seed % 2 ? [TEAM.red, TEAM.blue] : [TEAM.blue, TEAM.red];
   const bots = order.flatMap((team) => addBots(world, team, 3, [], random));

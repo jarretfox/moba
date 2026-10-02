@@ -340,7 +340,7 @@ export class GameClient {
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
     this.nightLife = new NightLife(MAP, this.lighting.lanterns);
-    this.events = new EventsView({ fx: this.fx, map: MAP, under: this.underLayer, units: this.unitLayer, hudRoot, minimap: this.minimap, team: () => this.myTeam, announce: (t, d, tone) => this.hud.announce(t, d, tone), cue: (c) => this.playCue(c), shake: (at, k) => this.shakeNear(at, k) });
+    this.events = new EventsView({ fx: this.fx, map: MAP, under: this.underLayer, units: this.unitLayer, hudRoot, minimap: this.minimap, team: () => this.myTeam, announce: (t, d, tone) => this.hud.announce(t, d, tone), say: (line, weight) => this.announcer.say(line, weight), cue: (c) => this.playCue(c), shake: (at, k) => this.shakeNear(at, k) });
     this.emissive.addChild(this.nightLife.glow, ...this.wicks.map((w) => w.glow), ...this.fountains.map((f) => f.glow), this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
@@ -638,6 +638,9 @@ export class GameClient {
     this.hud.setWarden(latest?.warden, this.myTeam);
     this.announceMatch(latest);
     this.events.update(dt, this.replay ? undefined : latest?.event);
+    // The event readout goes under the Warden's lines, however many of them there are.
+    const eventHud = this.hudRoot.querySelector<HTMLElement>('.event-hud');
+    if (eventHud && !eventHud.hidden) eventHud.style.top = `${Math.max(48, this.hud.wardenBottom() + 6 - 30)}px`;
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
     if (!this.introShown && me && latest?.scores) this.playIntro(latest.scores);
     if (latest?.winner) this.tips.hide();
@@ -1340,9 +1343,10 @@ export class GameClient {
   private announceMatch(latest: Snapshot | null | undefined): void {
     if (!latest || this.replay || latest.winner) return;
     const next = latest.nextWave;
-    if (!this.announced.has('chudsSoon') && !this.announced.has('chuds') && next !== undefined && next <= 30 && next > 26 && latest.time < 120) {
+    // The first wave comes at 0:20: a warning ten seconds before.
+    if (!this.announced.has('chudsSoon') && !this.announced.has('chuds') && next !== undefined && next <= 10 && next > 8 && latest.time < 60) {
       this.announced.add('chudsSoon');
-      this.announcer.say('Thirty seconds until the Chuds spawn.', 1);
+      this.announcer.say('Ten seconds until the Chuds spawn.', 1);
     }
     const up = !!latest.warden?.alive;
     if (up && !this.wardenWasUp && latest.time > 60) {

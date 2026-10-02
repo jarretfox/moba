@@ -128,7 +128,7 @@ describe('Cleave', () => {
 
     expect(hit.has(front.id)).toBe(true);
     expect(hit.has(behind.id)).toBe(false);
-    expect(heals).toEqual([30]);
+    expect(heals).toEqual([25]);
   });
 
   it("doesn't damage structures", () => {

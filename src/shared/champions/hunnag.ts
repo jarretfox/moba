@@ -23,13 +23,13 @@ const SPORE_SPEED = 1500;
 /** Her spells stack Rot; it eats away every half second, and the 4th stack bursts. */
 export const ROT = {
   maxStacks: 4, duration: 4, tickEvery: 0.5,
-  perStackPerSecond: (level: number) => 4 + 0.8 * level, perStackApRatio: 0.04,
-  burst: (level: number) => 40 + 12 * level, burstApRatio: 0.35, burstSlow: 0.3, burstSlowFor: 1.5,
+  perStackPerSecond: (level: number) => 3.5 + 0.7 * level, perStackApRatio: 0.04,
+  burst: (level: number) => 35 + 10 * level, burstApRatio: 0.35, burstSlow: 0.3, burstSlowFor: 1.5,
 };
 const SLUDGE_LOB = {
-  cost: [60, 65, 70, 75], cooldown: [7, 6.5, 6, 5.5], castTime: 0.2,
+  cost: [60, 65, 70, 75], cooldown: [8, 7.5, 7, 6.5], castTime: 0.2,
   range: 850, radius: 160, flightTime: 0.5,
-  damage: [70, 110, 150, 190], apRatio: 0.6, puddleTime: 2.5, puddleSlow: 0.3,
+  damage: [60, 95, 130, 165], apRatio: 0.6, puddleTime: 2.5, puddleSlow: 0.3,
 };
 const MUSHROOM_TOTEM = {
   cost: [70, 70, 70, 70], cooldown: [16, 15, 14, 13], castTime: 0.25,

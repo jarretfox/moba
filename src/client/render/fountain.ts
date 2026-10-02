@@ -17,7 +17,7 @@ const INK = 0x1c1e24;
 export function crystalSpot(map: MapData, team: PlayerTeam): Vec2 {
   const s = map.spawns[team];
   const left = s.x < map.width / 2;
-  return { x: s.x + (left ? -230 : 230), y: s.y + 60 };
+  return { x: s.x + (left ? -200 : 200), y: s.y + 60 };
 }
 
 export class FountainView {

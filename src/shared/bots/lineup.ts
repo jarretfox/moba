@@ -7,12 +7,13 @@ import { Bot } from './bot';
 
 /**
  * Who fills a team's slots, in order: a solo top lane, then a duo bot lane (a carry and a partner). Each
- * slot lists the champions that suit it; a bot takes one its team doesn't have yet.
+ * slot lists the champions that suit it (an empty list: anyone); a bot takes one its team doesn't have yet.
+ * The lists are spread so every champion turns up about as often as any other.
  */
 const SLOTS: { lane: Lane; picks: ChampionId[] }[] = [
   { lane: 'top', picks: ['barbarian', 'willmore', 'logan', 'dongmaster', 'paris', 'daltonomo'] },
-  { lane: 'bot', picks: ['marksman', 'kingrix', 'hunnag', 'dabber'] },
-  { lane: 'bot', picks: ['hunnag', 'logan', 'kingrix', 'willmore', 'havarti'] },
+  { lane: 'bot', picks: ['marksman', 'dabber', 'hunnag', 'kingrix', 'havarti'] },
+  { lane: 'bot', picks: [] },
 ];
 
 export const TEAM_SIZE = 3;
@@ -30,9 +31,9 @@ export function laneForNewBot(bots: Bot[], team: PlayerTeam): Lane {
 export function addBots(world: World, team: PlayerTeam, count: number, taken: readonly ChampionId[] = [], random: () => number = () => 0): Bot[] {
   const have = new Set(taken);
   return SLOTS.slice(0, count).map(({ lane, picks }) => {
-    let options = picks.filter((id) => !have.has(id));
+    let options = (picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[])).filter((id) => !have.has(id));
     if (!options.length) options = (Object.keys(CHAMPION_INFO) as ChampionId[]).filter((id) => !have.has(id));
-    if (!options.length) options = picks; // every champion is taken: a repeat beats an empty slot
+    if (!options.length) options = picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[]); // every champion is taken: a repeat beats an empty slot
     const champion = options[Math.min(options.length - 1, Math.floor(random() * options.length))];
     have.add(champion);
     const unit = world.add(createChampion(champion, world, team));

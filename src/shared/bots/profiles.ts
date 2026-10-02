@@ -4,7 +4,10 @@ import type { Slot } from '../constants';
 import type { ItemId } from '../items';
 import { add, dirTo, dist, lerpVec, scale, type Vec2 } from '../math';
 import type { Command } from '../protocol';
-import { enemiesInCone, enemiesInRadius } from '../sim/query';
+import { enemiesAlongLine, enemiesInCone, enemiesInRadius } from '../sim/query';
+import { LEVY } from '../champions/kingrix';
+import { atRank } from '../champions/types';
+import { mitigate } from '../sim/world';
 import type { Unit } from '../sim/unit';
 import type { World } from '../sim/world';
 
@@ -43,6 +46,53 @@ function lead(u: Unit, seconds: number): Vec2 {
   return u.moveDir ? add(u.pos, scale(u.moveDir, u.moveSpeed * seconds)) : { ...u.pos };
 }
 
+// ─── Clearing waves with abilities ────────────────────────────────────────────
+// Every bot whose kit can hit a group of Chuds uses it on the wave now and then (only the Oak and HunnaG did,
+// which made them win far more than the rest).
+
+/** Spells cost mana: keep half the bar for fights. Champions without mana only wait on the cooldown. */
+const spare = (ctx: BotContext) => ctx.me.stats.maxMana <= 0 || ctx.me.mana >= ctx.me.stats.maxMana * 0.5;
+
+/** The middle of the Chuds within `range`, if there are at least `min` of them. */
+function waveCenter(ctx: BotContext, chuds: Unit[], range: number, min: number): Vec2 | null {
+  const near = chuds.filter((c) => dist(c.pos, ctx.me.pos) < range);
+  if (near.length < min) return null;
+  return near.reduce((sum, c) => ({ x: sum.x + c.pos.x / near.length, y: sum.y + c.pos.y / near.length }), { x: 0, y: 0 });
+}
+
+/** A cone (Maul, Sigma Stare) swung at the wave when it would catch `min` or more. */
+function coneFarm(ctx: BotContext, chuds: Unit[], slot: Slot, range: number, angleDeg: number, min = 3): Command | null {
+  if (!ready(ctx, slot) || !spare(ctx)) return null;
+  const center = waveCenter(ctx, chuds, range + 20, min);
+  if (!center) return null;
+  const caught = enemiesInCone(ctx.world, ctx.me.team, ctx.me.pos, dirTo(ctx.me.pos, center), range, (angleDeg / 2) * (Math.PI / 180));
+  return caught.filter((u) => u.kind === 'chud').length >= min ? cast(slot, center) : null;
+}
+
+/** A shot that goes through everything in a line (Objection!), fired down the wave when it would hit `min`. */
+function lineFarm(ctx: BotContext, chuds: Unit[], slot: Slot, range: number, width: number, min = 3): Command | null {
+  if (!ready(ctx, slot) || !spare(ctx)) return null;
+  const center = waveCenter(ctx, chuds, range, min);
+  if (!center) return null;
+  const caught = enemiesAlongLine(ctx.world, ctx.me.team, ctx.me.pos, dirTo(ctx.me.pos, center), range, width);
+  return caught.filter((u) => u.kind === 'chud').length >= min ? cast(slot, center) : null;
+}
+
+/** An area thrown at a spot (Sticky Icky), into the thick of the wave. */
+function areaFarm(ctx: BotContext, chuds: Unit[], slot: Slot, range: number, radius: number, min = 3): Command | null {
+  if (!ready(ctx, slot) || !spare(ctx)) return null;
+  const center = waveCenter(ctx, chuds, range, min);
+  if (!center) return null;
+  return enemiesInRadius(ctx.world, ctx.me.team, center, radius).filter((u) => u.kind === 'chud').length >= min ? cast(slot, center) : null;
+}
+
+/** A single-target shot (Junk Toss) at the weakest Chud in reach, to push the wave on. */
+function pokeFarm(ctx: BotContext, chuds: Unit[], slot: Slot, range: number, below = 0.45): Command | null {
+  if (!ready(ctx, slot) || !spare(ctx)) return null;
+  const target = chuds.filter((c) => dist(c.pos, ctx.me.pos) < range && hpPct(c) < below).sort((a, b) => a.hp - b.hp)[0];
+  return target ? cast(slot, target.pos) : null;
+}
+
 const marksman: BotProfile = {
   skillOrder: [0, 2, 1],
   build: ['shiv', 'treads', 'fang', 'striders', 'longbow', 'reaver', 'link'],
@@ -60,6 +110,9 @@ const marksman: BotProfile = {
     if (ready(ctx, 2)) return cast(2, add(me.pos, scale(dirTo(threat.pos, me.pos), 300)));
     if (ready(ctx, 1) && dist(me.pos, threat.pos) < 500) return cast(1, me.pos);
     return null;
+  },
+  farm(ctx, chuds) {
+    return lineFarm(ctx, chuds, 0, 1000, 70);
   },
 };
 
@@ -110,6 +163,9 @@ const willmore: BotProfile = {
     const { me } = ctx;
     return ready(ctx, 1) && !me.has('burrowed') ? cast(1, me.pos) : null;
   },
+  farm(ctx, chuds) {
+    return pokeFarm(ctx, chuds, 0, 750);
+  },
 };
 
 const hunnag: BotProfile = {
@@ -158,6 +214,9 @@ const logan: BotProfile = {
     if (ready(ctx, 3) && dist(me.pos, threat.pos) < 400) return cast(3, threat.pos);
     return ready(ctx, 1) ? cast(1, me.pos) : null;
   },
+  farm(ctx, chuds) {
+    return coneFarm(ctx, chuds, 2, 300, 90);
+  },
 };
 
 const kingrix: BotProfile = {
@@ -176,6 +235,18 @@ const kingrix: BotProfile = {
     const { me } = ctx;
     if (ready(ctx, 2) && dist(me.pos, threat.pos) < 330) return cast(2, threat.pos);
     return ready(ctx, 1) ? cast(1, me.pos) : null;
+  },
+  farm(ctx, chuds) {
+    const { me } = ctx;
+    // Levy is made for last hits: a kill pays extra gold and gives the mana back.
+    if (ready(ctx, 0)) {
+      const damage = atRank(LEVY.damage, me.abilities[0].rank) + LEVY.apRatio * me.stats.ap;
+      const kill = chuds.find((c) => dist(c.pos, me.pos) < LEVY.range - 50 && c.hp <= mitigate(damage, c.stats.mr) && c.hp > mitigate(me.stats.ad, c.stats.armor));
+      if (kill) return cast(0, kill.pos);
+    }
+    // The guards push a big wave along.
+    if (ready(ctx, 1) && spare(ctx) && waveCenter(ctx, chuds, 600, 4)) return cast(1, me.pos);
+    return null;
   },
 };
 
@@ -198,6 +269,9 @@ const dongmaster: BotProfile = {
     if (ready(ctx, 1)) return cast(1, me.pos);
     return ready(ctx, 0) ? cast(0, add(me.pos, scale(dirTo(me.pos, home), 420))) : null;
   },
+  farm(ctx, chuds) {
+    return coneFarm(ctx, chuds, 2, 450, 70);
+  },
 };
 
 const dabber: BotProfile = {
@@ -215,6 +289,12 @@ const dabber: BotProfile = {
   },
   escape(ctx) {
     return ready(ctx, 0) && !ctx.me.has('hazed') ? cast(0, ctx.me.pos) : null;
+  },
+  farm(ctx, chuds) {
+    // Resin on the wave, then set it alight once enough of them are sticky.
+    const sticky = chuds.filter((c) => c.has('resin') && dist(c.pos, ctx.me.pos) < 1000);
+    if (sticky.length >= 3 && ready(ctx, 2) && spare(ctx)) return cast(2, ctx.me.pos);
+    return areaFarm(ctx, chuds, 1, 850, 220);
   },
 };
 

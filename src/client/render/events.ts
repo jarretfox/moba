@@ -32,6 +32,8 @@ export interface EventsHooks {
   /** The viewer's side. */
   team: () => Team;
   announce: (title: string, detail: string, tone: Tone) => void;
+  /** The announcer says it out loud (weight 3: the big ones). */
+  say?: (line: string, weight: 1 | 2 | 3) => void;
   cue: (cue: SoundCue) => void;
   shake: (at: { x: number; y: number }, amount: number) => void;
 }
@@ -314,6 +316,7 @@ export class EventsView {
         const title = ev.kind === 'boss' ? 'SOMETHING TALL IS COMING' : ev.kind === 'escort' ? "OLD WICK'S CART IS COMING" : 'THE TAX COLLECTOR IS COMING';
         const detail = ev.kind === 'boss' ? `Three Chuds in a Coat arrive in ${ev.dur ?? 30}s: kill them for gold and Deep Pockets` : ev.kind === 'escort' ? `Push Old Wick's cart home in ${ev.dur ?? 30}s: gold and Wick's Favor at your end` : `The Royal Tax Stall opens in ${ev.dur ?? 30}s: hold it for gold and Royal Favor`;
         this.h.announce(title, detail, 'neutral');
+        this.h.say?.(ev.kind === 'boss' ? 'Something tall is coming to the river!' : ev.kind === 'escort' ? "Old Wick's cart is on its way!" : 'The tax collector is coming!', 2);
         this.h.cue({ name: 'eventWarn', gain: 0.7 });
         fx.pillar(ev.x, ev.y, 70, 0xffffff, 1.6);
         fx.sigil(ev.x, ev.y, 170, GOLD, 2.2, 0.8);
@@ -323,6 +326,7 @@ export class EventsView {
         const title = ev.kind === 'boss' ? 'THREE CHUDS IN A COAT' : ev.kind === 'escort' ? "OLD WICK'S CART" : 'TAX TIME';
         const detail = ev.kind === 'boss' ? 'A very tall bloke has arrived at the river. The Oak was right.' : ev.kind === 'escort' ? 'Stand by the cart to push it toward your side' : 'Stand in the circle, alone, to fill your bar';
         this.h.announce(title, detail, 'neutral');
+        this.h.say?.(ev.kind === 'boss' ? 'Three Chuds in a Coat have arrived!' : ev.kind === 'escort' ? 'Push the cart!' : 'Tax time!', ev.kind === 'boss' ? 3 : 2);
         this.h.cue({ name: 'eventStart', gain: 0.8 });
         fx.pillar(ev.x, ev.y, 110, GOLD, 1.8);
         fx.shockwave(ev.x, ev.y, 420, GOLD, 0.7);
@@ -335,6 +339,7 @@ export class EventsView {
         const title = ev.kind === 'boss' ? 'THE COAT IS SLAIN' : ev.kind === 'escort' ? 'CART DELIVERED' : 'TAXES COLLECTED';
         const detail = ev.kind === 'boss' ? `${ev.text ?? teamName} finished Three Chuds in a Coat: ${who.toLowerCase() === 'we' ? 'we' : 'they'} have Deep Pockets` : ev.kind === 'escort' ? `${teamName} got Old Wick's cart home: ${good ? 'we' : 'they'} have Wick's Favor` : `${teamName} took the Royal Tax Stall: ${good ? 'we' : 'they'} have Royal Favor`;
         this.h.announce(title, detail, tone);
+        this.h.say?.(good ? (ev.kind === 'boss' ? 'The Coat is slain! We have Deep Pockets!' : ev.kind === 'escort' ? 'Cart delivered!' : 'Taxes collected!') : 'The enemy has taken the objective.', good ? 3 : 2);
         this.h.cue({ name: good ? 'fanfare' : 'toll', gain: 0.7 });
         if (good) this.h.cue({ name: 'kaching', gain: 0.5 });
         const color = good ? PALETTE.ally : PALETTE.enemy;

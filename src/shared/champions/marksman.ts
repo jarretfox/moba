@@ -13,18 +13,18 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 
 const BASE_STATS: Stats = {
   maxHp: 620, hpRegen: 3.5, maxMana: 340, manaRegen: 7,
-  ad: 62, ap: 0, armor: 26, mr: 30,
+  ad: 59, ap: 0, armor: 26, mr: 30,
   attackSpeed: 0.68, attackRange: 550, moveSpeed: 330,
 };
 const GROWTH: StatGrowth = { maxHp: 90, hpRegen: 0.55, maxMana: 38, manaRegen: 0.5, ad: 3.2, armor: 3.8, mr: 1, attackSpeedPct: 0.03 };
 const RADIUS = 35;
 const ARROW_SPEED = 2200;
 
-const STEADY_RHYTHM = { attackSpeedPerStack: 0.08, maxStacks: 5, duration: 3 };
+const STEADY_RHYTHM = { attackSpeedPerStack: 0.06, maxStacks: 5, duration: 3 };
 const PIERCING_BOLT = {
   cost: [50, 55, 60, 65], cooldown: [7, 6.5, 6, 5.5], castTime: 0.25,
   range: 1100, width: 60, speed: 2000,
-  damage: [60, 95, 130, 165], adRatio: 1.0, falloffPerHit: 0.15, minMultiplier: 0.55,
+  damage: [55, 85, 115, 145], adRatio: 0.9, falloffPerHit: 0.25, minMultiplier: 0.4,
 };
 const SNARE_TRAP = {
   cost: [60, 60, 60, 60], cooldown: [14, 13, 12, 11], castTime: 0.2,

@@ -180,7 +180,7 @@ kbd {
 
 .stealth-tag {
   position: absolute;
-  top: 54px;
+  bottom: 205px;
   left: 50%;
   transform: translateX(-50%);
   padding: 3px 14px 4px;
@@ -1962,6 +1962,11 @@ html.colorblind .gold-peak.theirs {
 }
 
 /* ─── Champion select ───────────────────────────────────────────────── */
+
+/* While champion select is up, the match's own interface behind it stays hidden. */
+html.in-lobby #hud > :not(.select) {
+  visibility: hidden;
+}
 
 .select {
   position: absolute;

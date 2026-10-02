@@ -13,7 +13,7 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 
 const BASE_STATS: Stats = {
   maxHp: 625, hpRegen: 3.5, maxMana: 330, manaRegen: 7,
-  ad: 58, ap: 0, armor: 30, mr: 32,
+  ad: 61, ap: 0, armor: 30, mr: 32,
   attackSpeed: 0.65, attackRange: 175, moveSpeed: 335,
 };
 const GROWTH: StatGrowth = { maxHp: 92, hpRegen: 0.6, maxMana: 40, manaRegen: 0.5, ad: 2.6, armor: 3.8, mr: 1.2, attackSpeedPct: 0.02 };
@@ -26,7 +26,7 @@ const BOLT_SPEED = 1700;
  * Legendary at the last (always fully ripe). Every attack ripens her a little more for a few seconds.
  */
 export const AGED = {
-  tiers: [5, 9, 13], rangedRange: 525,
+  tiers: [4, 8, 11], rangedRange: 525,
   ripeness: { perStack: 0.06, max: 5, duration: 5, fullMoveSpeed: 0.08 },
   wave: { length: 350, width: 90, adRatio: 0.5, apRatio: 0.25 },
 };

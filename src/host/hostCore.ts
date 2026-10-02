@@ -4,21 +4,17 @@ import { Champion } from '../shared/champions/champion';
 import { CHAMPION_INFO, createChampion } from '../shared/champions/registry';
 import { SKIN_COUNT, type ChampionId } from '../shared/champions/types';
 import { TEAM, type PlayerTeam } from '../shared/constants';
-import { MAP } from '../shared/map/mapData';
 import { DEFAULT_SETTINGS, FAST_RATES, LOCAL_CONN, MAX_CHAT, NIGHT_CLOCK, START_GOLD_OPTIONS, type MatchSettings, type ClientMessage, type Command, type EntitySnap, type GameEvent, type HostMessage, type LobbyPlayer, type LobbyState, type MatchMode, type ScoreRow } from '../shared/protocol';
 import { SnapshotEncoder } from '../shared/snapshotCodec';
 import { WEATHER_CHANCES, pickWeather, rollClearing } from '../shared/weather';
 import { isTitleId } from '../shared/titles';
 import { applyCommand } from '../shared/sim/commands';
-import { Fountain } from '../shared/sim/fountain';
-import { Jungle } from '../shared/sim/jungle';
-import { CrabSpawner } from '../shared/sim/crab';
 import { MapEvents } from '../shared/sim/events';
 import { WardenLair } from '../shared/sim/warden';
 import { scoreRows } from '../shared/sim/score';
-import { spawnStructures } from '../shared/sim/structure';
 import { WaveSpawner } from '../shared/sim/waves';
 import { World } from '../shared/sim/world';
+import { freshMatch } from '../shared/sim/match';
 import { setupPracticeRange } from './practice';
 
 interface Player {
@@ -43,19 +39,6 @@ const MAX_NAME = 16;
 /** At most this many chat lines per player in any CHAT_WINDOW seconds. */
 export const CHAT_LIMIT = 5;
 const CHAT_WINDOW = 6;
-
-/** A new match, not started: the map's structures, the fountains, the jungle, the crabs, the waves, the Warden, the events. */
-function freshMatch(): { world: World; waves: WaveSpawner; lair: WardenLair; events: MapEvents } {
-  const world = new World(MAP);
-  const waves = world.addSystem(new WaveSpawner());
-  const lair = world.addSystem(new WardenLair());
-  spawnStructures(world);
-  world.addSystem(new Fountain());
-  world.addSystem(new Jungle(world));
-  world.addSystem(new CrabSpawner(world));
-  const events = world.addSystem(new MapEvents(world));
-  return { world, waves, lair, events };
-}
 
 /**
  * The authoritative game. Runs wherever the host is — a Web Worker in the hosting player's tab — and

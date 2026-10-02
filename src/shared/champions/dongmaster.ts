@@ -12,7 +12,7 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 
 const BASE_STATS: Stats = {
   maxHp: 690, hpRegen: 4.2, maxMana: 0, manaRegen: 0,
-  ad: 64, ap: 0, armor: 35, mr: 32,
+  ad: 66, ap: 0, armor: 35, mr: 32,
   attackSpeed: 0.66, attackRange: 125, moveSpeed: 345,
 };
 const GROWTH: StatGrowth = { maxHp: 105, hpRegen: 0.8, maxMana: 0, manaRegen: 0, ad: 3.6, armor: 4.5, mr: 1.4, attackSpeedPct: 0.025 };
@@ -25,7 +25,7 @@ export const MOG = { radius: 400, weaken: 0.08, ascendedWeaken: 0.16 };
 export const GAINS = { perStack: 6, maxStacks: 30 };
 export const CHIN_CHECK = {
   cooldown: [9, 8.5, 8, 7.5], range: 420, width: 90, dashSpeed: 1600,
-  damage: [60, 95, 130, 165], adRatio: 0.8, knockback: 250, knockTime: 0.25,
+  damage: [70, 105, 140, 175], adRatio: 0.8, knockback: 250, knockTime: 0.25,
 };
 export const MEWING = {
   cooldown: [14, 13, 12, 11], duration: 3, shield: [70, 100, 130, 160], maxHpRatio: 0.08, tenacity: 0.2, healShare: 0.25,

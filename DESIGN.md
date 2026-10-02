@@ -53,6 +53,9 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Death timers grow with level (see Progression): 5s at level 1 up to 35s at 13, so late deaths let the enemy push.
   - **Recall (B):** channel for 4s to teleport home. Taking damage, a stun, or any other order breaks it.
   - **Fountain:** standing within 500 of your spawn restores 12% of max health and mana per second. Rage isn't refilled; it's earned.
+    - Its edge is a ringed stone curb in your team's color, so you can see where it ends.
+    - A guardian crystal at the back of the platform (`sim/fountain.ts`, drawn in `render/fountain.ts`) stops spawn camping. Every half second it zaps any enemy champion on the platform for 18% of their max health + 80 true damage. It also zaps anyone who hits a champion on the platform from outside it, for 3 seconds, within 1000 of the spawn. Its kills count as Da Base's.
+    - Bots keep off the enemy platform.
 - **Call for help:** if an enemy champion hurts your champion nearby, your Chuds and Shooties switch to that enemy. This rule is what makes trading and tower dives work.
 - **Vision (fog of war)** — `src/shared/sim/vision.ts`, sight ranges in `sight.ts`:
   - **What each team can see:** champions see 1100 units, Chuds 800, Shooties 1100, Da Base 900 and Oakners 700. This is worked out on a 100-unit grid, 10 times a second, and walls block line of sight.
@@ -157,6 +160,32 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Match length:** with random six-champion lineups, a bots-only match ends in 11–31 minutes (median about 16). Wins split 17–13 between the sides over 30 games. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items.
   - **Bot win rates by champion** over those 30 games: HunnaG 68%, Barbarian 62%, Marksman 61%, Willmore 45%, Logan 41%, King Rix 33%. That's noisy (about ±10%) and mixes kit strength with how well each bot plays its kit, so it's a starting point for M5 balance, not a verdict.
 
+## Playtest round 2 (2026-10-02)
+
+- **Champion select** groups champions by role (`shared/champions/roles.ts`): Tank (Logan, Dongmaster), Fighter (The Oak, Willmore, Havarti), Assassin (Daltonomo, Master Paris), Mage (HunnaG), Marksman (Jordini, Dark Dabber) and Support (King Rix). The showcase names each champion's roles. The showcase only changes once the pointer rests on a card for a moment, so you can reach a bottom-row champion's looks.
+- **Readability:**
+  - Damage numbers start above a unit's name and title, and numbers and comic words landing together stack instead of covering each other. Hit words sit beside the target.
+  - Shop items show their stats as big colored chips ("+25 AD").
+  - The clock shows the champion kill score, your team v theirs.
+  - Jungle buffs are unmissable: Ember Toad's flames round the feet, Glowcap's halo over the head, and badges beside the health bar.
+  - When you're hidden, the screen's edges darken. Unseen (invisible, in the haze, burrowed) is deep with a violet shimmer and a label; tall grass is light.
+- **The world:**
+  - Buildings look worse as they lose health: cracks, then a broken parapet, soot and smoke, then a breach with fire inside (`drawWear` in `render/structures.ts`).
+  - Recalling builds to its last second: a tightening ring of runes, a climbing column of light, motes, light on the ground, and a flare.
+  - Tall grass is chest-high.
+- **Settings:** camera pan speed (40–250%) for playing unlocked, full screen, and the announcer voice.
+- **Balance** (bot simulations with `npm run sim`, which now plays the same match as the host through `freshMatch` in `shared/sim/match.ts`, its dice seeded):
+  - Two things skewed the old numbers: only The Oak's and HunnaG's bots used abilities on Chud waves, and HunnaG and King Rix were in nearly every bot lineup. Now every bot clears waves with its kit, and lineups are spread so each champion turns up about as often.
+  - Tuning, over five rounds of 160–224 matches:
+    - Jordini: By the Book +6% a stack (was 8%); Objection! loses 25% per enemy it passes through (was 15%) and hits a little softer; base AD 59.
+    - The Oak: Cleave heals 6 per Chud and 25–48 per champion and hits softer; 680 health; slower armor and AD growth; base AD 64.
+    - HunnaG: the totem (above), a softer Sludge Lob on a longer cooldown (8–6.5s), smaller Rot ticks and burst.
+    - King Rix: 660 health, 28 armor, 60 AD, 0.66 attack speed, 450 range; Royal Tax +30% Chud damage; stronger Levy (also on a shorter cooldown), KNEEL! and guards.
+    - Logan: 66 AD; Pounce +40–115 (+50% AD); Maul 60–165 (+80% AD) on a 7–5.5s cooldown.
+    - Dongmaster: 66 AD; Chin Check 70–175.
+    - Havarti: +25 health, +2 armor, 61 AD, stronger Holy Wheel and Rind Blade, a shorter Fondue Blessing cooldown, and her tiers come earlier (4, 8, 11).
+  - Result (224 matches): every champion wins 41–65% (it was 27–74%), sides 116–108, median match 20 minutes. Jordini (65%), The Oak and HunnaG (61%) are still the strongest bots; King Rix and Havarti (41%) the weakest. Bots aren't people: check these in real games.
+
 ## Playing with friends
 
 - **Chat:** Enter talks to your team, Shift+Enter to everyone (Tab switches while typing).
@@ -245,7 +274,7 @@ King Rix deals magic damage on purpose. Without him, HunnaG would be the only so
 ### Jordini, the Naysayer ✅ implemented
 
 The numbers live at the top of `src/shared/champions/marksman.ts`.
-- **Passive, By the Book:** each basic attack on the same target grants +8% attack speed (max 5 stacks, 3s). Switching targets starts the rhythm over.
+- **Passive, By the Book:** each basic attack on the same target grants +6% attack speed (max 5 stacks, 3s). Switching targets starts the rhythm over.
 - **Q, Objection!:** a line skillshot that passes through every enemy it hits. Each enemy after the first takes 15% less damage, down to 55%.
 - **W, Red Tape:** places a trap that arms after 0.75s and roots the first enemy champion to step on it for 1.25s. Up to 2 traps at once.
 - **E, Step Back:** a short dash. The next basic attack within 3s is ready instantly and deals bonus damage.
@@ -275,7 +304,7 @@ The numbers live at the top of `src/shared/champions/willmore.ts`. No resource: 
 The numbers live at the top of `src/shared/champions/hunnag.ts`. Her spells scale with ability power; the Glowworm Lantern and the new Rotroot Staff (2700: +90 AP, +200 health) are the core AP items.
 - **Passive, Rot:** her spells stack Rot on enemies (up to 4): magic damage every 0.5s for 4s, per stack. The 4th stack bursts for extra magic damage and a 30% slow for 1.5s, and Rot starts over. Rot keeps ticking if she dies.
 - **Q, Sludge Lob:** lobbed at a spot; it lands 0.5s later for magic damage and 1 Rot, and leaves a puddle that slows 30% for 2.5s.
-- **W, Mushroom Totem:** a little mushroom (one at a time, 16–22s) that sees like a ward. Every 1.5s it heals allied champions nearby and adds 1 Rot to nearby enemies. It has health; enemies can knock it down for 25 gold. Chuds and Shooties ignore it.
+- **W, Mushroom Totem:** a little mushroom (one at a time, 12–15s) that sees like a ward. Every 2s it heals allied champions nearby (16–37, +12% AP) and adds 1 Rot to nearby enemies. It has health; enemies can knock it down for 25 gold. Chuds and Shooties ignore it.
 - **E, Mole Hole:** she digs down and pops up at the target spot straight away. Both holes stay open for 5s: allied champions hop between them by walking in. Coming out next to (or on) the other hole, you have to step off before it takes you back.
 - **R, The Deep Calls:** marks a big circle; 0.75s later hands burst out, dealing magic damage, rooting everyone inside, and giving them full Rot (which bursts at once).
 
@@ -291,7 +320,7 @@ The numbers live at the top of `src/shared/champions/logan.ts`. No resource: coo
 ### King Rix ✅ implemented
 
 The numbers live at the top of `src/shared/champions/kingrix.ts`. Mid-range (400) attacks; his spells deal magic damage and scale with ability power.
-- **Passive, Royal Tax:** allied Chuds within 700 of him deal 20% more damage (drawn with a thin gold ring). When an ally near him last-hits a Chud, he takes 4 gold.
+- **Passive, Royal Tax:** allied Chuds within 700 of him deal 30% more damage (drawn with a thin gold ring). When an ally near him last-hits a Chud, he takes 4 gold.
 - **Q, Levy:** a scepter bolt that hits the first enemy for magic damage. If it kills, he collects extra gold and gets the mana back.
 - **W, Call the Guard:** two royal guards for 8s. They follow him, attack whatever he attacks, and go home when their time's up or he dies. Chuds and Shooties fight them like Chuds; killing one pays 15 gold.
 - **E, KNEEL!:** enemies in a short cone take magic damage and are stunned for 1–1.3s.
@@ -333,7 +362,7 @@ The numbers live at the top of `src/shared/champions/paris.ts`. Master Yi-style.
 ### Havarti ✅ implemented
 
 The numbers live at the top of `src/shared/champions/havarti.ts`. Kayle-style. Invulnerability (`blessed`) and armor/magic-resist shred (`curdled`) are new engine features in `World.damage`.
-- **Passive, Aged to Perfection:** each attack ripens her (+6% attack speed for 5s, up to 5; fully ripe she's 8% faster). Fresh until level 5 (melee), Aged at 5 (attacks reach 525), Vintage at 9 (attacks send a wave of molten cheese through the enemies behind the target), Legendary at 13 (always fully ripe). Each tier is marked by a burst of light and feathers.
+- **Passive, Aged to Perfection:** each attack ripens her (+6% attack speed for 5s, up to 5; fully ripe she's 8% faster). Fresh until level 4 (melee), Aged at 4 (attacks reach 525), Vintage at 8 (attacks send a wave of molten cheese through the enemies behind the target), Legendary at 11 (always fully ripe). Each tier is marked by a burst of light and feathers.
 - **Q, Holy Wheel:** a wheel of cheese that hits the first enemy: magic damage, a 25% slow, and armor and magic resist curdled by 15% for 4s.
 - **W, Fondue Blessing:** heals her and the most hurt allied champion within 900, and both move faster for 2s.
 - **E, Rind Blade:** her attacks add magic damage. Cast: the next attack within 4s reaches 200 further and bites for a share of the target's missing health (capped against non-champions).
@@ -370,8 +399,9 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
     - Once it's night the moon shows in the river, broken up by the ripples and sliding along the water as you move.
   - **Weather** is rolled per match (`shared/weather.ts`, drawn in `render/weather.ts`):
     - **Clear.**
-    - **Rain:** streaks with splashes.
-    - **Storm:** rain and lightning.
+    - **Rain:** streaks with splashes, puddles gathering, and a thunderstorm now and then (a flash, a bolt across the sky, thunder a moment later).
+    - **Storm:** heavy rain with frequent lightning. Some bolts strike the ground in view: a blinding flash, scorched earth and thunder right on top.
+    - **Clearing up:** random rain or storms clear partway through 45% of the time, between 4 and 10 minutes in (`rollClearing`, sent in the welcome). Over half a minute the rain stops and the sky turns to a bright, warm day. The rain's sound and the wind die down, and a faint rainbow shows for a while. The puddles glint in the sun and dry over five minutes.
     - **Mist** rolling over the map.
     - **Snow:** flakes drift down, the ground frosts over (not the river) and snow settles on the treetops. Breath puffs white, feet sink in deep (Chuds' too), and the crickets go quiet.
     - **Autumn wind:** the canopy turns orange and rust, fallen leaves cover the ground and more blow across in gusts.
@@ -462,7 +492,13 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
     - Night brings up the crickets and owls and settles the wind.
     - Each weather has its own sound: rain patters, storms rumble between bolts, snow muffles and hushes, autumn gusts rustle leaves, and mist dampens everything.
     - The river burbles near the water. The Warden's pit drones with clinking chains. Da Base and the Shooties hum faintly close up.
-  - **Music:** the generated loop has a shimmer over the pad, a flute phrase now and then when it's calm, and a pulsing bass with drums in fights. It darkens at night.
+  - **Music:** the generated loop sits well under the effects. It has a shimmer over the pad, and when it's calm a flute phrase or a rolled harp chord now and then, with a far-off horn at night. It darkens at night.
+    - It follows the size of the fight near the camera. A skirmish you're in brings the drums and a pulsing bass. Three champions trading blows on screen bring running strings. Four or more is a teamfight: taiko, brass stabs, a choir, cymbal swells and a darker progression (Dm, Bb, F, C).
+  - **The announcer speaks** (`src/client/announcer.ts`). It uses the browser's own speech: a British man's voice where the browser has one, pitched low and taken slow.
+    - Kills: First blood! Double and triple kill, Rampage, sprees, Shutdown! Bounty claimed!, Ace!, Executed. Also when you've slain someone or been slain.
+    - Objectives: "Objective destroyed!" when we take a Shootie, "Our Shootie has fallen!" when we lose one, Oakners, the Sewer Crab and the Warden.
+    - The match: "Welcome to Da Base!", the first Chuds (ten seconds out, then when they spawn), the Warden waking, the map events, Victory and Defeat.
+    - Lines queue so they never talk over each other; small ones drop in a busy fight, and stale ones are skipped. The biggest (first blood, bounties, aces, the Warden) get a cinematic hit (`epic`) and a banner that slams in larger with gold rays turning behind it. Settings → Announcer voice turns it off.
   - **M** (or the speaker by the clock) mutes; the setting is remembered.
 
 ## Architecture

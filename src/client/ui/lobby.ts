@@ -73,6 +73,8 @@ export class LobbyScreen {
     this.screen.append(this.championCards());
     if (!opts.solo) this.screen.append(this.settingsBar, this.footer);
     root.append(this.screen);
+    // The match screen's interface waits behind champion select, out of sight.
+    document.documentElement.classList.add('in-lobby');
   }
 
   update(lobby: LobbyState, you: string): void {
@@ -179,6 +181,7 @@ export class LobbyScreen {
   }
 
   close(): void {
+    document.documentElement.classList.remove('in-lobby');
     clearTimeout(this.hoverTimer);
     this.stage.destroy();
     this.screen.remove();

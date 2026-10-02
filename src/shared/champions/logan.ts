@@ -12,7 +12,7 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 
 const BASE_STATS: Stats = {
   maxHp: 680, hpRegen: 4.5, maxMana: 0, manaRegen: 0,
-  ad: 62, ap: 0, armor: 36, mr: 32,
+  ad: 66, ap: 0, armor: 36, mr: 32,
   attackSpeed: 0.65, attackRange: 125, moveSpeed: 345,
 };
 const GROWTH: StatGrowth = { maxHp: 105, hpRegen: 0.8, maxMana: 0, manaRegen: 0, ad: 3.4, armor: 4.6, mr: 1.4, attackSpeedPct: 0.025 };
@@ -26,14 +26,14 @@ export const LIONHEART = {
 };
 const POUNCE = {
   cooldown: [10, 9, 8, 7], range: 600, grabRadius: 150, speed: 1400,
-  empowerWindow: 3, stun: 0.75, bonus: [30, 50, 70, 90], adRatio: 0.4,
+  empowerWindow: 3, stun: 0.75, bonus: [40, 65, 90, 115], adRatio: 0.5,
 };
 const THICK_MANE = {
   cooldown: [14, 13, 12, 11], duration: 4, shield: [60, 90, 120, 150], bonusHpRatio: 0.15, slow: 0.3, slowFor: 1,
 };
 const MAUL = {
-  cooldown: [8, 7.5, 7, 6.5], castTime: 0.15, range: 300, angle: 90,
-  damage: [50, 80, 110, 140], adRatio: 0.7, bleed: [30, 45, 60, 75], bleedFor: 3,
+  cooldown: [7, 6.5, 6, 5.5], castTime: 0.15, range: 300, angle: 90,
+  damage: [60, 95, 130, 165], adRatio: 0.8, bleed: [30, 45, 60, 75], bleedFor: 3,
 };
 export const PRIDES_ROAR = {
   cooldown: [100, 85, 70], range: 450, angle: 100, fear: 1.25, menagerieMult: 2,

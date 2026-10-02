@@ -15,29 +15,29 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 // Every number for this champion lives here. Arrays are per rank (rank 1 first).
 
 const BASE_STATS: Stats = {
-  maxHp: 600, hpRegen: 3.5, maxMana: 380, manaRegen: 7.5,
-  ad: 54, ap: 0, armor: 26, mr: 30,
-  attackSpeed: 0.64, attackRange: 400, moveSpeed: 335,
+  maxHp: 660, hpRegen: 3.5, maxMana: 380, manaRegen: 7.5,
+  ad: 60, ap: 0, armor: 28, mr: 30,
+  attackSpeed: 0.66, attackRange: 450, moveSpeed: 335,
 };
 const GROWTH: StatGrowth = { maxHp: 92, hpRegen: 0.6, maxMana: 42, manaRegen: 0.55, ad: 3, armor: 3.8, mr: 1.1, attackSpeedPct: 0.022 };
 const RADIUS = 36;
 const BOLT_SPEED = 1700;
 
 /** Allied Chuds near him hit harder, and allies' last hits near him pay him a cut. */
-export const ROYAL_TAX = { auraRange: CHUD_AURA_RANGE, chudDamage: 0.2, taxRange: 1000, gold: 4 };
-const LEVY = {
-  cost: [50, 55, 60, 65], cooldown: [6, 5.5, 5, 4.5], castTime: 0.2,
+export const ROYAL_TAX = { auraRange: CHUD_AURA_RANGE, chudDamage: 0.3, taxRange: 1000, gold: 4 };
+export const LEVY = {
+  cost: [50, 55, 60, 65], cooldown: [5.5, 5, 4.5, 4], castTime: 0.2,
   range: 900, width: 70, speed: 1800,
-  damage: [70, 105, 140, 175], apRatio: 0.6, killGold: [10, 15, 20, 25], killMana: 20,
+  damage: [80, 120, 160, 200], apRatio: 0.6, killGold: [10, 15, 20, 25], killMana: 20,
 };
 const CALL_THE_GUARD = {
   cost: [70, 75, 80, 85], cooldown: [18, 17, 16, 15], castTime: 0.25,
   count: 2, lifetime: 8, leash: 260,
-  health: (level: number) => 300 + 40 * level, damage: [20, 30, 40, 50], apRatio: 0.15, bounty: 15,
+  health: (level: number) => 340 + 45 * level, damage: [30, 42, 54, 66], apRatio: 0.15, bounty: 15,
 };
 export const KNEEL = {
   cost: [60, 60, 60, 60], cooldown: [14, 13, 12, 11], castTime: 0.25,
-  range: 350, angle: 70, stun: [1, 1.1, 1.2, 1.3], damage: [40, 65, 90, 115], apRatio: 0.4,
+  range: 350, angle: 70, stun: [1, 1.1, 1.2, 1.3], damage: [55, 85, 115, 145], apRatio: 0.4,
   /** A Lion Kneels to No One. */
   loganShare: 0.5,
 };
