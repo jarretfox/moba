@@ -160,9 +160,43 @@ export type StatusKind =
   /** Daltonomo, invisible after Now You See Me. */
   | 'vanished'
   | BuffKind;
-/** Jungle buffs: Ember Toad's and Glowcap's. */
-export type BuffKind = 'ember' | 'glowcap';
-export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'warden' | 'crab';
+/** Jungle buffs: Ember Toad's and Glowcap's. Then the team buffs the map events pay out (sim/eventBuffs.ts). */
+export type BuffKind = 'ember' | 'glowcap' | 'deepPockets' | 'wicksFavor' | 'royalFavor';
+export type MonsterKind = 'rat' | 'ratKing' | 'mossback' | 'emberToad' | 'glowcap' | 'warden' | 'crab' | 'coat' | 'looseChud';
+
+// ─── Map events (sim/events.ts) ───────────────────────────────────────────────
+
+/** The kinds of event that can turn up during a match: a boss to race for, a cart to push, a spot to hold. */
+export type EventKind = 'boss' | 'escort' | 'capture';
+/** Everyone's view of the current event, for the HUD readout and the markers. */
+export interface EventStatus {
+  kind: EventKind;
+  /** What to call it: "Three Chuds in a Coat", "Old Wick's Cart", "The Royal Tax Stall". */
+  name: string;
+  /** Announced and on its way, running, or just finished (the result stays up a moment). */
+  phase: 'soon' | 'live' | 'done';
+  /** Seconds until it starts (soon) or until it's over (live). */
+  left: number;
+  /** Where it is right now: the boss's site, the cart, the stall. */
+  x: number;
+  y: number;
+  /** Boss: health left (0–1). Escort: the cart's place along its path, 0 at blue's end and 1 at red's. */
+  progress?: number;
+  /** Capture: each team's bar (0–1). Escort: how many of each team are pushing. */
+  blue?: number;
+  red?: number;
+  /** Who's winning it right now (holding the stall, pushing the cart), or who won. */
+  team?: PlayerTeam;
+  /** The boss has lost its patience. */
+  enraged?: boolean;
+}
+/**
+ * Moments in an event: the announcer's notices (`soon`, `start`, `won`, `over`, which everyone hears) and
+ * the boss's telegraphs (`topple` warns of the strip from (x, y) toward (x2, y2), `crash` is it landing,
+ * `add` is a Chud tumbling out, `enrage` its mood) and the stall paying out (`collect`), which only those
+ * who can see them get.
+ */
+export type EventCue = 'soon' | 'start' | 'won' | 'over' | 'topple' | 'crash' | 'add' | 'enrage' | 'collect';
 
 /** One champion's line on the scoreboard. `dmg` is to champions, `tdmg` to structures; `gold` is everything earned. */
 export interface ScoreRow {
@@ -278,7 +312,7 @@ export type GameEvent =
       killer: string;
       victim: string;
       team: Team;
-      what?: 'champion' | 'warden' | 'crab' | StructureRole;
+      what?: 'champion' | 'warden' | 'crab' | 'event' | StructureRole;
       streak?: number;
       shutdown?: boolean;
       /** Gold the killer got for ending the victim's spree (their bounty). */
@@ -297,7 +331,9 @@ export type GameEvent =
    */
   | { e: 'emote'; id: number; kind: EmoteKind | 'kill'; n: number; vs?: ChampionId }
   /** A teammate's ping (only their team is told). */
-  | { e: 'ping'; kind: PingKind; x: number; y: number; from: number; name: string; team: PlayerTeam };
+  | { e: 'ping'; kind: PingKind; x: number; y: number; from: number; name: string; team: PlayerTeam }
+  /** A map event's moment (see EventCue). `all` marks the announcements everyone gets; the rest are seen where they happen. */
+  | { e: 'evt'; k: EventCue; kind: EventKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team; text?: string; all?: boolean };
 
 export interface EntitySnap {
   id: number;
@@ -391,4 +427,6 @@ export interface Snapshot {
   warden?: WardenStatus;
   /** The scoreboard, refreshed every couple of seconds (and on the final snapshot). */
   scores?: ScoreRow[];
+  /** The map event that's announced or running, if any. */
+  event?: EventStatus;
 }

@@ -13,6 +13,7 @@ import { applyCommand } from '../shared/sim/commands';
 import { Fountain } from '../shared/sim/fountain';
 import { Jungle } from '../shared/sim/jungle';
 import { CrabSpawner } from '../shared/sim/crab';
+import { MapEvents } from '../shared/sim/events';
 import { WardenLair } from '../shared/sim/warden';
 import { scoreRows } from '../shared/sim/score';
 import { spawnStructures } from '../shared/sim/structure';
@@ -43,8 +44,8 @@ const MAX_NAME = 16;
 export const CHAT_LIMIT = 5;
 const CHAT_WINDOW = 6;
 
-/** A new match, not started: the map's structures, the fountains, the jungle, the crabs, the waves, the Warden. */
-function freshMatch(): { world: World; waves: WaveSpawner; lair: WardenLair } {
+/** A new match, not started: the map's structures, the fountains, the jungle, the crabs, the waves, the Warden, the events. */
+function freshMatch(): { world: World; waves: WaveSpawner; lair: WardenLair; events: MapEvents } {
   const world = new World(MAP);
   const waves = world.addSystem(new WaveSpawner());
   const lair = world.addSystem(new WardenLair());
@@ -52,7 +53,8 @@ function freshMatch(): { world: World; waves: WaveSpawner; lair: WardenLair } {
   world.addSystem(new Fountain());
   world.addSystem(new Jungle(world));
   world.addSystem(new CrabSpawner(world));
-  return { world, waves, lair };
+  const events = world.addSystem(new MapEvents(world));
+  return { world, waves, lair, events };
 }
 
 /**
@@ -68,6 +70,8 @@ export class HostCore {
   private readonly players = new Map<string, Player>();
   private waves: WaveSpawner;
   private lair: WardenLair;
+  /** The match's map events (public for the dev hook that forces one). */
+  events: MapEvents;
   private scores: ScoreRow[] | null = null;
   /** The snapshot with the winner has gone out: the match is over. */
   private finalSent = false;
@@ -84,7 +88,7 @@ export class HostCore {
     /** Wall-clock seconds (the match clock stands still in the lobby). */
     private readonly now: () => number = () => Date.now() / 1000,
   ) {
-    ({ world: this.world, waves: this.waves, lair: this.lair } = freshMatch());
+    ({ world: this.world, waves: this.waves, lair: this.lair, events: this.events } = freshMatch());
   }
 
   receive(connId: string, raw: unknown): void {
@@ -126,7 +130,7 @@ export class HostCore {
       return;
     }
     // Back to the lobby with everyone's picks and the settings as they were; a fresh match waiting.
-    ({ world: this.world, waves: this.waves, lair: this.lair } = freshMatch());
+    ({ world: this.world, waves: this.waves, lair: this.lair, events: this.events } = freshMatch());
     this.bots.length = 0;
     this.players.clear();
     this.scores = null;
@@ -286,6 +290,7 @@ export class HostCore {
     const sendRemote = this.world.tick % REMOTE_SEND_EVERY === 0 || this.world.winner !== null;
     const views = new Map<PlayerTeam, EntitySnap[]>();
     const warden = this.lair.status(this.world);
+    const event = this.events.status(this.world);
     // The scoreboard only needs to move every couple of seconds; the codec sends it only when it changes.
     if (this.world.tick % SCORES_EVERY === 0 || this.world.winner !== null || !this.scores) this.scores = scoreRows(this.world);
     for (const [connId, p] of this.players) {
@@ -303,6 +308,7 @@ export class HostCore {
         winner: this.world.winner ?? undefined,
         warden,
         scores: this.scores,
+        event,
       });
       p.pendingEv = [];
       this.send(connId, { t: 'snap', snap });

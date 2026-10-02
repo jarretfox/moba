@@ -14,6 +14,7 @@ import { pointAlong, progressAlong } from './lanes';
 import { PROFILES, type BotContext } from './profiles';
 import { nextPurchase } from './shopping';
 import { Crab } from '../sim/crab';
+import { eventOrderFor } from './events';
 
 // ─── Tuning: a "decent new player" ────────────────────────────────────────────
 
@@ -160,6 +161,10 @@ export class Bot {
     // Being hit by a champion we don't want to fight: give ground.
     const hitBy = foes.find((f) => (me.championHits.get(f.id) ?? -Infinity) > world.time - 1);
     if (hitBy) return this.moveTo(out, this.stepBack(350));
+
+    // A map event close by (a boss to hit, a cart to push, a stall to hold): the two nearest of us go (bots/events.ts).
+    const event = eventOrderFor(world, me, hp);
+    if (event) return event.kind === 'attack' ? this.attack(out, event.target) : this.moveTo(out, event.to);
 
     this.farm(world, out);
   }

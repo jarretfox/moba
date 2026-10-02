@@ -124,7 +124,13 @@ export type SoundName =
   /** A champion's emote or quip. */
   | 'emote'
   /** A storm's thunder, rolling in after the lightning. */
-  | 'thunder';
+  | 'thunder'
+  /** The map events: the watchman's warning, the event opening, the Coat creaking over and crashing down, the cart's bell. */
+  | 'eventWarn'
+  | 'eventStart'
+  | 'coatCreak'
+  | 'coatCrash'
+  | 'cartBell';
 
 const MUTE_KEY = 'moba.muted';
 const MUSIC_KEY = 'moba.musicOff';
@@ -1007,4 +1013,46 @@ export const RECIPES: Record<SoundName, Recipe> = {
     [2200, 2900, 2550, 3100].forEach((f, i) => v.bell(t + i * 0.04, f, 0.15, 0.1, COIN));
     v.tone(t, 'sawtooth', 420, 390, 0.12, 0.08, 0.005, 1500); // a little honk
   }),
+  // ── The map events (render/events.ts).
+  eventWarn: ui((v, t) => {
+    // The watchman: two strikes on a cracked bell, then a low horn climbing a fourth. Something's coming.
+    for (const dt of [0, 0.3]) {
+      v.click(t + dt, 0.15, 1800);
+      v.bell(t + dt, 392, 0.9, 0.22, [[1, 1], [2.1, 0.4], [2.9, 0.25], [4.4, 0.1]]);
+    }
+    v.noise(t + 0.6, 'bandpass', 700, 500, 0.1, 0.08, 1.5, 0.02);
+    v.tone(t + 0.6, 'sawtooth', 146.8, 196, 0.9, 0.07, 0.1, 1600);
+    v.tone(t + 0.6, 'triangle', 147, 196, 0.9, 0.14, 0.08);
+  }, { send: 0.35, pitch: 0 }),
+  eventStart: ui((v, t) => {
+    // It's on: a drum, a brass stab a fifth up, and a cymbal.
+    for (let i = 0; i < 3; i++) v.tone(t + i * 0.06, 'sine', 150, 55, 0.14, 0.3, 0.002);
+    for (const f of [196, 293.66, 392]) {
+      v.tone(t + 0.18, 'sawtooth', f * 0.996, f, 0.7, 0.045, 0.02, 2600);
+      v.tone(t + 0.18, 'sawtooth', f * 1.004, f, 0.7, 0.045, 0.02, 2600);
+    }
+    v.tone(t + 0.18, 'sine', 98, 98, 0.7, 0.3, 0.01);
+    v.noise(t + 0.18, 'highpass', 6000, 3000, 0.8, 0.07, 0.5, 0.01);
+  }, { send: 0.3, pitch: 0 }),
+  coatCreak: fx((v, t) => {
+    // The whole stack leaning over: a long rising creak of wood and cloth, three little yelps inside it.
+    v.fm(t, 90, 260, 1.01, 2.5, 0.9, 0.16, 0.05, 'sawtooth');
+    v.noise(t, 'bandpass', 500, 1600, 0.9, 0.18, 4, 0.08);
+    for (let i = 0; i < 3; i++) v.tone(t + 0.35 + i * 0.16, 'square', 420 + i * 90, 300 + i * 60, 0.09, 0.05, 0.003, 1800);
+  }, { send: 0.25 }),
+  coatCrash: fx((v, t) => {
+    // Down it comes: a whump of cloth and a thump in the ground, dust after, and a muffled "oof".
+    v.click(t, 0.3, 1600);
+    v.tone(t, 'sine', 110, 36, 0.5, 0.85, 0.004);
+    v.noise(t, 'lowpass', 1100, 140, 0.45, 0.6, 1, 0.005);
+    v.noise(t + 0.05, 'bandpass', 420, 180, 0.25, 0.35, 1.2, 0.01); // the cloth
+    v.noise(t + 0.25, 'highpass', 1800, 900, 1.0, 0.06, 0.6, 0.2); // the dust
+    v.vowel(t + 0.3, 130, 95, 0.25, 0.5, [520, 1100], 0.02);
+  }, { duck: 0.3, send: 0.3, gap: 0.3 }),
+  cartBell: fx((v, t) => {
+    // Ding-ding on the cart's bell, and the rattle of its load over the stones.
+    v.bell(t, 2350, 0.45, 0.16, COIN);
+    v.bell(t + 0.11, 2350, 0.5, 0.14, COIN);
+    for (let i = 0; i < 4; i++) v.noise(t + i * 0.07 + Math.random() * 0.03, 'bandpass', 900 + Math.random() * 600, 400, 0.04, 0.1, 3);
+  }, { gap: 0.5, send: 0.2 }),
 };

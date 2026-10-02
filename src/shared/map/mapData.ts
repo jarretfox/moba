@@ -29,6 +29,17 @@ export interface StructureSpot {
   pos: Vec2;
 }
 
+/**
+ * Where a map event can happen (sim/events.ts). A boss site has a spot to arrive at and a short `path` to
+ * pace. An escort site's `path` runs from blue's end to red's end, the cart starting at `pos` in the
+ * middle. A capture site is just the spot. A map with no sites gets no events.
+ */
+export interface EventSite {
+  kind: 'boss' | 'escort' | 'capture';
+  pos: Vec2;
+  path?: Vec2[];
+}
+
 export interface MapData {
   width: number;
   height: number;
@@ -46,6 +57,8 @@ export interface MapData {
   /** Chud routes, written from blue's side (blue Da Base → red Da Base). Use lanePath for either team. */
   lanes: Record<Lane, Vec2[]>;
   spawns: Record<PlayerTeam, Vec2>;
+  /** Where the match's events can turn up; left out, the map has none. */
+  eventSites?: EventSite[];
 }
 
 /** The route a team's Chuds march down a lane, starting beside their own Da Base. */
@@ -169,4 +182,17 @@ export const MAP: MapData = {
     1: { x: 500, y: 3500 },
     2: { x: W - 500, y: 3500 },
   },
+  // Every site sits on the river's center line (or runs symmetrically across it), the same distance from
+  // both Da Bases. Each kind has a top and a bottom one; which is used is rolled per event.
+  eventSites: [false, true].flatMap((my) => {
+    const y = (v: number) => (my ? H - v : v);
+    return [
+      // Three Chuds in a Coat amble up and down the river, between the lane mouth and the crab's stretch.
+      { kind: 'boss', pos: { x: W / 2, y: y(2000) }, path: [{ x: W / 2, y: y(1650) }, { x: W / 2, y: y(2400) }] },
+      // Old Wick's cart: through the jungle at the height of the camps, from blue's side path to red's.
+      { kind: 'escort', pos: { x: W / 2, y: y(2000) }, path: [{ x: 3300, y: y(2000) }, { x: 4350, y: y(1980) }, { x: 5350, y: y(1960) }, { x: W / 2, y: y(2000) }, { x: W - 5350, y: y(1960) }, { x: W - 4350, y: y(1980) }, { x: W - 3300, y: y(2000) }] },
+      // The Royal Tax Stall: in the river by the lane's mouth, out of the outer Shooties' reach.
+      { kind: 'capture', pos: { x: W / 2, y: y(1650) } },
+    ] satisfies EventSite[];
+  }),
 };

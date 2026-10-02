@@ -5,6 +5,7 @@ import { Ward } from '../sim/ward';
 import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
 import { BUFFS, EMBER, GLOWCAP } from '../sim/jungle';
+import { applyEventBuffs } from '../sim/eventBuffs';
 import { MAX_LEVEL, PASSIVE_GOLD, STARTING_GOLD, WANTED_STREAK, canRankUp, killBounty, xpToNext } from '../sim/progression';
 import { newScore, type Score } from '../sim/score';
 import { REVEAL_TIME, Unit, type Stats } from '../sim/unit';
@@ -106,6 +107,7 @@ export abstract class Champion extends Unit {
     s.moveSpeed += it.moveSpeed;
     // Bonus attack speed from levels and items adds up, then multiplies the base (League's rule).
     s.attackSpeed *= 1 + g.attackSpeedPct * n + it.attackSpeedPct;
+    applyEventBuffs((kind) => this.has(kind), s); // the map events' team buffs
     return s;
   }
 

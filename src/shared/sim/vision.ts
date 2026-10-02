@@ -189,6 +189,8 @@ export class Vision {
         return byId(ev.id);
       case 'fx':
         return ev.team === team || this.visible[team][this.grid.cellOf(ev)] === 1;
+      case 'evt':
+        return ev.all === true || this.visible[team][this.grid.cellOf(ev)] === 1; // announcements for all; the boss's moves where they happen
     }
   }
 

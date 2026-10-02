@@ -5,6 +5,8 @@ import { MushroomTotem, TOTEM_BOUNTY } from '../champions/hunnag';
 import { GUARD_BOUNTY, RoyalGuard } from '../champions/kingrix';
 import { Chud } from './chud';
 import { Crab, rewardCrab } from './crab';
+import { isEventBuff } from './eventBuffs';
+import { EventUnit } from './events';
 import { CAMPS, MONSTERS, Monster } from './jungle';
 import { UNCHAINED, WARDEN, Warden, holdsGrudge } from './warden';
 import { ASSIST_GOLD, CHUD_REWARD, STRUCTURE_GOLD, WANTED_STREAK, XP_SHARE_RANGE, killBounty, killXp, xpShare } from './progression';
@@ -21,6 +23,7 @@ export function rewardDeath(world: World, victim: Unit, source: Unit | null, hel
   if (victim instanceof Monster) return rewardMonster(world, victim, source, helpers);
   if (victim instanceof Crab) return rewardCrab(world, victim, source, helpers);
   if (victim instanceof Warden) return rewardWarden(world, source, helpers);
+  if (victim instanceof EventUnit) return victim.reward(world, source, helpers); // the map events' monsters pay their own way
   if (victim instanceof RoyalGuard) {
     if (source instanceof Champion && source.team !== victim.team) source.gainGold(world, GUARD_BOUNTY);
     return;
@@ -116,8 +119,8 @@ function rewardTakedown(world: World, victim: Unit, source: Unit | null, helpers
   }
   victim.score.deaths++;
   if (killer) killer.score.kills++;
-  // Jungle buffs change hands with the kill.
-  if (killer) for (const b of victim.lostBuffs) killer.gainBuff(world, b.kind, b.left);
+  // Jungle buffs change hands with the kill (a team's event buff stays with the team).
+  if (killer) for (const b of victim.lostBuffs) if (!isEventBuff(b.kind)) killer.gainBuff(world, b.kind, b.left);
   const xpTakers = killer ? [killer, ...assisters] : assisters;
   for (const c of xpTakers) c.gainXp(world, killXp(victim.level) / xpTakers.length);
   victim.streak = 0;

@@ -10,8 +10,9 @@ import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
 import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
 import { drawChampionBase, palette } from './champions';
-import { Beast } from './beasts';
+import { Beast, type BeastKind } from './beasts';
 import { dressChud } from './chudLife';
+import { coatStage, CoatFigure, eventFigure } from './eventFigures';
 import { BUILDS, UNIT_BUILDS, unitPalette } from './builds';
 import { Rig, type Expression, type Figure, type Posture } from './rig';
 import { flightHeight } from './stature';
@@ -222,7 +223,7 @@ export class UnitView implements EntityView {
     } else if (s.k === 'monster') {
       const kind = s.mon ?? 'rat';
       shadow();
-      this.rig = kind === 'warden' ? new Rig(UNIT_BUILDS['monster:warden'], r, unitPalette(color)) : new Beast(kind, r);
+      this.rig = kind === 'warden' ? new Rig(UNIT_BUILDS['monster:warden'], r, unitPalette(color)) : (eventFigure(kind, r, s.id) ?? new Beast(kind as BeastKind, r));
       this.warden = kind === 'warden';
       this.attackAnim = UNIT_ATTACK[`monster:${kind}`] ?? null;
     } else if (s.k === 'guard') {
@@ -516,6 +517,11 @@ export class UnitView implements EntityView {
       this.lightUp(s, ctx);
     }
     if (s.badge !== undefined || this.badge) this.setBadge(s.badge ?? '', s.r);
+    // Three Chuds in a Coat: the sim renames it as Chuds fall out, and the coat gets shorter with it.
+    if (this.rig instanceof CoatFigure && s.name !== this.label.text) {
+      this.label.text = s.name ?? '';
+      this.rig.setStage(coatStage(s.name));
+    }
     if (s.ttl && !this.titleText) {
       this.titleText = new Text({ text: titleName(s.ttl) ?? '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 11, fill: 0xe8c46a, stroke: { color: 0x000000, width: 3 }, letterSpacing: 0.5 } });
       this.titleText.anchor.set(0.5, 1);
