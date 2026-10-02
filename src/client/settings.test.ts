@@ -19,5 +19,8 @@ describe('saved settings', () => {
     expect(parseSettings(JSON.stringify({ colorblind: 'yes', uiScale: 0.1 }))).toMatchObject({ colorblind: false, uiScale: 0.8 });
     expect(parseSettings(JSON.stringify({ tips: false })).tips).toBe(false);
     expect(parseSettings(JSON.stringify({ tips: 0 })).tips).toBe(true);
+    expect(parseSettings(JSON.stringify({ panSpeed: 1.7 })).panSpeed).toBe(1.7);
+    expect(parseSettings(JSON.stringify({ panSpeed: 9 })).panSpeed).toBe(2.5);
+    expect(parseSettings(JSON.stringify({ panSpeed: 'fast' })).panSpeed).toBe(1);
   });
 });

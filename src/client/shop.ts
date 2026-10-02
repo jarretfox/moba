@@ -1,6 +1,6 @@
 import { PROFILES } from '../shared/bots/profiles';
 import type { ChampionId } from '../shared/champions/types';
-import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, RECIPES, buildsInto, priceFor, sellPrice, statLines, whyNot, type ItemId, type ItemTier } from '../shared/items';
+import { INVENTORY_SLOTS, ITEMS, ITEM_IDS, RECIPES, buildsInto, priceFor, sellPrice, statLines, statParts, whyNot, type ItemId, type ItemInfo, type ItemTier } from '../shared/items';
 import type { MeSnap } from '../shared/protocol';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { getSound } from './audio';
@@ -36,6 +36,22 @@ export function itemChanges(before: readonly ItemId[], after: readonly ItemId[])
   });
   const sold = left.map((id) => ({ id, slot: before.lastIndexOf(id) }));
   return { bought, sold };
+}
+
+/** An item's main stats, big and colored by kind, so they read at a glance: "+25 AD", "+150 Health". */
+function statChips(stats: ItemInfo['stats'], className: string): HTMLElement {
+  const box = document.createElement('div');
+  box.className = className;
+  for (const part of statParts(stats)) {
+    const chip = document.createElement('span');
+    chip.className = `stat-chip stat-${part.key}`;
+    chip.title = `${part.value} ${part.full}`;
+    const value = document.createElement('b');
+    value.textContent = part.value;
+    chip.append(value, ` ${part.label}`);
+    box.append(chip);
+  }
+  return box;
 }
 
 /** The stats that went up, as lines like "+25 Attack damage" (health too, when `hp` is given). */
@@ -365,7 +381,7 @@ export class ShopPanel {
     const it = ITEMS[toward];
     const price = priceFor(me.items, toward);
     const info = el('div', 'rec-info');
-    info.append(el('div', 'rec-label', 'Next up'), el('div', 'rec-item', it.name), el('div', 'rec-stats', statLines(it.stats).join(' · ')));
+    info.append(el('div', 'rec-label', 'Next up'), el('div', 'rec-item', it.name), statChips(it.stats, 'rec-stats card-stats'));
     // What it's made of: the parts you have ticked, the rest with what they cost.
     const parts = RECIPES[toward];
     if (parts) {
@@ -427,9 +443,7 @@ export class ShopPanel {
     cost.textContent = String(it.cost);
     this.costs.set(id, cost);
     top.append(glyph, name, cost);
-    const stats = document.createElement('div');
-    stats.className = 'card-stats';
-    stats.textContent = statLines(it.stats).join(' · ');
+    const stats = statChips(it.stats, 'card-stats');
     const flavor = document.createElement('div');
     flavor.className = 'card-flavor';
     flavor.textContent = it.flavor;

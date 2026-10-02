@@ -357,6 +357,50 @@ html.colorblind .warden-line.theirs {
   border-top: none;
 }
 
+.clock .kills {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-right: 4px;
+  padding-right: 12px;
+  border-right: 1px solid rgba(217, 181, 106, 0.3);
+  font: 20px var(--font-display);
+  text-shadow: 0 2px 0 #000;
+}
+
+.clock .kills i {
+  font: 12px var(--font-display);
+  font-style: normal;
+  color: var(--muted);
+}
+
+.kills-us {
+  color: #6fb6ff;
+}
+
+.kills-them {
+  color: #ff6b6b;
+}
+
+:root.colorblind .kills-them {
+  color: #ff9a3d;
+}
+
+.kills b.pop {
+  animation: kill-pop 0.6s ease-out;
+}
+
+@keyframes kill-pop {
+  0% { transform: scale(1.9); filter: brightness(2); }
+  100% { transform: scale(1); filter: none; }
+}
+
+.clock .kills b {
+  display: inline-block;
+  min-width: 0.6em;
+  text-align: center;
+}
+
 .clock .time {
   font: 22px var(--font-display);
   letter-spacing: 0.04em;
@@ -2744,8 +2788,7 @@ html.colorblind .gold-peak.theirs {
 }
 
 .rec-stats {
-  font-size: 12px;
-  color: #b9e6c4;
+  margin-top: 3px;
 }
 
 .rec-parts {
@@ -3581,9 +3624,42 @@ img.item-fly {
 }
 
 .card-stats {
-  font-size: 11px;
-  color: #9bd4ff;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
+
+/* An item's stats: a big number and a short name, tinted by what kind of stat it is. */
+.stat-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 1px 6px 2px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--stat, #9bd4ff) 16%, #0b0f14);
+  border: 1px solid color-mix(in srgb, var(--stat, #9bd4ff) 45%, transparent);
+  color: var(--stat, #9bd4ff);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.stat-chip b {
+  font: 16px/1 var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.stat-ad { --stat: #ffa45c; }
+.stat-ap { --stat: #c79bff; }
+.stat-maxHp, .stat-hpRegen { --stat: #6ee391; }
+.stat-maxMana { --stat: #6cb6ff; }
+.stat-armor { --stat: #f2d06b; }
+.stat-mr { --stat: #7fd8e8; }
+.stat-attackSpeedPct { --stat: #ffd27a; }
+.stat-moveSpeed { --stat: #e8e8e8; }
+.stat-haste { --stat: #9fe6ff; }
+.stat-lifesteal { --stat: #ff7a7a; }
 
 .card-flavor {
   font-size: 11px;

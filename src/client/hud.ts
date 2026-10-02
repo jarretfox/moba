@@ -85,6 +85,8 @@ export class Hud {
   private invItems: (ItemId | undefined)[] = [];
   private readonly debug: HTMLElement;
   private readonly clockTime: HTMLElement;
+  private readonly killsUs: HTMLElement;
+  private readonly killsThem: HTMLElement;
   private readonly clockWave: HTMLElement;
   private readonly warden: HTMLElement;
   private readonly feed: HTMLElement;
@@ -155,7 +157,7 @@ export class Hud {
       <div class="announce"></div>
       <div class="debug"></div>
       <div class="feed"></div>
-      <div class="clock"><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
+      <div class="clock"><span class="kills" title="Champion kills: your team v theirs"><b class="kills-us">0</b><i>v</i><b class="kills-them">0</b></span><span class="time">0:00</span><span class="wave"></span><button class="mute" title="Sound on/off (M)">🔊</button></div>
       <div class="warden"></div>
       <div class="help"><div class="help-title"></div><div class="help-keys">${HELP.map(([k, v]) => `<div><kbd>${k}</kbd> ${v}</div>`).join('')}</div><div class="help-hint"><kbd>H</kbd> controls</div></div>
       <div class="respawn" hidden><div class="respawn-ring"><img class="respawn-face" alt="" /><b class="respawn-time"></b></div><div class="respawn-label">Respawning</div><div class="recap" hidden></div></div>
@@ -197,6 +199,8 @@ export class Hud {
     this.feed = q('.feed');
     this.buffBar = q('.buffs');
     this.clockTime = q('.clock .time');
+    this.killsUs = q('.kills-us');
+    this.killsThem = q('.kills-them');
     this.clockWave = q('.clock .wave');
     this.muteButton = q('.mute') as HTMLButtonElement;
     this.muteButton.addEventListener('click', () => this.onMute?.());
@@ -616,6 +620,19 @@ export class Hud {
     this.gameOver.classList.toggle('victory', victory);
     (this.gameOver.querySelector('.gameover-title') as HTMLElement).textContent = title;
     (this.gameOver.querySelector('.gameover-sub') as HTMLElement).textContent = detail;
+  }
+
+  /** The kill score by the clock: your team's champion kills against theirs. A new kill pops. */
+  setKills(us: number, them: number): void {
+    for (const [el, n] of [[this.killsUs, us], [this.killsThem, them]] as const) {
+      if (el.textContent === String(n)) continue;
+      const up = n > Number(el.textContent);
+      el.textContent = String(n);
+      if (!up) continue;
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    }
   }
 
   /** Match clock, plus a countdown while the next Chud wave is close. */

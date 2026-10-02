@@ -1,7 +1,7 @@
 import { BlurFilter, ColorMatrixFilter, Container, DisplacementFilter, Graphics, RenderTexture, Sprite, type Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { atRank, type ChampionInfo } from '../shared/champions/types';
-import { TEAM, type Slot, type Team } from '../shared/constants';
+import { TEAM, type PlayerTeam, type Slot, type Team } from '../shared/constants';
 import { MAP } from '../shared/map/mapData';
 import { NavGrid } from '../shared/map/navGrid';
 import { shapeContains } from '../shared/map/shapes';
@@ -211,6 +211,8 @@ export class GameClient {
   /** The VS screen has had its turn (or there was nobody to face). */
   private introShown = false;
   private introUp = false;
+  /** Champion kills per team, for the score by the clock: from the scoreboard, bumped at once by each kill. */
+  private readonly teamKills: Record<PlayerTeam, number> = { 1: 0, 2: 0 };
   /** What hurt you lately, for the death recap. */
   private readonly damageLog = new DamageLog();
   private nextPlaceCheck = 0;
@@ -325,6 +327,7 @@ export class GameClient {
       setColorblind(s.colorblind);
       if (PALETTE.enemy !== enemy) this.redrawViews();
       const high = s.quality === 'high';
+      this.camera.panScale = s.panSpeed;
       this.bloom.visible = high;
       this.fx.density = high ? 1 : 0.45;
       this.fx.particles.limit = high ? 3000 : 900;
@@ -586,6 +589,7 @@ export class GameClient {
     const latest = this.buffer.latest;
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
     this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
+    if (this.myTeam !== TEAM.neutral) this.hud.setKills(this.teamKills[this.myTeam], this.teamKills[this.myTeam === 1 ? 2 : 1]);
     this.hud.setWarden(latest?.warden, this.myTeam);
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
     if (!this.introShown && me && latest?.scores) this.playIntro(latest.scores);
@@ -593,6 +597,8 @@ export class GameClient {
     else if (me && latest?.me && !this.introUp) this.updateTips(me, latest.me, latest.time);
     if (latest?.scores && latest.scores !== this.lastScores) {
       this.lastScores = latest.scores;
+      this.teamKills[1] = this.teamKills[2] = 0;
+      for (const row of latest.scores) this.teamKills[row.team] += row.k;
       // What everyone's bought shows on them.
       for (const row of latest.scores) {
         (this.views.get(row.id) as UnitView | undefined)?.wear?.(row.items);
@@ -878,6 +884,7 @@ export class GameClient {
         if (!this.replay && ev.what === 'warden') this.tally.warden[ev.killer] = (this.tally.warden[ev.killer] ?? 0) + 1;
         if (!this.replay && ev.what === 'champion' && !ev.killerChamp) this.tally.executed[ev.victim] = (this.tally.executed[ev.victim] ?? 0) + 1;
         this.hud.pushFeed(ev, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
+        if (ev.what === 'champion' && ev.team !== TEAM.neutral && !this.replay) this.teamKills[ev.team]++;
         // Whoever got it grins.
         if (ev.what === 'champion') {
           const killer = [...this.ents.values()].find((e) => e.k === 'champion' && e.name === ev.killer);

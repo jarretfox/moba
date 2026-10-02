@@ -33,6 +33,8 @@ export class Camera {
   /** Screen pixels per world unit, worked out each frame from `view` and the screen's size. */
   zoom = 0.9;
   locked = true;
+  /** The edge-pan speed setting (1 is normal). */
+  panScale = 1;
   /** How many world units across the screen shows (what the mouse wheel changes). */
   private view = START_VIEW_W;
   /** Current shake strength in screen pixels; decays on its own. */
@@ -52,7 +54,7 @@ export class Camera {
       this.x = follow.x;
       this.y = follow.y;
     } else if (mouse) {
-      const step = (PAN_SPEED * dt) / this.zoom;
+      const step = (PAN_SPEED * this.panScale * dt) / this.zoom;
       if (mouse.x <= EDGE) this.x -= step;
       else if (mouse.x >= screenW - EDGE) this.x += step;
       if (mouse.y <= EDGE) this.y -= step;

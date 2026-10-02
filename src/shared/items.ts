@@ -243,6 +243,26 @@ const STAT_LABELS: Record<keyof ItemStats, [string, (v: number) => string]> = {
   lifesteal: ['lifesteal', (v) => `${Math.round(v * 100)}%`],
 };
 
+/** Short names for the shop's stat chips. */
+const STAT_SHORT: Record<keyof ItemStats, string> = {
+  ad: 'AD',
+  ap: 'AP',
+  maxHp: 'Health',
+  maxMana: 'Mana',
+  hpRegen: 'Regen',
+  armor: 'Armor',
+  mr: 'MR',
+  attackSpeedPct: 'Atk Spd',
+  moveSpeed: 'Move',
+  haste: 'Haste',
+  lifesteal: 'Lifesteal',
+};
+
+/** Each stat as a value and a short name ("+25", "AD"), for the shop's big stat chips. */
+export function statParts(stats: ItemStats): { key: keyof ItemStats; value: string; label: string; full: string }[] {
+  return (Object.entries(stats) as [keyof ItemStats, number][]).map(([k, v]) => ({ key: k, value: `+${STAT_LABELS[k][1](v)}`, label: STAT_SHORT[k], full: STAT_LABELS[k][0] }));
+}
+
 /** "+10 attack damage", one line per stat, for tooltips. */
 export function statLines(stats: ItemStats): string[] {
   return (Object.entries(stats) as [keyof ItemStats, number][]).map(([k, v]) => `+${STAT_LABELS[k][1](v)} ${STAT_LABELS[k][0]}`);
