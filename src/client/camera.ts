@@ -5,14 +5,36 @@ import { clamp, type Vec2 } from '../shared/math';
 const EDGE = 18;
 /** Screen pixels per second. */
 const PAN_SPEED = 1500;
-const MIN_ZOOM = 0.55;
-const MAX_ZOOM = 1.3;
+
+/**
+ * How much of the map the screen shows, in world units, zoomed all the way out: about what League or Dota
+ * show at their furthest (a champion sees 1100, so their sight reaches about to the edges of the screen).
+ * It's the same on every screen: a bigger monitor shows the same patch of map, larger, not more of it.
+ */
+export const MAX_VIEW = { w: 2400, h: 1350 };
+/** And zoomed all the way in: this many world units across. */
+export const MIN_VIEW_W = 1000;
+/** Where a match starts. */
+const START_VIEW_W = 1500;
+
+/**
+ * The zoom that shows `view` world units across, but never more than the furthest-out view in either
+ * direction: a tall or very wide screen gets the same limit, not extra map past it.
+ */
+export function fitZoom(view: number, screenW: number, screenH: number): number {
+  const w = Math.min(view, MAX_VIEW.w);
+  const h = (w * MAX_VIEW.h) / MAX_VIEW.w;
+  return Math.max(screenW / w, screenH / h);
+}
 
 export class Camera {
   x = 0;
   y = 0;
+  /** Screen pixels per world unit, worked out each frame from `view` and the screen's size. */
   zoom = 0.9;
   locked = true;
+  /** How many world units across the screen shows (what the mouse wheel changes). */
+  private view = START_VIEW_W;
   /** Current shake strength in screen pixels; decays on its own. */
   private trauma = 0;
   private shakeTime = 0;
@@ -25,6 +47,7 @@ export class Camera {
   constructor(private readonly bounds: { width: number; height: number }) {}
 
   update(dt: number, follow: Vec2 | null, mouse: Vec2 | null, screenW: number, screenH: number, centerHeld: boolean): void {
+    this.zoom = fitZoom(this.view, screenW, screenH);
     if (follow && (this.locked || centerHeld)) {
       this.x = follow.x;
       this.y = follow.y;
@@ -60,8 +83,9 @@ export class Camera {
     this.punchZ = Math.max(this.punchZ, amount);
   }
 
+  /** Zooms in (factor > 1) or out, within the limits. */
   zoomBy(factor: number): void {
-    this.zoom = clamp(this.zoom * factor, MIN_ZOOM, MAX_ZOOM);
+    this.view = clamp(this.view / factor, MIN_VIEW_W, MAX_VIEW.w);
   }
 
   apply(world: Container, screenW: number, screenH: number, dt = 0): void {
