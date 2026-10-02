@@ -16,6 +16,17 @@ const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
 /** Seconds per step; 16 steps to a chord. */
 const STEP = 0.25;
+/** The music's level at full volume: kept well under the effects, so it never drowns them out. */
+const MUSIC_GAIN = 0.46;
+/** In a big fight the harmony turns to a darker, driving progression: Dm, Bb, F, C. */
+const FIGHT_CHORDS: { pad: number[]; bass: number }[] = [
+  { pad: [50, 57, 62, 65], bass: 38 },
+  { pad: [53, 58, 62, 65], bass: 34 },
+  { pad: [53, 57, 60, 65], bass: 41 },
+  { pad: [52, 55, 60, 64], bass: 36 },
+];
+/** Vowel formants for the choir ("ah"). */
+const CHOIR_FORMANTS: readonly (readonly [number, number])[] = [[730, 1], [1090, 0.5], [2440, 0.18]];
 const CHORDS: { pad: number[]; bass: number }[] = [
   { pad: [50, 57, 60, 64], bass: 38 }, // Dm9
   { pad: [58, 62, 65, 69], bass: 34 }, // Bbmaj7
@@ -52,6 +63,7 @@ export class Music {
   private nextAt = 0;
   private intensity = 0;
   private targetIntensity = 0;
+  private chord = CHORDS[0];
   private night = 0;
   private on: boolean;
   /** The music volume setting, 0–1. */
@@ -65,7 +77,7 @@ export class Music {
   ) {
     this.on = on;
     this.bus = ctx.createGain();
-    this.bus.gain.value = on ? 0.7 * this.level : 0;
+    this.bus.gain.value = on ? MUSIC_GAIN * this.level : 0;
     this.bus.connect(out);
     this.dry = ctx.createGain();
     this.dry.connect(this.bus);
@@ -107,7 +119,7 @@ export class Music {
     if (!this.on) return;
     const g = this.bus.gain;
     const now = this.ctx.currentTime;
-    const full = 0.7 * this.level;
+    const full = MUSIC_GAIN * this.level;
     g.cancelScheduledValues(now);
     g.setValueAtTime(g.value, now);
     g.setTargetAtTime(full * 0.12, now, 0.25);
@@ -122,10 +134,10 @@ export class Music {
   private applyVolume(): void {
     const g = this.bus.gain;
     g.cancelScheduledValues(this.ctx.currentTime);
-    g.setTargetAtTime(this.on ? 0.7 * this.level : 0, this.ctx.currentTime, 0.2);
+    g.setTargetAtTime(this.on ? MUSIC_GAIN * this.level : 0, this.ctx.currentTime, 0.2);
   }
 
-  /** 0 when calm, 1 in a fight; the drums follow it. */
+  /** 0 when calm, about 0.5 in a skirmish, 1 in a full teamfight: the drums, brass, strings and choir follow it. */
   setIntensity(v: number): void {
     this.targetIntensity = Math.max(0, Math.min(1, v));
   }
@@ -146,16 +158,40 @@ export class Music {
 
   private playStep(step: number, at: number): void {
     const inBar = step % 16;
-    const chord = CHORDS[Math.floor(step / 16) % CHORDS.length];
+    const fight = this.intensity;
+    // How far into an all-out teamfight we are: the epic layer.
+    const epic = Math.max(0, Math.min(1, (fight - 0.6) / 0.4));
+    const bar = Math.floor(step / 16);
+    // The chord is chosen at the top of each bar and held through it, even if the fight changes mid-bar.
+    if (inBar === 0) this.chord = epic > 0.3 ? FIGHT_CHORDS[bar % FIGHT_CHORDS.length] : CHORDS[bar % CHORDS.length];
+    const chord = this.chord;
     if (inBar === 0) {
       for (const n of chord.pad) this.pad(midi(n), at, STEP * 16 + 0.6);
       this.shimmer(chord.pad.slice(2).map((n) => midi(n + 12)), at, STEP * 16 + 0.6);
       this.bass(midi(chord.bass), at, STEP * 16);
-      // Every few chords, when it's calm, a little phrase on the flute.
-      if (step % 64 === 0 && this.intensity < 0.25 && Math.random() < 0.45) this.phrase(at);
+      // Every few chords, when it's calm, a little phrase on the flute; between them, now and then, a harp rolls a chord.
+      if (step % 64 === 0 && fight < 0.25 && Math.random() < 0.6) this.phrase(at);
+      else if (step % 32 === 16 && fight < 0.25 && Math.random() < 0.5) this.harp(chord.pad, at);
+      // At night, far off, a low horn calls now and then.
+      if (step % 128 === 64 && this.night > 0.5 && fight < 0.25) this.horn(midi(chord.bass + 12), at, 3.5, 0.025 * this.night);
+      if (epic > 0) {
+        this.choir(chord.pad.map((n) => midi(n)), at, STEP * 16 + 0.4, 0.016 * epic);
+        this.brass(chord.pad.map((n) => midi(n - 12)), at, 0.9, 0.05 * epic);
+      }
+    }
+    if (epic > 0.4) {
+      // Brass stabs on the off-beats, and a cymbal swell into each new chord.
+      if (inBar === 6 || inBar === 10) this.brass(chord.pad.map((n) => midi(n - 12)), at, 0.32, 0.035 * epic);
+      if (inBar === 12) this.swell(at, STEP * 4, 0.05 * epic);
+      // Taiko: big low drums in a driving pattern.
+      if ([0, 3, 6, 8, 11, 12, 14].includes(inBar)) this.taiko(at, (inBar % 4 === 0 ? 0.55 : 0.32) * epic);
+    }
+    if (fight > 0.5) {
+      // Strings: a running staccato figure on the chord, every step once it's a real teamfight.
+      const figure = [chord.pad[0], chord.pad[2], chord.pad[3], chord.pad[2]];
+      if (epic > 0.2 || step % 2 === 0) this.stab(midi(figure[step % 4] + 12), at, 0.022 * fight);
     }
     // Plucks: sparse and wandering when calm (sparser still at night), a running arpeggio in a fight.
-    const fight = this.intensity;
     if (fight > 0.45 && step % 2 === 0) {
       const arp = [...chord.pad, ...chord.pad.map((n) => n + 12)];
       this.pluck(midi(arp[(step / 2) % arp.length] + 12), at, 0.05 * fight);
@@ -171,6 +207,157 @@ export class Music {
       if (fight > 0.35 && step % 2 === 0) this.pulse(midi(chord.bass + 12), at, 0.06 * fight);
       if (fight > 0.6 && (inBar === 4 || inBar === 12)) this.ride(at, 0.035 * fight);
     }
+  }
+
+  /** A rolled chord on the harp: the chord's notes plucked upward one after another. */
+  private harp(notes: number[], at: number): void {
+    [...notes, notes[0] + 12, notes[1] + 12].forEach((n, i) => this.pluck(midi(n + 12), at + i * 0.09, 0.045));
+  }
+
+  /** A soft, far-off horn: a long triangle note with a slow swell. */
+  private horn(f: number, at: number, dur: number, vol: number): void {
+    const o = this.ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = f;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 900;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(vol, at + dur * 0.35);
+    g.gain.linearRampToValueAtTime(0.0001, at + dur);
+    o.connect(filter).connect(g);
+    g.connect(this.wet);
+    o.start(at);
+    o.stop(at + dur + 0.05);
+  }
+
+  /** A choir holding the chord on "ah": stacked saws through the vowel's formants, swelling in slowly. */
+  private choir(freqs: number[], at: number, dur: number, vol: number): void {
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(vol, at + 1.4);
+    g.gain.setValueAtTime(vol, at + dur - 1.2);
+    g.gain.linearRampToValueAtTime(0.0001, at + dur);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    const voices = this.ctx.createGain();
+    for (const [hz, level] of CHOIR_FORMANTS) {
+      const band = this.ctx.createBiquadFilter();
+      band.type = 'bandpass';
+      band.frequency.value = hz;
+      band.Q.value = 6;
+      const lv = this.ctx.createGain();
+      lv.gain.value = level;
+      voices.connect(band).connect(lv).connect(g);
+    }
+    for (const f of freqs) {
+      for (const cents of [-9, 0, 9]) {
+        const o = this.ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = f;
+        o.detune.value = cents;
+        o.connect(voices);
+        o.start(at);
+        o.stop(at + dur + 0.05);
+      }
+    }
+  }
+
+  /** A brass chord: bright saws with a quick bite, the filter opening on the attack and closing as it fades. */
+  private brass(freqs: number[], at: number, dur: number, vol: number): void {
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(500, at);
+    filter.frequency.linearRampToValueAtTime(2400, at + 0.06);
+    filter.frequency.exponentialRampToValueAtTime(700, at + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    filter.connect(g);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    for (const f of freqs) {
+      for (const cents of [-6, 6]) {
+        const o = this.ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = f;
+        o.detune.value = cents;
+        o.connect(filter);
+        o.start(at);
+        o.stop(at + dur + 0.05);
+      }
+    }
+  }
+
+  /** A short bowed string note, staccato. */
+  private stab(f: number, at: number, vol: number): void {
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2600;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.2);
+    filter.connect(g);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    for (const cents of [-5, 5]) {
+      const o = this.ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      o.detune.value = cents;
+      o.connect(filter);
+      o.start(at);
+      o.stop(at + 0.22);
+    }
+  }
+
+  /** A taiko: a deep drum with a slap of skin on top, ringing in the hall. */
+  private taiko(at: number, vol: number): void {
+    const o = this.ctx.createOscillator();
+    o.frequency.setValueAtTime(95, at);
+    o.frequency.exponentialRampToValueAtTime(48, at + 0.35);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.6);
+    o.connect(g);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    o.start(at);
+    o.stop(at + 0.65);
+    const slap = this.ctx.createBufferSource();
+    slap.buffer = this.noise;
+    const band = this.ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 900;
+    const sg = this.ctx.createGain();
+    sg.gain.setValueAtTime(vol * 0.5, at);
+    sg.gain.exponentialRampToValueAtTime(0.0001, at + 0.08);
+    slap.connect(band).connect(sg).connect(this.dry);
+    slap.start(at, Math.random() * 0.5);
+    slap.stop(at + 0.1);
+  }
+
+  /** A cymbal swelling up into the next beat. */
+  private swell(at: number, dur: number, vol: number): void {
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    src.loop = true;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.setValueAtTime(3000, at);
+    f.frequency.linearRampToValueAtTime(7000, at + dur);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + dur);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur + 0.15);
+    src.connect(f).connect(g);
+    g.connect(this.dry);
+    g.connect(this.wet);
+    src.start(at, Math.random() * 0.5);
+    src.stop(at + dur + 0.2);
   }
 
   private pad(f: number, at: number, dur: number): void {

@@ -17,9 +17,11 @@ export interface Settings {
   tips: boolean;
   /** How fast the camera pans at the screen's edge with the camera unlocked, 0.4–2.5 (1 is normal). */
   panSpeed: number;
+  /** The announcer's voice (First blood! Objective destroyed!). */
+  announcer: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1 };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1, announcer: true };
 
 const KEY = 'moba.settings';
 
@@ -37,6 +39,7 @@ export function parseSettings(raw: string | null): Settings {
     if (typeof v.showFps === 'boolean') s.showFps = v.showFps;
     if (typeof v.colorblind === 'boolean') s.colorblind = v.colorblind;
     if (typeof v.tips === 'boolean') s.tips = v.tips;
+    if (typeof v.announcer === 'boolean') s.announcer = v.announcer;
     if (typeof v.uiScale === 'number' && Number.isFinite(v.uiScale)) s.uiScale = Math.max(0.8, Math.min(1.3, v.uiScale));
     if (typeof v.panSpeed === 'number' && Number.isFinite(v.panSpeed)) s.panSpeed = Math.max(0.4, Math.min(2.5, v.panSpeed));
   } catch {
@@ -191,6 +194,10 @@ export function settingsPanel(): HTMLElement {
     slider('master', 'Master volume'),
     slider('music', 'Music'),
     slider('effects', 'Sound effects'),
+    toggle('Announcer voice', [
+      ['Off', () => !settings.announcer, () => updateSettings({ announcer: false })],
+      ['On', () => settings.announcer, () => updateSettings({ announcer: true })],
+    ]),
     toggle('Graphics', [
       ['High', () => settings.quality === 'high', () => updateSettings({ quality: 'high' })],
       ['Low', () => settings.quality === 'low', () => updateSettings({ quality: 'low' })],

@@ -117,6 +117,8 @@ export type SoundName =
   /** The announcer: good news for your side, and bad. */
   | 'fanfare'
   | 'toll'
+  /** A cinematic hit under the announcer's biggest lines. */
+  | 'epic'
   /** Map pings from your team. */
   | 'ping'
   | 'pingDanger'
@@ -179,6 +181,10 @@ export class Sound {
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
     onSettings(() => this.applyVolumes());
+  }
+
+  get isMuted(): boolean {
+    return this.muted;
   }
 
   toggleMute(): boolean {
@@ -856,6 +862,20 @@ export const RECIPES: Record<SoundName, Recipe> = {
     v.tone(t + 0.16, 'sine', 110, 50, 0.2, 0.3, 0.002);
     v.noise(t + 0.16, 'highpass', 6000, 3500, 0.9, 0.06, 0.5, 0.01);
   }, { send: 0.3 }),
+  epic: ui((v, t) => {
+    // A swell of noise rising into one huge low brass chord, with a sub boom, a timpani and a cymbal over it.
+    v.noise(t, 'bandpass', 500, 3800, 0.32, 0.07, 1.4, 0.28);
+    const at = t + 0.3;
+    for (const f of [65.41, 98, 130.81, 155.56, 196]) {
+      v.tone(at, 'sawtooth', f * 0.994, f, 1.7, 0.045, 0.02, 1100);
+      v.tone(at, 'sawtooth', f * 1.006, f, 1.7, 0.045, 0.02, 1100);
+    }
+    v.tone(at, 'triangle', 261.63, 261.63, 1.2, 0.08, 0.03);
+    v.tone(at, 'sine', 60, 28, 1.3, 0.55, 0.004);
+    v.tone(at, 'sine', 150, 62, 0.32, 0.38, 0.002);
+    v.noise(at, 'lowpass', 1000, 110, 1.1, 0.25, 1, 0.004);
+    v.noise(at, 'highpass', 6000, 3200, 1.5, 0.07, 0.5, 0.01);
+  }, { send: 0.45, duck: 0.55 }),
   toll: ui((v, t) => {
     // A great bell, slow and dark.
     v.click(t, 0.1, 1200);

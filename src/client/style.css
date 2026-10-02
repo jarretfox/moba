@@ -371,6 +371,54 @@ html.colorblind .warden-line.theirs {
   animation: banner-out 0.35s ease-in forwards;
 }
 
+/* The big ones: slam in from huge with a white flash, gold rays turning behind. */
+.banner.big {
+  position: relative;
+  padding: 10px 70px 12px;
+  animation: banner-slam 0.5s cubic-bezier(0.2, 1.6, 0.35, 1);
+}
+
+.banner.big .banner-title {
+  position: relative;
+  font-size: 62px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 4px 0 #000, 0 0 30px color-mix(in srgb, var(--tone) 80%, transparent), 0 0 70px color-mix(in srgb, var(--tone) 50%, transparent);
+}
+
+.banner.big .banner-detail {
+  position: relative;
+  font-size: 16px;
+}
+
+.banner-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 520px;
+  height: 520px;
+  margin: -260px 0 0 -260px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--tone) 34%, transparent) 0deg 7deg, transparent 7deg 22deg);
+  mask: radial-gradient(circle, #000 18%, transparent 68%);
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%);
+  animation: rays-spin 6s linear infinite, rays-in 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes rays-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rays-in {
+  from { opacity: 0; transform: scale(0.3); }
+}
+
+@keyframes banner-slam {
+  0% { transform: scale(2.6); opacity: 0; filter: brightness(3); }
+  60% { transform: scale(0.94); opacity: 1; filter: brightness(1.6); }
+  100% { transform: scale(1); filter: none; }
+}
+
 .banner-title {
   font: 40px/1.1 var(--font-display);
   letter-spacing: 0.08em;

@@ -7,7 +7,7 @@ import { NavGrid } from '../shared/map/navGrid';
 import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
 import { dist, segmentDistance, type Vec2 } from '../shared/math';
-import type { Command, EntitySnap, GameEvent, HostMessage, MeSnap, ScoreRow } from '../shared/protocol';
+import type { Command, EntitySnap, GameEvent, HostMessage, MeSnap, ScoreRow, Snapshot } from '../shared/protocol';
 import { getSound } from './audio';
 import { onSettings, settings } from './settings';
 import { Camera } from './camera';
@@ -31,6 +31,7 @@ import { FIRE_HEIGHT, propSpots } from './render/props';
 import { NightLife, duskAt } from './render/nightlife';
 import { Lighting, nightAt, skyAt, type Light } from './render/lighting';
 import { FountainView, crystalSpot } from './render/fountain';
+import { Announcer, type Weight } from './announcer';
 import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
@@ -109,6 +110,13 @@ export class GameClient {
   private readonly views = new Map<number, EntityView>();
   private readonly hud: Hud;
   private readonly sound = getSound();
+  /** The announcer's voice for the big moments. */
+  private readonly announcer = new Announcer(() => this.sound.isMuted);
+  /** Things the announcer has already said this match. */
+  private readonly announced = new Set<string>();
+  private wardenWasUp = false;
+  /** When each champion last traded blows with another (local clock), for the music. */
+  private readonly champFightAt = new Map<number, number>();
   private gameOverPlayed = false;
   /** Dusk and the lights in it, laid over the world. */
   private readonly lighting = new Lighting(MAP);
@@ -610,6 +618,7 @@ export class GameClient {
     this.showStealth(me);
     if (this.myTeam !== TEAM.neutral) this.hud.setKills(this.teamKills[this.myTeam], this.teamKills[this.myTeam === 1 ? 2 : 1]);
     this.hud.setWarden(latest?.warden, this.myTeam);
+    this.announceMatch(latest);
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
     if (!this.introShown && me && latest?.scores) this.playIntro(latest.scores);
     if (latest?.winner) this.tips.hide();
@@ -647,7 +656,11 @@ export class GameClient {
         awards.forEach((_, i) => setTimeout(() => this.sound.play('chime', 0.4), 900 + i * 250));
       }
       this.hud.showGameOver(latest.winner === this.myTeam, latest.scores, latest.winner, this.myTeam);
-      if (!this.gameOverPlayed) this.sound.endMatch(latest.winner === this.myTeam);
+      if (!this.gameOverPlayed) {
+        this.sound.endMatch(latest.winner === this.myTeam);
+        this.announcer.hush();
+        this.announcer.say(latest.winner === this.myTeam ? 'Victory!' : 'Defeat.', 3);
+      }
       if (!this.gameOverPlayed && !this.replay) this.recordMatch(latest.scores ?? [], latest.winner);
       this.gameOverPlayed = true;
     }
@@ -765,6 +778,11 @@ export class GameClient {
         const from = ev.src !== undefined ? this.ents.get(ev.src) : undefined;
         // Fights scare the birds off.
         if (hit && hit.k === 'champion') this.critters.alarm(hit.x, hit.y);
+        if (hit?.k === 'champion' && from?.k === 'champion' && ev.amount >= 1) {
+          const t = performance.now() / 1000;
+          this.champFightAt.set(hit.id, t);
+          this.champFightAt.set(from.id, t);
+        }
         if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.(from, !!hit && ev.amount >= (hit.mhp ?? 1000) * 0.08);
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
@@ -1052,6 +1070,7 @@ export class GameClient {
       this.sound.play('impact', 0.8);
       this.sound.play('horn', 0.35);
     });
+    at(1.4, () => this.announcer.say('Welcome to Da Base!', 2));
     showIntro(this.hudRoot, rows, this.myTeam, this.myId, Math.floor(Math.random() * 6), () => {
       over = true;
       this.introUp = false;
@@ -1242,6 +1261,10 @@ export class GameClient {
   /** A Chud wave marching out: a horn, and a glowing portal where each lane's Chuds climb out. */
   private waveMarches(): void {
     this.sound.play('horn', 0.35);
+    if (!this.replay && !this.announced.has('chuds')) {
+      this.announced.add('chuds');
+      this.announcer.say('The Chuds have spawned!', 2);
+    }
     const halfW = this.app.screen.width / 2 / this.camera.zoom + 300;
     const halfH = this.app.screen.height / 2 / this.camera.zoom + 300;
     for (const team of [TEAM.blue, TEAM.red] as const) {
@@ -1277,6 +1300,23 @@ export class GameClient {
       g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 3, color: ours ? 0xffb0a8 : 0xd6ecff, alpha: 0.85 * pulse, cap: 'round' });
       g.circle(t.x, t.y, t.r + 10).stroke({ width: 3, color, alpha: 0.7 * pulse });
     }
+  }
+
+  /** The announcer's other lines: the Chuds coming, and the Warden waking. */
+  private announceMatch(latest: Snapshot | null | undefined): void {
+    if (!latest || this.replay || latest.winner) return;
+    const next = latest.nextWave;
+    if (!this.announced.has('chudsSoon') && !this.announced.has('chuds') && next !== undefined && next <= 30 && next > 26 && latest.time < 120) {
+      this.announced.add('chudsSoon');
+      this.announcer.say('Thirty seconds until the Chuds spawn.', 1);
+    }
+    const up = !!latest.warden?.alive;
+    if (up && !this.wardenWasUp && latest.time > 60) {
+      this.sound.play('epic', 0.7);
+      this.hud.announce('THE WARDEN HAS AWOKEN', 'He waits in his pit. Bring friends.', 'neutral', true);
+      this.announcer.say('The Warden has awoken!', 3);
+    }
+    this.wardenWasUp = up;
   }
 
   /** Champions recalling light up the ground round them, brighter and wider as it builds. */
@@ -1319,7 +1359,15 @@ export class GameClient {
    */
   private updateSoundscape(): void {
     const now = performance.now() / 1000;
-    this.sound.setIntensity(now - this.lastFight < 6 ? 1 : 0);
+    // The music follows the fight: a skirmish you're in brings the drums in, a teamfight on screen brings
+    // everything (brass, taiko, strings, choir).
+    let fighting = 0;
+    for (const e of this.ents.values()) {
+      if (e.k !== 'champion' || e.dead || (this.champFightAt.get(e.id) ?? -9) < now - 4) continue;
+      if (Math.hypot(e.x - this.camera.x, e.y - this.camera.y) < 1600) fighting++;
+    }
+    const mine = now - this.lastFight < 6;
+    this.sound.setIntensity(fighting >= 4 ? 1 : fighting >= 3 ? 0.8 : mine ? 0.55 : fighting >= 2 ? 0.35 : 0);
     for (const e of this.ents.values()) {
       if (e.k !== 'monster' || e.mon !== 'crab' || e.dead) continue;
       if (now < (this.skitters.get(e.id) ?? 0)) continue;
@@ -1380,25 +1428,28 @@ export class GameClient {
   private announceKill(ev: Extract<GameEvent, { e: 'kill' }>): void {
     const tone: Tone = ev.team === TEAM.neutral ? 'neutral' : ev.team === this.myTeam ? 'ours' : 'theirs';
     const good = tone === 'ours';
-    const say = (title: string, detail: string, big: boolean) => {
-      this.hud.announce(title, detail, tone);
-      this.sound.play(announceSound(ev, big, good), big ? 0.7 : 0.5);
+    /** A banner, its sound, and the announcer's line: weight-3 lines are the epic ones, with the big hit under them. */
+    const say = (title: string, detail: string, big: boolean, voice?: string, weight: Weight = 1) => {
+      this.hud.announce(title, detail, tone, weight === 3);
+      if (weight === 3 && !this.replay) this.sound.play('epic', 0.75);
+      else this.sound.play(announceSound(ev, big, good), big ? 0.7 : 0.5);
+      if (voice && !this.replay) this.announcer.say(voice, weight);
     };
     switch (ev.what) {
       case 'warden':
-        return say('THE WARDEN IS SLAIN', `${good ? 'We are' : 'They are'} ${ev.victim.includes('Uprising') ? 'in Uprising!' : 'Unchained'}`, true);
+        return say('THE WARDEN IS SLAIN', `${good ? 'We are' : 'They are'} ${ev.victim.includes('Uprising') ? 'in Uprising!' : 'Unchained'}`, true, 'The Warden has been slain!', 3);
       case 'oakner':
-        return say('OAKNER FELLED', `${ev.killer} brought down ${good ? 'their' : 'our'} Oakner`, true);
+        return say(good ? 'OAKNER FELLED' : 'OAKNER LOST', `${ev.killer} brought down ${good ? 'their' : 'our'} Oakner`, true, good ? 'Oakner felled!' : 'Our Oakner has fallen!', 2);
       case 'outerShootie':
       case 'innerShootie':
       case 'baseShootie':
-        return say('SHOOTIE DESTROYED', `${ev.killer} destroyed ${good ? 'their' : 'our'} ${ev.victim}`, true);
+        return say(good ? 'OBJECTIVE DESTROYED' : 'OBJECTIVE LOST', `${ev.killer} destroyed ${good ? 'their' : 'our'} ${ev.victim}`, true, good ? 'Objective destroyed!' : 'Our Shootie has fallen!', 2);
       case 'daBase':
         return; // the finale speaks for itself
       case 'crab':
-        return say('SEWER CRAB TAKEN', `${ev.killer} took the river: ${good ? 'we' : 'they'} can see it now`, false);
+        return say('SEWER CRAB TAKEN', `${ev.killer} took the river: ${good ? 'we' : 'they'} can see it now`, false, 'Sewer Crab taken.');
       case 'champion': {
-        if (ev.team === TEAM.neutral) return say('EXECUTED', `${ev.victim} fell to ${ev.killer === 'Executed' ? 'the lane' : ev.killer}`, false);
+        if (ev.team === TEAM.neutral) return say('EXECUTED', `${ev.victim} fell to ${ev.killer === 'Executed' ? 'the lane' : ev.killer}`, false, 'Executed.');
         const now = this.replay?.time ?? this.buffer.latest?.time ?? 0;
         const last = this.multiKills.get(ev.killer);
         const n = last && now - last.at < 10 ? last.n + 1 : 1;
@@ -1406,15 +1457,17 @@ export class GameClient {
         const myName = this.ents.get(this.myId)?.name;
         const detail = `${ev.killer} slew ${ev.victim}`;
         const streak = ev.streak ?? 0;
-        if (!this.firstBlood) say('FIRST BLOOD', detail, true);
-        else if (n >= 2) say(n === 2 ? 'DOUBLE KILL' : n === 3 ? 'TRIPLE KILL' : 'RAMPAGE', detail, true);
-        else if (ev.shutdown) say('BOUNTY CLAIMED', `${ev.killer} collected ${ev.bounty ? `${ev.bounty}g` : 'the bounty'} on ${ev.victim}`, true);
-        else if (streak >= 3) say(streak === 3 ? 'KILLING SPREE' : streak === 4 ? 'RAMPAGE' : streak === 5 ? 'UNSTOPPABLE' : 'GODLIKE', detail, true);
-        else if (ev.victim === myName) say('YOU HAVE BEEN SLAIN', detail, false);
-        else if (ev.killer === myName) say('YOU HAVE SLAIN AN ENEMY', detail, false);
-        else say(good ? 'ENEMY SLAIN' : 'ALLY SLAIN', detail, false);
+        if (!this.firstBlood) say('FIRST BLOOD', detail, true, 'First blood!', 3);
+        else if (n >= 2) say(n === 2 ? 'DOUBLE KILL' : n === 3 ? 'TRIPLE KILL' : 'RAMPAGE', detail, true, n === 2 ? 'Double kill!' : n === 3 ? 'Triple kill!' : 'Rampage!', n === 2 ? 2 : 3);
+        else if (ev.shutdown) say('BOUNTY CLAIMED', `${ev.killer} collected ${ev.bounty ? `${ev.bounty}g` : 'the bounty'} on ${ev.victim}`, true, 'Shutdown! Bounty claimed!', 3);
+        else if (streak >= 3) {
+          const voice = streak === 3 ? `${ev.killer} is on a killing spree!` : streak === 4 ? `${ev.killer} is on a rampage!` : streak === 5 ? `${ev.killer} is unstoppable!` : `${ev.killer} is godlike!`;
+          say(streak === 3 ? 'KILLING SPREE' : streak === 4 ? 'RAMPAGE' : streak === 5 ? 'UNSTOPPABLE' : 'GODLIKE', detail, true, voice, streak >= 5 ? 3 : 2);
+        } else if (ev.victim === myName) say('YOU HAVE BEEN SLAIN', detail, false, 'You have been slain.', 2);
+        else if (ev.killer === myName) say('YOU HAVE SLAIN AN ENEMY', detail, false, 'You have slain an enemy.', 2);
+        else say(good ? 'ENEMY SLAIN' : 'ALLY SLAIN', detail, false, good ? 'An enemy has been slain.' : 'An ally has been slain.');
         this.firstBlood = true;
-        if (ev.ace) say('ACE', good ? 'Their whole team is down' : 'Our whole team is down', true);
+        if (ev.ace) say('ACE', good ? 'Their whole team is down' : 'Our whole team is down', true, 'Ace!', 3);
         return;
       }
     }

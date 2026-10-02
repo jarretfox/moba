@@ -147,7 +147,7 @@ export class Hud {
   private readonly hurtEl: HTMLElement;
   private readonly stealthEl: HTMLElement;
   /** Banners waiting their turn; one shows at a time. */
-  private banners: { title: string; detail: string; tone: Tone }[] = [];
+  private banners: { title: string; detail: string; tone: Tone; big?: boolean }[] = [];
   private bannerUntil = 0;
 
   constructor(root: HTMLElement) {
@@ -407,9 +407,10 @@ export class Hud {
   }
 
   /** A big banner across the top for a moment worth shouting about. Queued if one is already up. */
-  announce(title: string, detail: string, tone: Tone): void {
+  /** A banner across the top; `big` ones (first blood, a bounty, an ace) slam in bigger, with rays behind. */
+  announce(title: string, detail: string, tone: Tone, big = false): void {
     if (this.banners.length >= 3) this.banners.shift();
-    this.banners.push({ title, detail, tone });
+    this.banners.push({ title, detail, tone, big });
     this.nextBanner();
   }
 
@@ -420,7 +421,12 @@ export class Hud {
     const el = this.announceEl;
     el.replaceChildren();
     const card = document.createElement('div');
-    card.className = `banner ${b.tone}`;
+    card.className = `banner ${b.tone}${b.big ? ' big' : ''}`;
+    if (b.big) {
+      const rays = document.createElement('div');
+      rays.className = 'banner-rays';
+      card.append(rays);
+    }
     const title = document.createElement('div');
     title.className = 'banner-title';
     title.textContent = b.title;
@@ -429,7 +435,7 @@ export class Hud {
     detail.textContent = b.detail;
     card.append(title, detail);
     el.append(card);
-    const hold = 2600;
+    const hold = b.big ? 3200 : 2600;
     this.bannerUntil = now + hold;
     setTimeout(() => {
       card.classList.add('out');
