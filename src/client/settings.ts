@@ -6,7 +6,9 @@ export interface Settings {
   master: number;
   music: number;
   effects: number;
-  /** Low turns off the glow pass and thins out particles and rain, for slower machines. */
+  /** The world's own sounds: wind, birds, water, rain, the night. Low by default; it's a backdrop. */
+  ambience: number;
+  /** Low turns off the glow pass and thins out particles and blowing leaves, for slower machines. */
   quality: 'high' | 'low';
   showFps: boolean;
   /** Enemies in orange-yellow instead of red, for red-blind players. */
@@ -25,7 +27,7 @@ export interface Settings {
   lastHit: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1, announcer: true, autoLevel: false, lastHit: true };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, ambience: 0.3, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1, announcer: true, autoLevel: false, lastHit: true };
 
 const KEY = 'moba.settings';
 
@@ -35,7 +37,7 @@ export function parseSettings(raw: string | null): Settings {
   if (!raw) return s;
   try {
     const v = JSON.parse(raw) as Partial<Record<keyof Settings, unknown>>;
-    for (const k of ['master', 'music', 'effects'] as const) {
+    for (const k of ['master', 'music', 'effects', 'ambience'] as const) {
       const n = v[k];
       if (typeof n === 'number' && Number.isFinite(n)) s[k] = Math.max(0, Math.min(1, n));
     }
@@ -156,7 +158,7 @@ export async function setFullscreen(full: boolean): Promise<void> {
 export function settingsPanel(): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'settings';
-  const slider = (key: 'master' | 'music' | 'effects', label: string) => {
+  const slider = (key: 'master' | 'music' | 'effects' | 'ambience', label: string) => {
     const row = document.createElement('label');
     row.className = 'settings-row';
     const name = document.createElement('span');
@@ -200,6 +202,7 @@ export function settingsPanel(): HTMLElement {
     slider('master', 'Master volume'),
     slider('music', 'Music'),
     slider('effects', 'Sound effects'),
+    slider('ambience', 'Ambient sound'),
     toggle('Announcer voice', [
       ['Off', () => !settings.announcer, () => updateSettings({ announcer: false })],
       ['On', () => settings.announcer, () => updateSettings({ announcer: true })],

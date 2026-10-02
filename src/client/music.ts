@@ -642,7 +642,7 @@ export class Music {
 }
 
 /** The wind's level on an ordinary evening. */
-const WIND = 0.05;
+const WIND = 0.03;
 
 /**
  * Wind, rain, water, crickets and owls, the pit and the crystals: louder where the camera is, and
@@ -762,8 +762,8 @@ export class Soundscape {
     this.windK = windK;
     this.rain = kind === 'storm' ? 1 : kind === 'rain' ? 0.6 : 0;
     const now = this.ctx.currentTime;
-    this.rainGain.gain.setTargetAtTime(this.rain * 0.05, now, 1);
-    this.rumbleGain.gain.setTargetAtTime(kind === 'storm' ? 0.06 : 0, now, 2);
+    this.rainGain.gain.setTargetAtTime(this.rain * 0.03, now, 1);
+    this.rumbleGain.gain.setTargetAtTime(kind === 'storm' ? 0.035 : 0, now, 2);
     // Mist muffles everything; snow takes the edge off.
     this.muffle.frequency.setTargetAtTime(kind === 'mist' ? 1400 : kind === 'snow' ? 3500 : 18000, now, 1.5);
     // The wind sits lower in the snow, higher in an autumn blow.
@@ -810,11 +810,11 @@ export class Soundscape {
     }
     // The river rushes and burbles, its levels never quite steady, with the odd plip.
     const riverK = w === 'mist' ? 0.7 : 1;
-    this.riverGain.gain.setTargetAtTime(this.river * riverK * (0.07 + Math.random() * 0.04), now, 0.08);
-    this.burbleGain.gain.setTargetAtTime(this.river * riverK * (0.03 + Math.random() * 0.03), now, 0.1);
-    if (Math.random() < this.river * 0.25) this.plip(now + Math.random() * 0.1);
+    this.riverGain.gain.setTargetAtTime(this.river * riverK * (0.045 + Math.random() * 0.025), now, 0.08);
+    this.burbleGain.gain.setTargetAtTime(this.river * riverK * (0.02 + Math.random() * 0.02), now, 0.1);
+    if (Math.random() < this.river * 0.15) this.plip(now + Math.random() * 0.1);
     // Rain pattering nearby; a storm rumbles in the distance between the bolts; mist drips.
-    if (this.rain > 0 && Math.random() < this.rain * 0.8) this.patter(now + Math.random() * 0.12);
+    if (this.rain > 0 && Math.random() < this.rain * 0.4) this.patter(now + Math.random() * 0.12);
     if (storm && Math.random() < 0.006 && now > this.rumbleAt) {
       this.rumble(now);
       this.rumbleAt = now + 8;
@@ -822,7 +822,7 @@ export class Soundscape {
     if (w === 'mist' && Math.random() < 0.04) this.drip(now);
     // Life in the jungle: crickets from dusk, owls in the dark. Not in the cold, and hardly in the rain.
     const life = this.jungle * (cold ? 0 : 1) * (1 - this.rain * 0.7);
-    if (Math.random() < life * (0.1 + 0.35 * this.night)) this.cricket(now + Math.random() * 0.1);
+    if (Math.random() < life * (0.05 + 0.18 * this.night)) this.cricket(now + Math.random() * 0.1);
     if (Math.random() < life * 0.003 * (0.2 + this.night)) this.owl(now);
     // The Hollow: a wolf now and then, far off; crows bickering; the wind moaning through the graves.
     if (this.haunted) {

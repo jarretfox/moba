@@ -30,13 +30,13 @@ describe('the mix', () => {
   });
 
   it('follows the sliders and the mute', () => {
-    const lv = busLevels({ master: 0.5, music: 0.25, effects: 1 }, false);
+    const lv = busLevels({ master: 0.5, music: 0.25, effects: 1, ambience: 0.3 }, false);
     expect(lv.master).toBeCloseTo(0.3);
     expect(lv.music).toBe(0.25);
     expect(lv.fx).toBe(1);
-    expect(lv.ambience).toBe(1);
-    expect(busLevels({ master: 1, music: 1, effects: 1 }, true).master).toBe(0);
-    expect(busLevels({ master: 1, music: 1, effects: 0 }, false)).toMatchObject({ fx: 0, ui: 0, voice: 0, ambience: 0, music: 1 });
+    expect(lv.ambience).toBe(0.3);
+    expect(busLevels({ master: 1, music: 1, effects: 1, ambience: 1 }, true).master).toBe(0);
+    expect(busLevels({ master: 1, music: 1, effects: 0, ambience: 0.5 }, false)).toMatchObject({ fx: 0, ui: 0, voice: 0, ambience: 0.5, music: 1 });
   });
 
   describe('the crowd limit', () => {

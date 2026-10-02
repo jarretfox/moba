@@ -94,17 +94,34 @@ const PINNED: ReadonlySet<StatusKind> = new Set<StatusKind>(['stun', 'root', 'fe
 
 /** Speech-bubble ids for Old Wick (blue's, then red's one below it), clear of every entity id. */
 const WICK_ID = -100;
+/**
+ * Anything further off the screen than this (world units, past its own size) isn't drawn, and an entity's
+ * view isn't updated either until it's back near the screen. Pixi rebuilds a layer's draw list whenever
+ * something in it changes, so every off-screen figure and prop it can skip makes every frame cheaper.
+ */
+const CULL_MARGIN = 350;
 
 export class GameClient {
   private readonly worldLayer = new Container();
-  private readonly groundLayer = new Container();
+  // The big static layers (the painted ground, the cliff tops and the canopy: tens of thousands of shapes)
+  // are render groups of their own, so they're batched once rather than again with every change elsewhere.
+  private readonly groundLayer = new Container({ isRenderGroup: true });
   private readonly underLayer = new Container();
   private readonly structureLayer = new Container();
   /** Raised layers for the tops of tall things: cliffs and trees. */
-  private readonly wallTops = new Container();
-  private readonly canopy = new Container();
-  /** Units, nearer the bottom of the screen drawn in front (they stand up now, so they overlap). */
-  private readonly unitLayer = new Container({ sortableChildren: true });
+  private readonly wallTops = new Container({ isRenderGroup: true });
+  private readonly canopy = new Container({ isRenderGroup: true });
+  /**
+   * Units, nearer the bottom of the screen drawn in front (they stand up now, so they overlap). Their own
+   * render group: it re-sorts nearly every frame, and that shouldn't make the rest of the map rebuild too.
+   */
+  private readonly unitLayer = new Container({ sortableChildren: true, isRenderGroup: true });
+  /** Each culled view's time since it was last updated, to hand over when it comes back on screen. */
+  private readonly offScreen = new Map<number, number>();
+  /** The standing props' extents (local space), worked out once each. */
+  private readonly propBounds = new WeakMap<Container, { l: number; t: number; r: number; b: number }>();
+  /** Views' own containers in the unit layer (they're culled with their entities, not as props). */
+  private readonly viewBodies = new WeakSet<Container>();
   private readonly projectileLayer = new Container();
   private readonly indicator = new Graphics();
   /** A reticle under whatever you're attacking (and your reach round you), while you're attacking it. */
@@ -455,13 +472,12 @@ export class GameClient {
     this.weather = w;
     this.wind.setWeather(w.kind);
     w.density = settings.quality === 'high' ? 1 : 0.4;
-    // Mist and splashes sit over the trees; rain and lightning over everything; frost and fallen leaves on
-    // the ground; snow on the treetops.
+    // Mist and splashes sit over the trees; frost, puddles and fallen leaves on the ground; snow on the
+    // treetops. Nothing goes over the whole screen.
     this.worldLayer.addChildAt(w.world, this.worldLayer.getChildIndex(this.canopy) + 1);
     this.worldLayer.addChildAt(w.ground, this.worldLayer.getChildIndex(this.groundLayer) + 1);
     w.dustTrees(this.crowns);
     this.canopy.addChild(w.treetops);
-    this.view.addChild(w.screen);
     w.onBolt = (strike) => {
       if (strike) {
         // A strike in view: a blinding flash where it lands, scorched ground, the thunder right on top of it.
@@ -469,12 +485,11 @@ export class GameClient {
         this.fx.scar(strike.x, strike.y, 60, 'scorch');
         this.fx.particles.burst(18, { shape: 'spark', x: strike.x, y: strike.y, life: 0.4, size: 10, size2: 2, stretch: 0.05, color: 0xffffff, color2: 0x9fc4ff }, [200, 520]);
         this.fx.light(strike.x, strike.y, 500, 0xcfe0ff, 0.5, 1);
-        this.camera.shake(9);
-        this.sound.play('thunder', 1);
+        this.camera.shake(4);
+        this.sound.play('thunder', 0.7);
         return;
       }
-      this.camera.shake(w.kind === 'storm' ? 4 : 2);
-      setTimeout(() => this.sound.play('thunder', w.kind === 'storm' ? 0.8 : 0.55), 300 + Math.random() * 1500);
+      setTimeout(() => this.sound.play('thunder', w.kind === 'storm' ? 0.45 : 0.3), 300 + Math.random() * 1500);
     };
     this.sound.setWeather(w.kind, this.wind.strength / 0.55);
   }
@@ -608,8 +623,9 @@ export class GameClient {
       if (cue && ev.e !== 'kill') this.playCue(cue); // the announcer voices kills
     }
     this.fx.update(dt);
-    this.ambience.update(dt);
-    this.water.update(dt, this.ents.values());
+    const seen = { x: this.camera.x, y: this.camera.y, w: this.app.screen.width / this.camera.zoom, h: this.app.screen.height / this.camera.zoom };
+    this.ambience.update(dt, seen);
+    this.water.update(dt, this.ents.values(), seen);
     this.blowWind(dt);
     this.fog.update(this.ents.values(), this.myTeam, performance.now() / 1000);
 
@@ -648,6 +664,7 @@ export class GameClient {
       this.camera.y += (this.finale.y - this.camera.y) * k;
     }
     this.camera.apply(this.worldLayer, w, h, dt);
+    this.cullProps(w, h);
     elevate(this.wallTops, HEIGHT.wall, this.camera.x, this.camera.y);
     elevate(this.canopy, HEIGHT.tree, this.camera.x, this.camera.y);
     this.emissive.position.copyFrom(this.worldLayer.position);
@@ -777,13 +794,53 @@ export class GameClient {
       dusk: duskAt(this.lookTime()),
       myAd: settings.lastHit && me && !me.dead ? this.buffer.latest?.me?.stats.ad : undefined,
     };
+    const { width, height } = this.app.screen;
+    const halfW = width / 2 / this.camera.zoom + CULL_MARGIN;
+    const halfH = height / 2 / this.camera.zoom + CULL_MARGIN;
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);
       if (!view) {
         view = this.createView(s);
         this.views.set(s.id, view);
       }
-      view.update(s, dt, ctx);
+      // Off the screen: hidden, and not redrawn. It catches up on the time it missed when it's back.
+      const reach = s.r ?? 0;
+      const off = Math.abs(s.x - this.camera.x) > halfW + reach || Math.abs(s.y - this.camera.y) > halfH + reach * 2;
+      if (view.container.culled !== off) {
+        view.container.culled = off;
+        if (view.top) view.top.culled = off;
+      }
+      if (off) {
+        this.offScreen.set(s.id, Math.min(0.5, (this.offScreen.get(s.id) ?? 0) + dt));
+        continue;
+      }
+      const missed = this.offScreen.get(s.id);
+      if (missed !== undefined) this.offScreen.delete(s.id);
+      view.update(s, dt + (missed ?? 0), ctx);
+    }
+    if (this.frameCount % 300 === 0) for (const id of this.offScreen.keys()) if (!this.ents.has(id)) this.offScreen.delete(id);
+  }
+
+  /** The standing props (trees' trunks, rocks, landmarks, the shop, the fountains) off the screen aren't drawn. */
+  private cullProps(w: number, h: number): void {
+    const halfW = w / 2 / this.camera.zoom + CULL_MARGIN;
+    const halfH = h / 2 / this.camera.zoom + CULL_MARGIN;
+    const left = this.camera.x - halfW;
+    const right = this.camera.x + halfW;
+    const top = this.camera.y - halfH;
+    const bottom = this.camera.y + halfH;
+    for (const c of this.unitLayer.children) {
+      if (this.viewBodies.has(c)) continue;
+      let b = this.propBounds.get(c);
+      if (!b) {
+        const lb = c.getLocalBounds();
+        // Nothing drawn in it yet: leave it be and look again later.
+        if (!(lb.maxX > lb.minX)) continue;
+        b = { l: lb.minX, t: lb.minY, r: lb.maxX, b: lb.maxY };
+        this.propBounds.set(c, b);
+      }
+      const off = c.x + b.r < left || c.x + b.l > right || c.y + b.b < top || c.y + b.t > bottom;
+      if (c.culled !== off) c.culled = off;
     }
   }
 
@@ -827,6 +884,7 @@ export class GameClient {
       case 'structure': {
         const sv = new StructureView(s, rel);
         this.unitLayer.addChild(sv.top);
+        this.viewBodies.add(sv.top);
         view = sv;
         layer = this.structureLayer;
         break;
@@ -857,6 +915,7 @@ export class GameClient {
         }
     }
     layer.addChild(view.container);
+    this.viewBodies.add(view.container);
     return view;
   }
 

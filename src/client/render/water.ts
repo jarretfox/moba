@@ -4,7 +4,21 @@ import { shapeContains } from '../../shared/map/shapes';
 import type { EntitySnap } from '../../shared/protocol';
 
 // The river, alive: streaks of current drifting toward the Deep in the middle of the map, foam lapping
-// at the banks, and rings spreading out behind anything wading through. One Graphics, redrawn each frame.
+// at the banks, and rings spreading out behind anything wading through. One Graphics, redrawn each frame
+// with only what's near the screen.
+
+/** What the camera sees: its center and how wide and tall (world units). */
+export interface ViewRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** Within `pad` of the view. */
+export function inView(view: ViewRect | undefined, x: number, y: number, pad = 100): boolean {
+  return !view || (Math.abs(x - view.x) < view.w / 2 + pad && Math.abs(y - view.y) < view.h / 2 + pad);
+}
 
 interface Streak {
   x: number;
@@ -32,6 +46,8 @@ interface Ripple {
 }
 
 const STREAKS = 140;
+/** Each streak checks it's still in the river every this many frames. */
+const CHECK_EVERY = 8;
 /** Seconds between rings behind a wading unit. */
 const RIPPLE_GAP = 0.28;
 const RIPPLE_LIFE = 1;
@@ -43,6 +59,7 @@ export class Water {
   private ripples: Ripple[] = [];
   private readonly waders = new Map<number, { x: number; y: number; next: number }>();
   private clock = 0;
+  private checkAt = 0;
 
   constructor(private readonly map: MapData) {
     for (let i = 0; i < STREAKS; i++) {
@@ -66,10 +83,12 @@ export class Water {
     return this.map.ground.some((p) => p.style === 'river' && shapeContains(p.shape, x, y));
   }
 
-  update(dt: number, ents: Iterable<EntitySnap>): void {
+  update(dt: number, ents: Iterable<EntitySnap>, view?: ViewRect): void {
     this.clock += dt;
     const g = this.container.clear();
     const mid = this.map.height / 2;
+    // Whether a streak has drifted out of the river is checked a few at a time, not all of them every frame.
+    this.checkAt = (this.checkAt + 1) % CHECK_EVERY;
 
     // Current: everything drifts toward the middle, where the river pours into the Deep.
     for (let i = 0; i < this.streaks.length; i++) {
@@ -77,7 +96,8 @@ export class Water {
       s.age += dt;
       s.y += Math.sign(mid - s.y) * s.speed * dt;
       s.x += Math.sin(this.clock * 0.8 + s.phase) * 6 * dt;
-      if (s.age >= s.life || !this.inRiver(s.x, s.y)) s = this.streaks[i] = this.spawn();
+      if (s.age >= s.life || (i % CHECK_EVERY === this.checkAt && !this.inRiver(s.x, s.y))) s = this.streaks[i] = this.spawn();
+      if (!inView(view, s.x, s.y)) continue;
       const fade = Math.sin((s.age / s.life) * Math.PI);
       const dir = Math.sign(mid - s.y) || 1;
       const bend = Math.sin(this.clock * 2 + s.phase) * 4;
@@ -88,6 +108,7 @@ export class Water {
 
     // Foam lapping at the banks.
     for (const f of this.foam) {
+      if (!inView(view, f.x, f.y)) continue;
       const lap = Math.sin(this.clock * 1.6 + f.phase);
       const x = f.x + f.side * lap * 5;
       g.ellipse(x, f.y, 12 + lap * 3, 6).fill({ color: 0xffffff, alpha: 0.16 + 0.14 * (lap + 1) * 0.5 });
@@ -97,7 +118,7 @@ export class Water {
     const seen = new Set<number>();
     for (const e of ents) {
       if (e.dead || (e.k !== 'champion' && e.k !== 'chud' && e.k !== 'monster' && e.k !== 'guard')) continue;
-      if (!this.inRiver(e.x, e.y)) continue;
+      if (!inView(view, e.x, e.y, 300) || !this.inRiver(e.x, e.y)) continue;
       seen.add(e.id);
       const w = this.waders.get(e.id);
       if (!w) {

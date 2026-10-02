@@ -1,4 +1,5 @@
 import { Graphics } from 'pixi.js';
+import { inView, type ViewRect } from './water';
 import type { MapData } from '../../shared/map/mapData';
 import { shapeContains } from '../../shared/map/shapes';
 import { propSpots } from './props';
@@ -49,7 +50,7 @@ export class Ambience {
     this.night = k;
   }
 
-  update(dt: number): void {
+  update(dt: number, view?: ViewRect): void {
     const g = this.container.clear();
     for (let i = 0; i < this.motes.length; i++) {
       let m = this.motes[i];
@@ -63,6 +64,7 @@ export class Ambience {
       }
       m.x += (m.vx + Math.sin(m.phase * 1.3) * 12) * dt;
       m.y += (m.vy + Math.cos(m.phase * 0.9) * 10) * dt;
+      if (!inView(view, m.x, m.y)) continue;
       const t = m.age / m.life;
       const fade = Math.sin(t * Math.PI); // in and out over its life
       switch (m.kind) {

@@ -125,7 +125,7 @@ kbd {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
+  background: radial-gradient(ellipse at center, transparent 70%, rgba(0, 0, 0, 0.2) 100%);
 }
 
 /* A red flush at the edges for a moment, with every hit you take (see Hud.hurt). */

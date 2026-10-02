@@ -17,13 +17,23 @@ describe('autumn', () => {
     expect(wind.strength).toBeGreaterThan(1);
     for (let t = 0; t < 2; t += 1 / 30) autumn.update(1 / 30, 1280, 720, cam, wind);
     const leaves = (autumn as unknown as { leaves: { x: number; vx: number }[] }).leaves;
-    expect(leaves.length).toBeGreaterThan(10);
+    expect(leaves.length).toBeGreaterThan(4);
+    expect(leaves.length).toBeLessThanOrEqual(30); // a few, not a screenful
     // Blowing with the wind, left to right.
     expect(leaves.every((l) => l.vx > 0)).toBe(true);
     // Plain rain has none of it (just its puddles and their glints on the ground).
     const rain = new WeatherView('rain', MAP);
     expect(rain.canopyFilter).toBeNull();
     expect(rain.ground.children.length).toBe(2);
+  });
+
+  it('puts nothing over the whole screen: no rain streaks, snowfall or lightning flashes', () => {
+    for (const kind of ['rain', 'storm'] as const) {
+      const w = new WeatherView(kind, MAP);
+      expect('screen' in w).toBe(false);
+      for (let t = 0; t < 1; t += 1 / 30) w.update(1 / 30, 1280, 720, cam);
+      expect(w.sky(0x808080)).not.toBe(0xffffff);
+    }
   });
 
   it('settles snow on the treetops only when it snows', () => {

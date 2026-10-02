@@ -110,14 +110,14 @@ export interface Levels {
   music: number;
 }
 
-/** The bus gains for the settings: everything but the music follows the effects slider; mute silences the master. */
-export function busLevels(s: { master: number; music: number; effects: number }, muted: boolean): Levels {
+/** The bus gains for the settings: the music and the ambience have their own sliders, the rest follows the effects slider; mute silences the master. */
+export function busLevels(s: { master: number; music: number; effects: number; ambience: number }, muted: boolean): Levels {
   return {
     master: muted ? 0 : 0.6 * s.master,
     fx: s.effects,
     ui: 0.9 * s.effects,
     voice: s.effects,
-    ambience: s.effects,
+    ambience: s.ambience,
     music: s.music,
   };
 }

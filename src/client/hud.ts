@@ -267,7 +267,10 @@ export class Hud {
       rematch.textContent = this.isHost ? 'Starting…' : 'Asked for a rematch';
     });
     q('.gameover-swap').addEventListener('click', () => this.onRematch?.(true));
-    this.offs.push(onSettings((s) => (this.debug.hidden = !s.showFps)));
+    this.offs.push(onSettings((s) => {
+      this.debug.hidden = !s.showFps;
+      this.wardenBottomAt = null; // the interface may have changed size
+    }));
     this.scoreboard = q('.scoreboard');
     const copy = q('.gameover-copy');
     copy.addEventListener('click', () => {
@@ -717,8 +720,11 @@ export class Hud {
 
   /** Where the Warden's lines under the clock end (screen pixels), so the event readout can sit below them. */
   wardenBottom(): number {
-    return this.warden.childElementCount ? this.warden.getBoundingClientRect().bottom : 0;
+    // Measured once per change of lines: reading layout every frame forces the page to lay itself out again.
+    if (this.wardenBottomAt === null) this.wardenBottomAt = this.warden.childElementCount ? this.warden.getBoundingClientRect().bottom : 0;
+    return this.wardenBottomAt;
   }
+  private wardenBottomAt: number | null = null;
 
   /** Under the clock: when the Warden wakes (the last two minutes), and who's Unchained. */
   setWarden(w: WardenStatus | undefined, myTeam: Team): void {
@@ -731,6 +737,7 @@ export class Hud {
     const key = JSON.stringify(lines);
     if (this.warden.dataset.key === key) return;
     this.warden.dataset.key = key;
+    if (lines.length !== this.warden.childElementCount) this.wardenBottomAt = null;
     this.warden.replaceChildren(
       ...lines.map(([cls, text]) => {
         const d = document.createElement('div');

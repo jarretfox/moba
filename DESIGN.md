@@ -87,6 +87,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Timing:** they first appear at 1:15. A cleared camp comes back 100s (Rats), 120s (Mossback) or 150s (buffs) later, and monsters toughen 3% per minute of match time.
   - **Fighting:** monsters stand still until a champion hits the camp. Then the whole camp fights back, on whoever hit it most recently.
   - **Leash:** a monster won't follow anyone more than 750 from the camp. Past that the camp walks home, can't be hit on the way, and heals to full.
+  - **A foe who goes untargetable for a moment** (a dodge, a blink) while still in the leash isn't a reason to reset: the camp waits up to 3s for them. Before, it healed to full on the spot.
   - **Rewards:** gold and experience go to whoever gets the kill (or the last champion who hit it).
   - **Ignored by the lanes:** Chuds and Shooties ignore monsters, and monsters ignore them.
   - **Buffs** last 90s and pass to whoever kills the holder:
@@ -163,7 +164,13 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **Items and the crab:** they use the Aegis when a fight turns against them, and the Drum to chase or run. They take a Sewer Crab when one's close and nobody's there to contest it.
   - **Grouping up:** from 18:00 a team's bots leave their own lanes and push one lane together: the one where the enemy has the least left standing. They switch lanes only once the other one is better by a whole structure.
   - **Fair ticks:** every bot decides from the same world state before any of their orders go in, and which team's orders go first alternates each tick. Before this, the team whose bots acted first lost every bots-only match, because casts land the moment they're applied and the other team's bots reacted within the same tick.
-  - **What they don't do:** dodge skillshots, plan ganks, defend as a group, or take camps and the Warden.
+  - **Jungling:** the third bot of an all-bot team jungles. It clears its side's camps with basic abilities (the ultimate's saved), takes crabs from further off, and helps the bot lane while the camps are down. With people on the team, nobody's made to jungle.
+    - It starts a camp only above 60% health, sticks to the monster it's on, and finishes a camp that's down to half unless it's below 15%.
+    - A camp, crab or Warden nobody on its team can see, it walks to first: an attack order needs sight, and it used to stand idle at the fountain.
+  - **The Warden:** a team calls it when it has more champions up, they're level 9 or more on average, and healthy.
+  - **Dodging:** about half of enemy skillshots, seen coming, get a step to the side.
+  - **Defending:** bots within 3200 come back to a structure with enemy champions at it (not on the Hollow).
+  - **What they don't do:** plan ganks, ward, or play around cooldowns.
   - **Match length:** with random six-champion lineups, a bots-only match ends in 11–31 minutes (median about 16). Wins split 17–13 between the sides over 30 games. Bots farm only modestly (about 4–5k gold by 20 minutes), so they finish two or three core items.
   - **Bot win rates by champion** over those 30 games: HunnaG 68%, Barbarian 62%, Marksman 61%, Willmore 45%, Logan 41%, King Rix 33%. That's noisy (about ±10%) and mixes kit strength with how well each bot plays its kit, so it's a starting point for M5 balance, not a verdict.
 
@@ -184,6 +191,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
 - **The Warden hangs off the screen** (`render/wardenDangle.ts`). While he's awake, a little Warden dangles on his chain from an iron clamp on the top edge of the screen. He swings, kicks his boots, taunts you in a speech bubble, and laughs if you click him. Twenty seconds before he wakes he peeks in from above; when he's slain, the chain snaps and he drops out of sight.
 - **Hold Tab for the jungle legend** (`ui/jungleLegend.ts`, portraits in `render/bestiary.ts`), beside the scoreboard: every camp, the Sewer Crab and the Warden. Each has what it pays, its buff, how it comes back, and live status (spawning, each side's camp back in m:ss once your team saw it cleared, the crab arriving, the Warden waking).
 - **Jungle paths:** a cell is walkable if it has 30 units of open ground around its center (it used to close every cell next to a closed one, which shut gaps that looked open). Rocks are drawn past their blocked shape, so no grass shows where you can't walk.
+- **Paths are fair to both sides** (`map/symmetry.test.ts`): walking to a blocked spot (a tower, the Warden) goes to the nearest open spot, and a tie goes to the side you're coming from. It used to take the first of a tie reading left to right, and a tower on a cell border sat in a different cell from its mirror image, so blue's bots and red's ended up on different sides of their own towers when they came back to defend. Blue had been winning about 57% of bot matches since bots started defending and calling the Warden.
 - **Balance** (bot simulations with `npm run sim`, which now plays the same match as the host through `freshMatch` in `shared/sim/match.ts`, its dice seeded):
   - Two things skewed the old numbers: only The Oak's and HunnaG's bots used abilities on Chud waves, and HunnaG and King Rix were in nearly every bot lineup. Now every bot clears waves with its kit, and lineups are spread so each champion turns up about as often.
   - Tuning, over five rounds of 160–224 matches:
@@ -195,6 +203,12 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
     - Dongmaster: 66 AD; Chin Check 70–175.
     - Havarti: +25 health, +2 armor, 61 AD, stronger Holy Wheel and Rind Blade, a shorter Fondue Blessing cooldown, and her tiers come earlier (4, 8, 11).
   - Result (224 matches): every champion wins 41–65% (it was 27–74%), sides 116–108, median match 20 minutes. Jordini (65%), The Oak and HunnaG (61%) are still the strongest bots; King Rix and Havarti (41%) the weakest. Bots aren't people: check these in real games.
+  - **With bot junglers and Scrimby and Big Whale** (224 matches, after the side fix): sides 122–102 (it was 129–95), median 20.7 minutes.
+    - The bot lane is a solo lane now while the jungler's in the jungle, and Dark Dabber ran away with it (75%): Light It Up loses 3 damage a stack and his base AD is 56.
+    - Big Whale (28%) is a support with nobody to support there: 640 health, 30 armor, 55 AD, a stronger and quicker Make It Rain (80–185 every 7–5.5s), more on Yacht Party's shield (80–170) and Hostile Takeover (60–150), and his bot invites whoever's getting hurt. He was at 31% before the last of those.
+    - King Rix: 680 health. He's at 40%.
+    - Jordini (66%) and Dark Dabber (63%) are the strongest bots now; Big Whale, King Rix and Willmore the weakest.
+  - **ARAM** (120 bots-only 5v5 matches): sides 55–65, median 22 minutes. Master Paris 43% with his bigger adjustment (36% without it), Daltonomo 44%; Big Whale 57%, in his element.
 
 ## ARAM: the Howling Hollow
 
@@ -218,8 +232,21 @@ A second map and mode: All Random, All Mid, on a haunted graveyard at night (`sh
   - Dead trees stand in the alcoves, and a pumpkin-headed scarecrow in a witch's hat keeps watch on each side.
   - It's always night. Random weather is mist, or sometimes a thunderstorm that doesn't clear.
   - Pumpkins are grinning jack-o'-lanterns that pop out of the ground and burst when eaten.
+  - **It howls:**
+    - The music turns haunted: E harmonic minor (Em, C, Am, B7; Em, C, D#dim, B in a fight), a music box for the plucks and harp, and a wavering theremin where the flute plays.
+    - Wolves howl far off (sometimes answered), crows caw, and the wind moans through the graves.
+  - **Night life:**
+    - Crows sit on the gravestones and scatter when someone comes by.
+    - A stream of bats pours across the sky now and then.
+    - Little ghosts drift round the plaza.
+  - **Pumpkin Glutton:** an end-screen award for eating the most pumpkins (3 or more).
+- **ARAM-only champion adjustments** (`shared/sim/aramTuning.ts`), League-style:
+  - Master Paris deals 15% more damage and takes 15% less.
+  - Daltonomo deals 6% more and takes 6% less.
+  - Assassins have nobody alone to pick off on one lane. The Rift is untouched.
 - **Bots:**
   - All bots go mid.
+  - On the Hollow they don't run back to defend; everyone's in the one lane already.
   - They fight when their side has more champions close by, or as many and are about as healthy.
   - They retreat at 15% health, to a pumpkin if one is near, or else home.
   - They don't go home to shop.
@@ -233,6 +260,9 @@ A second map and mode: All Random, All Mid, on a haunted graveyard at night (`sh
   - If the two disagree by more than lag can explain (a stun, a knock-back, a crowd in the way), the host's position wins.
   - Attacks, casts, stops and recalls hand straight back to the host. The host's own screen doesn't predict; it's barely behind.
   - In dev builds, `?lag=250` fakes a 250ms round trip to try it.
+  - Casts show on the press too: the wind-up, the champion's cast mark, the sound and an aim flash, and the host's confirmation doesn't play them again.
+    - Abilities that need a target wait for the host, since they may walk in first.
+    - Right-clicking an enemy marks it as your target at once.
 - **A cast pressed a moment early still goes off** (`CAST_QUEUE`, 0.4s).
   - This covers pressing just before the cooldown ends, mid-cast and mid-dash. The host holds the press and fires it the moment it can.
   - The ability's slot glows blue while it waits. A new order drops it.
@@ -265,6 +295,19 @@ A second map and mode: All Random, All Mid, on a haunted graveyard at night (`sh
   - **Time:** evening, or night. Night only changes the look (sky, lanterns, moon); the clock still starts at zero.
   - **Starting gold:** 500, 1500 or 3000, for the bots too.
   - **Pace:** normal, or fast (50% more gold and experience, half the death timers).
+  - **Picks:** free, or a **draft** (not in All Random):
+    - The host starts the draft once everyone's in. Picks are cleared and the teams are locked.
+    - Everyone bans one champion in turn (blue, red, blue...), then picks snake (blue, red, red, blue...), 25 seconds a turn.
+    - A ban that runs out passes; a pick that runs out goes random.
+    - Banned and picked champions are off the table for everyone, bots included.
+    - Nobody can join mid-draft, and the match starts once it's done.
+- **Rejoin after a dropped connection** (`hostCore.rejoin`):
+  - Friends get a rejoin token in their welcome. If their connection drops, a bot plays their champion.
+  - Reconnecting gives it back mid-match, with no intro. That happens automatically (12 tries), or by joining the same code again; the token survives a reload in sessionStorage.
+  - A new connection can also take over from one the host hasn't noticed is gone.
+- **A full lobby is cheap** (`host/load.test.ts`): a 5v5 Hollow match with the host and nine friends costs about 0.6ms of host work a tick (out of 33), and each friend gets about 10 KB/s.
+- **Match history:** the profile keeps your last 20 matches: champion and look, result, K/D/A, CS, MVP, map, length and when.
+- **Practice Range last-hit drill:** the HUD under the clock counts your last hits on enemy Chuds against the ones that died within 800 of you to something else, with a percentage and a grade ("The Chuds are laughing at you" up to "Chud Reaper").
 - **Rematch** from the end screen.
   - The host's click starts it, or "swap sides" to change ends. Anyone else's click is counted, and everyone sees who wants one.
   - Everyone goes back to the lobby with their picks, looks and the settings, on a fresh match.
@@ -445,6 +488,37 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
 - **E, Juggling Knives:** his attacks slow. Cast: a thrown knife at an enemy, 50% more below 30% health, slowing.
 - **R, Double Act:** he blinks out of reach for a moment and a double appears beside him for 18s. To the enemy it looks exactly like him (it's a guard-like unit that sends itself as him). It fights what he fights, deals half his damage, takes 50% more, and explodes when it dies or the act ends.
 
+### Scrimby, the Commuter ✅ implemented
+
+The user's mage: a New Yorker (somehow) in Timberland boots and a Yankees cap. The numbers are at the top of `src/shared/champions/scrimby.ts`.
+- **Passive, New York Minute:** every spell stacks +5% speed and +6 ability haste for 4s, up to 3 times.
+- **Q, Dirty Water Dog:** a hot dog skillshot. Magic damage, and a 25% slow for 1.5s.
+- **W, Manhole Steam:** after 0.6s the cover blows: magic damage and a 0.6s knock-up. Then the vent steams for 2.5s, scalding whoever stands in it.
+- **E, Jaywalk:** a 380 dash and a burst of speed.
+- **R, Express Train:** a Sion-style charge, drawn as a New York subway car with the yellow R bullet.
+  - He's the train for up to 3s, speeding up from 520 to 1050. Right-clicks steer it at a train's turning rate.
+  - He can't be stopped while it runs. Chuds on the tracks are thrown aside.
+  - The first enemy champion or wall ends the ride: everyone around takes magic damage and is knocked up (whoever he hit, for longer).
+  - A recast pulls the brake.
+- His figure: a navy puffer, jeans, wheat boots, a navy cap with the white NY, and a blue diner coffee cup. Looks: Uptown, Queens Boulevard (Mets colors), Brooklyn Nights, and the Zombie Commuter for Halloween.
+
+### Big Whale, the Unwanted Investor ✅ implemented
+
+The user's support: rich, annoying, unwanted, and he has no idea. The numbers are at the top of `src/shared/champions/bigwhale.ts`.
+- **Passive, Tipping Culture:** allied champions within 800 of him get +4 gold for every Chud they finish off (`onAllyLastHit` now says who made the last hit).
+- **Q, Make It Rain:** a cash drop at a spot. Magic damage, and a 35% slow while they scrabble for it.
+- **W, Yacht Party:** a shield and some speed for him and the ally nearest the cursor (just him if nobody's there).
+- **E, Hostile Takeover:** a briefcase skillshot. The first enemy hit is stunned, reading the fine print.
+- **R, Splash Zone:** he breaches: a leap that lands in a huge splash, knocking up enemies and healing allies.
+- His figure: an upright whale in a navy yacht blazer with gold trim, a gold $ chain, aviator shades, a cigar, a white captain's hat, his tail fluke behind, and a wad of cash. Looks: Old Money, Crypto Whale, Gilded Whale, and Moby Rich (a harpoon he hasn't noticed) for Halloween.
+
+## Halloween costumes
+
+Every champion's fourth look is a Halloween costume (`render/costumes.ts`). It's a palette plus pieces drawn over the figure (head, body or back), sometimes a different hat; masked ones skip the blinking face. Bots wear them sometimes.
+- Pumpkin Ranger Jordini, Frankenoak, Sewer Mummy Willmore, Jack-o'-Shroom HunnaG, Werewolf Logan, Vampire King Rix.
+- Swole-o'-Lantern Dongmaster, Plague Doctor Dabber, Phantom of the Boulevard Paris, Haunted Havarti, Dead Funny Daltonomo.
+- Zombie Commuter Scrimby, Moby Rich Big Whale.
+
 ## Art and sound
 
 - **Everything is drawn in code** (PixiJS graphics), so there are no image files to load or license.
@@ -459,21 +533,21 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
     - Brush is clumps of tall grass blades.
     - Camps are trampled nests with bones.
     - The Warden's pit is a ring of cracked stone over the Deep, with runes and rot seeping up.
-  - **Atmosphere** (`ambience.ts`): fireflies over the jungle, glints on the river, rot spores rising from the seal, and a soft vignette.
+  - **Atmosphere** (`ambience.ts`): fireflies over the jungle, glints on the river, rot spores rising from the seal, and a faint vignette.
   - **Night comes on** over the match (`render/nightlife.ts`, `render/lighting.ts`):
     - The lanterns are dark through the golden evening. From five minutes in they're lit one by one, each sputtering before it catches.
     - The Shooties' arrow slits glow with candlelight.
     - The fireflies gather round the lanterns and braziers.
     - Once it's night the moon shows in the river, broken up by the ripples and sliding along the water as you move.
-  - **Weather** is rolled per match (`shared/weather.ts`, drawn in `render/weather.ts`):
+  - **Weather** is rolled per match (`shared/weather.ts`, drawn in `render/weather.ts`). It's drawn on the map, never over the whole screen: the falling rain and snow, the lightning flashes and the rainbow were taken off because they got in the way of playing.
     - **Clear.**
-    - **Rain:** streaks with splashes, puddles gathering, and a thunderstorm now and then (a flash, a bolt across the sky, thunder a moment later).
-    - **Storm:** heavy rain with frequent lightning. Some bolts strike the ground in view: a blinding flash, scorched earth and thunder right on top.
-    - **Clearing up:** random rain or storms clear partway through 45% of the time, between 4 and 10 minutes in (`rollClearing`, sent in the welcome). Over half a minute the rain stops and the sky turns to a bright, warm day. The rain's sound and the wind die down, and a faint rainbow shows for a while. The puddles glint in the sun and dry over five minutes.
-    - **Mist** rolling over the map.
-    - **Snow:** flakes drift down, the ground frosts over (not the river) and snow settles on the treetops. Breath puffs white, feet sink in deep (Chuds' too), and the crickets go quiet.
-    - **Autumn wind:** the canopy turns orange and rust, fallen leaves cover the ground and more blow across in gusts.
-    - The wind's strength and sound follow the weather.
+    - **Rain:** splashes on the ground, puddles gathering, a slightly darker sky, and thunder now and then.
+    - **Storm:** heavier, with more thunder. Some bolts strike the ground in view: a flash on the spot, scorched earth and thunder right on top.
+    - **Clearing up:** random rain or storms clear partway through 45% of the time, between 4 and 10 minutes in (`rollClearing`, sent in the welcome). Over half a minute the rain stops and the sky turns to a bright, warm day. The rain's sound and the wind die down. The puddles glint in the sun and dry over five minutes.
+    - **Mist** drifting faintly over the map.
+    - **Snow:** the ground frosts over (not the river) and snow sits on the treetops. Breath puffs white, feet sink in deep (Chuds' too), and the crickets go quiet.
+    - **Autumn wind:** the canopy turns orange and rust, fallen leaves cover the ground and a few more blow across in gusts.
+    - The sky's tint for each is gentle, and the wind's strength and sound follow the weather.
   - **Everyone stands up.** Units are upright figures seen side-on from a little above, facing left or right (they mirror when they turn), standing on their spot on the ground. They're depth-sorted, so nearer the bottom of the screen draws in front.
     - Champions, Chuds, King Rix's guards and The Warden are jointed rigs (`render/rig.ts`): a torso, head, two-part arms and legs, feet and a held weapon, drawn once and posed every frame. Legs swing with bending knees in a walk cycle, arms swing against them, the chest breathes. The animation tracks drive the joints: turn raises the arm (negative is up), reach pushes it out in front, lunge leans and steps in, twist spins the figure, grow rears up.
     - Each one's look and proportions are a build (`render/builds.ts`). Champions: Jordini's hood and bow, The Oak's horns and axe, Willmore's sack and bin lid, HunnaG's cap, Logan the lion on his hind legs, King Rix's cape and crown, Dongmaster's jaw and fists, the Dabber's hoodie and tail, Paris's beret and épée, Havarti the winged wheel of cheese, Daltonomo's belled hat and two knives. Chuds wear hoods in their team's color.
@@ -544,6 +618,12 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
     - Each landmark's clutter spreads out into the grass: Logan's straw, chips of the king, the café's leaves, a geranium planter and a chalkboard, a tractor tire and a kettlebell by the gym, cheese rind along the cellar path, the Hotbox's litter and an old fire ring.
     - The gym's mat is now scavenged floor tiles, one missing and one kicked askew.
   - **Play of the Game** (`src/client/highlights.ts`): the client keeps the last few seconds of snapshots, scores each play, and replays the best one before the scores.
+  - **Smoothness** (measured in a match: Pixi rebuilt its draw lists every frame, and the off-screen half of the map was drawn anyway):
+    - The big static layers (the painted ground, cliff tops and canopy, about 86,000 shapes between them) are render groups of their own, so a change elsewhere doesn't make them batch again.
+    - The unit layer is a render group too: it re-sorts by depth nearly every frame, and that no longer drags the rest of the map along.
+    - **Culling:** units and standing props more than 350 off the screen aren't drawn, and their views aren't updated (they catch up when they're back). The river's streaks and foam and the fireflies are only drawn near the screen. In a test match the frame's render work fell from about 21ms to 11ms, and the worst frames from 61ms to 20ms.
+    - **No freezes between updates:** the host sends 30 snapshots a second and the client plays them a little behind. If one's late (a hiccup in the host), everything carries on the way it was moving for up to 0.1s instead of freezing and then jumping (`snapshotBuffer.ts`; blinks aren't carried on).
+    - The Warden's lines under the clock are measured once per change, not every frame (reading layout every frame forced the page to lay itself out again).
 - **Sound is synthesized** with Web Audio (`src/client/audio.ts`): every effect is a few oscillators, filtered noise and envelopes, so there are no audio files either.
   - Which event makes which sound is in `src/client/sfx.ts`: attacks (swings, shots, Shootie zaps), hits on you or by you, deaths, casts, the big moments (slams, roars, digging, telegraph warnings), level-ups, gold, the kill feed, and a victory or defeat jingle.
   - Sounds play where they happen: quieter the further from the middle of your screen, and panned left or right. Chuds are much quieter than champions, and repeats are rate-limited so a big fight stays readable.
@@ -562,7 +642,7 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
     - The Warden's slam clangs with rattling chains.
     - There are sounds for the shop, ranking up, landing, the item actives (Lantern, Aegis, Drum) and the Sewer Crab (skittering, then squeaking when taken). A till rings when your side claims a bounty. Titles, rematch and chat have their own.
     - Victory and defeat have their own stingers, with the music stepping back under them.
-  - **Ambience** follows the world:
+  - **Ambience** follows the world, quietly: it has its own **Ambient sound** slider in the settings, at 30% to start (it used to follow the effects slider, at 80%), and the wind, river, rain and crickets are softer and sparser than they were.
     - Night brings up the crickets and owls and settles the wind.
     - Each weather has its own sound: rain patters, storms rumble between bolts, snow muffles and hushes, autumn gusts rustle leaves, and mist dampens everything.
     - The river burbles near the water. The Warden's pit drones with clinking chains. Da Base and the Shooties hum faintly close up.
@@ -636,7 +716,6 @@ src/
 | M5 | Balance tools, playtests | |
 
 ### Known gaps
-- **Bots don't jungle or fight the Warden.** All three per side lane; the camps and the Warden are there for humans.
-- Bots don't dodge skillshots or defend as a group. Late in the game both teams often push different lanes and race each other's bases.
-- No minimap, scoreboard, or camp respawn timers yet.
-- **No music,** and figures animate with simple procedural motion rather than drawn frames.
+- Figures are drawn and animated in code rather than from real art.
+- Bots play a decent new player's game: they don't plan ganks, ward, or play around cooldowns.
+- Netcode predicts your own walking and casts; everyone else is shown slightly behind (fine for a friend group, not for a ladder).
