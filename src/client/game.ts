@@ -750,7 +750,9 @@ export class GameClient {
             const key = ev.src ?? -1;
             if ((this.lastWord.get(key) ?? 0) < now - 0.9) {
               this.lastWord.set(key, now);
-              this.fx.comic(hit.x, hit.y - standHeight(hit), hitWord(from?.champ, Math.random()), from?.champ ? CAST_COLORS[from.champ] : 0xffd166);
+              // Beside the target, on the side away from the attacker (the damage number goes over its head).
+              const side = from ? (from.x > hit.x ? -1 : 1) : Math.random() < 0.5 ? -1 : 1;
+              this.fx.comic(hit.x + side * hit.r, hit.y - chestHeight(hit) + 30, hitWord(from?.champ, Math.random()), from?.champ ? CAST_COLORS[from.champ] : 0xffd166, false, side);
             }
           }
           // Hit-stop (visual only): the target freezes and shudders, a close attacker holds too, and if

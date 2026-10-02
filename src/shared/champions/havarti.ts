@@ -12,8 +12,8 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 // Every number for this champion lives here. Arrays are per rank (rank 1 first).
 
 const BASE_STATS: Stats = {
-  maxHp: 600, hpRegen: 3.5, maxMana: 330, manaRegen: 7,
-  ad: 58, ap: 0, armor: 28, mr: 32,
+  maxHp: 625, hpRegen: 3.5, maxMana: 330, manaRegen: 7,
+  ad: 58, ap: 0, armor: 30, mr: 32,
   attackSpeed: 0.65, attackRange: 175, moveSpeed: 335,
 };
 const GROWTH: StatGrowth = { maxHp: 92, hpRegen: 0.6, maxMana: 40, manaRegen: 0.5, ad: 2.6, armor: 3.8, mr: 1.2, attackSpeedPct: 0.02 };
@@ -32,14 +32,14 @@ export const AGED = {
 };
 export const HOLY_WHEEL = {
   cost: [70, 70, 70, 70], cooldown: [10, 9.5, 9, 8.5], castTime: 0.25, range: 900, width: 80, speed: 1600,
-  damage: [60, 100, 140, 180], apRatio: 0.6, bonusAdRatio: 0.5, slow: 0.25, slowFor: 2, curdle: 0.15, curdleFor: 4,
+  damage: [70, 110, 150, 190], apRatio: 0.6, bonusAdRatio: 0.5, slow: 0.25, slowFor: 2, curdle: 0.15, curdleFor: 4,
 };
 export const FONDUE_BLESSING = {
-  cost: [70, 75, 80, 85], cooldown: [15, 15, 15, 15], range: 900, heal: [60, 90, 120, 150], apRatio: 0.3,
+  cost: [70, 75, 80, 85], cooldown: [15, 14, 13, 12], range: 900, heal: [60, 90, 120, 150], apRatio: 0.3,
   speed: [0.2, 0.24, 0.28, 0.32], speedFor: 2,
 };
 export const RIND_BLADE = {
-  cost: [40, 40, 40, 40], cooldown: [8, 7.5, 7, 6.5], onHit: [10, 15, 20, 25], onHitApRatio: 0.2,
+  cost: [40, 40, 40, 40], cooldown: [8, 7.5, 7, 6.5], onHit: [12, 18, 24, 30], onHitApRatio: 0.2,
   window: 4, extraRange: 200, missing: [0.08, 0.09, 0.1, 0.11], missingPer100Ap: 0.01, unitCap: 200,
 };
 export const DIVINE_FONDUE = {

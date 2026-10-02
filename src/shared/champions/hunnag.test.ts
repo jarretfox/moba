@@ -88,12 +88,14 @@ describe('Mushroom Totem', () => {
     return { ...s, totem };
   }
 
-  it('heals allied champions and rots enemies around it every 1.5 seconds', () => {
+  it('heals allied champions and rots enemies around it every 2 seconds', () => {
     const { world, h, foe, totem } = plant();
     h.pos = add(totem.pos, { x: -100, y: 0 });
     foe.pos = add(totem.pos, { x: 150, y: 0 });
     h.hp = 200;
-    run(world, 1.6);
+    run(world, 1.9);
+    expect(h.rotStacks(foe)).toBe(0);
+    run(world, 0.2);
     expect(h.hp).toBeGreaterThan(205);
     expect(h.rotStacks(foe)).toBe(1);
   });

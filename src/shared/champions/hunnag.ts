@@ -33,8 +33,9 @@ const SLUDGE_LOB = {
 };
 const MUSHROOM_TOTEM = {
   cost: [70, 70, 70, 70], cooldown: [16, 15, 14, 13], castTime: 0.25,
-  range: 600, radius: 400, lifetime: [16, 18, 20, 22], pulseEvery: 1.5,
-  heal: [20, 30, 40, 50], apRatio: 0.15, health: (level: number) => 120 + 20 * level, bounty: 25,
+  // Toned down after playtests (was 20–50 +15% AP every 1.5s, up 16–22s, so always up at rank 4).
+  range: 600, radius: 400, lifetime: [12, 13, 14, 15], pulseEvery: 2,
+  heal: [16, 23, 30, 37], apRatio: 0.12, health: (level: number) => 120 + 20 * level, bounty: 25,
 };
 const MOLE_HOLE = {
   cost: [80, 75, 70, 65], cooldown: [20, 18, 16, 14],

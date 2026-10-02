@@ -1867,10 +1867,63 @@ html.colorblind .gold-peak.theirs {
 .select-cards {
   display: flex;
   flex-wrap: wrap;
-  max-width: calc(6 * 122px + 5 * 10px + 32px);
+  max-width: min(1080px, calc(100vw - 32px));
   justify-content: center;
-  gap: 8px 10px;
+  align-items: flex-start;
+  gap: 6px 22px;
   padding: 0 16px;
+}
+
+/* Champions grouped by role: a small inked label over each cluster. */
+.role-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.role-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--role, var(--gold));
+  text-shadow: 0 1px 0 #000;
+  cursor: help;
+}
+
+.role-head::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  min-width: 16px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--role, var(--gold)), transparent);
+  opacity: 0.6;
+}
+
+.role-cards {
+  display: flex;
+  gap: 10px;
+}
+
+.role-tank { --role: #7fb6ff; }
+.role-fighter { --role: #ff9b5a; }
+.role-assassin { --role: #d58cff; }
+.role-mage { --role: #6fe0d0; }
+.role-marksman { --role: #ffd166; }
+.role-support { --role: #8fe07a; }
+
+.showcase-roles {
+  margin: -4px 0 8px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--gold);
 }
 
 /* ── The showcase: whoever you're looking at, big. */
@@ -2079,6 +2132,14 @@ html.colorblind .gold-peak.theirs {
 .select-name {
   font: 16px/1.1 var(--font-display);
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-name.long {
+  font-size: 13.5px;
+  line-height: 17.6px;
 }
 
 .select-sub {

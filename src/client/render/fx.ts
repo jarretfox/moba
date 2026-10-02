@@ -19,6 +19,8 @@ export const DAMAGE_COLORS: Record<DamageType, number> = {
 };
 
 const FONT = "'Lilita One', 'Nunito', system-ui, sans-serif";
+/** How far over a unit's head its damage numbers start: clear of its name, title and health bar. */
+const NUMBER_LIFT = 74;
 
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 /** 0→1 over the first `inShare` of t, 1 in the middle, 1→0 over the last `outShare`. */
@@ -62,6 +64,8 @@ export class FxLayer {
   /** Footprints, oldest first (only so many at once). */
   private prints: Effect[] = [];
   private clock = 0;
+  /** Numbers and words shown in the last moment, so new ones can stand clear of them. */
+  private labels: { x: number; y: number; w: number; h: number; at: number }[] = [];
   /** This frame's step, for effects that spray particles while they last. */
   dt = 0;
   /** How many of those to spray (thinned out on low graphics). */
@@ -130,12 +134,31 @@ export class FxLayer {
 
   // ─── Numbers and markers ────────────────────────────────────────────────
 
+  /**
+   * Somewhere near (x, y) that's clear of the numbers and words shown in the last moment: each one in
+   * the way pushes this one up a row, so a burst of hits stacks instead of piling on top of itself.
+   */
+  private clearSpot(x: number, y: number, w: number, h: number): number {
+    this.labels = this.labels.filter((l) => this.clock - l.at < 0.45);
+    for (let tries = 0; tries < 6; tries++) {
+      const hit = this.labels.find((l) => Math.abs(l.x - x) < (l.w + w) / 2 && Math.abs(l.y - y) < (l.h + h) / 2);
+      if (!hit) break;
+      y = hit.y - (hit.h + h) / 2 - 2;
+    }
+    this.labels.push({ x, y, w, h, at: this.clock });
+    return y;
+  }
+
   damageNumber(x: number, y: number, amount: number, type: DamageType): void {
     // Bigger hits get bigger numbers that slam in and shudder.
     const weight = Math.min(1, amount / 300);
     const heavy = amount >= 150;
-    const txt = new Text({ text: heavy ? `${amount}!` : String(amount), style: { fontFamily: FONT, fontSize: 22 + 20 * weight, fill: DAMAGE_COLORS[type], stroke: { color: 0x000000, width: 5 + 2 * weight } } });
+    const fontSize = 22 + 20 * weight;
+    const text = heavy ? `${amount}!` : String(amount);
+    const txt = new Text({ text, style: { fontFamily: FONT, fontSize, fill: DAMAGE_COLORS[type], stroke: { color: 0x000000, width: 5 + 2 * weight } } });
     txt.anchor.set(0.5);
+    // Starting over the name and title above the health bar, so the words there stay readable.
+    y = this.clearSpot(x, y - NUMBER_LIFT, text.length * fontSize * 0.55, fontSize) + 30;
     const drift = (Math.random() - 0.5) * 36;
     const life = 0.9 + 0.4 * weight;
     this.add(txt, life, (t) => {
@@ -588,11 +611,15 @@ export class FxLayer {
    * A comic-book word over a hit: hand-lettered, on a spiky burst in `color`, popping in at a tilt and
    * floating off. `big` for knockouts.
    */
-  comic(x: number, y: number, word: string, color: number, big = false): void {
+  comic(x: number, y: number, word: string, color: number, big = false, side = 0): void {
     const size = big ? 34 : 24;
     const holder = new Container();
     const star = new Graphics();
     const w = word.length * size * 0.38 + size * 0.6;
+    // Off to one side if asked (hit words sit beside the target, so the damage number above its head
+    // never covers them), and clear of anything else just shown.
+    x += side * (w * 0.55 + 18);
+    y = this.clearSpot(x, y - 30, w * 1.1, size * 2.1) + 30;
     const pts: number[] = [];
     for (let i = 0; i < 22; i++) {
       const a = (i / 22) * Math.PI * 2;
@@ -604,8 +631,8 @@ export class FxLayer {
     const txt = new Text({ text: word, style: { fontFamily: FONT, fontSize: size, fill: 0xfff6d8, stroke: { color: 0x1a1414, width: 6, join: 'round' }, letterSpacing: 1 } });
     txt.anchor.set(0.5);
     holder.addChild(star, txt);
-    const tilt = (Math.random() - 0.5) * 0.4;
-    const dx = (Math.random() - 0.5) * 40;
+    const tilt = side ? side * (0.12 + Math.random() * 0.15) : (Math.random() - 0.5) * 0.4;
+    const dx = side ? side * 30 : (Math.random() - 0.5) * 40;
     this.add(holder, big ? 1.2 : 0.8, (t) => {
       const pop = t < 0.12 ? 0.4 + (t / 0.12) * 0.8 : t < 0.22 ? 1.2 - ((t - 0.12) / 0.1) * 0.2 : 1;
       holder.scale.set(pop);

@@ -1,4 +1,5 @@
 import { CHAMPION_INFO } from '../../shared/champions/registry';
+import { ROLES, ROLE_INFO, ROLE_ORDER } from '../../shared/champions/roles';
 import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
 import { SLOT_KEYS, TEAM, type PlayerTeam } from '../../shared/constants';
 import { START_GOLD_OPTIONS, type LobbyState, type MatchMode, type MatchSettings } from '../../shared/protocol';
@@ -12,6 +13,9 @@ import { LORE } from './lore';
 import { iconEl } from '../render/icons';
 import { el } from './dom';
 import { ChampionStage } from './stage';
+
+/** How long (ms) the pointer rests on a champion's card before the showcase changes to them. */
+const HOVER_SETTLE = 220;
 
 const TEAM_SIZE = 3;
 
@@ -43,6 +47,8 @@ export class LobbyScreen {
   /** The big panel showing whichever champion you're looking at. */
   private readonly showcase = el('div', 'showcase');
   private shown: ChampionId | null = null;
+  /** Pointing at a card shows that champion only once the pointer settles on it (see championCards). */
+  private hoverTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly cardFaces = new Map<ChampionId, HTMLImageElement>();
   /** The champion you're looking at, standing in the showcase. */
   private readonly stage = new ChampionStage(200);
@@ -173,6 +179,7 @@ export class LobbyScreen {
   }
 
   close(): void {
+    clearTimeout(this.hoverTimer);
     this.stage.destroy();
     this.screen.remove();
   }
@@ -180,20 +187,40 @@ export class LobbyScreen {
   private championCards(): HTMLElement {
     const picker = el('div', 'select-picker');
     const cards = el('div', 'select-cards');
+    // Grouped by role: a labelled cluster each.
+    const groups = new Map(
+      ROLE_ORDER.map((role) => {
+        const group = el('div', `role-group role-${role}`);
+        const head = el('div', 'role-head', ROLE_INFO[role].name);
+        head.title = ROLE_INFO[role].blurb;
+        const list = el('div', 'role-cards');
+        group.append(head, list);
+        cards.append(group);
+        return [role, list] as const;
+      }),
+    );
     for (const info of Object.values(CHAMPION_INFO)) {
       const card = el('button', `select-card ${info.resource}`);
       const img = el('img', 'select-face');
       img.src = portraitOf(info.id) ?? '';
       img.alt = '';
       this.cardFaces.set(info.id, img);
-      card.append(img, el('div', 'select-name', info.name), el('div', 'select-sub', info.title));
-      // Look at a champion by pointing at them; pick them by clicking.
-      card.addEventListener('pointerenter', () => this.show(info.id));
+      card.append(img, el('div', `select-name${info.name.length > 12 ? ' long' : ''}`, info.name), el('div', 'select-sub', info.title));
+      // Look at a champion by pointing at them; pick them by clicking. The pointer has to rest on a card
+      // for a moment first, so crossing the top row on the way up to a bottom-row champion's looks and
+      // abilities doesn't swap them out.
+      card.addEventListener('pointerenter', () => {
+        clearTimeout(this.hoverTimer);
+        this.hoverTimer = setTimeout(() => this.show(info.id), HOVER_SETTLE);
+      });
+      card.addEventListener('pointerleave', () => clearTimeout(this.hoverTimer));
       card.addEventListener('focus', () => this.show(info.id));
       card.addEventListener('click', () => this.lockIn(info.id));
       this.cards.set(info.id, card);
-      cards.append(card);
+      groups.get(ROLES[info.id].main)!.append(card);
     }
+    // A role nobody plays yet stays off the screen.
+    for (const list of groups.values()) if (!list.childElementCount) list.parentElement?.remove();
     picker.append(this.showcase, cards);
     this.show(Object.values(CHAMPION_INFO)[0].id);
     return picker;
@@ -219,6 +246,7 @@ export class LobbyScreen {
     text.append(
       el('div', 'showcase-name', info.name),
       el('div', 'showcase-title', `${info.title} · ${{ rage: 'Rage', mana: 'Mana', none: 'No resource' }[info.resource]}`),
+      el('div', 'showcase-roles', [ROLES[id].main, ROLES[id].also].filter((r) => r !== undefined).map((r) => ROLE_INFO[r].name).join(' · ')),
       el('div', 'showcase-lore', LORE[id]),
     );
 
@@ -267,6 +295,7 @@ export class LobbyScreen {
   /** Picking a champion: a flash, a fanfare and a line from them. Solo games start a moment later. */
   private lockIn(id: ChampionId): void {
     if (this.cards.get(id)?.disabled) return;
+    clearTimeout(this.hoverTimer);
     this.show(id);
     this.opts.onPick({ champion: id, skin: this.skins.get(id) ?? 0 });
     this.showcase.classList.remove('locked');
