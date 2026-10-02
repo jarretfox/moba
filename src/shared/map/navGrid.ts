@@ -2,6 +2,13 @@ import { dist, type Vec2 } from '../math';
 import type { MapData } from './mapData';
 import { shapeContains } from './shapes';
 
+/** How much open ground a cell's center needs round it to be walked on: about a body's width from walls. */
+export const CLEARANCE = 30;
+const CLEARANCE_RING: readonly (readonly [number, number])[] = Array.from({ length: 12 }, (_, i) => {
+  const a = (i / 12) * Math.PI * 2;
+  return [Math.cos(a) * CLEARANCE, Math.sin(a) * CLEARANCE] as const;
+});
+
 /**
  * Walkability grid rasterized from the map shapes. Used for pathfinding, dash clamping,
  * and (later) vision and brush.
@@ -25,26 +32,24 @@ export class NavGrid {
     this.walkable = new Uint8Array(this.cols * this.rows);
     this.obstacles = new Uint16Array(this.cols * this.rows);
 
+    const openAt = (x: number, y: number) => map.ground.some((g) => shapeContains(g.shape, x, y)) && !map.blockers.some((b) => shapeContains(b, x, y));
     for (let cy = 0; cy < this.rows; cy++) {
       for (let cx = 0; cx < this.cols; cx++) {
-        const x = (cx + 0.5) * this.cellSize;
-        const y = (cy + 0.5) * this.cellSize;
-        const onGround = map.ground.some((g) => shapeContains(g.shape, x, y));
-        const blocked = map.blockers.some((b) => shapeContains(b, x, y));
-        this.open[cy * this.cols + cx] = onGround && !blocked ? 1 : 0;
+        this.open[cy * this.cols + cx] = openAt((cx + 0.5) * this.cellSize, (cy + 0.5) * this.cellSize) ? 1 : 0;
       }
     }
-
-    // Erode by one cell so unit bodies don't clip into walls.
-    for (let cy = 1; cy < this.rows - 1; cy++) {
-      for (let cx = 1; cx < this.cols - 1; cx++) {
-        let ok = 1;
-        for (let dy = -1; dy <= 1 && ok; dy++) {
-          for (let dx = -1; dx <= 1 && ok; dx++) {
-            ok = this.open[(cy + dy) * this.cols + cx + dx];
-          }
-        }
-        this.walkable[cy * this.cols + cx] = ok;
+    // Walkable: open, with CLEARANCE of open ground all round the cell's center, so bodies don't clip into
+    // walls. (It used to close every cell next to a closed one, which shut gaps that looked open.) Cells in
+    // the clear are walkable outright; only those next to a closed cell need the closer look.
+    for (let cy = 0; cy < this.rows; cy++) {
+      for (let cx = 0; cx < this.cols; cx++) {
+        const i = cy * this.cols + cx;
+        if (!this.open[i]) continue;
+        let clear = cx > 0 && cy > 0 && cx < this.cols - 1 && cy < this.rows - 1;
+        for (let dy = -1; dy <= 1 && clear; dy++) for (let dx = -1; dx <= 1 && clear; dx++) clear = this.open[i + dy * this.cols + dx] === 1;
+        const x = (cx + 0.5) * this.cellSize;
+        const y = (cy + 0.5) * this.cellSize;
+        this.walkable[i] = clear || CLEARANCE_RING.every(([dx, dy]) => openAt(x + dx, y + dy)) ? 1 : 0;
       }
     }
   }

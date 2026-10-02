@@ -717,7 +717,9 @@ function paintCrown(g: Graphics, tr: Tree, random: () => number): void {
 
 /** A wall's footprint as a craggy outline. */
 function rockOutline(s: Shape, seed: number): Pts {
-  const rough = roughen(shapeOutline(s, 14, 10, 0.3), 48, 1 / 150, seed);
+  // Grown past the blocked shape and only gently roughened, so the rock covers everything you can't walk
+  // on (the nav grid keeps CLEARANCE off it) and no grass shows where a wall really is.
+  const rough = roughen(shapeOutline(s, 14, 26, 0.3), 26, 1 / 150, seed);
   // A second, finer wobble for chipped edges.
   return roughen(rough, 7, 1 / 16, seed + 1);
 }
