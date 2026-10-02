@@ -1,11 +1,12 @@
 import type { EntitySnap, GameEvent } from '../../shared/protocol';
-import type { ChampionId } from '../../shared/champions/types';
 import type { FxLayer } from './fx';
 import { iconTexture } from './icons';
 import type { Emit } from './particles';
 import { RECALLS } from './recalls';
 import { PALETTE } from './views';
 import { arc } from './draw';
+import { inkOf } from './organic';
+import { drawCrown, drawDiamond, drawMushroom, drawPaw } from './signatures';
 import { chestHeight, standHeight } from './stature';
 
 // What every spell looks like: the building blocks in fx.ts put together per ability, plus the trails
@@ -13,20 +14,8 @@ import { chestHeight, standHeight } from './stature';
 
 type FxEvent = Extract<GameEvent, { e: 'fx' }>;
 
-/** Each champion's magic has its own colors, so you can tell whose spell just went off. */
-export const CAST_COLORS: Record<ChampionId, number> = {
-  marksman: 0x7fe3ff,
-  barbarian: 0xff5a2a,
-  willmore: 0xc8945a,
-  hunnag: 0x8fd14f,
-  logan: 0xffc04d,
-  kingrix: 0xffd166,
-  dongmaster: 0xffb070,
-  dabber: 0x9be15d,
-  paris: 0xff8fb0,
-  havarti: 0xffe29a,
-  daltonomo: 0xb98be0,
-};
+// Each champion's cast colors live with their cast signatures (signatures.ts); still exported from here.
+export { CAST_COLORS } from './signatures';
 
 const GOLD = 0xffd166;
 const TOXIC = 0x8fd14f;
@@ -34,6 +23,8 @@ const VOID = 0xb98be0;
 const FIRE = 0xff7a2f;
 const ARCANE = 0x7fe3ff;
 const DIRT = 0x7a5a36;
+/** Jordini's red: the color of a rejection stamp. */
+const DENY = 0xd93636;
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
@@ -94,25 +85,41 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
   switch (ev.fx) {
     // ── Marksman
     case 'aimLine': {
-      // Longshot charging: fire pulled into the bow, then loosed.
+      // Final Notice: the big red NO grows under him as he draws, the air pulled into the bow, then loosed.
       const dur = ev.dur ?? 1;
       fx.aimLine(x, y, x2, y2, dur, friendly);
-      fx.sigil(x, y, 90, FIRE, dur + 0.3, 3);
+      const R = 90;
+      fx.custom(dur + 0.3, (g, t) => {
+        const k = Math.min(1, (t * (dur + 0.3)) / dur);
+        const a = t > 0.85 ? (1 - t) / 0.15 : 1;
+        const rr = R * (0.4 + 0.6 * k);
+        g.circle(x, y, rr).stroke({ width: rr * 0.16, color: inkOf(DENY), alpha: 0.9 * a });
+        g.circle(x, y, rr).stroke({ width: rr * 0.1, color: DENY, alpha: a });
+        g.moveTo(x - rr * 0.66, y - rr * 0.66).lineTo(x + rr * 0.66, y + rr * 0.66).stroke({ width: rr * 0.16, color: inkOf(DENY), alpha: 0.9 * a, cap: 'round' });
+        g.moveTo(x - rr * 0.66, y - rr * 0.66).lineTo(x + rr * 0.66, y + rr * 0.66).stroke({ width: rr * 0.1, color: DENY, alpha: a, cap: 'round' });
+        g.circle(x, y, rr * 0.8).stroke({ width: 1.5, color: ARCANE, alpha: 0.5 * a });
+      }, 'under');
       fx.custom(dur, (g, t) => {
         for (let i = 0; i < fx.rate(70); i++) {
           const a = Math.random() * Math.PI * 2;
           const d = rand(70, 120);
-          p.emit({ shape: 'spark', x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: -Math.cos(a) * d * 3, vy: -Math.sin(a) * d * 3, life: 0.3, size: 10, size2: 4, stretch: 0.04, color: 0xffd9a8, color2: FIRE });
+          p.emit({ shape: 'spark', x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: -Math.cos(a) * d * 3, vy: -Math.sin(a) * d * 3, life: 0.3, size: 10, size2: 4, stretch: 0.04, color: 0xffffff, color2: i % 3 ? ARCANE : DENY });
         }
-        g.circle(x, y, 20 + 30 * t).fill({ color: FIRE, alpha: 0.25 + 0.3 * t });
+        g.circle(x, y, 20 + 30 * t).fill({ color: ARCANE, alpha: 0.2 + 0.3 * t });
       }, 'mid', true);
       return;
     }
     case 'trapSnap':
-      fx.burst(x, y, GOLD, 110);
-      fx.flash(x, y, 50, GOLD, 0.25);
-      p.burst(14, { shape: 'spark', x, y, life: 0.35, size: 12, size2: 4, stretch: 0.05, color: 0xffffff, color2: GOLD, drag: 0.02 }, [250, 520]);
-      p.burst(8, { shape: 'shard', glow: false, x, y, life: 0.5, size: 10, size2: 5, color: 0x9aa1ab, drag: 0.1, spin: 12 }, [120, 260]);
+      // Red Tape: the trap springs shut in a snap of red ribbon, a cross of tape left on the ground.
+      fx.burst(x, y, DENY, 110);
+      fx.flash(x, y, 50, DENY, 0.25);
+      fx.stamp(x, y, 1.2, (g) => {
+        for (const s of [-1, 1]) {
+          g.poly([-40, -40 * s - 7, 40, 40 * s - 7, 40, 40 * s + 7, -40, -40 * s + 7]).fill(DENY).stroke({ width: 2, color: inkOf(DENY), join: 'round' });
+        }
+      }, { layer: 'under', from: 1.6, alpha: 0.85 });
+      p.burst(12, { shape: 'spark', x, y, life: 0.4, size: 14, size2: 4, stretch: 0.08, color: 0xffffff, color2: DENY, drag: 0.02 }, [220, 480]);
+      p.burst(10, { shape: 'shard', glow: false, x, y, life: 0.7, size: 12, size2: 8, color: DENY, drag: 0.15, spin: 16, ay: 200 }, [120, 300]);
       return;
     case 'roll': {
       // A gust: streaks of wind along the path and a puff where it started.
@@ -137,11 +144,17 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       return;
     }
     case 'warCry': {
+      // WAKE UP!: three ragged rings of a bellow, and exclamation marks popping up all round.
       const r = ev.r ?? 300;
       for (let i = 0; i < 3; i++) fx.later(i * 0.09, () => fx.shockwave(x, y, r * (1 - i * 0.18), i === 1 ? 0xffffff : 0xff5a2a, 0.5));
       fx.flash(x, y, 70, 0xff5a2a, 0.35);
-      flames(fx, x, y, 60, 26);
-      p.burst(18, { shape: 'spark', x, y, life: 0.5, size: 14, size2: 4, stretch: 0.04, color: 0xffd9a8, color2: 0xff3b1f, drag: 0.05 }, [300, 600]);
+      fx.motifRing(x, y, r * 0.55, 7, 0.7, (g, i) => {
+        const s = 14 + (i % 2) * 4;
+        g.roundRect(-s * 0.18, -s * 1.6, s * 0.36, s * 1.1, s * 0.1).fill(0xfff1c1).stroke({ width: 2.5, color: 0x5a1a10, join: 'round' });
+        g.circle(0, -s * 0.2, s * 0.22).fill(0xfff1c1).stroke({ width: 2.5, color: 0x5a1a10 });
+      }, { squash: 0.5, stagger: 0.35 });
+      fx.speedLines(x, y - 30, r * 0.5, 0xff5a2a, 10, 0.3);
+      p.burst(14, { shape: 'spark', x, y, life: 0.5, size: 14, size2: 4, stretch: 0.04, color: 0xffd9a8, color2: 0xff3b1f, drag: 0.05 }, [300, 600]);
       return;
     }
     case 'slam': {
@@ -156,12 +169,37 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       return;
     }
     case 'berserk': {
+      // IT'S ALL CONNECTED: the conspiracy board, red string strung between pins all round him.
       const r = (ev.r ?? 45) * 1.5;
-      fx.sigil(x, y, r * 2.2, 0xff3b30, 0.9, -2);
+      const pins = Array.from({ length: 9 }, (_, i) => {
+        const a = (i / 9) * Math.PI * 2 + rand(-0.2, 0.2);
+        const d = r * rand(1.6, 3.2);
+        return { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 0.7 };
+      });
+      const strings: [number, number][] = [];
+      for (let i = 0; i < pins.length; i++) {
+        strings.push([i, (i + 1) % pins.length]);
+        if (i % 2 === 0) strings.push([i, (i + 4) % pins.length]);
+      }
+      fx.custom(1.1, (g, t) => {
+        const drawn = Math.min(1, t / 0.35) * strings.length;
+        const a = t > 0.7 ? (1 - t) / 0.3 : 1;
+        strings.forEach(([i, j], k) => {
+          const part = Math.max(0, Math.min(1, drawn - k));
+          if (part <= 0) return;
+          const p0 = pins[i];
+          const p1 = pins[j];
+          g.moveTo(p0.x, p0.y).lineTo(p0.x + (p1.x - p0.x) * part, p0.y + (p1.y - p0.y) * part).stroke({ width: 2.5, color: 0xe5262b, alpha: 0.9 * a });
+        });
+        for (const pin of pins) {
+          g.circle(pin.x, pin.y, 5).fill({ color: 0xe5262b, alpha: a }).stroke({ width: 1.5, color: 0x3a0a0a, alpha: a });
+          g.circle(pin.x - 1.5, pin.y - 1.5, 1.8).fill({ color: 0xffffff, alpha: 0.8 * a });
+        }
+      }, 'under');
       fx.shockwave(x, y, r * 3, 0xff3b30, 0.5);
       fx.pillar(x, y, r, 0xff5a2a, 0.8);
       fx.scar(x, y, r * 1.6, 'scorch');
-      flames(fx, x, y, r, 50);
+      flames(fx, x, y, r, 30);
       const t = iconTexture('😡');
       if (t) fx.ghost(t, x, y - r * 1.5, { size: r * 2, size2: r * 3.5, dy: -60, life: 0.9, alpha: 0.7 });
       return;
@@ -262,9 +300,10 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       return;
     }
     case 'pulse': {
+      // The totem's pulse: a wave of rot, and a fairy ring of mushrooms springing up round it.
       const r = ev.r ?? 400;
       fx.shockwave(x, y, r, VOID, 0.7);
-      fx.sigil(x, y, r * 0.35, TOXIC, 0.8, 2);
+      fx.motifRing(x, y, r * 0.3, 8, 0.9, (g, i) => drawMushroom(g, 12 + (i % 3) * 3, i, TOXIC), { layer: 'under', squash: 0.5 });
       for (let i = 0; i < 30; i++) {
         const a = (i / 30) * Math.PI * 2;
         p.emit({ shape: i % 3 ? 'mote' : 'leaf', x, y, vx: Math.cos(a) * r * 1.3, vy: Math.sin(a) * r * 1.3, drag: 0.08, life: 0.8, size: 12, size2: 4, color: 0xd8b4ff, color2: TOXIC, spin: 5 });
@@ -272,16 +311,31 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       return;
     }
     case 'hop':
+      // Mole Hole: dirt flies at both ends, and mushrooms sprout round each hole.
       for (const [px, py] of [[x, y], [x2, y2]] as const) {
         dirtBurst(fx, px, py, 70);
-        fx.sigil(px, py, 70, TOXIC, 0.6, 3);
+        fx.motifRing(px, py, 60, 6, 0.7, (g, i) => drawMushroom(g, 10 + (i % 2) * 3, i, TOXIC), { layer: 'under', squash: 0.5 });
       }
       return;
     case 'deepMark': {
+      // The Deep Calls: a circle of rot spreads, and fingers claw up through it as the hands get ready.
       const r = ev.r ?? 350;
       const dur = ev.dur ?? 0.75;
       fx.telegraph(x, y, r, dur, TOXIC);
-      fx.sigil(x, y, r, VOID, dur + 0.25, -1.2);
+      const claws = Array.from({ length: 14 }, (_, i) => ({ a: i * 2.4 + 0.7, d: r * (0.3 + ((i * 41) % 60) / 100) }));
+      fx.custom(dur + 0.2, (g, t) => {
+        const k = Math.min(1, (t * (dur + 0.2)) / dur);
+        const a = t > 0.85 ? (1 - t) / 0.15 : 1;
+        g.circle(x, y, r * (0.5 + 0.5 * k)).stroke({ width: 8, color: VOID, alpha: 0.5 * a });
+        g.circle(x, y, r * 0.95).stroke({ width: 3, color: 0x4f7a2a, alpha: 0.7 * a });
+        for (const c of claws) {
+          const cx = x + Math.cos(c.a) * c.d;
+          const cy = y + Math.sin(c.a) * c.d;
+          const h = 16 * k;
+          for (let f = -1; f <= 1; f++) g.moveTo(cx + f * 6, cy).lineTo(cx + f * 8, cy - h).stroke({ width: 4, color: 0x6f8f52, alpha: 0.9 * a, cap: 'round' });
+          g.ellipse(cx, cy, 12, 5).fill({ color: 0x2a1a3a, alpha: 0.6 * a });
+        }
+      }, 'under');
       fx.custom(dur, () => {
         for (let i = 0; i < fx.rate(60); i++) {
           const a = Math.random() * Math.PI * 2;
@@ -321,7 +375,8 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     // ── Logan
     // ── Daltonomo
     case 'nowYouSeeMe':
-      // A puff of purple smoke and confetti where he was.
+      // Now you don't: a ring of harlequin diamonds spins where he was, in a puff of purple smoke and confetti.
+      fx.motifRing(x, y, 60, 8, 0.5, (g, i) => drawDiamond(g, 11, i), { layer: 'under', spin: 4, squash: 0.5, stagger: 0.2 });
       confetti(fx, x, y, 22, 200);
       for (let i = 0; i < 10; i++) p.emit({ shape: 'smoke', x: x + rand(-25, 25), y: y + rand(-25, 25), vy: rand(-40, -10), life: 1, size: 24, size2: 60, color: 0xd8c8f0, color2: 0x6a3a9a, alpha: 0.5, fadeIn: 0.2 });
       return;
@@ -349,6 +404,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
     case 'doubleAct': {
       // Now there are two of him.
       for (const [cx, cy] of [[x, y], [x2, y2]]) {
+        fx.motifRing(cx, cy, 56, 8, 0.6, (g, i) => drawDiamond(g, 10, i), { layer: 'under', spin: -3, squash: 0.5, stagger: 0.2 });
         confetti(fx, cx, cy, 16, 160);
         for (let i = 0; i < 6; i++) p.emit({ shape: 'smoke', x: cx + rand(-20, 20), y: cy + rand(-20, 20), vy: -20, life: 0.9, size: 22, size2: 50, color: 0xd8c8f0, color2: 0x6a3a9a, alpha: 0.5 });
       }
@@ -587,8 +643,7 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
         const k = Math.random();
         p.emit({ shape: i % 3 ? 'mote' : 'star', x: x + (x2 - x) * k + rand(-14, 14), y: y + (y2 - y) * k + rand(-14, 14), vy: rand(-60, -20), life: rand(0.4, 0.8), size: 10, size2: 2, color: 0xfff1b8, color2: 0xff9f43, spin: 4 });
       }
-      const t = iconTexture('🐾');
-      if (t) fx.ghost(t, x2, y2, { size: 50, size2: 90, life: 0.5, alpha: 0.7 });
+      fx.stamp(x2, y2, 0.7, (g) => drawPaw(g, 46, GOLD), { layer: 'under', from: 1.6, alpha: 0.9 });
       dirtBurst(fx, x2, y2, 50);
       return;
     }
@@ -659,8 +714,9 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
 
     // ── King Rix
     case 'summon': {
+      // Call the Guard: a great crown laid on the ground, and the guards come up through the light.
       const r = ev.r ?? 110;
-      fx.sigil(x, y, r * 1.3, GOLD, 1.1, 1.5);
+      fx.stamp(x, y, 1.1, (g) => drawCrown(g, r * 1.3, GOLD), { layer: 'under', from: 1.6, alpha: 0.95 });
       fx.scar(x, y, r * 1.3, 'seal', GOLD, 14);
       fx.pillar(x, y, r * 0.5, GOLD, 1);
       fx.later(0.15, () => fx.shockwave(x, y, r * 1.5, GOLD, 0.5));
@@ -686,9 +742,19 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       return;
     }
     case 'decree': {
-      // The royal seal stamped on the target.
+      // Royal Decree: a blob of red wax slammed down on the target and stamped with the crown.
       const r = ev.r ?? 90;
-      fx.sigil(x, y, r * 1.2, 0xb38cff, 1, 2);
+      fx.stamp(x, y, 1, (g) => {
+        const pts: number[] = [];
+        for (let i = 0; i < 20; i++) {
+          const a = (i / 20) * Math.PI * 2;
+          const k = 1 + Math.sin(i * 3.1) * 0.08 + Math.cos(i * 1.7) * 0.05;
+          pts.push(Math.cos(a) * r * k, Math.sin(a) * r * k);
+        }
+        g.poly(pts).fill(0xb3202a).stroke({ width: 3, color: 0x4a0a10, join: 'round' });
+        g.poly(pts.map((v) => v * 0.78)).stroke({ width: 2, color: 0xe5484d, alpha: 0.7, join: 'round' });
+        drawCrown(g, r * 0.5, 0xffd166);
+      }, { layer: 'under', from: 2.4, alpha: 0.95 });
       fx.scar(x, y, r * 1.1, 'seal', GOLD, 12);
       fx.burst(x, y, GOLD, r * 1.4);
       fx.flash(x, y, r * 0.6, GOLD, 0.4);
@@ -773,14 +839,6 @@ export function structureCollapse(fx: FxLayer, x: number, y: number, r: number, 
     fx.flash(x, y, r * 2, 0xffffff, 0.8, 1);
     p.burst(60, { shape: 'spark', x, y, life: 1.2, size: 24, size2: 6, stretch: 0.04, color: 0xffffff, color2: GOLD, drag: 0.1 }, [400, 1400]);
   });
-}
-
-/** A small rune circle in the champion's colors under anyone casting an ability. */
-export function castFlash(fx: FxLayer, caster: EntitySnap): void {
-  if (!caster.champ) return;
-  const color = CAST_COLORS[caster.champ];
-  fx.sigil(caster.x, caster.y, caster.r * 1.9, color, 0.55, 3);
-  fx.particles.burst(8, { shape: 'mote', x: caster.x, y: caster.y - chestHeight(caster), life: 0.4, size: 8, size2: 2, color: 0xffffff, color2: color, drag: 0.1 }, [80, 180]);
 }
 
 /** Each champion goes down in character, on top of the usual death burst. */
@@ -891,9 +949,10 @@ export function projectileTrail(fx: FxLayer, s: EntitySnap, friendly: boolean): 
   if (head) p.emit({ shape: 'glow', x: s.x, y: s.y, life: 0.05, size: head[1], color: head[0], alpha: 0.75, fadeIn: 0.01 });
   switch (s.vis) {
     case 'bolt':
-      spray(fx.rate(160), { shape: 'spark', life: 0.3, size: 18, size2: 4, stretch: 0.06, color: 0xffffff, color2: ARCANE }, 12, 140);
-      spray(fx.rate(50), { shape: 'star', life: 0.5, size: 20, size2: 3, color: 0xe8fbff, color2: ARCANE, spin: 8 }, 16, 30);
-      if (Math.random() < fx.dt * 10) fx.lightning(s.x, s.y, s.x + bx * 90 + rand(-25, 25), s.y + by * 90 + rand(-25, 25), ARCANE, 0.08, 2);
+      // Objection!: a strongly worded arrow, trailing ice-blue streaks and a flutter of torn paperwork.
+      spray(fx.rate(140), { shape: 'spark', life: 0.3, size: 18, size2: 4, stretch: 0.06, color: 0xffffff, color2: ARCANE }, 10, 140);
+      spray(fx.rate(30), { shape: 'shard', glow: false, life: 0.7, size: 11, size2: 9, color: 0xf6f0e0, spin: 8, ay: 120, drag: 0.3 }, 14, 60);
+      spray(fx.rate(14), { shape: 'spark', life: 0.25, size: 14, size2: 3, stretch: 0.08, color: 0xffffff, color2: DENY }, 10, 160);
       return;
     case 'longshot':
       spray(fx.rate(200), { shape: 'glow', life: 0.5, size: 48, size2: 8, color: 0xfff1a8, color2: 0xff3b1f, drag: 0.3 }, s.r * 0.5, 90);

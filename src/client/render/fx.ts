@@ -1,6 +1,7 @@
 import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import type { DamageType } from '../../shared/protocol';
 import type { Light } from './lighting';
+import { arc } from './draw';
 import { inkOf, inkStroke, noise2 } from './organic';
 import { Particles, mix } from './particles';
 
@@ -721,6 +722,186 @@ export class FxLayer {
     const g = new Graphics();
     if (glow) g.blendMode = 'add';
     this.add(g, life, (t) => draw(g.clear(), t), layer);
+  }
+
+  // ─── Comic ink: the per-champion attack and cast looks are built from these ──
+
+  /**
+   * A shape drawn once by `draw` with its origin at (x, y), stamped in: it pops from `from` times its
+   * size to full over the first moment (bigger than 1 slams down like a rubber stamp, smaller than 1
+   * springs up), holds, and fades; `spin` turns it and `rise` drifts it over its life.
+   */
+  stamp(x: number, y: number, life: number, draw: (g: Graphics) => void, o: { layer?: Layer; from?: number; spin?: number; rise?: number; glow?: boolean; alpha?: number } = {}): void {
+    const g = new Graphics();
+    if (o.glow) g.blendMode = 'add';
+    draw(g);
+    const from = o.from ?? 1.4;
+    this.add(g, life, (t) => {
+      const k = easeOut(Math.min(1, t / 0.15));
+      g.scale.set(from + (1 - from) * k);
+      g.rotation = (o.spin ?? 0) * t * life;
+      g.position.set(x, y + (o.rise ?? 0) * t);
+      g.alpha = (o.alpha ?? 1) * envelope(t, 0.04, 0.4);
+    }, o.layer ?? 'mid');
+  }
+
+  /**
+   * A ring of little motifs round (x, y): `draw(g, i)` draws the i-th one at its own origin (upright, so a
+   * mushroom stands up wherever it is on the ring; `radial` turns them to point outward instead). The ring
+   * is squashed flat on the ground by `squash`, turns by `spin`, and each motif pops up in turn.
+   */
+  motifRing(x: number, y: number, r: number, count: number, life: number, draw: (g: Graphics, i: number) => void, o: { layer?: Layer; spin?: number; squash?: number; radial?: boolean; glow?: boolean; stagger?: number } = {}): void {
+    const c = new Container();
+    const items: Graphics[] = [];
+    for (let i = 0; i < count; i++) {
+      const g = new Graphics();
+      if (o.glow) g.blendMode = 'add';
+      draw(g, i);
+      items.push(g);
+      c.addChild(g);
+    }
+    c.position.set(x, y);
+    const squash = o.squash ?? 0.55;
+    const stagger = o.stagger ?? 0.25;
+    this.add(c, life, (t) => {
+      const spun = (o.spin ?? 0) * t * life;
+      const fade = envelope(t, 0.1, 0.35);
+      items.forEach((g, i) => {
+        const a = (i / count) * Math.PI * 2 + spun;
+        g.position.set(Math.cos(a) * r, Math.sin(a) * r * squash);
+        const born = (i / count) * stagger;
+        const k = Math.max(0, Math.min(1, (t - born) / 0.15));
+        const pop = k < 0.7 ? (k / 0.7) * 1.15 : 1.15 - ((k - 0.7) / 0.3) * 0.15;
+        g.scale.set(pop);
+        if (o.radial) g.rotation = a + Math.PI / 2;
+        g.alpha = fade;
+        // Those at the back of the ring draw behind those at the front.
+        g.zIndex = Math.sin(a);
+      });
+      c.sortChildren();
+    }, o.layer ?? 'mid');
+  }
+
+  /** Comic speed lines: short inked strokes shooting out from (x, y), like a manga impact; a fan of them if `angle` and `spread` are given. */
+  speedLines(x: number, y: number, r: number, color: number, count = 8, life = 0.25, angle = 0, spread = Math.PI * 2): void {
+    const lines = Array.from({ length: count }, (_, i) => {
+      const a = angle - spread / 2 + ((i + 0.5) / count) * spread + (Math.random() - 0.5) * (spread / count) * 0.8;
+      return { a, from: r * (0.35 + Math.random() * 0.2), to: r * (0.8 + Math.random() * 0.3), w: 2.5 + Math.random() * 2.5 };
+    });
+    const ink = inkOf(color);
+    this.custom(life, (g, t) => {
+      const grow = easeOut(Math.min(1, t / 0.3));
+      const fade = 1 - Math.max(0, (t - 0.3) / 0.7);
+      for (const l of lines) {
+        const d0 = l.from + (l.to - l.from) * Math.max(0, grow - 0.4) * 1.6;
+        const d1 = l.from + (l.to - l.from) * grow;
+        if (d1 - d0 < 2) continue;
+        const pts = [x + Math.cos(l.a) * d0, y + Math.sin(l.a) * d0, x + Math.cos(l.a) * (d0 + d1) * 0.5, y + Math.sin(l.a) * (d0 + d1) * 0.5, x + Math.cos(l.a) * d1, y + Math.sin(l.a) * d1];
+        inkStroke(g, pts, l.w + 2, { color: ink, alpha: 0.75 * fade, tip: 0.1 });
+        inkStroke(g, pts, l.w, { color: mix(color, 0xffffff, 0.5), alpha: 0.9 * fade, tip: 0.05 });
+      }
+    });
+  }
+
+  /** A straight thrust streak from (x, y) along `angle`: a bright core in a soft glow over an inked line, shooting out to `len` and fading. */
+  thrust(x: number, y: number, angle: number, len: number, color: number, life = 0.22, width = 8): void {
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const ink = new Graphics();
+    this.add(ink, life, () => undefined);
+    this.custom(life, (g, t) => {
+      const reach = easeOut(Math.min(1, t / 0.3));
+      const fade = 1 - Math.max(0, (t - 0.3) / 0.7);
+      const start = len * Math.max(0, (t - 0.3) / 0.7) * 0.8;
+      const end = len * reach;
+      if (end - start < 2) return;
+      const pts = [x + dx * start, y + dy * start, x + dx * (start + end) * 0.5, y + dy * (start + end) * 0.5, x + dx * end, y + dy * end];
+      ink.clear();
+      inkStroke(ink, pts, width + 4, { color: inkOf(color), alpha: 0.7 * fade, tip: 0.05, pressure: 0.15 });
+      inkStroke(g, pts, width * 1.6, { color, alpha: 0.35 * fade, tip: 0.1 });
+      inkStroke(g, pts, width * 0.55, { color: 0xffffff, alpha: 0.95 * fade, tip: 0.0 });
+    }, 'mid', true);
+  }
+
+  /**
+   * A swipe like `slash`, with options: `reverse` sweeps the other way (an upward cut), `squash` flattens the
+   * arc toward the ground (a level sweep seen from above), `width` is how deep the band is.
+   */
+  sweep(x: number, y: number, angle: number, radius: number, spread: number, color: number, o: { life?: number; reverse?: boolean; squash?: number; width?: number } = {}): void {
+    const life = o.life ?? 0.3;
+    const squash = o.squash ?? 1;
+    const depth = o.width ?? 0.42;
+    const ink = new Graphics();
+    this.add(ink, life, () => undefined);
+    const g = new Graphics();
+    g.blendMode = 'add';
+    const at = (a: number, k: number) => [x + Math.cos(a) * radius * k, y + Math.sin(a) * radius * k * squash] as const;
+    this.add(g, life, (t) => {
+      const sw = easeOut(Math.min(1, t / 0.4));
+      const fade = 1 - Math.max(0, (t - 0.4) / 0.6);
+      const a0 = o.reverse ? angle + spread / 2 : angle - spread / 2;
+      const a1 = a0 + (o.reverse ? -spread : spread) * sw;
+      const band = (d: number, edge: number) => {
+        const outer: number[] = [];
+        const inner: number[] = [];
+        const steps = 20;
+        for (let i = 0; i <= steps; i++) {
+          const k = i / steps;
+          const a = a0 + (a1 - a0) * k;
+          const thick = d * (0.15 + 0.85 * k * k);
+          outer.push(...at(a, edge));
+          inner.unshift(...at(a, edge - thick));
+        }
+        return [...outer, ...inner];
+      };
+      g.clear();
+      g.poly(band(depth * 1.4, 1.06)).fill({ color, alpha: 0.22 * fade });
+      g.poly(band(depth, 1)).fill({ color, alpha: 0.6 * fade });
+      g.poly(band(depth * 0.3, 1)).fill({ color: 0xffffff, alpha: 0.85 * fade });
+      ink.clear();
+      const edge: number[] = [];
+      for (let i = 0; i <= 16; i++) edge.push(...at(a0 + (a1 - a0) * (i / 16), 1.07));
+      inkStroke(ink, edge, 5, { color: inkOf(color), alpha: 0.8 * fade, tip: 0.05 });
+    });
+  }
+
+  /** Claw marks: `n` parallel slashes across (x, y) along `angle`, raked in fast and fading, inked with a bright edge. */
+  claws(x: number, y: number, angle: number, len: number, color: number, n = 3, life = 0.35, gap = 10): void {
+    const nx = -Math.sin(angle);
+    const ny = Math.cos(angle);
+    const dx = Math.cos(angle);
+    const dy = Math.sin(angle);
+    const ink = inkOf(color);
+    this.custom(life, (g, t) => {
+      const grow = easeOut(Math.min(1, t / 0.25));
+      const fade = 1 - Math.max(0, (t - 0.35) / 0.65);
+      for (let i = 0; i < n; i++) {
+        const off = (i - (n - 1) / 2) * gap;
+        const l = len * (0.8 + 0.2 * Math.sin(i * 2.3)) * grow;
+        const cx = x + nx * off;
+        const cy = y + ny * off;
+        const pts = [cx - dx * l * 0.5, cy - dy * l * 0.5, cx, cy, cx + dx * l * 0.5, cy + dy * l * 0.5];
+        inkStroke(g, pts, 7, { color: ink, alpha: 0.85 * fade, tip: 0.0, seed: i });
+        inkStroke(g, pts, 3.5, { color: mix(color, 0xffffff, 0.3), alpha: 0.9 * fade, tip: 0.0, seed: i });
+      }
+    });
+  }
+
+  /** Cartoon vibration arcs ")))" either side of (x, y): something struck that's still ringing. */
+  vibrate(x: number, y: number, r: number, color: number, life = 0.3): void {
+    const ink = inkOf(color);
+    this.custom(life, (g, t) => {
+      const fade = 1 - t;
+      const wobble = Math.sin(t * 40) * 0.1;
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 2; i++) {
+          const rr = r * (0.85 + i * 0.3) + wobble * r * (i ? -1 : 1);
+          const mid = side > 0 ? 0 : Math.PI;
+          arc(g, x, y, rr, mid - 0.55, mid + 0.55).stroke({ width: 4.5, color: ink, alpha: (0.8 - i * 0.25) * fade, cap: 'round' });
+          arc(g, x, y, rr, mid - 0.5, mid + 0.5).stroke({ width: 2, color: mix(color, 0xffffff, 0.4), alpha: (0.9 - i * 0.3) * fade, cap: 'round' });
+        }
+      }
+    });
   }
 
   private add(obj: Container, life: number, tick: (t: number) => void, layer: Layer = 'mid'): void {

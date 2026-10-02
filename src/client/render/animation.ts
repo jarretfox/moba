@@ -50,31 +50,116 @@ export function sample(keys: readonly Key[] | undefined, t: number): number {
 
 const TAU = Math.PI * 2;
 
-/** Basic attacks. */
-export const ATTACK: Record<ChampionId, Anim> = {
-  // The axe up over his head, then down like he's splitting a log.
-  barbarian: { dur: 0.32, hit: 0.6, turn: [[0, 0], [0.35, -1.6], [0.6, 0.9], [1, 0]], lunge: [[0, 0], [0.35, -0.05], [0.6, 0.2], [1, 0]], grow: [[0, 0], [0.35, 0.05], [0.6, -0.03], [1, 0]] },
-  // Draw the string back, loose, and rock back from the shot.
-  marksman: { dur: 0.3, hit: 0.45, reach: [[0, 0], [0.45, -0.22], [0.55, 0.06], [1, 0]], lunge: [[0, 0], [0.55, -0.08], [1, 0]] },
-  // Whirl the hook round once and fling it out.
-  willmore: { dur: 0.36, hit: 0.55, turn: [[0, 0], [1, -TAU]], reach: [[0, 0], [0.55, 0.35], [1, 0]] },
-  // Lift the staff and jab the spore forward.
-  hunnag: { dur: 0.32, hit: 0.55, turn: [[0, 0], [0.3, -0.5], [0.55, 0.45], [1, 0]], reach: [[0, 0], [0.3, -0.12], [0.55, 0.32], [1, 0]] },
-  // Claws up, then raked down with a lunge.
-  logan: { dur: 0.28, hit: 0.5, turn: [[0, 0], [0.25, -1.3], [0.5, 0.7], [1, 0]], reach: [[0, 0], [0.5, 0.3], [1, 0]], lunge: [[0, 0], [0.5, 0.25], [1, 0]] },
-  // A royal flourish of the scepter.
-  kingrix: { dur: 0.36, hit: 0.6, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
-  // A quick, sneaky stab.
-  daltonomo: { dur: 0.26, hit: 0.3, reach: [[0, 0], [0.3, 0.45], [1, 0]], twist: [[0, 0], [0.3, 0.2], [1, 0]], lunge: [[0, 0], [0.3, 0.15], [1, 0]] },
-  // A downward slash of the flaming cheese knife.
-  havarti: { dur: 0.32, hit: 0.55, turn: [[0, 0], [0.3, -1.3], [0.55, 0.9], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
-  // A fencer's thrust: blade and body forward together.
-  paris: { dur: 0.26, hit: 0.3, reach: [[0, 0], [0.3, 0.5], [1, 0]], lunge: [[0, 0], [0.3, 0.25], [1, 0]] },
-  // The rig-bow kicks back as it fires.
-  dabber: { dur: 0.3, hit: 0.3, reach: [[0, 0], [0.3, -0.15], [0.45, 0.08], [1, 0]], lunge: [[0, 0], [0.45, -0.06], [1, 0]] },
-  // A short, heavy jab.
-  dongmaster: { dur: 0.28, hit: 0.35, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.15], [1, 0]], twist: [[0, 0], [0.35, -0.18], [1, 0]] },
+/**
+ * Basic attacks: each champion's swings, played in turn so no two blows in a row look the same (see
+ * `attackAnim`). Each has a wind-up (the weapon drawn back, a lean away), the blow itself at `hit`, and
+ * a follow-through that settles back to rest. The first in each list is the champion's signature blow.
+ */
+export const ATTACKS: Record<ChampionId, readonly Anim[]> = {
+  barbarian: [
+    // The axe up over his head, held a hair at the top, then down like he's splitting a log.
+    { dur: 0.36, hit: 0.6, turn: [[0, 0], [0.3, -1.8], [0.42, -1.85], [0.6, 1.0], [1, 0]], lunge: [[0, 0], [0.3, -0.08], [0.42, -0.1], [0.6, 0.25], [1, 0]], grow: [[0, 0], [0.35, 0.06], [0.62, -0.05], [1, 0]] },
+    // A flat sweep: coils right back, then whips the axe round level.
+    { dur: 0.36, hit: 0.55, twist: [[0, 0], [0.3, -0.55], [0.4, -0.6], [0.58, 0.7], [1, 0]], turn: [[0, 0], [0.3, -0.4], [0.55, 0.5], [1, 0]], lunge: [[0, 0], [0.3, -0.06], [0.58, 0.18], [1, 0]] },
+    // A rising backhand: the axe low behind him, ripped up through them.
+    { dur: 0.34, hit: 0.52, turn: [[0, 0], [0.28, 0.9], [0.4, 0.95], [0.55, -1.5], [1, 0]], lunge: [[0, 0], [0.28, -0.05], [0.55, 0.22], [1, 0]], grow: [[0, 0], [0.55, 0.08], [1, 0]] },
+  ],
+  marksman: [
+    // Draw the string back, loose, and rock back from the shot.
+    { dur: 0.3, hit: 0.45, reach: [[0, 0], [0.45, -0.22], [0.55, 0.06], [1, 0]], lunge: [[0, 0], [0.55, -0.08], [1, 0]] },
+    // A snapshot: a short draw, loosed at once, a hop back onto the back foot.
+    { dur: 0.28, hit: 0.4, reach: [[0, 0], [0.3, -0.16], [0.4, 0.08], [1, 0]], lunge: [[0, 0], [0.4, -0.14], [1, 0]], grow: [[0, 0], [0.4, -0.03], [1, 0]] },
+    // A high draw: the bow lifted, a full draw, and loosed on the way down.
+    { dur: 0.32, hit: 0.5, turn: [[0, 0], [0.4, -0.35], [0.6, -0.1], [1, 0]], reach: [[0, 0], [0.45, -0.26], [0.55, 0.06], [1, 0]] },
+  ],
+  willmore: [
+    // Whirl the hook round once and fling it out.
+    { dur: 0.36, hit: 0.55, turn: [[0, 0], [1, -TAU]], reach: [[0, 0], [0.55, 0.35], [1, 0]] },
+    // The hook swung up over his head and brought down like a flail.
+    { dur: 0.36, hit: 0.55, turn: [[0, 0], [0.3, -2.2], [0.55, 0.6], [1, 0]], lunge: [[0, 0], [0.3, -0.08], [0.55, 0.2], [1, 0]], reach: [[0, 0], [0.55, 0.3], [1, 0]] },
+    // Flung out and yanked back: the blow lands on the yank.
+    { dur: 0.38, hit: 0.6, reach: [[0, 0], [0.3, 0.55], [0.45, 0.5], [0.6, -0.25], [1, 0]], lunge: [[0, 0], [0.3, 0.12], [0.6, -0.12], [1, 0]] },
+  ],
+  hunnag: [
+    // Lift the staff and jab the spore forward.
+    { dur: 0.32, hit: 0.55, turn: [[0, 0], [0.3, -0.5], [0.55, 0.45], [1, 0]], reach: [[0, 0], [0.3, -0.12], [0.55, 0.32], [1, 0]] },
+    // A tap of the staff that puffs a spore off the orb.
+    { dur: 0.3, hit: 0.5, turn: [[0, 0], [0.3, -0.5], [0.5, 0.25], [1, 0]], reach: [[0, 0], [0.5, 0.1], [1, 0]], grow: [[0, 0], [0.5, 0.06], [1, 0]] },
+    // The orb swept across in front of her.
+    { dur: 0.34, hit: 0.55, twist: [[0, 0], [0.3, 0.3], [0.55, -0.25], [1, 0]], turn: [[0, 0], [0.3, -0.9], [0.55, 0.3], [1, 0]] },
+  ],
+  logan: [
+    // Claws up, then raked down with a lunge.
+    { dur: 0.3, hit: 0.5, turn: [[0, 0], [0.25, -1.3], [0.35, -1.35], [0.5, 0.7], [1, 0]], reach: [[0, 0], [0.5, 0.3], [1, 0]], lunge: [[0, 0], [0.25, -0.06], [0.5, 0.25], [1, 0]] },
+    // A backhand swipe across them.
+    { dur: 0.3, hit: 0.5, twist: [[0, 0], [0.25, -0.35], [0.5, 0.45], [1, 0]], reach: [[0, 0], [0.5, 0.45], [1, 0]], turn: [[0, 0], [0.25, -0.5], [0.5, 0.6], [1, 0]], lunge: [[0, 0], [0.5, 0.15], [1, 0]] },
+    // A bite: the whole lion thrown forward, jaws first.
+    { dur: 0.3, hit: 0.5, lunge: [[0, 0], [0.25, -0.12], [0.5, 0.42], [1, 0]], grow: [[0, 0], [0.25, 0.06], [0.5, -0.04], [1, 0]], reach: [[0, 0], [0.5, 0.25], [1, 0]] },
+  ],
+  kingrix: [
+    // A royal flourish of the scepter.
+    { dur: 0.36, hit: 0.6, turn: [[0, 0], [0.35, -0.9], [0.6, 0.5], [1, 0]], reach: [[0, 0], [0.5, 0.15], [1, 0]] },
+    // A dismissive flick of the wrist.
+    { dur: 0.32, hit: 0.5, turn: [[0, 0], [0.3, 0.35], [0.5, -0.7], [1, 0]], reach: [[0, 0], [0.5, 0.35], [1, 0]] },
+    // The scepter pointed straight at them: the bolt comes off its tip.
+    { dur: 0.36, hit: 0.4, reach: [[0, 0], [0.35, 0.55], [0.6, 0.5], [1, 0]], turn: [[0, 0], [0.35, 1.0], [0.6, 1.0], [1, 0]], grow: [[0, 0], [0.35, 0.04], [1, 0]] },
+  ],
+  daltonomo: [
+    // A quick, sneaky stab.
+    { dur: 0.26, hit: 0.3, reach: [[0, 0], [0.3, 0.45], [1, 0]], twist: [[0, 0], [0.3, 0.2], [1, 0]], lunge: [[0, 0], [0.3, 0.15], [1, 0]] },
+    // A pirouette, knives out.
+    { dur: 0.3, hit: 0.5, twist: [[0, 0], [1, TAU]], reach: [[0, 0], [0.5, 0.35], [1, 0]] },
+    // An overhand stab, the knife raised and driven down.
+    { dur: 0.3, hit: 0.5, turn: [[0, 0], [0.3, -1.4], [0.5, 0.7], [1, 0]], lunge: [[0, 0], [0.3, -0.05], [0.5, 0.2], [1, 0]] },
+    // A ta-da backhand.
+    { dur: 0.28, hit: 0.5, twist: [[0, 0], [0.25, 0.3], [0.5, -0.3], [1, 0]], turn: [[0, 0], [0.25, 0.5], [0.5, -0.6], [1, 0]], reach: [[0, 0], [0.5, 0.3], [1, 0]] },
+  ],
+  havarti: [
+    // A downward slash of the flaming cheese knife.
+    { dur: 0.32, hit: 0.55, turn: [[0, 0], [0.3, -1.3], [0.55, 0.9], [1, 0]], lunge: [[0, 0], [0.55, 0.12], [1, 0]] },
+    // A level sweep of the blade.
+    { dur: 0.32, hit: 0.55, twist: [[0, 0], [0.3, 0.35], [0.55, -0.3], [1, 0]], turn: [[0, 0], [0.3, -0.6], [0.55, 0.7], [1, 0]] },
+    // A flick of the knife: an upward cut, or the flick that sends a cheese bolt once she's Aged.
+    { dur: 0.3, hit: 0.45, reach: [[0, 0], [0.3, -0.2], [0.45, 0.4], [1, 0]], turn: [[0, 0], [0.3, 0.3], [0.45, -0.4], [1, 0]] },
+  ],
+  paris: [
+    // A fencer's thrust: blade and body forward together.
+    { dur: 0.26, hit: 0.3, reach: [[0, 0], [0.3, 0.5], [1, 0]], lunge: [[0, 0], [0.3, 0.25], [1, 0]] },
+    // A deep lunge, after a half step back to gather it.
+    { dur: 0.3, hit: 0.4, lunge: [[0, 0], [0.15, -0.1], [0.4, 0.45], [1, 0]], reach: [[0, 0], [0.15, -0.1], [0.4, 0.7], [1, 0]], twist: [[0, 0], [0.4, -0.15], [1, 0]] },
+    // A moulinet: the blade circles up and over into a cut.
+    { dur: 0.3, hit: 0.5, turn: [[0, 0], [0.25, -1.3], [0.5, 0.6], [1, 0]], reach: [[0, 0], [0.5, 0.3], [1, 0]] },
+    // A flick of the wrist.
+    { dur: 0.24, hit: 0.4, turn: [[0, 0], [0.2, 0.4], [0.4, -0.5], [1, 0]], reach: [[0, 0], [0.4, 0.45], [1, 0]], lunge: [[0, 0], [0.4, 0.1], [1, 0]] },
+  ],
+  dabber: [
+    // The rig-bow kicks back as it fires.
+    { dur: 0.3, hit: 0.3, reach: [[0, 0], [0.3, -0.15], [0.45, 0.08], [1, 0]], lunge: [[0, 0], [0.45, -0.06], [1, 0]] },
+    // Fired from the hip, with a twitch.
+    { dur: 0.28, hit: 0.3, twist: [[0, 0], [0.3, 0.25], [0.5, -0.1], [1, 0]], reach: [[0, 0], [0.3, -0.1], [0.4, 0.1], [1, 0]], grow: [[0, 0], [0.3, -0.04], [1, 0]] },
+    // A hunch and a cough of smoke.
+    { dur: 0.3, hit: 0.4, grow: [[0, 0], [0.25, -0.08], [0.45, 0.06], [1, 0]], reach: [[0, 0], [0.25, -0.18], [0.45, 0.1], [1, 0]] },
+  ],
+  dongmaster: [
+    // A short, heavy jab.
+    { dur: 0.28, hit: 0.35, reach: [[0, 0], [0.35, 0.55], [1, 0]], lunge: [[0, 0], [0.35, 0.15], [1, 0]], twist: [[0, 0], [0.35, -0.18], [1, 0]] },
+    // A cross: the shoulder wound back, the whole body behind it.
+    { dur: 0.3, hit: 0.45, twist: [[0, 0], [0.2, -0.3], [0.45, 0.3], [1, 0]], reach: [[0, 0], [0.2, -0.1], [0.45, 0.7], [1, 0]], lunge: [[0, 0], [0.45, 0.2], [1, 0]] },
+    // An uppercut, from the knees.
+    { dur: 0.32, hit: 0.5, turn: [[0, 0], [0.25, 0.5], [0.5, -1.3], [1, 0]], lunge: [[0, 0], [0.25, -0.08], [0.5, 0.22], [1, 0]], grow: [[0, 0], [0.25, -0.06], [0.5, 0.1], [1, 0]] },
+    // A hook round the side.
+    { dur: 0.3, hit: 0.5, twist: [[0, 0], [0.25, 0.35], [0.5, -0.4], [1, 0]], turn: [[0, 0], [0.25, -0.3], [0.5, 0.2], [1, 0]], reach: [[0, 0], [0.5, 0.45], [1, 0]] },
+  ],
 };
+
+/** Each champion's signature blow (the first of their swings). */
+export const ATTACK: Record<ChampionId, Anim> = Object.fromEntries(Object.entries(ATTACKS).map(([id, list]) => [id, list[0]])) as Record<ChampionId, Anim>;
+
+/** The move for a champion's `n`th basic attack: their swings taken in turn. */
+export function attackAnim(champ: ChampionId, n: number): Anim {
+  const list = ATTACKS[champ];
+  return list[((n % list.length) + list.length) % list.length];
+}
 
 /** Casting an ability, unless the slot has its own move below. */
 export const CAST: Record<ChampionId, Anim> = {
