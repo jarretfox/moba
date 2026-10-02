@@ -61,6 +61,8 @@ export const FIRST_CAMP_SPAWN = 75;
 export const LEASH = 750;
 /** Share of max health a monster regains per second on its walk home. */
 const RESET_REGEN = 0.4;
+/** A foe still in the leash who's gone untargetable for a moment (a dodge, a blink): the camp waits this long for them before giving up. */
+export const RESET_PATIENCE = 3;
 /** Monsters toughen up as the match goes on, a little slower than Chuds. */
 const GROWTH_PER_MINUTE = 0.03;
 const CORPSE_TIME = 1.5;
@@ -81,6 +83,8 @@ export const GLOWCAP = { haste: 20, manaRegenPct: 0.01 };
 export class Monster extends Unit {
   readonly kind = 'monster';
   resetting = false;
+  /** Since when it's been waiting on a foe it can't hit right now; null when it isn't. */
+  private waitingSince: number | null = null;
 
   constructor(
     world: World,
@@ -110,8 +114,18 @@ export class Monster extends Unit {
     }
     if (dist(this.pos, this.spawnPos) > LEASH) return this.camp.reset(world);
     const target = this.camp.targetFor(world, this);
-    if (target) this.commandAttack(target);
-    else if (this.hp < this.stats.maxHp || dist(this.pos, this.spawnPos) > 10) this.camp.reset(world);
+    if (target) {
+      this.waitingSince = null;
+      return this.commandAttack(target);
+    }
+    if (this.hp >= this.stats.maxHp && dist(this.pos, this.spawnPos) <= 10) return;
+    // Someone who hit it is still about, just can't be hit this moment: hold on a little rather than heal to full.
+    if (this.camp.foeHidden(world)) {
+      this.waitingSince ??= world.time;
+      if (world.time - this.waitingSince < RESET_PATIENCE) return;
+    }
+    this.waitingSince = null;
+    this.camp.reset(world);
   }
 
   goHome(world: World): void {
@@ -173,16 +187,26 @@ export class Camp {
     let bestAt = -Infinity;
     for (const [id, at] of this.foes) {
       const u = world.getUnit(id);
-      if (!u || !this.fairGame(u)) {
+      if (!u || u.dead || dist(u.pos, this.spot.pos) > LEASH) {
         this.foes.delete(id);
         continue;
       }
+      if (!u.isTargetable()) continue; // still about: see foeHidden
       if (at > bestAt) {
         best = u;
         bestAt = at;
       }
     }
     return best;
+  }
+
+  /** A champion who hit the camp is still in its leash, but can't be hit right now. */
+  foeHidden(world: World): boolean {
+    for (const id of this.foes.keys()) {
+      const u = world.getUnit(id);
+      if (u && !u.dead && !u.isTargetable() && dist(u.pos, this.spot.pos) <= LEASH) return true;
+    }
+    return false;
   }
 
   /** The whole camp walks home and heals. */

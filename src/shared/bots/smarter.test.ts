@@ -111,7 +111,8 @@ describe('defending and the Warden', () => {
     const bots = mine.map((c) => new Bot(c, 'top', w));
     const calls = () => {
       for (let i = 0; i < 9; i++) w.step();
-      return bots.flatMap((b) => b.think(w)).filter((c) => c.k === 'attack' && c.target === warden.id).length;
+      // An attack once they can see it; until then (it's out in the dark), a walk to it.
+      return bots.flatMap((b) => b.think(w)).filter((c) => (c.k === 'attack' && c.target === warden.id) || (c.k === 'move' && Math.hypot(c.x - warden.pos.x, c.y - warden.pos.y) < 50)).length;
     };
     // Even numbers: no.
     expect(calls()).toBe(0);

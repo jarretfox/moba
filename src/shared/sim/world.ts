@@ -1,3 +1,4 @@
+import { aramScale } from './aramTuning';
 import { DT, type PlayerTeam, type Team } from '../constants';
 import { IRONSHOD, OATH, type ItemId } from '../items';
 import type { MapData } from '../map/mapData';
@@ -140,6 +141,7 @@ export class World {
     if (source) amount *= 1 - source.strongest('weaken');
     amount *= 1 + target.strongest('decreed'); // Royal Decree
     amount *= target.incomingDamageScale(this);
+    if (this.map.aram) amount *= aramScale(source, target); // ARAM-only champion adjustments
     amount *= itemDamageTaken(this, target, !!opts.basic);
     // Holy Wheel curdles armor and magic resist alike; the Warden's Link sunders armor.
     const resist = (type === 'physical' ? target.stats.armor * (1 - target.strongest('sundered')) : type === 'magic' ? target.stats.mr : 0) * (1 - target.strongest('curdled'));

@@ -14,7 +14,7 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 
 const BASE_STATS: Stats = {
   maxHp: 580, hpRegen: 3.4, maxMana: 300, manaRegen: 7,
-  ad: 58, ap: 0, armor: 24, mr: 30,
+  ad: 56, ap: 0, armor: 24, mr: 30,
   attackSpeed: 0.68, attackRange: 550, moveSpeed: 335,
 };
 const GROWTH: StatGrowth = { maxHp: 88, hpRegen: 0.55, maxMana: 40, manaRegen: 0.5, ad: 3.1, armor: 3.6, mr: 1, attackSpeedPct: 0.034 };
@@ -33,7 +33,7 @@ export const STICKY_ICKY = {
 };
 export const LIGHT_IT_UP = {
   cost: [50, 60, 70, 80], cooldown: [12, 11, 10, 9], castTime: 0.2, range: 1100,
-  base: [20, 35, 50, 65], perStack: [15, 20, 25, 30], bonusAdRatio: 0.35, apRatio: 0.2,
+  base: [20, 35, 50, 65], perStack: [12, 17, 22, 27], bonusAdRatio: 0.35, apRatio: 0.2,
 };
 export const CLOUD_NINE = {
   cost: [100, 100, 100], cooldown: [90, 80, 70], duration: 6, range: 300, ad: [25, 40, 55],

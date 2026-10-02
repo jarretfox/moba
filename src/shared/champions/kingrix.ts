@@ -15,7 +15,7 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 // Every number for this champion lives here. Arrays are per rank (rank 1 first).
 
 const BASE_STATS: Stats = {
-  maxHp: 660, hpRegen: 3.5, maxMana: 380, manaRegen: 7.5,
+  maxHp: 680, hpRegen: 3.5, maxMana: 380, manaRegen: 7.5,
   ad: 60, ap: 0, armor: 28, mr: 30,
   attackSpeed: 0.66, attackRange: 450, moveSpeed: 335,
 };

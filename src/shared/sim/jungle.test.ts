@@ -6,7 +6,7 @@ import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
 import { MAP, lanePath, type CampKind } from '../map/mapData';
 import { add, dist } from '../math';
 import { Chud } from './chud';
-import { BUFFS, CAMPS, EMBER, FIRST_CAMP_SPAWN, Jungle, LEASH, MONSTERS, Monster, type Camp } from './jungle';
+import { BUFFS, CAMPS, EMBER, FIRST_CAMP_SPAWN, Jungle, LEASH, MONSTERS, Monster, RESET_PATIENCE, type Camp } from './jungle';
 import { STARTING_GOLD } from './progression';
 import { spawnStructures } from './structure';
 import { World } from './world';
@@ -90,6 +90,28 @@ describe('jungle camps', () => {
     expect(monster.resetting).toBe(false);
     expect(monster.hp).toBe(monster.stats.maxHp);
     expect(dist(monster.pos, toad.spot.pos)).toBeLessThan(40);
+  });
+
+  it("wait a moment for a foe who's gone untargetable, rather than heal to full", () => {
+    const { world, camp } = setup();
+    const moss = camp('mossback');
+    const m = hunter(world, moss);
+    const monster = moss.members[0];
+    world.damage(m, monster, 600, 'true');
+    run(world, 0.5);
+    const hurt = monster.hp;
+    m.addStatus(world, 'untargetable', 1); // a dodge, a blink
+    run(world, 0.8);
+    expect(monster.resetting).toBe(false);
+    expect(monster.hp).toBe(hurt);
+    run(world, 0.5);
+    world.damage(m, monster, 10, 'true');
+    run(world, 0.5);
+    expect(monster.order.kind === 'attack' && monster.order.targetId).toBe(m.id);
+    // One who stays out of reach too long: the camp gives up.
+    m.addStatus(world, 'untargetable', RESET_PATIENCE + 2);
+    run(world, RESET_PATIENCE + 0.5);
+    expect(monster.resetting || monster.hp === monster.stats.maxHp).toBe(true);
   });
 
   it('also give up when dragged past the leash themselves', () => {

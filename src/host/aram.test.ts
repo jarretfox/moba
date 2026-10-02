@@ -12,6 +12,9 @@ import { ARAM, freshMatch } from '../shared/sim/match';
 import { RELIC, Relic } from '../shared/sim/relics';
 import { ARAM_REROLLS, LOCAL_CONN, type HostMessage, type LobbyState } from '../shared/protocol';
 import { HostCore } from './hostCore';
+import { Paris } from '../shared/champions/paris';
+import { Marksman } from '../shared/champions/marksman';
+import { ARAM_TUNING } from '../shared/sim/aramTuning';
 
 function host() {
   const sent: { to: string; msg: HostMessage }[] = [];
@@ -82,6 +85,21 @@ describe('the Howling Hollow (ARAM map)', () => {
       Math.random = dice;
     }
   }, 60000);
+});
+
+describe('ARAM champion adjustments', () => {
+  it('apply on the Hollow only', () => {
+    const hit = (aram: boolean) => {
+      const { world } = freshMatch(aram ? 'aram' : 'rift');
+      const paris = world.add(new Paris(world, TEAM.blue));
+      const foe = world.add(new Marksman(world, TEAM.red));
+      paris.pos = { x: 1500, y: 1700 };
+      foe.pos = { x: 1600, y: 1700 };
+      return world.damage(paris, foe, 100, 'true');
+    };
+    expect(hit(false)).toBe(100);
+    expect(hit(true)).toBeCloseTo(100 * (ARAM_TUNING.paris?.dealt ?? 1), 5);
+  });
 });
 
 describe('ARAM lobbies', () => {

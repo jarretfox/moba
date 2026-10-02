@@ -28,7 +28,8 @@ export class Pathfinder {
   /** Waypoints from start to (the nearest walkable spot to) goal, excluding start. Empty if unreachable. */
   find(start: Vec2, goal: Vec2, maxExpansions = 40000): Vec2[] {
     const grid = this.grid;
-    const target = grid.nearestWalkable(goal);
+    // A blocked goal (a tower, the Warden): the nearest open spot, on the side we're coming from.
+    const target = grid.nearestWalkable(goal, 40, start);
     if (!target) return [];
     if (grid.lineWalkable(start, target)) return [target];
 

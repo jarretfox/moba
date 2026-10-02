@@ -2,6 +2,8 @@ import { dist, type Vec2 } from '../math';
 import type { MapData } from './mapData';
 import { shapeContains } from './shapes';
 
+/** Distances this close are a tie (mirror images differ by rounding). */
+const TIE = 1e-6;
 /** How much open ground a cell's center needs round it to be walked on: about a body's width from walls. */
 export const CLEARANCE = 30;
 const CLEARANCE_RING: readonly (readonly [number, number])[] = Array.from({ length: 12 }, (_, i) => {
@@ -99,28 +101,44 @@ export class NavGrid {
   }
 
   /** The closest walkable spot to p — p itself if it's already walkable. */
-  nearestWalkable(p: Vec2, maxRings = 40): Vec2 | null {
+  /**
+   * The walkable cell center nearest `p` (or `p` itself, if it's walkable). Mirrored inputs give mirrored
+   * answers, so neither side of the map is favored: it keeps looking until no unchecked cell could be
+   * nearer, and a tie goes to the spot nearer `prefer` (say, where the walker is coming from), or else
+   * nearer the middle of the map. (It used to take the first of a tie in reading order, left to right,
+   * and stop at the first ring round `p`'s cell, so a blocked goal like a tower led blue's bots and red's
+   * to different sides of it.)
+   */
+  nearestWalkable(p: Vec2, maxRings = 40, prefer?: Vec2): Vec2 | null {
     if (this.isWalkable(p)) return { x: p.x, y: p.y };
     const ox = this.cellX(p.x);
     const oy = this.cellY(p.y);
+    const midX = (this.cols * this.cellSize) / 2;
+    const midY = (this.rows * this.cellSize) / 2;
+    const tieBreak = (c: Vec2) => (prefer ? dist(c, prefer) : Math.abs(c.x - midX) * 1e4 + Math.abs(c.y - midY));
+    let best: Vec2 | null = null;
+    let bestD = Infinity;
+    let bestTie = Infinity;
     for (let r = 1; r <= maxRings; r++) {
-      let best: Vec2 | null = null;
-      let bestD = Infinity;
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
           if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue; // ring perimeter only
           if (!this.isWalkableCell(ox + dx, oy + dy)) continue;
           const c = this.cellCenter(ox + dx, oy + dy);
           const d = dist(c, p);
-          if (d < bestD) {
-            bestD = d;
+          if (d > bestD + TIE) continue;
+          const tie = tieBreak(c);
+          if (d < bestD - TIE || tie < bestTie) {
             best = c;
+            bestD = d;
+            bestTie = tie;
           }
         }
       }
-      if (best) return best;
+      // The next ring's cells are all at least this far from p: none of them can beat what we have.
+      if (best && (r + 0.5) * this.cellSize > bestD + TIE) return best;
     }
-    return null;
+    return best;
   }
 
   /** True if a unit can walk in a straight line from a to b. */

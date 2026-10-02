@@ -60,6 +60,10 @@ const UNDER_ATTACK = 900;
 const DEFEND_REACH = 3200;
 /** The jungler heads home a little sooner: camps hit back. */
 const JUNGLE_RETREAT_HP = 0.35;
+/** The jungler starts a camp only this healthy (below it, it helps its lane)... */
+const JUNGLE_START_HP = 0.6;
+/** ...and finishes one that's down to half its health unless it's this low (walking off resets the camp). */
+const JUNGLE_FINISH_HP = 0.15;
 
 /**
  * Runs a tick of bot decisions. Every bot decides from the same world state before any orders go in,
@@ -171,7 +175,8 @@ export class Bot {
     // ARAM: nobody goes home much. Fight it out; only the nearly dead back off.
     const retreatAt = this.aram ? ARAM_RETREAT_HP : this.jungler ? JUNGLE_RETREAT_HP : RETREAT_HP;
     const pressureAt = this.aram ? ARAM_RETREAT_HP : RETREAT_HP_UNDER_PRESSURE;
-    if (hp < retreatAt || (nearest && hp < pressureAt) || (!nearest && this.wantsToShop())) this.state = 'retreat';
+    const finishing = this.jungler && !nearest && hp > JUNGLE_FINISH_HP && this.campNearlyDone(world);
+    if (!finishing && (hp < retreatAt || (nearest && hp < pressureAt) || (!nearest && this.wantsToShop()))) this.state = 'retreat';
     if (this.state === 'retreat') return this.retreat(world, out, hp, nearest);
 
     // A skillshot coming our way: step out of its path (about half the time).
@@ -186,11 +191,11 @@ export class Bot {
 
     // The team calls the Warden when it has the numbers.
     const warden = this.wardenCall(world, hp);
-    if (warden) return this.attack(out, warden);
+    if (warden) return this.engage(world, out, warden);
 
     // A Sewer Crab close by with nobody around to contest it: take it (the jungler goes further for one).
     const crab = !nearest && hp > 0.5 ? world.units().find((u) => u instanceof Crab && !u.dead && dist(u.pos, me.pos) < (this.jungler ? 2600 : 900)) : undefined;
-    if (crab) return this.attack(out, crab);
+    if (crab) return this.engage(world, out, crab);
 
     // Being hit by a champion we don't want to fight: give ground.
     const hitBy = foes.find((f) => (me.championHits.get(f.id) ?? -Infinity) > world.time - 1);
@@ -208,12 +213,12 @@ export class Bot {
 
     // The jungler clears its side's camps while any are up; otherwise it helps its lane.
     if (this.jungler && !nearest && world.time < GROUP_UP_AT) {
-      const camp = this.nextCamp(world);
+      const camp = this.currentMonster(world) ?? (hp >= JUNGLE_START_HP ? this.nextCamp(world) : null);
       if (camp) {
         // Basic abilities on the camp; the ultimate's saved for champions.
         const spell = dist(camp.pos, me.pos) < 650 ? PROFILES[me.info.id].fight(this.ctx(world), camp) : null;
         if (spell && !(spell.k === 'cast' && spell.slot === 3)) out.push(spell);
-        return this.attack(out, camp);
+        return this.engage(world, out, camp);
       }
     }
 
@@ -244,6 +249,8 @@ export class Bot {
   /** One of our structures with enemy champions at it, close enough to come and help with. */
   private underAttack(world: World): Vec2 | null {
     const me = this.champion;
+    // ARAM: there's one lane and everyone's in it already.
+    if (this.aram) return null;
     let best: Structure | null = null;
     let bestD = DEFEND_REACH;
     for (const u of world.units()) {
@@ -276,6 +283,22 @@ export class Bot {
     const level = ours.reduce((s, u) => s + (u as Champion).level, 0) / ours.length;
     const health = ours.reduce((s, u) => s + u.hp / u.stats.maxHp, 0) / ours.length;
     return level >= 9 && health >= 0.6 ? warden : null;
+  }
+
+  /** The camp monster we're fighting, if we're on one: we stick to it (switching would cancel the swing). */
+  private currentMonster(world: World): Monster | null {
+    const me = this.champion;
+    if (me.order.kind !== 'attack') return null;
+    const u = world.getUnit(me.order.targetId);
+    return u instanceof Monster && !u.dead && u.isTargetable() && u.camp.spot.side === me.team ? u : null;
+  }
+
+  /** The camp we're on is down to half its health: worth finishing rather than walking off and letting it heal. */
+  private campNearlyDone(world: World): boolean {
+    const m = this.currentMonster(world);
+    if (!m) return false;
+    const left = m.camp.members.filter((u) => !u.dead);
+    return left.reduce((s, u) => s + u.hp, 0) < 0.5 * m.camp.members.reduce((s, u) => s + u.stats.maxHp, 0);
   }
 
   /** The jungler's next camp: the nearest monster on our side that's up. */
@@ -454,6 +477,12 @@ export class Bot {
   private attack(out: Command[], target: Unit): void {
     out.push({ k: 'attack', target: target.id });
     this.lastMove = null;
+  }
+
+  /** Attacks a monster we can see; one out in the dark (a camp nobody's near) we walk to first, since an attack order needs sight. */
+  private engage(world: World, out: Command[], target: Unit): void {
+    if (world.vision.canSee(this.champion.team, target)) return this.attack(out, target);
+    this.moveTo(out, target.pos);
   }
 
   private moveTo(out: Command[], p: Vec2, urgent = false): void {

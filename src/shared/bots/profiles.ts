@@ -401,8 +401,13 @@ const bigwhale: BotProfile = {
       if (caught >= 2 || hpPct(foe) < 0.45) return cast(3, foe.pos);
     }
     if (ready(ctx, 2) && d < 850) return cast(2, lead(foe, 0.4));
+    // Yacht Party: invite whoever's getting hurt (he'd invite them anyway).
+    if (ready(ctx, 1)) {
+      const guest = world.units().find((u) => u.team === me.team && u !== me && u.kind === 'champion' && !u.dead && dist(u.pos, me.pos) < 700 && hpPct(u) < 0.65);
+      if (guest) return cast(1, guest.pos);
+      if (hpPct(me) < 0.7) return cast(1, me.pos);
+    }
     if (ready(ctx, 0) && d < 800) return cast(0, lead(foe, 0.4));
-    if (ready(ctx, 1) && hpPct(me) < 0.7) return cast(1, me.pos);
     return null;
   },
   escape(ctx) {

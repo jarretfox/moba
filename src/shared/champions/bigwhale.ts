@@ -14,8 +14,8 @@ import { perRank, type ChampionInfo, type StatGrowth } from './types';
 // ─── Tuning ──────────────────────────────────────────────────────────────────
 
 const BASE_STATS: Stats = {
-  maxHp: 600, hpRegen: 4, maxMana: 380, manaRegen: 8,
-  ad: 52, ap: 0, armor: 28, mr: 30,
+  maxHp: 640, hpRegen: 4, maxMana: 380, manaRegen: 8,
+  ad: 55, ap: 0, armor: 30, mr: 30,
   attackSpeed: 0.62, attackRange: 450, moveSpeed: 330,
 };
 const GROWTH: StatGrowth = { maxHp: 92, hpRegen: 0.6, maxMana: 40, manaRegen: 0.6, ad: 2.6, armor: 4, mr: 1.2, attackSpeedPct: 0.018 };
@@ -25,16 +25,16 @@ const COIN_SPEED = 1400;
 /** Tipping Culture: allies near him get tipped for every last hit, whether they want it or not. */
 export const TIPPING = { range: 800, gold: 4 };
 export const MAKE_IT_RAIN = {
-  cost: [60, 65, 70, 75], cooldown: [8, 7.5, 7, 6.5], castTime: 0.25,
-  range: 800, radius: 230, delay: 0.3, damage: [60, 95, 130, 165], apRatio: 0.55, slow: 0.35, slowFor: 1.5,
+  cost: [60, 65, 70, 75], cooldown: [7, 6.5, 6, 5.5], castTime: 0.25,
+  range: 800, radius: 230, delay: 0.3, damage: [80, 115, 150, 185], apRatio: 0.55, slow: 0.35, slowFor: 1.5,
 };
 export const YACHT_PARTY = {
   cost: [70, 70, 70, 70], cooldown: [16, 15, 14, 13], castTime: 0,
-  range: 700, grab: 250, shield: [70, 100, 130, 160], apRatio: 0.5, lasts: 3, speed: 0.15, speedFor: 2,
+  range: 700, grab: 250, shield: [80, 110, 140, 170], apRatio: 0.5, lasts: 3, speed: 0.15, speedFor: 2,
 };
 export const HOSTILE_TAKEOVER = {
   cost: [80, 80, 80, 80], cooldown: [16, 15, 14, 13], castTime: 0.2,
-  range: 900, width: 80, speed: 1400, damage: [50, 80, 110, 140], apRatio: 0.4, stun: [1, 1.1, 1.2, 1.3],
+  range: 900, width: 80, speed: 1400, damage: [60, 90, 120, 150], apRatio: 0.4, stun: [1, 1.1, 1.2, 1.3],
 };
 export const SPLASH_ZONE = {
   cost: [100, 100, 100], cooldown: [110, 95, 80], castTime: 0.2,
