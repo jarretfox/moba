@@ -27,7 +27,8 @@ import { FxLayer } from './render/fx';
 import { brazierFire, championDeath, footstep, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { FIRE_HEIGHT, propSpots } from './render/props';
 import { NightLife, duskAt } from './render/nightlife';
-import { Lighting, nightAt, skyAt } from './render/lighting';
+import { Lighting, nightAt, skyAt, type Light } from './render/lighting';
+import { FountainView, crystalSpot } from './render/fountain';
 import { WeatherView } from './render/weather';
 import { Critters } from './render/critters';
 import { Ripple } from './render/ripple';
@@ -182,6 +183,9 @@ export class GameClient {
   private lastFight = -Infinity;
   /** Old Wick at each fountain (blue's, then red's), and how yours is feeling about you. */
   private readonly wicks: Shopkeeper[];
+  /** Each team's fountain (blue's, then red's): the platform's ring and the crystal that guards it. */
+  private readonly fountains: FountainView[];
+  private fountainsFor: Team | null = null;
   private readonly wickMood = new WickMood();
   private wickN = 0;
   /** Your inventory, stats and max health last frame, to catch purchases and sales landing. */
@@ -297,6 +301,13 @@ export class GameClient {
       this.unitLayer,
       this.projectileLayer,
     );
+    this.fountains = [TEAM.blue, TEAM.red].map((team) => {
+      const view = new FountainView(MAP.spawns[team], crystalSpot(MAP, team));
+      this.underLayer.addChildAt(view.ground, 0);
+      this.unitLayer.addChild(view.body);
+      this.lighting.addLight(view.light);
+      return view;
+    });
     this.wicks = [TEAM.blue, TEAM.red].map((team) => {
       const at = wickSpot(MAP, team);
       const wick = new Shopkeeper(at.x, at.y, at.facing, this.fx);
@@ -314,7 +325,7 @@ export class GameClient {
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
     this.nightLife = new NightLife(MAP, this.lighting.lanterns);
-    this.emissive.addChild(this.nightLife.glow, ...this.wicks.map((w) => w.glow), this.beams, this.fx.container, this.bubbles.container);
+    this.emissive.addChild(this.nightLife.glow, ...this.wicks.map((w) => w.glow), ...this.fountains.map((f) => f.glow), this.beams, this.fx.container, this.bubbles.container);
     this.bloom.blendMode = 'add';
     this.bloom.alpha = 0.75;
     // The blend has to be on the blur too: a filtered sprite is laid down with its filter's blend, and the
@@ -552,7 +563,7 @@ export class GameClient {
     this.weather?.update(dt, w, h, this.camera, this.wind);
     if (this.weather?.snowy) this.breathe();
     const sky = this.weather ? this.weather.sky(skyAt(matchTime)) : skyAt(matchTime);
-    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, this.fx.lights, sky, duskAt(matchTime));
+    this.lighting.update(this.app.renderer, this.worldLayer, w, h, dt, this.ents.values(), this.myTeam, [...this.fx.lights, ...this.recallLights()], sky, duskAt(matchTime));
     this.ambience.setNight(nightAt(matchTime));
     this.sound.setNight(nightAt(matchTime));
     this.nightLife.update(dt, matchTime, nightAt(matchTime), { x: this.camera.x, y: this.camera.y, w: w / this.camera.zoom, h: h / this.camera.zoom });
@@ -574,6 +585,11 @@ export class GameClient {
     this.drawTargetMark(dt, me);
 
     this.updateWicks(dt, me);
+    if (this.fountainsFor !== this.myTeam) {
+      this.fountainsFor = this.myTeam;
+      this.fountains.forEach((f, i) => f.paint(i + 1 === this.myTeam || this.myTeam === TEAM.neutral && i === 0 ? PALETTE.ally : PALETTE.enemy));
+    }
+    for (const f of this.fountains) f.update(dt);
     this.chudChatter(dt);
     this.bubbles.update(dt, (id) => {
       const e = this.ents.get(id);
@@ -589,6 +605,7 @@ export class GameClient {
     const latest = this.buffer.latest;
     this.hud.update(latest?.me, latest?.ents.find((e) => e.id === this.myId), `tick ${latest?.tick ?? 0} · ${Math.round(this.app.ticker.FPS)} fps`);
     this.hud.setClock(latest?.time ?? 0, latest?.nextWave);
+    this.showStealth(me);
     if (this.myTeam !== TEAM.neutral) this.hud.setKills(this.teamKills[this.myTeam], this.teamKills[this.myTeam === 1 ? 2 : 1]);
     this.hud.setWarden(latest?.warden, this.myTeam);
     this.hud.setScores(latest?.scores, this.myTeam, this.myId, this.scoresHeld, latest?.time ?? 0, latest?.winner);
@@ -874,6 +891,11 @@ export class GameClient {
         if (ev.kind !== 'line') (this.views.get(u.id) as UnitView | undefined)?.smile?.(1.2);
         return;
       }
+      case 'zap': {
+        this.fountains[ev.team - 1]?.zap(ev.x2, ev.y2);
+        if (Math.hypot(ev.x2 - (this.ents.get(this.myId)?.x ?? -1e9), ev.y2 - (this.ents.get(this.myId)?.y ?? -1e9)) < 60) this.camera.shake(10);
+        return;
+      }
       case 'ping': {
         const info = PINGS[ev.kind];
         this.pings.push({ x: ev.x, y: ev.y, kind: ev.kind, age: 0, at: performance.now() / 1000 });
@@ -884,7 +906,7 @@ export class GameClient {
         if (!this.replay && ev.what === 'warden') this.tally.warden[ev.killer] = (this.tally.warden[ev.killer] ?? 0) + 1;
         if (!this.replay && ev.what === 'champion' && !ev.killerChamp) this.tally.executed[ev.victim] = (this.tally.executed[ev.victim] ?? 0) + 1;
         this.hud.pushFeed(ev, ev.team === TEAM.neutral ? null : ev.team === this.myTeam);
-        if (ev.what === 'champion' && ev.team !== TEAM.neutral && !this.replay) this.teamKills[ev.team]++;
+        if (ev.what === 'champion' && ev.killerChamp && ev.team !== TEAM.neutral && !this.replay) this.teamKills[ev.team]++;
         // Whoever got it grins.
         if (ev.what === 'champion') {
           const killer = [...this.ents.values()].find((e) => e.k === 'champion' && e.name === ev.killer);
@@ -1260,6 +1282,29 @@ export class GameClient {
       g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 3, color: ours ? 0xffb0a8 : 0xd6ecff, alpha: 0.85 * pulse, cap: 'round' });
       g.circle(t.x, t.y, t.r + 10).stroke({ width: 3, color, alpha: 0.7 * pulse });
     }
+  }
+
+  /** Champions recalling light up the ground round them, brighter and wider as it builds. */
+  private recallLights(): Light[] {
+    const out: Light[] = [];
+    for (const e of this.ents.values()) {
+      if (e.k !== 'champion' || e.dead || !e.st?.includes('recall')) continue;
+      const k = (this.views.get(e.id) as UnitView | undefined)?.recallProgress ?? 0;
+      out.push({ x: e.x, y: e.y, r: 160 + 280 * k * k, color: 0x7cc4ff, alpha: 0.2 + 0.6 * k * k });
+    }
+    return out;
+  }
+
+  /** Whether (and how) you're hidden right now, shown at the edges of the screen. */
+  private showStealth(me: EntitySnap | undefined): void {
+    if (!me || me.dead || this.replay) return this.hud.setStealth(0, '');
+    const st = me.st ?? [];
+    // Marked by a Royal Decree or bleeding from a Maul: everyone can see you anyway.
+    if (st.includes('decreed') || st.includes('bleed')) return this.hud.setStealth(0, '');
+    const unseen = st.includes('vanished') ? 'Unseen' : st.includes('hazed') ? 'In the haze' : st.includes('underground') ? 'Down below' : st.includes('burrowed') ? 'Burrowed' : '';
+    if (unseen) this.hud.setStealth(2, unseen);
+    else if (this.visionGrid.brushAt({ x: me.x, y: me.y }) > 0) this.hud.setStealth(1, 'In the grass');
+    else this.hud.setStealth(0, '');
   }
 
   /** Renders the glowing layer (no numbers or bubbles) into a small texture that's blurred over the view. */

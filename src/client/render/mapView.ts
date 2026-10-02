@@ -813,22 +813,30 @@ function paintRock(g: Graphics, top: Graphics, outline: Pts, random: () => numbe
 
 // ─── Brush ────────────────────────────────────────────────────────────────────
 
-/** Tall grass: clumps of blades from the back row to the front, so it reads as somewhere to hide. */
+/**
+ * Tall grass: thick clumps of long blades from the back row to the front, about chest-high on a champion,
+ * with seed heads on the tallest, so it reads as somewhere to hide. The back row is kept shorter, so the
+ * grass doesn't stick up much past the edge of where it actually hides you.
+ */
 function paintBrush(g: Graphics, s: Shape, random: () => number): void {
   const outline = roughen(shapeOutline(s, 14, 2), 10, 1 / 50, 80);
   const b = polyBounds(outline);
-  const spacing = 27;
-  for (let y = b.y + 8; y <= b.y + b.h + 4; y += spacing * 0.6) {
+  const spacing = 24;
+  for (let y = b.y + 8; y <= b.y + b.h + 4; y += spacing * 0.55) {
     for (let x = b.x; x <= b.x + b.w; x += spacing) {
       const px = x + (random() - 0.5) * spacing * 0.8;
       const py = y + (random() - 0.5) * 8;
       if (!insidePoly(outline, px, py)) continue;
-      const n = 4 + Math.floor(random() * 3);
+      const n = 5 + Math.floor(random() * 3);
+      const tallest = Math.min(36 + random() * 28, py - b.y + 26);
       for (let i = 0; i < n; i++) {
         const k = i / (n - 1) - 0.5;
-        const h = 18 + random() * 14;
+        const h = tallest * (0.7 + random() * 0.3) * (1 - Math.abs(k) * 0.35);
         const color = shade(PAL.brushBlade[Math.floor(random() * 3)], 0.3 - (i / n) * 0.35);
-        blade(g, px + k * 12, py, h, k * h * 0.9 + (random() - 0.5) * 6, 5 + random() * 2, color);
+        const lean = k * h * 0.75 + (random() - 0.5) * 8;
+        blade(g, px + k * 14, py, h, lean, 6 + random() * 2.5, color);
+        // Seed heads on some of the tall ones.
+        if (h > 44 && random() < 0.14) g.ellipse(px + k * 14 + lean, py - h + 2, 2.4, 5).fill(shade(0xb8b060, (random() - 0.5) * 0.2));
       }
     }
   }

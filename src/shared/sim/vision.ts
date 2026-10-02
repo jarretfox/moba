@@ -189,6 +189,8 @@ export class Vision {
         return byId(ev.id);
       case 'fx':
         return ev.team === team || this.visible[team][this.grid.cellOf(ev)] === 1;
+      case 'zap':
+        return ev.team === team || this.visible[team][this.grid.cellOf({ x: ev.x2, y: ev.y2 })] === 1;
     }
   }
 

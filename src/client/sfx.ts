@@ -141,6 +141,8 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       const s = FX_SOUNDS[ev.fx];
       return s ? { name: s[0], at: { x: ev.x, y: ev.y }, gain: s[1] } : null;
     }
+    case 'zap':
+      return { name: 'tower', at: { x: ev.x2, y: ev.y2 }, gain: 0.9 };
     case 'heal':
       return null;
     case 'emote':

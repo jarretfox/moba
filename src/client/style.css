@@ -137,6 +137,73 @@ kbd {
   background: radial-gradient(ellipse at center, transparent 48%, rgba(225, 30, 40, 0.8) 100%);
 }
 
+/* You're hidden: the edges darken (deeply, with a violet shimmer, when nobody can see you; a little, with
+   a green tinge, in tall grass), and the top of the screen says so. */
+.stealth {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease-out;
+}
+
+.stealth::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(8, 10, 22, 0.55) 72%, rgba(18, 8, 34, 0.86) 100%);
+}
+
+.stealth.level-1 {
+  opacity: 0.55;
+}
+
+.stealth.level-1::before {
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(10, 30, 12, 0.45) 82%, rgba(6, 22, 8, 0.75) 100%);
+}
+
+.stealth.level-2 {
+  opacity: 1;
+}
+
+.stealth.level-2::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 90px 10px rgba(170, 120, 255, 0.28);
+  animation: stealth-shimmer 2.4s ease-in-out infinite;
+}
+
+@keyframes stealth-shimmer {
+  50% { box-shadow: inset 0 0 130px 20px rgba(170, 120, 255, 0.12); }
+}
+
+.stealth-tag {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 14px 4px;
+  border-radius: 999px;
+  background: rgba(14, 10, 26, 0.72);
+  border: 1px solid rgba(190, 150, 255, 0.45);
+  color: #d9c6ff;
+  font: 15px var(--font-display);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(170, 120, 255, 0.8);
+}
+
+.stealth.level-1 .stealth-tag {
+  border-color: rgba(140, 220, 120, 0.4);
+  color: #c8f0b8;
+  text-shadow: 0 0 8px rgba(120, 220, 100, 0.6);
+}
+
+.stealth-tag:empty {
+  display: none;
+}
+
 /* Pulses red at the edges while you're low on health. */
 .danger {
   position: absolute;

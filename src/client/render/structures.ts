@@ -338,3 +338,159 @@ export function drawFortRuin(g: Graphics, r: number): void {
     inked(g, [x - 0.1 * r, y, x - 0.08 * r, y - (0.2 + random() * 0.2) * r, x + 0.02 * r, y - 0.12 * r, x + 0.1 * r, y - (0.15 + random() * 0.2) * r, x + 0.12 * r, y], STONE_DARK, 2.5, INK_STONE);
   }
 }
+
+/** How battered a building looks for the health it has left: 0 sound, 1 cracked, 2 broken, 3 breached. */
+export function wearStage(health: number): 0 | 1 | 2 | 3 {
+  return health > 0.75 ? 0 : health > 0.5 ? 1 : health > 0.25 ? 2 : 3;
+}
+
+/** A crack: a jagged ink line wandering from (x, y), with a branch or two. */
+function crack(g: Graphics, x: number, y: number, len: number, angle: number, random: () => number, width = 2): void {
+  const pts: Pts = [x, y];
+  let a = angle;
+  const steps = 5 + Math.floor(random() * 3);
+  for (let i = 1; i <= steps; i++) {
+    a += (random() - 0.5) * 1.1;
+    x += Math.cos(a) * (len / steps);
+    y += Math.sin(a) * (len / steps);
+    pts.push(x, y);
+    if (i === 2 && random() < 0.7) inkLine(g, x, y, x + Math.cos(a + 0.9) * len * 0.3, y + Math.sin(a + 0.9) * len * 0.3, width * 0.7, { color: 0x101114, alpha: 0.8, tip: 0.1 }, 0.1);
+  }
+  inkStroke(g, pts, width, { color: 0x101114, alpha: 0.9, tip: 0.15, seed: Math.floor(len) });
+  // The lit lip of the crack, a touch below it.
+  inkStroke(g, pts.map((v, i) => v + (i % 2 ? 1.6 : 0.8)), width * 0.5, { color: 0xb8bec8, alpha: 0.35, tip: 0.1, seed: 3 });
+}
+
+/** Broken stones and dust heaped at the foot. */
+function rubble(g: Graphics, r: number, n: number, spread: number, random: () => number): void {
+  for (let i = 0; i < n; i++) {
+    const side = random() < 0.5 ? -1 : 1;
+    const x = side * (0.45 + random() * spread) * r;
+    const y = (0.12 + random() * 0.2) * r;
+    inked(g, smooth(shard(x, y, (0.05 + random() * 0.07) * r, random, 5, 0.6), true, 1), random() < 0.5 ? STONE : STONE_DARK, 1.6, INK_STONE);
+  }
+}
+
+/** Soot from fire and blasts. */
+function soot(g: Graphics, x: number, y: number, rx: number, ry: number, seed: number, alpha = 0.35): void {
+  g.poly(blob(x, y, rx, ry, seed, 0.35, 14)).fill({ color: 0x0b0b0d, alpha });
+}
+
+/**
+ * The damage on a standing building, drawn over it: a Shootie cracks, loses chunks of its parapet, gets
+ * blackened and finally breached; an Oakner's bark is gashed and its branches snap; Da Base's walls crack
+ * and crumble. `stage` comes from wearStage.
+ */
+export function drawWear(g: Graphics, role: string, r: number, stage: number): void {
+  if (stage <= 0) return;
+  const random = rng(400 + stage);
+  if (role === 'oakner') return oakWear(g, r, stage, random);
+  if (role === 'daBase') return fortWear(g, r, stage, random);
+  const H = BUILDING.shootie.body * r;
+  const rxT = 0.68 * r;
+  const ryT = 0.26 * r;
+  // Cracks down the wall, more and longer as it goes.
+  const cracks: [number, number, number, number][] = [
+    [-0.3, -1.9, 0.9, 1.75],
+    [0.42, -1.6, 0.7, 1.95],
+    [-0.1, -0.9, 0.6, 1.3],
+    [0.2, -2.1, 1.1, 1.6],
+    [-0.5, -1.2, 0.8, 1.2],
+    [0.05, -0.4, 0.5, 2.6],
+  ];
+  const shown = stage === 1 ? 2 : stage === 2 ? 4 : 6;
+  for (let i = 0; i < shown; i++) {
+    const [x, y, len, a] = cracks[i];
+    crack(g, x * r, y * r, len * r, a, random, stage === 3 ? 2.6 : 2.1);
+  }
+  // Chipped stones: pale scars where facing broke away.
+  for (let i = 0; i < stage * 3; i++) {
+    const x = (random() - 0.5) * 1.1 * r;
+    const y = -(0.2 + random() * 1.8) * r;
+    inked(g, smooth(shard(x, y, (0.05 + random() * 0.05) * r, random, 5, 0.6), true, 1), 0x9aa0a8, 1.2, STONE_DARK, 0.85);
+  }
+  if (stage >= 2) {
+    // A bite out of the parapet: the front battlements gone on one side, the stone behind jagged.
+    const bite: Pts = [];
+    for (let i = 0; i <= 8; i++) {
+      const a = Math.PI * (0.08 + (i / 8) * 0.34);
+      const d = i === 0 || i === 8 ? 0 : 0.08 + random() * 0.16;
+      bite.push(Math.cos(a) * (rxT + 0.06 * r), -H + Math.sin(a) * (ryT + 0.03 * r) - 0.22 * r + d * r);
+    }
+    bite.push(Math.cos(Math.PI * 0.42) * rxT, -H + Math.sin(Math.PI * 0.42) * ryT + 0.18 * r, Math.cos(Math.PI * 0.08) * rxT, -H + Math.sin(Math.PI * 0.08) * ryT + 0.14 * r);
+    inked(g, bite, STONE_DARK, 2.2, INK_STONE);
+    soot(g, 0.3 * r, -H + 0.25 * r, 0.32 * r, 0.22 * r, 5);
+    soot(g, -0.35 * r, -0.9 * r, 0.22 * r, 0.3 * r, 9, 0.25);
+    rubble(g, r, 5, 0.3, random);
+  }
+  if (stage >= 3) {
+    // A breach through the wall: dark inside, broken stone round the edge, the door hanging.
+    const hole = blob(-0.18 * r, -1.0 * r, 0.24 * r, 0.32 * r, 77, 0.4, 14);
+    soot(g, -0.18 * r, -1.0 * r, 0.42 * r, 0.5 * r, 13, 0.4);
+    inked(g, hole, 0x0c0c10, 2.5, INK_STONE);
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + random() * 0.4;
+      inked(g, smooth(shard(-0.18 * r + Math.cos(a) * 0.26 * r, -1.0 * r + Math.sin(a) * 0.34 * r, 0.06 * r, random, 5, 0.6), true, 1), STONE_LIGHT, 1.4, INK_STONE);
+    }
+    // Something burning inside, seen through the breach.
+    g.poly(blob(-0.18 * r, -0.92 * r, 0.12 * r, 0.12 * r, 3, 0.3, 10)).fill({ color: 0xff7a2f, alpha: 0.55 });
+    inkLine(g, -0.17 * r, -0.42 * r, 0.2 * r, 0.25 * r, 3, { color: 0x2a1a0c }, 0.05); // the door, off a hinge
+    rubble(g, r, 8, 0.45, random);
+  }
+}
+
+function oakWear(g: Graphics, r: number, stage: number, random: () => number): void {
+  // Axe gashes in the bark: pale wood showing through.
+  const gashes: [number, number, number][] = [[-0.12, -0.35, 0.5], [0.12, -0.75, -0.4], [-0.05, -0.95, 0.3], [0.15, -0.25, -0.6]];
+  for (let i = 0; i < Math.min(gashes.length, stage + 1); i++) {
+    const [x, y, a] = gashes[i];
+    const pts: Pts = [x * r - Math.cos(a) * 0.1 * r, y * r - Math.sin(a) * 0.05 * r, x * r, y * r - 0.03 * r, x * r + Math.cos(a) * 0.1 * r, y * r + Math.sin(a) * 0.05 * r, x * r, y * r + 0.03 * r];
+    inked(g, smooth(pts, true, 1), 0xd8b07a, 1.6, 0x24170b);
+  }
+  // Leaves falling off: drifts of them round the roots.
+  for (let i = 0; i < stage * 6; i++) {
+    const x = (random() - 0.5) * 1.6 * r;
+    const y = (0.1 + random() * 0.25) * r;
+    g.poly(blob(x, y, 0.05 * r, 0.025 * r, i, 0.3, 6)).fill({ color: random() < 0.5 ? 0x8a6a2a : 0x4c6a2a, alpha: 0.85 });
+  }
+  if (stage >= 2) {
+    // A snapped branch on the ground, and a split up the trunk.
+    inked(g, [0.5 * r, 0.12 * r, 0.95 * r, 0.02 * r, 1.0 * r, 0.08 * r, 0.55 * r, 0.19 * r], 0x5a3d22, 2, 0x24170b);
+    crack(g, 0.0, -0.1 * r, 0.8 * r, -Math.PI / 2, random, 2.4);
+  }
+  if (stage >= 3) {
+    // Bare patches in the crown, and smoke-blackened bark.
+    for (const [x, y, s] of [[-0.5, -1.5, 0.22], [0.45, -1.8, 0.2], [0.1, -1.35, 0.16]]) g.poly(blob(x * r, y * r, s * r, s * 0.8 * r, Math.floor(x * 9) + 40, 0.3, 12)).fill({ color: 0x0f1f0d, alpha: 0.75 });
+    soot(g, 0.0, -0.5 * r, 0.3 * r, 0.45 * r, 21, 0.35);
+  }
+}
+
+function fortWear(g: Graphics, r: number, stage: number, random: () => number): void {
+  // Cracks across the front walls, then soot, then fallen stones.
+  const spots: [number, number, number][] = [[-0.6, -0.3, 1.2], [0.5, -0.25, 1.9], [0.0, -0.2, 1.5], [-0.3, -0.05, 2.0], [0.75, -0.1, 1.3], [-0.8, 0.05, 1.7]];
+  for (let i = 0; i < stage * 2; i++) {
+    const [x, y, a] = spots[i];
+    crack(g, x * r, y * r, 0.32 * r, a, random, 1.8);
+  }
+  if (stage >= 2) {
+    soot(g, -0.5 * r, -0.25 * r, 0.25 * r, 0.14 * r, 2);
+    soot(g, 0.55 * r, -0.2 * r, 0.22 * r, 0.12 * r, 4);
+    for (let i = 0; i < 10; i++) {
+      const a = random() * Math.PI;
+      inked(g, smooth(shard(Math.cos(a) * 0.95 * r, Math.sin(a) * 0.5 * r + 0.06 * r, (0.04 + random() * 0.05) * r, random, 5, 0.6), true, 1), random() < 0.5 ? STONE : STONE_DARK, 1.4, INK_STONE);
+    }
+  }
+  if (stage >= 3) {
+    // A section of the front wall caved in.
+    inked(g, [-0.15 * r, 0.42 * r, 0.25 * r, 0.42 * r, 0.3 * r, 0.12 * r, 0.12 * r, 0.02 * r, -0.05 * r, 0.1 * r, -0.2 * r, 0.05 * r], 0x16120d, 2.2, INK_STONE);
+    soot(g, 0.05 * r, 0.15 * r, 0.32 * r, 0.16 * r, 8, 0.4);
+  }
+}
+
+/** Where smoke (and at the end, fire) rises from a battered building, in its radius. */
+export function smokeSpots(role: string, stage: number): { x: number; y: number; fire: boolean }[] {
+  if (stage < 2) return [];
+  if (role === 'oakner') return stage >= 3 ? [{ x: 0.0, y: -0.6, fire: true }] : [];
+  if (role === 'daBase') return [{ x: -0.5, y: -0.45, fire: stage >= 3 }, { x: 0.6, y: -0.4, fire: false }, ...(stage >= 3 ? [{ x: 0.1, y: 0.0, fire: true }] : [])];
+  return [{ x: 0.3, y: -BUILDING.shootie.body - 0.15, fire: false }, ...(stage >= 3 ? [{ x: -0.18, y: -1.0, fire: true }] : [])];
+}

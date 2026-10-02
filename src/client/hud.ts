@@ -145,6 +145,7 @@ export class Hud {
   private readonly dangerEl: HTMLElement;
   /** Flushes red at the edges for a moment with every hit you take. */
   private readonly hurtEl: HTMLElement;
+  private readonly stealthEl: HTMLElement;
   /** Banners waiting their turn; one shows at a time. */
   private banners: { title: string; detail: string; tone: Tone }[] = [];
   private bannerUntil = 0;
@@ -154,6 +155,7 @@ export class Hud {
       <div class="vignette"></div>
       <div class="danger"></div>
       <div class="hurt"></div>
+      <div class="stealth" data-level="0"><div class="stealth-tag"></div></div>
       <div class="announce"></div>
       <div class="debug"></div>
       <div class="feed"></div>
@@ -196,6 +198,7 @@ export class Hud {
     this.announceEl = q('.announce');
     this.dangerEl = q('.danger');
     this.hurtEl = q('.hurt');
+    this.stealthEl = q('.stealth');
     this.feed = q('.feed');
     this.buffBar = q('.buffs');
     this.clockTime = q('.clock .time');
@@ -527,6 +530,15 @@ export class Hud {
   }
 
   /** A hit on you: the edges of the screen flush red, `k` (0–1) strong, and fade. */
+  /**
+   * How hidden you are, at the edges of the screen: 0 seen, 1 in tall grass (only those in the same patch
+   * can see you), 2 unseen (invisible, in the smoke, burrowed). `label` names it at the top.
+   */
+  setStealth(level: 0 | 1 | 2, label: string): void {
+    this.set(this.stealthEl, 'class', `stealth level-${level}`);
+    this.set(this.stealthEl.firstElementChild as HTMLElement, 'text', label);
+  }
+
   hurt(k: number): void {
     this.hurtEl.animate([{ opacity: k }, { opacity: 0 }], { duration: 420, easing: 'ease-out' });
   }

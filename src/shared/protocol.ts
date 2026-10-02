@@ -291,6 +291,8 @@ export type GameEvent =
       victimSkin?: number;
     }
   | { e: 'fx'; fx: FxKind; x: number; y: number; x2?: number; y2?: number; r?: number; dur?: number; team?: Team }
+  /** A fountain's crystal zapping an enemy on (or shooting into) its platform: from (x, y) to (x2, y2). */
+  | { e: 'zap'; x: number; y: number; x2: number; y2: number; team: PlayerTeam }
   /**
    * A champion emoting, or quipping after a kill ('kill', with the victim's champion in `vs`). `n` picks
    * which of their lines, the same on every screen.

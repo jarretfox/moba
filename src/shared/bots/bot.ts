@@ -292,6 +292,9 @@ export class Bot {
   }
 
   private unsafe(world: World, p: Vec2): boolean {
+    // Their fountain's platform (and whoever's standing on it) belongs to its crystal.
+    const theirs = world.map.spawns[this.champion.team === TEAM.blue ? TEAM.red : TEAM.blue];
+    if (dist(theirs, p) <= FOUNTAIN_RADIUS + 150) return true;
     return this.enemyShooties(world).some((s) => dist(s.pos, p) <= this.shootieReach(s) && !this.covered(world, s));
   }
 

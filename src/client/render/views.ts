@@ -6,6 +6,7 @@ import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { EntitySnap, StatusKind } from '../../shared/protocol';
 import type { ItemId } from '../../shared/items';
 import { STRUCTURE_DEFS } from '../../shared/sim/structure';
+import { RECALL_TIME as RECALL_SECONDS } from '../../shared/champions/champion';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
 import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
@@ -17,7 +18,7 @@ import { Rig, type Expression, type Figure, type Posture } from './rig';
 import { flightHeight } from './stature';
 import type { Wind } from './wind';
 import { blade } from './organic';
-import { BUILDING, buildingHeight, drawCrystal, drawFlag, drawFort, drawFortRuin, drawOak, drawOakStump, drawTower, drawTowerRuin, flagSpots } from './structures';
+import { BUILDING, buildingHeight, drawCrystal, drawFlag, drawFort, drawFortRuin, drawOak, drawOakStump, drawTower, drawTowerRuin, drawWear, flagSpots, smokeSpots, wearStage } from './structures';
 import { RECALLS, type RecallRoutine, type Say } from './recalls';
 import { arc } from './draw';
 
@@ -128,6 +129,13 @@ export class UnitView implements EntityView {
   private readonly recallOver = new Container();
   private readonly recallOverG = new Graphics();
   private readonly recallTexts: Text[] = [];
+  /** The recall's light building up: a ring and a column behind the figure, rising motes in front. */
+  private readonly recallBack = new Graphics();
+  private readonly recallFront = new Graphics();
+  /** Jungle buffs, unmissable: Ember Toad's flames round the feet, Glowcap's halo over the head, and badges by the bar. */
+  private readonly buffFx = new Graphics();
+  private readonly buffGlow = new Graphics();
+  private buffed = false;
   private pal: Record<string, number> = {};
   /** Standing still (no walking, no moves): after a while a champion fidgets. */
   private idle = 0;
@@ -275,9 +283,9 @@ export class UnitView implements EntityView {
       this.wade.addChild(this.ripple, water);
       this.wade.visible = false;
       // Blades of grass across the front of the legs, darker at the back.
-      for (let i = 0; i < 14; i++) {
-        const x = (-0.7 + (i / 13) * 1.4) * r + (Math.random() - 0.5) * 6;
-        const h = (0.45 + Math.random() * 0.4) * r;
+      for (let i = 0; i < 18; i++) {
+        const x = (-0.75 + (i / 17) * 1.5) * r + (Math.random() - 0.5) * 6;
+        const h = (0.8 + Math.random() * 0.5) * r;
         blade(this.grass, x, r * 0.12, h, (Math.random() - 0.5) * r * 0.3, 0.13 * r, [0x2f6e28, 0x3a7a31, 0x4c8f40][i % 3]);
       }
       this.grass.visible = false;
@@ -290,7 +298,8 @@ export class UnitView implements EntityView {
         this.backlight.blendMode = 'add';
       }
     }
-    this.container.addChild(this.cast, this.statusRing, this.recallUnder, this.body, this.facing, ...(this.backlight ? [this.backlight] : []), ...(this.rig ? [this.rig.root, this.wade, this.grass] : []), this.recallOver, this.bars, this.label);
+    this.recallBack.blendMode = this.recallFront.blendMode = this.buffGlow.blendMode = 'add';
+    this.container.addChild(this.cast, this.statusRing, this.recallBack, this.recallUnder, this.body, this.facing, ...(this.backlight ? [this.backlight] : []), ...(this.rig ? [this.rig.root, this.wade, this.grass] : []), this.recallOver, this.recallFront, this.buffGlow, this.buffFx, this.bars, this.label);
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -374,8 +383,11 @@ export class UnitView implements EntityView {
       posture = { sit: pose.sit, lie: pose.lie, bow: pose.bow, look: pose.look, armF: pose.armF, armB: pose.armB, weight: ease };
       recallFace = pose.face;
       this.drawRecall(routine);
+      this.drawRecallLight();
     } else if (this.recallT > 0) {
       this.recallT = 0;
+      this.recallBack.clear();
+      this.recallFront.clear();
       this.recallUnder.clear();
       this.recallOverG.clear();
       for (const t of this.recallTexts) t.visible = false;
@@ -530,6 +542,7 @@ export class UnitView implements EntityView {
       this.barKey = barKey;
       this.drawBars(s);
     }
+    this.drawBuffs(s);
     const statusKey = (s.st ?? []).join();
     if (statusKey !== this.statusKey) {
       this.statusKey = statusKey;
@@ -579,6 +592,70 @@ export class UnitView implements EntityView {
     const hidden = grounded && ctx.inBrush(s.x, s.y);
     this.grass.visible = hidden;
     if (hidden) this.grass.skew.x = (ctx.wind?.at(s.x, s.y) ?? 0) * 0.12 + (speed > 40 ? Math.sin(this.clock * 14) * 0.12 : 0);
+  }
+
+  /** How far through a recall this champion is, 0–1 (0 when not recalling). */
+  get recallProgress(): number {
+    return Math.min(1, this.recallT / RECALL_SECONDS);
+  }
+
+  /**
+   * The recall's light, building to the last second: a ring of runes on the ground that tightens and spins
+   * faster, a column of light that climbs and widens behind the figure, motes rising thicker and faster,
+   * and in the final second a pulsing glow round the body that flares just before they go.
+   */
+  private drawRecallLight(): void {
+    const t = this.recallT;
+    const r = this.baseR;
+    const k = Math.min(1, t / RECALL_SECONDS);
+    const build = k * k;
+    const last = Math.max(0, Math.min(1, t - (RECALL_SECONDS - 1)));
+    const pulse = 0.5 + 0.5 * Math.sin(t * (5 + 22 * last));
+    const blue = 0x7cc4ff;
+    const deep = 0x3d8bfd;
+    const pale = 0xe6f6ff;
+    const back = this.recallBack.clear();
+    // The ring on the ground, and its runes.
+    const ringR = r * (2 - 0.6 * k);
+    back.ellipse(0, 0, ringR * 1.2, ringR * 0.46).fill({ color: deep, alpha: 0.05 + 0.18 * build });
+    back.ellipse(0, 0, ringR, ringR * 0.38).stroke({ width: 2 + 5 * build, color: blue, alpha: 0.3 + 0.55 * build });
+    back.ellipse(0, 0, ringR * 0.72, ringR * 0.27).stroke({ width: 1.5 + 2 * build, color: pale, alpha: 0.15 + 0.4 * build * pulse });
+    const spin = t * (0.8 + 5 * build);
+    for (let i = 0; i < 6; i++) {
+      const a = spin + (i * Math.PI) / 3;
+      const x = Math.cos(a) * ringR;
+      const y = Math.sin(a) * ringR * 0.38;
+      back.poly([x, y - 4 - 3 * build, x + 3 + 2 * build, y, x, y + 4 + 3 * build, x - 3 - 2 * build, y]).fill({ color: pale, alpha: 0.35 + 0.6 * build });
+    }
+    // The column of light, climbing as it builds: soft-edged, and fading out toward its top.
+    const top = this.headroom * (0.3 + 1.9 * build) + r * 1.5 * last;
+    const bands = 7;
+    for (const [wk, ak, color] of [[1.6, 0.07, deep], [1, 0.1, blue], [0.55, 0.16, blue], [0.22, 0.3, pale]] as const) {
+      const w = r * (0.55 + 0.95 * build) * wk * (1 + 0.25 * pulse * last);
+      for (let j = 0; j < bands; j++) {
+        const y0 = -(top * j) / bands;
+        const fade = Math.pow(1 - j / bands, 0.8);
+        back.rect(-w / 2, y0 - top / bands, w, top / bands + 0.5).fill({ color, alpha: ak * (0.5 + 1.5 * build) * fade });
+      }
+    }
+    // In front: motes rising round the figure, more and faster as it builds.
+    const front = this.recallFront.clear();
+    const motes = Math.round(4 + 18 * build);
+    for (let i = 0; i < motes; i++) {
+      const seed = i * 12.9898;
+      const u = (t * (0.5 + 1.1 * build) + (Math.sin(seed) * 0.5 + 0.5)) % 1;
+      const a = seed * 7.13;
+      const x = Math.cos(a) * ringR * (0.9 - 0.5 * u);
+      const y = Math.sin(a) * ringR * 0.3 - u * this.headroom * (1.1 + build);
+      front.circle(x, y, 1.6 + 2.2 * (1 - u) * (0.5 + build)).fill({ color: i % 3 ? pale : blue, alpha: (1 - u) * (0.45 + 0.5 * build) });
+    }
+    if (last > 0) {
+      // The last second: the body glows and pulses, then flares as they leave.
+      const h = this.headroom;
+      front.ellipse(0, -h * 0.5, r * (1.1 + 0.3 * pulse), h * (0.62 + 0.08 * pulse)).fill({ color: blue, alpha: 0.12 + 0.25 * last * pulse });
+      const flare = Math.max(0, (t - (RECALL_SECONDS - 0.3)) / 0.3);
+      if (flare > 0) front.ellipse(0, -h * 0.5, r * (1.4 + 2 * flare), h * (0.8 + 0.6 * flare)).fill({ color: 0xffffff, alpha: 0.5 * flare });
+    }
   }
 
   private drawRecall(routine: RecallRoutine): void {
@@ -743,6 +820,72 @@ export class UnitView implements EntityView {
       g.rect(x - 2 - size, y - 2, size, size).fill({ color: 0x000000, alpha: 0.85 }).stroke({ width: 1, color: 0xffe29a, alpha: 0.5 });
       this.levelText.text = String(s.lv ?? 1);
       this.levelText.position.set(x - 2 - size / 2, y - 2 + size / 2);
+    }
+  }
+
+  /**
+   * Ember Toad's Heat: a ring of flames licking round the feet and embers over the shoulders. Glowcap's Glow:
+   * a floating halo of light over the head with spores circling it. Each also gets a badge beside the
+   * health bar, so you can tell who has what across a fight.
+   */
+  private drawBuffs(s: EntitySnap): void {
+    const ember = !s.dead && !!s.st?.includes('ember');
+    const glow = !s.dead && !!s.st?.includes('glowcap');
+    if (!ember && !glow) {
+      if (this.buffed) this.buffFx.clear(), this.buffGlow.clear();
+      this.buffed = false;
+      return;
+    }
+    this.buffed = true;
+    const g = this.buffFx.clear();
+    const light = this.buffGlow.clear();
+    const r = s.r;
+    const t = this.clock;
+    const h = this.rig ? this.headroom * (s.r / this.baseR) : r;
+    if (ember) {
+      light.ellipse(0, 0, r * 1.6, r * 0.62).fill({ color: 0xff5a1f, alpha: 0.2 + 0.08 * Math.sin(t * 9) });
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 + t * 0.8;
+        const x = Math.cos(a) * r * 1.3;
+        const y = Math.sin(a) * r * 0.5;
+        const flick = 0.5 + 0.5 * Math.sin(t * (10 + i) + i * 1.7);
+        const fh = r * (0.5 + 0.45 * flick) * (Math.sin(a) > 0 ? 1 : 0.75);
+        const fw = r * 0.2;
+        const tip = Math.sin(t * 7 + i) * fw * 0.5;
+        // An inked flame: dark-red rim, orange body, a yellow heart.
+        g.poly([x - fw, y, x - fw * 0.5, y - fh * 0.55, x + tip, y - fh, x + fw * 0.5, y - fh * 0.55, x + fw, y]).fill({ color: 0xff6a1f, alpha: 0.92 }).stroke({ width: 1.5, color: 0x7a1e08, alpha: 0.8 });
+        g.poly([x - fw * 0.45, y, x + tip * 0.5, y - fh * 0.6, x + fw * 0.45, y]).fill({ color: 0xffd060, alpha: 0.95 });
+      }
+      for (let i = 0; i < 6; i++) {
+        const u = (t * 0.7 + i / 6) % 1;
+        light.circle(Math.sin(i * 2.3 + t) * r * 0.8, -h * (0.4 + 0.6 * u), 3 * (1 - u) + 1).fill({ color: 0xffb347, alpha: 1 - u });
+      }
+    }
+    if (glow) {
+      // A halo just over the head (under the health bar), spores circling it, light pooled at the feet.
+      const hy = -h + 4 + Math.sin(t * 2.2) * 2;
+      light.ellipse(0, hy, r * 0.8, r * 0.24).stroke({ width: 10, color: 0x3fb6ff, alpha: 0.3 });
+      g.ellipse(0, hy, r * 0.8, r * 0.24).stroke({ width: 3.5, color: 0x8fe6ff, alpha: 0.95 });
+      for (let i = 0; i < 6; i++) {
+        const a = t * 1.6 + (i / 6) * Math.PI * 2;
+        light.circle(Math.cos(a) * r * 0.95, hy + Math.sin(a) * r * 0.3, 4).fill({ color: 0xd6f6ff, alpha: 0.95 });
+      }
+      light.ellipse(0, 0, r * 1.35, r * 0.52).fill({ color: 0x3fb6ff, alpha: 0.18 + 0.06 * Math.sin(t * 3) });
+    }
+    // Badges by the health bar: a flame and a glowing cap.
+    if (s.k === 'champion') {
+      const by = -h - 20 + 4.5;
+      let bx = 42 + 11;
+      if (ember) {
+        g.circle(bx, by, 8).fill({ color: 0xff5a1f, alpha: 0.85 });
+        g.poly([bx - 4, by + 4, bx - 2, by - 1, bx, by - 7, bx + 2, by - 1, bx + 4, by + 4]).fill(0xffe0a0);
+        bx += 19;
+      }
+      if (glow) {
+        g.circle(bx, by, 8).fill({ color: 0x1f8fd0, alpha: 0.85 });
+        g.ellipse(bx, by - 1, 5.5, 3.5).fill(0xd6f6ff);
+        g.rect(bx - 1.2, by + 1, 2.4, 4).fill(0xd6f6ff);
+      }
     }
   }
 
@@ -1115,6 +1258,11 @@ export class StructureView implements EntityView {
   private readonly danger = new Graphics();
   /** Candlelight in a Shootie's arrow slit and round its door, as dusk falls. */
   private readonly windows = new Graphics();
+  /** Battle damage over the building (cracks, missing stones, a breach), and the smoke and fire rising from it. */
+  private readonly wear = new Graphics();
+  private wearAt = 0;
+  private readonly smoke = new Graphics();
+  private readonly fire = new Graphics();
 
   constructor(s: EntitySnap, private readonly relation: Relation) {
     this.note = new Text({
@@ -1132,7 +1280,8 @@ export class StructureView implements EntityView {
     this.container.addChild(this.light, this.danger, this.range, this.body);
     this.windows.blendMode = 'add';
     this.windows.alpha = 0;
-    this.top.addChild(this.upper, this.windows, this.crystal, this.bars, this.note);
+    this.fire.blendMode = 'add';
+    this.top.addChild(this.upper, this.wear, this.windows, this.smoke, this.fire, this.crystal, this.bars, this.note);
     this.container.position.set(s.x, s.y);
     this.top.position.set(s.x, s.y);
   }
@@ -1145,7 +1294,8 @@ export class StructureView implements EntityView {
     const tall = buildingHeight(s.role ?? 'outerShootie') * s.r;
     const behind = !!me && !s.dead && me.y < s.y && me.y > s.y - tall - me.r && Math.abs(me.x - s.x) < s.r * 1.1 + me.r;
     this.fade += ((behind ? 0.4 : 1) - this.fade) * Math.min(1, dt * 10);
-    this.upper.alpha = this.crystal.alpha = this.fade;
+    this.upper.alpha = this.crystal.alpha = this.wear.alpha = this.smoke.alpha = this.fire.alpha = this.fade;
+    this.batter(s);
     // Someone inside lights a candle as the evening draws in; it gutters now and then.
     const candle = Math.min(1, (ctx.dusk ?? 0) * 1.6) * (0.85 + 0.15 * Math.sin(this.clock * 7.3 + s.x));
     this.windows.alpha = s.dead ? 0 : candle * this.fade;
@@ -1182,6 +1332,38 @@ export class StructureView implements EntityView {
     const note = s.regrow ? `Regrows in ${clock(s.regrow)}` : s.role === 'daBase' && !s.dead ? (s.badge ? `${s.badge} DA BASE ${s.badge}` : 'DA BASE') : '';
     if (this.note.text !== note) this.note.text = note;
     this.updateRange(s, ctx.me);
+  }
+
+  /**
+   * The lower it gets, the worse it looks: cracks, then a broken parapet and soot, then a breach with
+   * fire inside. Smoke rises once it's badly hurt.
+   */
+  private batter(s: EntitySnap): void {
+    const role = s.role ?? 'outerShootie';
+    const stage = s.dead || this.grow < 1 ? 0 : wearStage((s.hp ?? 1) / (s.mhp ?? 1));
+    if (stage !== this.wearAt) {
+      this.wearAt = stage;
+      drawWear(this.wear.clear(), role, s.r, stage);
+    }
+    const smoke = this.smoke.clear();
+    const fire = this.fire.clear();
+    for (const [i, spot] of smokeSpots(role, stage).entries()) {
+      const x = spot.x * s.r;
+      const y = spot.y * s.r;
+      for (let k = 0; k < 5; k++) {
+        const t = (this.clock * 0.35 + k / 5 + i * 0.37) % 1;
+        const drift = Math.sin((t + i) * 5) * s.r * 0.12 + t * s.r * 0.3;
+        smoke.circle(x + drift, y - t * s.r * 1.6, s.r * (0.1 + t * 0.32)).fill({ color: stage >= 3 ? 0x1c1c1f : 0x55585e, alpha: (1 - t) * (stage >= 3 ? 0.42 : 0.3) });
+      }
+      if (!spot.fire) continue;
+      for (let k = 0; k < 3; k++) {
+        const flick = Math.sin(this.clock * (9 + k * 3) + k * 2) * 0.5 + 0.5;
+        const h = s.r * (0.22 + 0.12 * flick);
+        const w = s.r * 0.08;
+        const fx = x + (k - 1) * w * 1.1;
+        fire.poly([fx - w, y, fx - w * 0.4, y - h * 0.6, fx, y - h, fx + w * 0.4, y - h * 0.6, fx + w, y]).fill({ color: k === 1 ? 0xffd27a : 0xff7a2f, alpha: 0.75 });
+      }
+    }
   }
 
   /** Enemy Shooties show their reach when you get close, like League's tower range. */
