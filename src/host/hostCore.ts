@@ -30,6 +30,11 @@ interface Player {
   pendingEv: GameEvent[];
 }
 
+/** A secret for a player to get back into the match with. */
+function newToken(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+}
+
 /** Remote players get an update every this many ticks (15 a second); events in between are batched, never dropped. */
 const REMOTE_SEND_EVERY = 2;
 /** Refresh the scoreboard this often (ticks). */
@@ -60,6 +65,12 @@ export class HostCore {
   readonly bots: Bot[] = [];
   private readonly lobby = new Map<string, LobbyPlayer>();
   private readonly players = new Map<string, Player>();
+  /** Each friend's rejoin token, by connection. */
+  private readonly tokens = new Map<string, string>();
+  /** Friends whose connection dropped mid-match, by their rejoin token: a bot keeps their champion warm. */
+  private readonly away = new Map<string, { unitId: number; team: PlayerTeam; lobby: LobbyPlayer }>();
+  /** What every welcome says about the match (the weather, the map, the clock), for rejoins. */
+  private look: Omit<Extract<HostMessage, { t: 'welcome' }>, 't' | 'unitId' | 'team'> = {};
   private waves: WaveSpawner;
   /** The Warden (none on the ARAM map). */
   private lair: WardenLair | null;
@@ -89,6 +100,7 @@ export class HostCore {
     const msg = raw as ClientMessage;
     switch (msg.t) {
       case 'hello':
+        if (this.phase === 'playing' && typeof msg.rejoin === 'string' && this.rejoin(connId, msg.rejoin)) return;
         return this.hello(connId, msg.name, msg.title);
       case 'pick':
         return this.pick(connId, msg.team, msg.champion, msg.skin);
@@ -129,6 +141,8 @@ export class HostCore {
     if (this.allRandom) for (const p of this.lobby.values()) this.rollFor(p, true);
     this.bots.length = 0;
     this.players.clear();
+    this.tokens.clear();
+    this.away.clear();
     this.scores = null;
     this.rematchVotes.clear();
     this.finalSent = false;
@@ -202,13 +216,51 @@ export class HostCore {
       return;
     }
     const p = this.players.get(connId);
+    const entry = this.lobby.get(connId);
     this.players.delete(connId);
     this.lobby.delete(connId);
+    const token = this.tokens.get(connId);
+    this.tokens.delete(connId);
     const unit = p && this.world.getUnit(p.unitId);
     if (unit instanceof Champion) {
+      // Kept for them: a bot plays their champion until they're back.
+      if (token && entry && p) this.away.set(token, { unitId: p.unitId, team: p.team, lobby: entry });
       unit.name = `${unit.name} (bot)`;
       this.bots.push(new Bot(unit, laneForNewBot(this.bots, unit.team as PlayerTeam, this.world.map.aram), this.world));
     }
+  }
+
+  /**
+   * A friend back after their connection dropped (or a new connection while the host still thinks the old
+   * one is up): they get their champion back from the bot that stood in, and a welcome without the intro.
+   */
+  private rejoin(connId: string, token: string): boolean {
+    let back = this.away.get(token);
+    if (back) this.away.delete(token);
+    else {
+      // The old connection hasn't been noticed gone yet: this one takes over from it.
+      const old = [...this.tokens].find(([, t]) => t === token)?.[0];
+      const p = old ? this.players.get(old) : undefined;
+      const entry = old ? this.lobby.get(old) : undefined;
+      if (!old || !p || !entry) return false;
+      this.players.delete(old);
+      this.lobby.delete(old);
+      this.tokens.delete(old);
+      back = { unitId: p.unitId, team: p.team, lobby: entry };
+    }
+    const unit = this.world.getUnit(back.unitId);
+    if (!(unit instanceof Champion)) return false;
+    const i = this.bots.findIndex((b) => b.champion === unit);
+    if (i >= 0) this.bots.splice(i, 1);
+    unit.name = back.lobby.name;
+    unit.forgetCast();
+    unit.commandStop();
+    this.lobby.set(connId, { ...back.lobby, id: connId });
+    this.players.set(connId, { unitId: unit.id, team: back.team, queue: [], encoder: new SnapshotEncoder(), remote: connId !== LOCAL_CONN, pendingEv: [] });
+    const fresh = newToken();
+    this.tokens.set(connId, fresh);
+    this.send(connId, { t: 'welcome', unitId: unit.id, team: back.team, ...this.look, rejoin: fresh, back: true });
+    return true;
   }
 
   // ─── Lobby ────────────────────────────────────────────────────────────────
@@ -274,7 +326,11 @@ export class HostCore {
       champ.title = p.title;
       if (aram) startAtLevel(this.world, champ, ARAM.startLevel);
       this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
-      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, weather, map: mapId, ...(clears !== undefined ? { clears } : {}), ...(settings.night || aram ? { clock: NIGHT_CLOCK } : {}) });
+      this.look = { weather, map: mapId, ...(clears !== undefined ? { clears } : {}), ...(settings.night || aram ? { clock: NIGHT_CLOCK } : {}) };
+      // Friends over the network get a token to come back with if their connection drops.
+      const token = p.id === LOCAL_CONN ? undefined : newToken();
+      if (token) this.tokens.set(p.id, token);
+      this.send(p.id, { t: 'welcome', unitId: champ.id, team: p.team, ...this.look, ...(token ? { rejoin: token } : {}) });
     }
     if (mode === 'practice') {
       setupPracticeRange(this.world);

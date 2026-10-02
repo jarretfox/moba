@@ -44,7 +44,8 @@ export type Command =
 
 export type ClientMessage =
   /** Enter the lobby (wearing a title you've earned, if you like: see shared/titles.ts). */
-  | { t: 'hello'; name: string; title?: string }
+  /** `rejoin`: the token from your welcome, to take your champion back after a dropped connection. */
+  | { t: 'hello'; name: string; title?: string; rejoin?: string }
   /** Change team and/or champion while in the lobby. */
   | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId; skin?: number }
   /** Host only: start the match once everyone has picked. */
@@ -132,6 +133,10 @@ export type HostMessage =
       map?: MapId;
       /** Seconds to add to the match clock for the look of the sky (starting at night). */
       clock?: number;
+      /** Friends over the network: a token to say hello with if the connection drops, to get this champion back. */
+      rejoin?: string;
+      /** This is a rejoin: the match is already on (no intro). */
+      back?: boolean;
     }
   | { t: 'snap'; snap: SnapshotDelta }
   | { t: 'refused'; reason: string }

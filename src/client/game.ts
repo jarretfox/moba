@@ -418,6 +418,8 @@ export class GameClient {
   handle(msg: HostMessage): void {
     if (msg.t === 'welcome') {
       this.myId = msg.unitId;
+      // Back after a dropped connection: the match is already on, no intro.
+      if (msg.back) this.introShown = true;
       this.hud.fadeIn();
       if (msg.weather && msg.weather !== 'clear' && !this.weather) this.setWeather(new WeatherView(msg.weather, this.map));
       this.weatherClears = msg.clears;
@@ -2076,6 +2078,11 @@ export class GameClient {
     this.cursor = c;
     this.app.canvas.classList.toggle('cursor-attack', c === 'attack');
     this.app.canvas.classList.toggle('cursor-shop', c === 'shop');
+  }
+
+  /** The match has a winner (a lost connection now is just the end). */
+  get over(): boolean {
+    return !!this.buffer.latest?.winner;
   }
 
   setTitle(title: string): void {

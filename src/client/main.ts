@@ -11,6 +11,7 @@ import { installInkUi } from './ui/ink';
 import { MenuBackdrop } from './render/backdrop';
 import { getSound } from './audio';
 import { onSettings } from './settings';
+import type { HostMessage } from '../shared/protocol';
 import type { Connection } from './net/connection';
 import { HostWorker } from './net/hostWorker';
 import { PeerHost, PeerLink, normalizeCode } from './net/peer';
@@ -24,6 +25,26 @@ import './style.css';
 async function loadFonts(): Promise<void> {
   const wait = Promise.all(['24px "Lilita One"', '700 16px Nunito', '800 16px Nunito'].map((f) => document.fonts.load(f)));
   await Promise.race([wait.catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 2500))]);
+}
+
+/** The token for getting back into a match after a dropped connection, kept for this tab (by lobby code). */
+const REJOIN_KEY = 'moba.rejoin';
+
+function savedRejoin(code: string): string | undefined {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(REJOIN_KEY) ?? 'null') as { code?: string; token?: string } | null;
+    return v?.code === code && typeof v.token === 'string' ? v.token : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveRejoin(code: string, token: string): void {
+  try {
+    sessionStorage.setItem(REJOIN_KEY, JSON.stringify({ code, token }));
+  } catch {
+    // no storage: a dropped connection just can't come back after a reload
+  }
 }
 
 async function boot(): Promise<void> {
@@ -135,7 +156,7 @@ async function boot(): Promise<void> {
   const chat = new ChatBox(document.body, (text, all) => conn.send({ t: 'chat', text, all }));
   chat.onLine = () => getSound().playIfReady('chat', 0.5);
 
-  conn.listen((msg) => {
+  const onMessage = (msg: HostMessage) => {
     if (msg.t === 'chat') {
       chat.add(msg);
     } else if (msg.t === 'lobby') {
@@ -165,9 +186,11 @@ async function boot(): Promise<void> {
       if (msg.t === 'welcome') {
         lobby.close();
         played = true;
-        // The match is on another map than the screen was built for (the Howling Hollow): build it afresh.
+        if (msg.rejoin && code) saveRejoin(code, msg.rejoin);
+        // The match is on another map than the screen was built for (the Howling Hollow), or we're back after
+        // a dropped connection (the old screen talks to the old one): build it afresh.
         const map = msg.map ? MAPS[msg.map] : MAP;
-        if (map !== game.map) {
+        if (map !== game.map || msg.back) {
           game.destroy();
           hudRoot.replaceChildren();
           game = newGame(map);
@@ -177,12 +200,37 @@ async function boot(): Promise<void> {
       }
       game.handle(msg);
     }
-  });
-  conn.onClose((reason) => {
-    lobby.close();
+  };
+  /** Lost the host mid-match: try to get back in (with the token from the welcome) before giving up. */
+  const lost = async (reason: string) => {
+    const token = code ? savedRejoin(code) : undefined;
+    if (choice.kind !== 'join' || !code || !token || !played || game.over) {
+      lobby.close();
+      game.showNotice('Disconnected', reason);
+      return;
+    }
+    game.showNotice('Reconnecting…', 'Lost the connection to the host. Getting you back in; a bot is playing your champion meanwhile.');
+    for (let attempt = 0; attempt < 12; attempt++) {
+      await new Promise((r) => setTimeout(r, attempt ? 2500 : 800));
+      try {
+        const again = await PeerLink.connect(code);
+        conn = again;
+        attach(again);
+        again.send({ t: 'hello', name, title: loadProfile().title, rejoin: token });
+        return;
+      } catch {
+        // the host may still be there; try again in a moment
+      }
+    }
     game.showNotice('Disconnected', reason);
-  });
-  conn.send({ t: 'hello', name, title: loadProfile().title });
+  };
+  const attach = (c: Connection) => {
+    c.listen(onMessage);
+    c.onClose((reason) => void lost(reason));
+  };
+  attach(conn);
+  // Joining a match you were in (the page reloaded, or you joined again by code): the token gets you back in.
+  conn.send({ t: 'hello', name, title: loadProfile().title, ...(choice.kind === 'join' && code && savedRejoin(code) ? { rejoin: savedRejoin(code) } : {}) });
   // ARAM from the menu: the Howling Hollow, five a side, All Random (all still changeable in the lobby).
   if (choice.kind === 'solo' && choice.map === 'aram') conn.send({ t: 'settings', settings: { map: 'aram', teamSize: 5, aramPick: 'random' } });
 }
