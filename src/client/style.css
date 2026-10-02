@@ -3397,6 +3397,28 @@ html.in-lobby #hud > :not(.select) {
   animation: denied 0.3s;
 }
 
+/* A cast pressed a moment early, or walking into reach to cast: it'll go off. */
+.slot.queued {
+  border-color: #7fd4ff;
+  box-shadow: inset 0 0 14px rgba(127, 212, 255, 0.55), 0 0 10px rgba(127, 212, 255, 0.45);
+}
+
+/* Pressed an ability you haven't learned: its "+" jumps. */
+.slot .up.nudge {
+  animation: up-nudge 0.5s ease-out 2;
+}
+
+@keyframes up-nudge {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+  40% {
+    transform: translate(-50%, -8px) scale(1.35);
+    box-shadow: 0 0 18px #ffd166;
+  }
+}
+
 @keyframes denied {
   0%,
   100% {
@@ -3656,6 +3678,8 @@ img.item-fly {
 
 .tooltip {
   position: absolute;
+  /* Over the first-match tips, which sit just above the ability bar too. */
+  z-index: 30;
   width: 320px;
   padding: 10px 12px;
   border-radius: 4px;
@@ -3936,6 +3960,16 @@ img.item-fly {
   font: 17px var(--font-display);
   letter-spacing: 0.02em;
   color: var(--gold);
+}
+
+/* Tooltips worked out for you: your rank's number, and what it comes to with your stats. */
+.tt-rank {
+  color: #ffe29a;
+}
+
+.tt-total {
+  color: #7ee08a;
+  font-weight: 800;
 }
 
 .tt-meta {

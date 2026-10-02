@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hintDone, nextHint, type HintContext, type HintId } from './hints';
 
-const start: HintContext = { time: 2, inShop: true, gold: 500, items: 0, shopOpened: false, moved: false, points: 0, learned: 0, casts: 0, hp: 1, dead: false, recalling: false, shootieAlone: false };
+const start: HintContext = { time: 2, inShop: true, gold: 500, items: 0, shopOpened: false, moved: false, points: 0, learned: 0, casts: 0, hp: 1, dead: false, recalling: false, shootieAlone: false, attackMoved: false };
 const none = new Set<HintId>();
 
 describe('first-match tips', () => {

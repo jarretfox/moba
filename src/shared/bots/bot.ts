@@ -6,12 +6,11 @@ import type { Command } from '../protocol';
 import { Chud } from '../sim/chud';
 import { applyCommand } from '../sim/commands';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
-import { canRankUp } from '../sim/progression';
 import { STRUCTURE_DEFS, Structure, isShootie } from '../sim/structure';
 import type { Unit } from '../sim/unit';
 import { mitigate, type World } from '../sim/world';
 import { pointAlong, progressAlong } from './lanes';
-import { PROFILES, type BotContext } from './profiles';
+import { PROFILES, nextSkill, type BotContext } from './profiles';
 import { nextPurchase } from './shopping';
 import { Crab } from '../sim/crab';
 import { Relic } from '../sim/relics';
@@ -122,8 +121,7 @@ export class Bot {
   private pickSkill(): Slot | null {
     const me = this.champion;
     if (me.skillPoints <= 0) return null;
-    const order: Slot[] = [3, ...PROFILES[me.info.id].skillOrder];
-    return order.find((slot) => canRankUp(slot, me.abilities[slot].rank, me.level)) ?? null;
+    return nextSkill(me.info.id, me.abilities.map((a) => a.rank), me.level);
   }
 
   /** Buys the next item on the build whenever the shop is open to us and we can afford it. */

@@ -24,6 +24,8 @@ export type Command =
   | { k: 'move'; x: number; y: number }
   | { k: 'attack'; target: number }
   | { k: 'stop' }
+  /** Walk to (x, y), attacking the first enemy that comes into reach on the way. */
+  | { k: 'attackMove'; x: number; y: number }
   | { k: 'cast'; slot: Slot; x: number; y: number }
   | { k: 'recall' }
   /** Spend a skill point on an ability. */
@@ -336,6 +338,8 @@ export type GameEvent =
   | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
   | { e: 'attack'; src: number; target: number }
   | { e: 'cast'; src: number; slot: Slot; x: number; y: number }
+  /** A cast that couldn't go off, and why (only the caster's team is told; their screen says so). */
+  | { e: 'castFail'; src: number; slot: Slot; why: CastFail }
   | { e: 'heal'; target: number; amount: number }
   | { e: 'death'; id: number }
   | { e: 'level'; id: number; level: number }
@@ -425,8 +429,16 @@ export interface AbilitySnap {
 }
 
 /** Private state only the owning player receives. */
+/** A player's cast pressed this many seconds early (before its cooldown, a cast or a dash ends) is held and fires when it can. */
+export const CAST_QUEUE = 0.4;
+
+/** Why a cast didn't happen: nobody to cast it on, still cooling down, or not enough mana. */
+export type CastFail = 'target' | 'cooldown' | 'mana';
+
 export interface MeSnap {
   id: number;
+  /** The ability waiting to go off: pressed a moment early, or walking into reach to cast it. */
+  queued?: Slot;
   abilities: AbilitySnap[];
   passiveStacks: number;
   empowered: boolean;
@@ -450,7 +462,22 @@ export interface MeSnap {
   /** Jungle buffs and the seconds left on each. */
   buffs: { kind: BuffKind; left: number }[];
   /** For the shop's stat panel. `as` is attacks per second; `ls` is lifesteal in percent. */
-  stats: { ad: number; ap: number; armor: number; mr: number; as: number; ms: number; haste: number; ls: number; /** Basic attack range. */ range: number };
+  stats: {
+    ad: number;
+    ap: number;
+    armor: number;
+    mr: number;
+    as: number;
+    ms: number;
+    haste: number;
+    ls: number;
+    /** Basic attack range. */
+    range: number;
+    /** Attack damage from items and buffs (what "bonus AD" ratios use). */
+    bad: number;
+    /** Health from items and buffs (what "bonus health" ratios use). */
+    bhp: number;
+  };
 }
 
 export interface Snapshot {

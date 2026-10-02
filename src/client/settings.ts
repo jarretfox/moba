@@ -19,9 +19,13 @@ export interface Settings {
   panSpeed: number;
   /** The announcer's voice (First blood! Objective destroyed!). */
   announcer: boolean;
+  /** Spend skill points automatically, in the order the bots use. */
+  autoLevel: boolean;
+  /** Light up an enemy Chud's health bar when one basic attack from you would kill it. */
+  lastHit: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1, announcer: true };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1, announcer: true, autoLevel: false, lastHit: true };
 
 const KEY = 'moba.settings';
 
@@ -40,6 +44,8 @@ export function parseSettings(raw: string | null): Settings {
     if (typeof v.colorblind === 'boolean') s.colorblind = v.colorblind;
     if (typeof v.tips === 'boolean') s.tips = v.tips;
     if (typeof v.announcer === 'boolean') s.announcer = v.announcer;
+    if (typeof v.autoLevel === 'boolean') s.autoLevel = v.autoLevel;
+    if (typeof v.lastHit === 'boolean') s.lastHit = v.lastHit;
     if (typeof v.uiScale === 'number' && Number.isFinite(v.uiScale)) s.uiScale = Math.max(0.8, Math.min(1.3, v.uiScale));
     if (typeof v.panSpeed === 'number' && Number.isFinite(v.panSpeed)) s.panSpeed = Math.max(0.4, Math.min(2.5, v.panSpeed));
   } catch {
@@ -213,6 +219,14 @@ export function settingsPanel(): HTMLElement {
     percentSlider('uiScale', 'Interface size', 80, 130, 5),
     percentSlider('panSpeed', 'Camera pan speed', 40, 250, 10),
     fullscreenRow(),
+    toggle('Level abilities', [
+      ['Myself', () => !settings.autoLevel, () => updateSettings({ autoLevel: false })],
+      ['Automatically', () => settings.autoLevel, () => updateSettings({ autoLevel: true })],
+    ]),
+    toggle('Last-hit marker', [
+      ['On', () => settings.lastHit, () => updateSettings({ lastHit: true })],
+      ['Off', () => !settings.lastHit, () => updateSettings({ lastHit: false })],
+    ]),
     toggle('Tips', [
       ['Off', () => !settings.tips, () => updateSettings({ tips: false })],
       ['On (from the start)', () => settings.tips, () => updateSettings({ tips: true })],

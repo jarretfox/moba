@@ -131,6 +131,8 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
       const src = ents.get(ev.src);
       return src ? { name: src.champ ? CAST_SOUND[src.champ] : 'cast', at: { x: src.x, y: src.y }, gain: src.id === myId ? 0.5 : 0.35 } : null;
     }
+    case 'castFail':
+      return ev.src === myId ? { name: 'deny', gain: 0.5 } : null;
     case 'level':
       return ev.id === myId ? { name: 'levelUp', gain: 0.7 } : null;
     case 'gold':

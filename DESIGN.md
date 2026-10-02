@@ -225,6 +225,35 @@ A second map and mode: All Random, All Mid, on a haunted graveyard at night (`sh
   - They don't go home to shop.
 - **Balance** (120 bots-only 5v5 matches): every match finished, with a median of 17 minutes (10–27). Sides split 63–57. Champions won 34–60%. HunnaG (60%) and the marksmen thrive in the teamfights. Master Paris (34%) and Daltonomo (42%), assassins with nobody alone to pick off, are weakest. The Rift's tuning is unchanged.
 
+## How the game answers your input (2026-10-02)
+
+- **Your own champion moves the moment you click, over the network** (`client/prediction.ts`).
+  - A friend's click used to reach the host, come back, and then play 0.15s behind. That's a quarter of a second or more of walking in place.
+  - Now a walk sets off on your screen at once, along the same path the host will take, and settles onto the host's position once it has caught up.
+  - If the two disagree by more than lag can explain (a stun, a knock-back, a crowd in the way), the host's position wins.
+  - Attacks, casts, stops and recalls hand straight back to the host. The host's own screen doesn't predict; it's barely behind.
+  - In dev builds, `?lag=250` fakes a 250ms round trip to try it.
+- **A cast pressed a moment early still goes off** (`CAST_QUEUE`, 0.4s).
+  - This covers pressing just before the cooldown ends, mid-cast and mid-dash. The host holds the press and fires it the moment it can.
+  - The ability's slot glows blue while it waits. A new order drops it.
+  - Only players' presses are held: bots play exactly as before, so the balance numbers stand.
+- **Abilities cast on someone walk into range.**
+  - Pounce, Flèche, Juggling Knives and Down Below, aimed at an enemy out of reach, walk you in and go off once you're close enough (for up to 4s, while you can still see them).
+  - With nobody there to cast them on (those, Royal Decree, or Light It Up with no resin out), the slot flashes, a "no" sounds, and your champion grumbles why ("No prey there.", "Kneel? Who? There's no one!").
+  - Not enough mana or still cooling down get their own grumbles (`client/failLines.ts`). Only you hear them, at most every 2.5s.
+- **Attack-move.** Press A, then click: you walk there and fight the first enemy that comes into reach, then carry on. It leaves jungle monsters alone, so it never pulls a camp. Your reach shows while it waits for the click.
+- **Hold C to see your attack range.**
+- **Last-hit marker.** An enemy Chud's health bar has a notch where your next basic attack would leave it, and lights up gold when that hit would kill it. It's in the settings.
+- **Tooltips work out the numbers.**
+  - Your rank's number in every "40/65/90/115" is picked out, and anything that scales says what it comes to right now ("(+50% AD) = 73").
+  - Cooldowns show what ability haste makes them. Item passives too (`ui/liveNumbers.ts`).
+- **The first minute:**
+  - The shop opens by itself while you're at it with nothing bought.
+  - The Next Buy chip buys the item in one click when you're at the shop and can afford it.
+  - Pressing an ability you haven't learned makes its "+" jump.
+  - A new setting, "Level abilities: Automatically", spends skill points in the order the bots use (`nextSkill` in `bots/profiles.ts`).
+  - A first-match tip teaches A and C.
+
 ## Playing with friends
 
 - **Chat:** Enter talks to your team, Shift+Enter to everyone (Tab switches while typing).

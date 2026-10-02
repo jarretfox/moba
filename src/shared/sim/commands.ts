@@ -6,10 +6,10 @@ import { EMOTE_KINDS, PING_KINDS, type Command } from '../protocol';
 import type { World } from './world';
 
 /**
- * Carries out one player (or bot) command on a champion. From M2 on, commands arrive from other
+ * Carries out one player (`player`) or bot command on a champion. From M2 on, commands arrive from other
  * people's browsers, so nothing in them is trusted: coordinates are checked, targets validated.
  */
-export function applyCommand(world: World, unit: Champion, cmd: Command): void {
+export function applyCommand(world: World, unit: Champion, cmd: Command, player = false): void {
   // Spending skill points is allowed while dead or recalling, and doesn't interrupt anything.
   if (cmd.k === 'levelUp') {
     if (cmd.slot === 0 || cmd.slot === 1 || cmd.slot === 2 || cmd.slot === 3) unit.rankUp(cmd.slot);
@@ -48,20 +48,37 @@ export function applyCommand(world: World, unit: Champion, cmd: Command): void {
   switch (cmd.k) {
     case 'move': {
       const p = toPoint(world, cmd.x, cmd.y);
-      if (p) unit.commandMove(world, p);
+      if (!p) return;
+      unit.forgetCast();
+      unit.commandMove(world, p);
+      return;
+    }
+    case 'attackMove': {
+      const p = toPoint(world, cmd.x, cmd.y);
+      if (!p) return;
+      unit.forgetCast();
+      unit.commandAttackMove(world, p);
       return;
     }
     case 'attack': {
       const target = world.getUnit(cmd.target);
-      if (target && target.team !== unit.team && target.isTargetable() && world.vision.canSee(unit.team, target)) unit.commandAttack(target);
+      if (target && target.team !== unit.team && target.isTargetable() && world.vision.canSee(unit.team, target)) {
+        unit.forgetCast();
+        unit.commandAttack(target);
+      }
       return;
     }
     case 'stop':
+      unit.forgetCast();
       unit.commandStop();
       return;
     case 'cast': {
       const p = toPoint(world, cmd.x, cmd.y);
-      if (p && (cmd.slot === 0 || cmd.slot === 1 || cmd.slot === 2 || cmd.slot === 3)) unit.tryCast(world, cmd.slot, p);
+      if (p && (cmd.slot === 0 || cmd.slot === 1 || cmd.slot === 2 || cmd.slot === 3)) {
+        unit.forgetCast();
+        // A player's press is held if it's a moment early, and walks in if its target is out of reach.
+        unit.tryCast(world, cmd.slot, p, player);
+      }
       return;
     }
     case 'recall':

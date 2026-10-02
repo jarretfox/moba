@@ -27,8 +27,21 @@ export class HostWorker {
     this.worker.postMessage({ conn, dropped: true } satisfies ToHost);
   }
 
-  /** The hosting player's own connection. */
-  localLink(): Connection {
+  /**
+   * The hosting player's own connection. `lagMs` (dev builds only, from `?lag=200` in the address) holds
+   * every message back for half of it each way, and plays back like a network link does, to try how
+   * the game feels for a friend joining over the internet.
+   */
+  localLink(lagMs = 0): Connection {
+    if (lagMs > 0) {
+      const half = lagMs / 2;
+      return {
+        interpDelay: 0.15,
+        send: (msg: ClientMessage) => void setTimeout(() => this.send(LOCAL_CONN, msg), half),
+        listen: (handler) => this.route(LOCAL_CONN, (msg) => void setTimeout(() => handler(msg), half)),
+        onClose: () => {},
+      };
+    }
     return {
       interpDelay: 0.067,
       send: (msg: ClientMessage) => this.send(LOCAL_CONN, msg),

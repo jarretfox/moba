@@ -4,7 +4,7 @@ import { el } from './ui/dom';
 // Tips for someone's first matches: one at a time, each shown once (remembered in the browser), each
 // gone as soon as it's been followed. Settings can turn them off, or back on from the start.
 
-export type HintId = 'shop' | 'move' | 'skill' | 'cast' | 'shootie' | 'recall' | 'scoreboard' | 'ping';
+export type HintId = 'shop' | 'move' | 'skill' | 'cast' | 'shootie' | 'recall' | 'scoreboard' | 'ping' | 'attackMove';
 
 /** What the tips need to know about the match, gathered each frame. */
 export interface HintContext {
@@ -25,6 +25,8 @@ export interface HintContext {
   recalling: boolean;
   /** Close to an enemy Shootie with none of your Chuds near it. */
   shootieAlone: boolean;
+  /** Attack-moved at least once. */
+  attackMoved: boolean;
 }
 
 interface Hint {
@@ -81,6 +83,12 @@ const HINTS: readonly Hint[] = [
     text: 'While you wait, hold <kbd>Tab</kbd> for the scoreboard, or press <kbd>Space</kbd> to watch a teammate.',
     when: (c) => c.dead,
     done: (c) => !c.dead,
+  },
+  {
+    id: 'attackMove',
+    text: 'Press <kbd>A</kbd> then click to attack-move: walk there and fight whatever you meet. Hold <kbd>C</kbd> to see your reach.',
+    when: (c) => c.time > 90 && !c.dead && c.casts > 0,
+    done: (c) => c.attackMoved,
   },
   {
     id: 'ping',

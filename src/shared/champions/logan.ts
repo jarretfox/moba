@@ -146,6 +146,10 @@ export class Logan extends Champion {
     return slot !== 0 || this.pounceTarget(world, aim) !== undefined;
   }
 
+  protected approachTarget(world: World, slot: Slot, cursor: Vec2): Unit | undefined {
+    return slot === 0 ? this.pounceTarget(world, cursor) : undefined;
+  }
+
   protected onCast(world: World, slot: Slot, aim: Vec2): void {
     switch (slot) {
       case 0: return this.leap(world, aim);

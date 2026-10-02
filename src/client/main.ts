@@ -94,7 +94,8 @@ async function boot(): Promise<void> {
       } else {
         const host = new HostWorker();
         if (import.meta.env.DEV) Object.assign(window, { hostWorker: host }); // e.g. hostWorker.worker.postMessage({ conn: 'local', devWin: 1 })
-        conn = host.localLink();
+        // Dev builds: ?lag=200 fakes a round trip of that many milliseconds.
+        conn = host.localLink(import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('lag')) || 0 : 0);
         if (choice.kind === 'host') code = await new PeerHost(host).open();
       }
       break;

@@ -144,9 +144,9 @@ export class Paris extends Champion {
     super.startRecall(world);
   }
 
-  tryCast(world: World, slot: Slot, aim: Vec2): boolean {
+  tryCast(world: World, slot: Slot, aim: Vec2, press = false): boolean {
     if (slot !== 1) this.endBreak();
-    return super.tryCast(world, slot, aim);
+    return super.tryCast(world, slot, aim, press);
   }
 
   private endBreak(): void {
@@ -194,15 +194,20 @@ export class Paris extends Champion {
   // ─── Abilities ────────────────────────────────────────────────────────────
 
   /** Flèche's first target: the visible enemy nearest where he aimed. */
-  flecheTarget(world: World, aim: Vec2): Unit | undefined {
+  /** The enemy near `aim` Flèche goes for (`anyRange`: however far away they are). */
+  flecheTarget(world: World, aim: Vec2, anyRange = false): Unit | undefined {
     return world
       .units()
-      .filter((u) => u.team !== this.team && u.kind !== 'structure' && u.isTargetable() && world.vision.canSee(this.team, u) && dist(u.pos, aim) <= FLECHE.grab + u.radius && dist(u.pos, this.pos) <= FLECHE.range + FLECHE.grab)
+      .filter((u) => u.team !== this.team && u.kind !== 'structure' && u.isTargetable() && world.vision.canSee(this.team, u) && dist(u.pos, aim) <= FLECHE.grab + u.radius && (anyRange || dist(u.pos, this.pos) <= FLECHE.range + FLECHE.grab))
       .sort((a, b) => dist(a.pos, aim) - dist(b.pos, aim))[0];
   }
 
   protected canCastAt(world: World, slot: Slot, aim: Vec2): boolean {
     return slot !== 0 || this.flecheTarget(world, aim) !== undefined;
+  }
+
+  protected approachTarget(world: World, slot: Slot, cursor: Vec2): Unit | undefined {
+    return slot === 0 ? this.flecheTarget(world, cursor, true) : undefined;
   }
 
   protected onCast(world: World, slot: Slot, aim: Vec2): void {

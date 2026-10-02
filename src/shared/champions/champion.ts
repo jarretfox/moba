@@ -2,7 +2,7 @@ import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
 import { ACTIVES, AEGIS_WARD, BLOODFILL, DRUM_BEAT, HAMHOCK, HAT_AP, INVENTORY_SLOTS, LANTERN_LIGHT, MOSSHEART, PRIDE, ROT_BURN, ROYAL_PAUSE, SPELLBLADE, STATIC, SUNDER, THORNS, WADERS, WOUNDS, hasteMultiplier, partsUsed, priceFor, sellPrice, sumItemStats, whyNot, type ItemId } from '../items';
 import { enemiesInRadius } from '../sim/query';
-import type { DamageType } from '../protocol';
+import { CAST_QUEUE, type DamageType } from '../protocol';
 import { Ward } from '../sim/ward';
 import type { AbilitySnap, BuffKind, EntitySnap, MeSnap } from '../protocol';
 import { FOUNTAIN_RADIUS } from '../sim/fountain';
@@ -25,6 +25,9 @@ interface AbilityState {
 export const RECALL_TIME = 4;
 /** Death timers grow with level, like League's: early deaths cost little, late ones let the enemy push and finish. */
 const RESPAWN = { base: 5, perLevel: 2.5 };
+
+/** How long a champion keeps walking toward someone to cast on them before giving up. */
+export const APPROACH_TIME = 4;
 
 /**
  * Plumbing every champion shares: levels and gold, the cast pipeline (checks, cost, cooldown, cast
@@ -67,6 +70,10 @@ export abstract class Champion extends Unit {
   private bloodShield: { amount: number; until: number } | null = null;
   /** and who's burning from the Rotroot Staff, until when. */
   private readonly burning = new Map<Unit, number>();
+  /** A cast pressed a moment too early (still cooling down, or mid-cast or mid-dash): it goes off when it can. */
+  private queued: { slot: Slot; aim: Vec2; until: number } | null = null;
+  /** A cast on someone out of reach: walking in to cast it once they're close enough. */
+  private approach: { slot: Slot; targetId: number; until: number; repathAt: number } | null = null;
 
   constructor(
     world: World,
@@ -80,6 +87,7 @@ export abstract class Champion extends Unit {
   }
 
   update(world: World): void {
+    if (!this.dead) this.followThroughCasts(world);
     super.update(world);
     if (this.undoLog.length && !this.inShop()) this.undoLog = [];
     if (!this.dead && world.time >= PASSIVE_GOLD.from) {
@@ -203,6 +211,11 @@ export abstract class Champion extends Unit {
 
   get bonusAd(): number {
     return Math.max(0, this.stats.ad - this.baseAd);
+  }
+
+  /** Health from items and buffs. */
+  get bonusHp(): number {
+    return Math.max(0, this.stats.maxHp - (this.base.maxHp + this.growth.maxHp * (this.level - 1)));
   }
 
   get bonusArmor(): number {
@@ -456,18 +469,39 @@ export abstract class Champion extends Unit {
 
   // ─── Casting ──────────────────────────────────────────────────────────────
 
-  tryCast(world: World, slot: Slot, aim: Vec2): boolean {
+  /**
+   * Casts an ability at `aim` if it can go. A player's press (`press`) that's a moment early is held and
+   * fires as soon as it can; one aimed at an enemy out of reach walks in to cast it; one with nobody to
+   * cast it on tells the player so.
+   */
+  tryCast(world: World, slot: Slot, aim: Vec2, press = false): boolean {
     if (this.dead) return false;
     if (this.recast(world, slot, aim)) return true;
-    if (!this.canAct(world)) return false;
     const info = this.info.abilities[slot];
     const state = this.abilities[slot];
-    if (state.rank <= 0 || world.time < state.readyAt) return false;
+    if (state.rank <= 0) return false;
+    // Too early (cooling down, or busy casting or dashing): hold it if it's nearly ready.
+    const wait = Math.max(state.readyAt, this.lockedUntil, this.dash?.end ?? 0) - world.time;
+    if (wait > 0 || !this.canAct(world)) {
+      if (press && wait > 0 && wait <= CAST_QUEUE && !this.has('stun') && !this.has('fear') && !this.has('stasis')) {
+        this.queued = { slot, aim: { ...aim }, until: world.time + wait + 0.1 };
+      }
+      return false;
+    }
     const cost = this.costOf(slot);
     if (this.mana < cost) return false;
 
     const target = this.resolveAim(info.targeting, aim);
-    if (!this.canCastAt(world, slot, target)) return false;
+    if (!this.canCastAt(world, slot, target)) {
+      if (press) {
+        const victim = this.approachTarget(world, slot, aim);
+        if (victim) this.walkInToCast(world, slot, victim);
+        else world.emit({ e: 'castFail', src: this.id, slot, why: 'target' });
+      }
+      return false;
+    }
+    this.queued = null;
+    this.approach = null;
     this.mana -= cost;
     state.readyAt = world.time + this.byRank(slot, info.cooldown) * hasteMultiplier(this.haste);
     this.cancelWindup();
@@ -487,6 +521,48 @@ export abstract class Champion extends Unit {
       this.onCast(world, slot, target);
     }
     return true;
+  }
+
+  /** Drops a held or walking-in cast (a new order replaces it). */
+  forgetCast(): void {
+    this.queued = null;
+    this.approach = null;
+  }
+
+  /** The held cast fires once it can; the walk-in cast fires once its target is close enough. */
+  private followThroughCasts(world: World): void {
+    const q = this.queued;
+    if (q) {
+      if (world.time > q.until) this.queued = null;
+      else if (this.tryCast(world, q.slot, q.aim, false)) return;
+    }
+    const a = this.approach;
+    if (!a) return;
+    const target = world.getUnit(a.targetId);
+    if (!target || !target.isTargetable() || !world.vision.canSee(this.team, target) || world.time > a.until) {
+      this.approach = null;
+      return;
+    }
+    if (this.tryCast(world, a.slot, target.pos, false)) return;
+    if (world.time >= a.repathAt && this.canMove(world)) {
+      this.commandMove(world, target.pos);
+      a.repathAt = world.time + 0.25;
+    }
+  }
+
+  private walkInToCast(world: World, slot: Slot, target: Unit): void {
+    this.queued = null;
+    this.approach = { slot, targetId: target.id, until: world.time + APPROACH_TIME, repathAt: 0 };
+    this.commandMove(world, target.pos);
+    this.approach.repathAt = world.time + 0.25;
+  }
+
+  /**
+   * For abilities cast on someone: the enemy near the cursor this cast is meant for, wherever they are,
+   * so a cast out of reach walks in to them. None by default.
+   */
+  protected approachTarget(_world: World, _slot: Slot, _cursor: Vec2): Unit | undefined {
+    return undefined;
   }
 
   /** Turns the raw cursor position into the point the ability uses. */
@@ -543,6 +619,7 @@ export abstract class Champion extends Unit {
   meSnapshot(world: World): MeSnap {
     return {
       id: this.id,
+      ...(this.queued ? { queued: this.queued.slot } : this.approach ? { queued: this.approach.slot } : {}),
       abilities: this.abilities.map((a, i) => {
         const snap: AbilitySnap = { rank: a.rank, cd: Math.max(0, Math.round((a.readyAt - world.time) * 10) / 10) };
         const note = this.abilityNote(world, i as Slot);
@@ -573,6 +650,8 @@ export abstract class Champion extends Unit {
         haste: this.haste,
         ls: Math.round(this.lifesteal * 100),
         range: Math.round(this.stats.attackRange),
+        bad: Math.round(this.bonusAd),
+        bhp: Math.round(this.bonusHp),
       },
     };
   }

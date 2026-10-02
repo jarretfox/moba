@@ -318,7 +318,7 @@ export class HostCore {
     if (!this.world.winner) {
       for (const p of this.players.values()) {
         const unit = this.world.getUnit(p.unitId);
-        if (unit instanceof Champion) for (const cmd of p.queue) applyCommand(this.world, unit, cmd);
+        if (unit instanceof Champion) for (const cmd of p.queue) applyCommand(this.world, unit, cmd, true);
         p.queue.length = 0;
       }
       runBots(this.world, this.bots);

@@ -140,16 +140,21 @@ export class Daltonomo extends Champion {
   // ─── Abilities ────────────────────────────────────────────────────────────
 
   /** Juggling Knives' target: the visible enemy nearest where he aimed. */
-  knifeTarget(world: World, aim: Vec2): Unit | undefined {
+  /** The enemy near `aim` the knives go for (`anyRange`: however far away they are). */
+  knifeTarget(world: World, aim: Vec2, anyRange = false): Unit | undefined {
     const j = JUGGLING_KNIVES;
     return world
       .units()
-      .filter((u) => u.team !== this.team && u.kind !== 'structure' && u.isTargetable() && world.vision.canSee(this.team, u) && dist(u.pos, aim) <= j.grab + u.radius && dist(u.pos, this.pos) <= j.range + j.grab)
+      .filter((u) => u.team !== this.team && u.kind !== 'structure' && u.isTargetable() && world.vision.canSee(this.team, u) && dist(u.pos, aim) <= j.grab + u.radius && (anyRange || dist(u.pos, this.pos) <= j.range + j.grab))
       .sort((a, b) => dist(a.pos, aim) - dist(b.pos, aim))[0];
   }
 
   protected canCastAt(world: World, slot: Slot, aim: Vec2): boolean {
     return slot !== 2 || this.knifeTarget(world, aim) !== undefined;
+  }
+
+  protected approachTarget(world: World, slot: Slot, cursor: Vec2): Unit | undefined {
+    return slot === 2 ? this.knifeTarget(world, cursor, true) : undefined;
   }
 
   protected onCastStart(_world: World, slot: Slot): void {

@@ -4,10 +4,14 @@ import { atRank, type ChampionInfo } from '../shared/champions/types';
 import { TEAM, type PlayerTeam, type Slot, type Team } from '../shared/constants';
 import { MAP, type MapData } from '../shared/map/mapData';
 import { NavGrid } from '../shared/map/navGrid';
+import { Pathfinder } from '../shared/map/pathfind';
+import { nextSkill } from '../shared/bots/profiles';
+import { SelfPrediction } from './prediction';
+import { failLine } from './failLines';
 import { shapeContains } from '../shared/map/shapes';
 import { VisionGrid } from '../shared/sim/vision';
 import { dist, segmentDistance, type Vec2 } from '../shared/math';
-import type { Command, EntitySnap, GameEvent, HostMessage, MeSnap, ScoreRow, Snapshot } from '../shared/protocol';
+import { CAST_QUEUE, type CastFail, type Command, type EntitySnap, type GameEvent, type HostMessage, type MeSnap, type ScoreRow, type Snapshot, type StatusKind } from '../shared/protocol';
 import { getSound } from './audio';
 import { onSettings, settings } from './settings';
 import { Camera } from './camera';
@@ -77,6 +81,9 @@ const CLICK_SLOP = 20;
 const SLOT_BY_CODE: Record<string, Slot> = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
 
 /** Everything the player sees and touches. Reads host snapshots; sends commands. Never simulates. */
+/** While any of these is on, you can't walk: your own champion is drawn where the host says. */
+const PINNED: ReadonlySet<StatusKind> = new Set<StatusKind>(['stun', 'root', 'fear', 'stasis', 'airborne', 'underground', 'recall']);
+
 /** Speech-bubble ids for Old Wick (blue's, then red's one below it), clear of every entity id. */
 const WICK_ID = -100;
 
@@ -255,6 +262,24 @@ export class GameClient {
   private rightHeld = false;
   private holdTimer = 0;
   private aiming: Slot | null = null;
+  /** A pressed: the next left click attack-moves there. */
+  private attackMoveArmed = false;
+  /** Has attack-moved this match (for the tip). */
+  private attackMoved = false;
+  /** C held: your attack range shows round you. */
+  private rangeHeld = false;
+  /** Your attack range, while C is held or an attack-move is waiting for its click. */
+  private readonly reachRing = new Graphics();
+  /** Playing over the network: your own champion moves on your screen the moment you click (see prediction.ts). */
+  private readonly prediction: SelfPrediction | null;
+  private readonly finder: Pathfinder;
+  /** When your champion last grumbled about a cast that couldn't go, and how many times so far. */
+  private grumbledAt = -Infinity;
+  private grumbles = 0;
+  /** The shop opens by itself once, at the start, while you're standing at it with nothing bought. */
+  private startShopDone = false;
+  /** Auto-level: when the last skill point went in (so a point isn't spent twice before the host answers). */
+  private autoLevelAt = 0;
   private centerHeld = false;
   private scoresHeld = false;
   private cursor = '';
@@ -270,6 +295,9 @@ export class GameClient {
     this.water = new Water(map);
     this.critters = new Critters(map);
     this.nav = new NavGrid(map);
+    this.finder = new Pathfinder(this.nav);
+    // Over the network (or a dev build faking lag), your clicks take a round trip before the host moves you.
+    this.prediction = conn.interpDelay > 0.1 ? new SelfPrediction(conn.interpDelay + 0.1) : null;
     this.visionGrid = new VisionGrid(map, this.nav);
     this.fog = new FogLayer(this.visionGrid);
     this.camera = new Camera(map);
@@ -311,6 +339,7 @@ export class GameClient {
     this.minimap.onPeek = (p) => (this.peek = p);
     this.minimap.onMove = (p) => {
       this.send({ k: 'move', x: Math.round(p.x), y: Math.round(p.y) });
+      this.predictWalk(p);
       this.fx.clickMarker(p.x, p.y, false);
     };
     this.minimap.onPingStart = (e, p) => this.startPing(e, p);
@@ -352,7 +381,7 @@ export class GameClient {
     // bits on the pit walls raised with the wall tops.
     const landmarks = buildLandmarks(this.map);
     this.underLayer.addChildAt(landmarks.flat, 0);
-    this.underLayer.addChild(this.targetMark);
+    this.underLayer.addChild(this.targetMark, this.reachRing);
     this.wallTops.addChild(landmarks.tall);
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
@@ -550,6 +579,7 @@ export class GameClient {
     // Normally the live match; during Play of the Game, the replay.
     const { ents, events } = this.replay ? this.replay.step(dt) : this.buffer.sample(performance.now() / 1000);
     this.ents = new Map(ents.map((e) => [e.id, e]));
+    if (this.prediction && !this.replay) this.predictSelf(dt);
     this.syncViews(dt);
     this.emitTrails();
     for (const ev of events) {
@@ -624,10 +654,12 @@ export class GameClient {
 
     const mouseWorld = this.mouseWorld();
     if (this.rightHeld && (this.holdTimer -= dt) <= 0) this.rightClick(false);
-    this.setCursor(this.enemyAt(mouseWorld) ? 'attack' : !this.replay && this.wicks[this.myTeam - 1]?.hit(mouseWorld) ? 'shop' : '');
+    this.setCursor(this.attackMoveArmed || this.enemyAt(mouseWorld) ? 'attack' : !this.replay && this.wicks[this.myTeam - 1]?.hit(mouseWorld) ? 'shop' : '');
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
     this.drawTargetMark(dt, me);
+    this.drawReach(me);
+    this.startOfMatch(me);
 
     this.updateWicks(dt, me);
     if (this.fountainsFor !== this.myTeam) {
@@ -723,6 +755,7 @@ export class GameClient {
       light: (x, y) => this.lighting.lightAt(x, y, nightAt(this.lookTime())),
       night: nightAt(this.lookTime()),
       dusk: duskAt(this.lookTime()),
+      myAd: settings.lastHit && me && !me.dead ? this.buffer.latest?.me?.stats.ad : undefined,
     };
     for (const s of this.ents.values()) {
       let view = this.views.get(s.id);
@@ -935,6 +968,12 @@ export class GameClient {
         if (t) this.hud.levelFlash();
         return;
       }
+      case 'castFail':
+        if (ev.src === this.myId) {
+          this.hud.flash(ev.slot);
+          this.grumble(ev.why);
+        }
+        return;
       case 'emote': {
         const u = this.ents.get(ev.id);
         if (!u?.champ) return;
@@ -1064,6 +1103,7 @@ export class GameClient {
         dead: !!self.dead,
         recalling: !!self.st?.includes('recall'),
         shootieAlone,
+        attackMoved: this.attackMoved,
       },
       performance.now() / 1000,
     );
@@ -1678,6 +1718,12 @@ export class GameClient {
     canvas.addEventListener('pointerdown', (e) => {
       track(e);
       if (e.button === 0 && this.startPing(e, this.mouseWorld())) return;
+      if (e.button === 0 && this.attackMoveArmed) {
+        this.attackMoveArmed = false;
+        this.attackMoveClick();
+        return;
+      }
+      if (e.button === 2) this.attackMoveArmed = false;
       // Either button on Old Wick opens the shop (and walks you over if you're not at the fountain).
       if ((e.button === 2 || (e.button === 0 && this.aiming === null)) && this.visitWick()) {
         this.aiming = null;
@@ -1722,6 +1768,8 @@ export class GameClient {
       this.aiming = null;
       this.centerHeld = false;
       this.pingKeyHeld = false;
+      this.attackMoveArmed = false;
+      this.rangeHeld = false;
     }, { signal });
   }
 
@@ -1785,10 +1833,20 @@ export class GameClient {
       e.preventDefault();
       return;
     }
+    if (e.code === 'KeyC') {
+      this.rangeHeld = down;
+      return;
+    }
     if (!down || e.repeat) return;
     switch (e.code) {
       case 'KeyS':
         this.send({ k: 'stop' });
+        this.prediction?.release();
+        break;
+      case 'KeyA':
+        // Attack-move: the next left click picks where.
+        this.attackMoveArmed = true;
+        this.aiming = null;
         break;
       case 'KeyD':
       case 'KeyF': {
@@ -1799,6 +1857,7 @@ export class GameClient {
       case 'KeyB':
         this.aiming = null;
         this.send({ k: 'recall' });
+        this.prediction?.release();
         break;
       case 'KeyY':
         this.camera.locked = !this.camera.locked;
@@ -1828,6 +1887,7 @@ export class GameClient {
       case 'Escape':
         // Esc backs out of whatever's open: aiming, then the shop, then the menu.
         if (this.aiming !== null) this.aiming = null;
+        else if (this.attackMoveArmed) this.attackMoveArmed = false;
         else if (this.hud.shop.open) {
           this.hud.shop.toggle(false);
           this.sound.play('shopClose', 0.5);
@@ -1846,6 +1906,7 @@ export class GameClient {
     if (me && !me.dead && !this.buffer.latest?.me?.inShop) {
       const to = wick.counter;
       this.send({ k: 'move', x: Math.round(to.x), y: Math.round(to.y) });
+      this.predictWalk(to);
       this.fx.clickMarker(to.x, to.y, false);
     }
     return true;
@@ -1874,11 +1935,93 @@ export class GameClient {
     const target = this.enemyAt(p);
     if (target) {
       this.send({ k: 'attack', target: target.id });
+      this.prediction?.release();
       if (initial) this.fx.clickMarker(target.x, target.y, true);
       return;
     }
     this.send({ k: 'move', x: Math.round(p.x), y: Math.round(p.y) });
+    this.predictWalk(p);
     if (initial) this.fx.clickMarker(p.x, p.y, false);
+  }
+
+  /** A (then left click): walk there, fighting the first enemy that comes into reach. Clicking an enemy just attacks it. */
+  private attackMoveClick(): void {
+    const p = this.mouseWorld();
+    const target = this.enemyAt(p);
+    if (target) this.send({ k: 'attack', target: target.id });
+    else this.send({ k: 'attackMove', x: Math.round(p.x), y: Math.round(p.y) });
+    this.attackMoved = true;
+    this.prediction?.release();
+    this.fx.clickMarker(target?.x ?? p.x, target?.y ?? p.y, true);
+  }
+
+  /** Over the network: set off for `to` on screen right away (the host's copy follows a moment later). */
+  private predictWalk(to: Vec2): void {
+    if (!this.prediction) return;
+    const me = this.ents.get(this.myId);
+    if (!me || me.dead) return;
+    const path = this.finder.find(me, to);
+    if (path.length) this.prediction.walk(path);
+    else this.prediction.release();
+  }
+
+  /** Draws your champion where the prediction has it, rather than where the delayed playback does. */
+  private predictSelf(dt: number): void {
+    const me = this.ents.get(this.myId);
+    const newest = this.buffer.latest?.ents.find((e) => e.id === this.myId);
+    if (!me || !newest || !this.prediction) return;
+    const free = !me.dead && !me.st?.some((s) => PINNED.has(s));
+    const at = this.prediction.update(dt, performance.now() / 1000, me, newest, this.buffer.latest?.me?.stats.ms ?? 330, free);
+    if (at.x === me.x && at.y === me.y) return;
+    const heading = this.prediction.heading;
+    this.ents.set(me.id, { ...me, x: at.x, y: at.y, ...(heading !== null ? { f: heading } : {}) });
+  }
+
+  /** Your attack range round you, while C is held or an attack-move waits for its click. */
+  private drawReach(me: EntitySnap | undefined): void {
+    const g = this.reachRing;
+    const mine = this.buffer.latest?.me;
+    g.clear();
+    if (!me || me.dead || !mine || this.replay || !(this.rangeHeld || this.attackMoveArmed)) return;
+    const reach = mine.stats.range + me.r;
+    const color = this.attackMoveArmed ? PALETTE.enemy : 0xffffff;
+    g.ellipse(me.x, me.y, reach, reach * 0.45).fill({ color, alpha: 0.06 }).stroke({ width: 2.5, color, alpha: 0.55 });
+  }
+
+  /**
+   * The start of a match: the shop opens by itself while you stand at it with nothing bought, and (if
+   * you've turned it on) skill points spend themselves in the order the bots use.
+   */
+  private startOfMatch(me: EntitySnap | undefined): void {
+    const latest = this.buffer.latest;
+    const mine = latest?.me;
+    if (!me || !mine || !latest || this.replay || me.dead) return;
+    if (!this.startShopDone && !this.introUp) {
+      this.startShopDone = true;
+      if (mine.inShop && mine.items.length === 0 && latest.time < 90 && !this.hud.shop.open) {
+        this.hud.shop.toggle(true);
+        this.sound.play('shopOpen', 0.5);
+      }
+    }
+    const now = performance.now() / 1000;
+    if (settings.autoLevel && mine.points > 0 && me.champ && now >= this.autoLevelAt) {
+      const slot = nextSkill(me.champ, mine.abilities.map((a) => a.rank), mine.level);
+      if (slot !== null) {
+        this.send({ k: 'levelUp', slot });
+        this.autoLevelAt = now + 0.4;
+      }
+    }
+  }
+
+  /** Your champion mutters why a cast didn't go (only you hear it, and not every time). */
+  private grumble(why: CastFail): void {
+    const me = this.ents.get(this.myId);
+    if (!me?.champ || me.dead) return;
+    const t = performance.now() / 1000;
+    if (t - this.grumbledAt < 2.5) return;
+    this.grumbledAt = t;
+    this.bubbles.say(me.id, failLine(me.champ, why, this.grumbles), 0xe8c46a, true);
+    this.speak(me, 'grumble', this.grumbles++, true);
   }
 
   private castAimed(): void {
@@ -1889,12 +2032,21 @@ export class GameClient {
     const self = latest?.ents.find((e) => e.id === this.myId);
     const cd = latest?.me?.abilities[slot].cd ?? 0;
     const rank = latest?.me?.abilities[slot].rank ?? 0;
-    if (rank === 0 || cd > 0 || (self?.mp ?? 0) < atRank(this.myInfo.abilities[slot].cost, rank)) {
+    if (rank === 0) {
       this.hud.flash(slot);
+      this.hud.nudgeLevel(slot);
+      return;
+    }
+    // Nearly ready: send it anyway, the host holds it until it can go.
+    const why: CastFail | null = cd > CAST_QUEUE ? 'cooldown' : (self?.mp ?? 0) < atRank(this.myInfo.abilities[slot].cost, rank) ? 'mana' : null;
+    if (why) {
+      this.hud.flash(slot);
+      this.grumble(why);
       return;
     }
     const p = this.mouseWorld();
     this.send({ k: 'cast', slot, x: Math.round(p.x), y: Math.round(p.y) });
+    this.prediction?.release();
   }
 
   /** The enemy under the cursor that a right-click would attack. Shielded structures don't count. */

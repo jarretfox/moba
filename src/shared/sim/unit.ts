@@ -25,7 +25,9 @@ export interface Stats {
 export type Order =
   | { kind: 'idle' }
   | { kind: 'move'; dest: Vec2 }
-  | { kind: 'attack'; targetId: number };
+  | { kind: 'attack'; targetId: number }
+  /** Walking to `dest`, attacking the first enemy that comes into reach on the way. */
+  | { kind: 'attackMove'; dest: Vec2 };
 
 interface Status {
   kind: StatusKind;
@@ -46,6 +48,9 @@ const STUCK_PROGRESS = 1;
 const STUCK_GIVE_UP = 0.3;
 /** "Close" for giving up: within this much of the destination beyond the unit's own width. */
 const STUCK_NEAR = 120;
+
+/** Attack-move picks up an enemy this far beyond attack range (edge to edge). */
+export const ATTACK_MOVE_PICKUP = 120;
 
 /** Anything with health that moves, attacks, and gets crowd-controlled: champions, dummies, later chuds and jungle mobs. */
 export abstract class Unit implements Entity {
@@ -89,6 +94,8 @@ export abstract class Unit implements Entity {
   protected readonly spawnPos: Vec2;
   private nextRepathAt = 0;
   private stuck = { goal: null as Vec2 | null, dist: Infinity, time: 0 };
+  /** An attack-move's destination, kept while it stops to fight something on the way. */
+  private attackMoveDest: Vec2 | null = null;
 
   constructor(
     readonly id: number,
@@ -116,6 +123,7 @@ export abstract class Unit implements Entity {
     this.hp = Math.min(this.stats.maxHp, this.hp + this.stats.hpRegen * DT * (1 - this.strongest('wounds')));
     this.mana = Math.min(this.stats.maxMana, this.mana + this.stats.manaRegen * DT);
     this.think(world);
+    if (this.order.kind === 'attackMove') this.pickUpAttackMoveTarget(world);
     this.updateAttack(world);
     this.updateMovement(world);
   }
@@ -281,11 +289,13 @@ export abstract class Unit implements Entity {
 
   commandMove(world: World, dest: Vec2): void {
     this.cancelWindup();
+    this.attackMoveDest = null;
     this.order = { kind: 'move', dest };
     this.path = this.dash ? [] : world.findPath(this.pos, dest);
   }
 
   commandAttack(target: Unit): void {
+    this.attackMoveDest = null;
     if (this.order.kind === 'attack' && this.order.targetId === target.id) return;
     this.cancelWindup();
     this.order = { kind: 'attack', targetId: target.id };
@@ -293,8 +303,48 @@ export abstract class Unit implements Entity {
     this.nextRepathAt = 0;
   }
 
+  /** Walks to `dest`, stopping to fight the first enemy that comes into reach, then carrying on. */
+  commandAttackMove(world: World, dest: Vec2): void {
+    this.cancelWindup();
+    this.attackMoveDest = { ...dest };
+    this.order = { kind: 'attackMove', dest: { ...dest } };
+    this.path = this.dash ? [] : world.findPath(this.pos, dest);
+    this.pickUpAttackMoveTarget(world);
+  }
+
   commandStop(): void {
     this.cancelWindup();
+    this.attackMoveDest = null;
+    this.order = { kind: 'idle' };
+    this.path = [];
+  }
+
+  /** On an attack-move: the nearest enemy in reach becomes the target (jungle monsters are left alone, so it never pulls a camp). */
+  private pickUpAttackMoveTarget(world: World): void {
+    let best: Unit | null = null;
+    let bestD = Infinity;
+    for (const u of world.units()) {
+      if (u.team === this.team || u.team === 0 || u.kind === 'monster' || !u.isTargetable() || !world.vision.canSee(this.team, u)) continue;
+      const d = dist(u.pos, this.pos) - u.radius - this.radius;
+      if (d <= this.stats.attackRange + ATTACK_MOVE_PICKUP && d < bestD) {
+        best = u;
+        bestD = d;
+      }
+    }
+    if (!best) return;
+    this.order = { kind: 'attack', targetId: best.id };
+    this.path = [];
+    this.nextRepathAt = 0;
+  }
+
+  /** The target's gone: an attack-move carries on to where it was going; anything else stops. */
+  private targetLost(world: World): void {
+    const dest = this.attackMoveDest;
+    if (dest) {
+      this.order = { kind: 'attackMove', dest };
+      this.path = world.findPath(this.pos, dest);
+      return;
+    }
     this.order = { kind: 'idle' };
     this.path = [];
   }
@@ -314,8 +364,7 @@ export abstract class Unit implements Entity {
     // A target that slips into fog or brush is lost, like in League.
     if (!target || !target.isTargetable() || !world.vision.canSee(this.team, target)) {
       this.cancelWindup();
-      this.order = { kind: 'idle' };
-      this.path = [];
+      this.targetLost(world);
       return;
     }
 
@@ -375,7 +424,7 @@ export abstract class Unit implements Entity {
       this.pos = lerpVec(d.from, d.to, t);
       if (t >= 1) {
         this.dash = null;
-        if (this.order.kind === 'move') this.path = world.findPath(this.pos, this.order.dest);
+        if (this.order.kind === 'move' || this.order.kind === 'attackMove') this.path = world.findPath(this.pos, this.order.dest);
       }
       return;
     }
@@ -400,7 +449,10 @@ export abstract class Unit implements Entity {
         budget = 0;
       }
     }
-    if (this.path.length === 0 && this.order.kind === 'move') this.order = { kind: 'idle' };
+    if (this.path.length === 0 && (this.order.kind === 'move' || this.order.kind === 'attackMove')) {
+      this.order = { kind: 'idle' };
+      this.attackMoveDest = null;
+    }
   }
 
   /** Feared: scramble straight away from the source, as far as the ground allows. */
@@ -442,6 +494,7 @@ export abstract class Unit implements Entity {
     this.dead = true;
     this.hp = 0;
     this.order = { kind: 'idle' };
+    this.attackMoveDest = null;
     this.path = [];
     this.windup = null;
     this.dash = null;

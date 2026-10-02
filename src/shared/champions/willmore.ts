@@ -153,6 +153,15 @@ export class Willmore extends Champion {
     return slot !== 3 || this.downBelowVictim(world) !== undefined;
   }
 
+  /** Down Below on a champion out of reach: walk up to whoever's nearest the cursor. */
+  protected approachTarget(world: World, slot: Slot, cursor: Vec2): Unit | undefined {
+    if (slot !== 3) return undefined;
+    return world
+      .units()
+      .filter((u) => u.team !== this.team && u.isChampionLike() && u.isTargetable() && world.vision.canSee(this.team, u) && dist(u.pos, cursor) <= 200 + u.radius)
+      .sort((a, b) => dist(a.pos, cursor) - dist(b.pos, cursor))[0];
+  }
+
   /** Anything else he casts brings him up first. */
   protected onCastStart(world: World, slot: Slot): void {
     if (slot !== 1 && this.burrowed) this.surface(world);

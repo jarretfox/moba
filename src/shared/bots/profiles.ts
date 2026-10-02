@@ -1,3 +1,4 @@
+import { canRankUp } from '../sim/progression';
 import type { Champion } from '../champions/champion';
 import type { ChampionId } from '../champions/types';
 import type { Slot } from '../constants';
@@ -360,5 +361,11 @@ const daltonomo: BotProfile = {
     return ready(ctx, 0) ? cast(0, add(me.pos, scale(dirTo(me.pos, home), 400))) : null;
   },
 };
+
+/** The ability to put the next skill point in: the ultimate whenever it's allowed, then the champion's preferred order. */
+export function nextSkill(champ: ChampionId, ranks: readonly number[], level: number): Slot | null {
+  const order: Slot[] = [3, ...PROFILES[champ].skillOrder, 0, 1, 2];
+  return order.find((slot) => canRankUp(slot, ranks[slot] ?? 0, level)) ?? null;
+}
 
 export const PROFILES: Record<ChampionId, BotProfile> = { marksman, barbarian, willmore, hunnag, logan, kingrix, dongmaster, dabber, paris, havarti, daltonomo };

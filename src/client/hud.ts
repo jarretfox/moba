@@ -1,3 +1,4 @@
+import { liveDescription, type LiveStats } from './ui/liveNumbers';
 import { atRank, perRank, type ChampionId, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
 import { ACTIVES, ACTIVE_KEYS, INVENTORY_SLOTS, ITEMS, PASSIVES, activeSlots, hasteMultiplier, priceFor, sellPrice, statLines, type ItemId } from '../shared/items';
@@ -39,6 +40,8 @@ const HELP = [
   ['Right-click', 'move / attack (hold to keep steering)'],
   ['Q W E R', 'hold to aim, release to cast'],
   ['Shift+Q W E R', 'level up an ability'],
+  ['A + click', 'attack-move: walk there, fighting whatever you meet'],
+  ['C', 'show your attack range (hold)'],
   ['S', 'stop'],
   ['B', 'recall home (4s, breaks if hit)'],
   ['P', 'shop (or click Old Wick)'],
@@ -88,6 +91,11 @@ export class Hud {
   /** Each inventory slot's icon, cooldown shade and hotkey (D or F, for items with an active). */
   private readonly invParts: { icon: HTMLElement; cd: HTMLElement; key: HTMLElement }[] = [];
   private invItems: (ItemId | undefined)[] = [];
+  /** Your stats right now, for working out the numbers in tooltips. */
+  private liveStats: LiveStats = { ad: 0, ap: 0, bad: 0, bhp: 0, mhp: 0 };
+  private haste = 0;
+  /** The next item in your build, when you're at the shop and can afford it (the chip buys it). */
+  private nextBuyReady: ItemId | null = null;
   private readonly debug: HTMLElement;
   private readonly clockTime: HTMLElement;
   private readonly killsUs: HTMLElement;
@@ -276,6 +284,8 @@ export class Hud {
     });
     this.nextBuy = { root: q('.next-buy'), icon: q('.nb-icon'), text: q('.nb-text') };
     this.nextBuy.root.addEventListener('click', () => {
+      // At the shop with the gold for it: one click buys it.
+      if (this.nextBuyReady) return this.onBuy?.(this.nextBuyReady);
       if (!this.shop.open) getSound().play('shopOpen', 0.5);
       this.shop.toggle(true);
     });
@@ -309,6 +319,8 @@ export class Hud {
   update(me: MeSnap | undefined, self: EntitySnap | undefined, debug: string): void {
     this.set(this.debug, 'text', debug);
     if (!this.info || !me || !self) return;
+    this.liveStats = { ad: me.stats.ad, ap: me.stats.ap, bad: me.stats.bad, bhp: me.stats.bhp, mhp: self.mhp ?? 0 };
+    this.haste = me.stats.haste;
 
     this.set(this.hp.fill, 'width', pct(self.hp ?? 0, self.mhp ?? 1));
     // Losing health leaves a white chunk that drains after a beat; healing just fills straight up.
@@ -365,7 +377,7 @@ export class Hud {
       this.set(el.cost, 'class', a.note ? 'cost note' : 'cost');
       const maxRank = i === 3 ? MAX_ULT_RANK : MAX_BASIC_RANK;
       this.set(el.pips, 'text', '●'.repeat(a.rank) + '○'.repeat(maxRank - a.rank));
-      this.set(el.root, 'class', `slot${a.rank === 0 ? ' unlearned' : ''}${a.cd > 0 ? ' cooling' : ''}${noMana ? ' nomana' : ''}${canLevel ? ' levelable' : ''}`);
+      this.set(el.root, 'class', `slot${a.rank === 0 ? ' unlearned' : ''}${a.cd > 0 ? ' cooling' : ''}${noMana ? ' nomana' : ''}${canLevel ? ' levelable' : ''}${me.queued === i ? ' queued' : ''}`);
       if (el.up.hidden === canLevel) el.up.hidden = !canLevel;
       // Back off cooldown: a quick golden flash.
       if (this.lastCd[i] > 0 && a.cd <= 0 && a.rank > 0) this.pop(el.root, 'ready');
@@ -531,13 +543,15 @@ export class Hud {
     const { next, toward } = this.info ? suggest(PROFILES[this.info.id].build, me.items, me.gold) : { next: null, toward: null };
     this.set(nb.root, 'class', 'next-buy');
     nb.root.hidden = !next || !toward;
+    this.nextBuyReady = null;
     if (!next || !toward) return;
     const price = priceFor(me.items, next);
     const ready = me.gold >= price;
+    this.nextBuyReady = ready && me.inShop ? next : null;
     this.set(nb.icon, 'icon', ITEMS[next].icon);
     this.set(nb.text, 'text', ready ? (me.inShop ? 'Buy now' : 'Ready: head home') : `${price - me.gold}g to go`);
     this.set(nb.root, 'class', `next-buy${ready ? ' ready' : ''}`);
-    nb.root.title = `Next in your build: ${ITEMS[next].name} (${price}g)${next !== toward ? `, a part of ${ITEMS[toward].name}` : ''}. Click to open the shop.`;
+    nb.root.title = `Next in your build: ${ITEMS[next].name} (${price}g)${next !== toward ? `, a part of ${ITEMS[toward].name}` : ''}. ${me.inShop && ready ? ' Click to buy it.' : ' Click to open the shop.'}`;
   }
 
   /** A hit on you: the edges of the screen flush red, `k` (0–1) strong, and fade. */
@@ -880,6 +894,12 @@ export class Hud {
   }
 
   /** Brief red flash when you press an ability that isn't ready. */
+  /** Pressed an ability you haven't learned: point at its "+" if there's a skill point for it. */
+  nudgeLevel(slot: number): void {
+    const up = this.slots[slot]?.up;
+    if (up && !up.hidden) this.pop(up, 'nudge');
+  }
+
   flash(slot: number): void {
     const el = this.slots[slot]?.root;
     if (!el) return;
@@ -908,13 +928,26 @@ export class Hud {
       const rank = this.ranks[slot];
       line('tt-name', `${a.name} [${SLOT_KEYS[slot]}] ${rank ? `· rank ${rank}` : '· not learned'}`, a.icon);
       const cost = a.cost.some((c) => c > 0) ? `${perRank(a.cost)} ${this.info.resource}` : 'No cost';
-      line('tt-meta', `${cost} · ${perRank(a.cooldown)}s cooldown${a.castTime ? ` · ${a.castTime}s cast` : ''}`);
-      line('tt-desc', a.description);
+      // With ability haste, the cooldown it really has now.
+      const cdNow = rank && this.haste ? ` (${(atRank(a.cooldown, rank) * hasteMultiplier(this.haste)).toFixed(1)}s now)` : '';
+      this.liveLine('tt-meta', `${cost} · ${perRank(a.cooldown)}s cooldown${cdNow}${a.castTime ? ` · ${a.castTime}s cast` : ''}`, rank);
+      this.liveLine('tt-desc', a.description, rank);
     }
     t.hidden = false;
     const r = anchor.getBoundingClientRect();
     t.style.left = `${Math.max(8, Math.min(window.innerWidth - 328, r.left + r.width / 2 - 160))}px`;
     t.style.bottom = `${window.innerHeight - r.top + 10}px`;
+  }
+
+  /** A tooltip line with your rank's numbers picked out and scaling worked out (see liveNumbers.ts). */
+  private liveLine(cls: string, text: string, rank: number): void {
+    const d = document.createElement('div');
+    d.className = cls;
+    for (const p of liveDescription(text, rank, this.liveStats)) {
+      if (!p.kind) d.append(p.text);
+      else d.append(el(p.kind === 'rank' ? 'b' : 'span', p.kind === 'rank' ? 'tt-rank' : 'tt-total', p.text));
+    }
+    this.tooltip.appendChild(d);
   }
 
   private showItemTooltip(anchor: HTMLElement, slot: number): void {
@@ -929,10 +962,14 @@ export class Hud {
       ['tt-name', it.name],
       ['tt-meta', `${it.cost} gold · sells for ${sellPrice(id)}`],
       ['tt-desc', statLines(it.stats).join(' · ')],
-      ...(PASSIVES[id] ? [['tt-desc', `${PASSIVES[id]!.name}: ${PASSIVES[id]!.description}`]] : []),
+      ...(PASSIVES[id] ? [['tt-live', `${PASSIVES[id]!.name}: ${PASSIVES[id]!.description}`]] : []),
       ...(active ? [['tt-desc', `Use${key >= 0 ? ` [${ACTIVE_KEYS[key]}]` : ''}: ${active.name}. ${active.description} ${active.cooldown}s cooldown.`]] : []),
       ['tt-flavor', it.flavor],
     ]) {
+      if (cls === 'tt-live') {
+        this.liveLine('tt-desc', text, 1);
+        continue;
+      }
       const d = document.createElement('div');
       d.className = cls;
       if (cls === 'tt-name') d.append(iconEl(it.icon, 'tt-ico'));

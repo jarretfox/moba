@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { seededRandom } from '../shared/balance/simulate';
 import { runBots } from '../shared/bots/bot';
 import { addBots } from '../shared/bots/lineup';
 import { Champion } from '../shared/champions/champion';
@@ -62,15 +63,23 @@ describe('the Howling Hollow (ARAM map)', () => {
   });
 
   it('plays a bots-only 5v5 match to a finish', () => {
-    const { world } = freshMatch('aram');
-    const bots = [...addBots(world, TEAM.blue, 5, [], Math.random), ...addBots(world, TEAM.red, 5, [], Math.random)];
-    expect(bots.every((b) => b.lane === 'mid')).toBe(true);
-    for (let i = 0; i < 30 * 60 * TICK_RATE && !world.winner; i++) {
-      runBots(world, bots);
-      world.step();
-      world.drainEvents();
+    // Seeded, like the balance simulator, so it's the same match every run (some random lineups run long).
+    const dice = Math.random;
+    Math.random = seededRandom(11);
+    try {
+      const { world } = freshMatch('aram');
+      const random = seededRandom(5);
+      const bots = [...addBots(world, TEAM.blue, 5, [], random), ...addBots(world, TEAM.red, 5, [], random)];
+      expect(bots.every((b) => b.lane === 'mid')).toBe(true);
+      for (let i = 0; i < 30 * 60 * TICK_RATE && !world.winner; i++) {
+        runBots(world, bots);
+        world.step();
+        world.drainEvents();
+      }
+      expect(world.winner).not.toBeNull();
+    } finally {
+      Math.random = dice;
     }
-    expect(world.winner).not.toBeNull();
   }, 60000);
 });
 

@@ -177,6 +177,8 @@ export class Vision {
       case 'attack':
       case 'cast':
         return byId(ev.src);
+      case 'castFail':
+        return this.world.getUnit(ev.src)?.team === team;
       case 'death':
       case 'level':
       case 'gold':

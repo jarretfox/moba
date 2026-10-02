@@ -5,7 +5,7 @@ import type { ChampionId } from '../shared/champions/types';
 // things: laughs, taunts, cheers, gibberish lines (think a cartoon mumble), a shout on their ultimate, a
 // bark after a kill, a grunt when hit hard, and a groan as they fall.
 
-export type VoiceMoment = 'taunt' | 'laugh' | 'cheer' | 'line' | 'kill' | 'ult' | 'hurt' | 'death';
+export type VoiceMoment = 'taunt' | 'laugh' | 'cheer' | 'line' | 'kill' | 'ult' | 'hurt' | 'death' | 'grumble';
 
 /** One sound in an utterance: when (seconds from the start), pitch gliding f0 to f1, and which vowel. */
 export interface Syllable {
@@ -112,6 +112,9 @@ export function utterance(champ: ChampionId, moment: VoiceMoment, n = 0): Syllab
       return [syl(0, 'a', 0.95, 1.35, 0.32, 0.95, 0.6, Math.min(1, v.growl * 1.5 + 0.1)), syl(0.3, 'a', 1.35, 0.95, 0.55, 1, 0, Math.min(1, v.growl * 1.5 + 0.1))];
     case 'hurt':
       return [syl(0, rand() < 0.5 ? 'u' : 'e', 1.15, 0.85, 0.16, 0.8, 0.6)];
+    case 'grumble':
+      // "Hmm-mph": two low, short, falling sounds, under their breath.
+      return [syl(0, v.talk[0], 0.9, 0.8, beat * 0.6, 0.5, 0.4), syl(beat * 0.7, 'u', 0.8, 0.62, beat * 1.1, 0.42, 0.5)];
     case 'death':
       return [syl(0, 'a', 1.1, 0.55, 0.75, 0.9, 0.4), syl(0.7, 'o', 0.6, 0.4, 0.45, 0.45, 0.6)];
   }

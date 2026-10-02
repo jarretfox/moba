@@ -1,3 +1,4 @@
+import { CHUD_DEFS } from '../../shared/sim/chud';
 import { jackOLantern } from './hollow';
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import type { FigureLight } from './lighting';
@@ -70,7 +71,12 @@ export interface ViewContext {
   night?: number;
   /** How far into dusk (0–1): the lanterns are lit, and so are the Shooties' windows. */
   dusk?: number;
+  /** Your basic attack's damage before armor, for the last-hit marker on enemy Chuds (unset: no marker). */
+  myAd?: number;
 }
+
+/** Chuds' armor by name, for working out whether your next hit kills one. */
+const CHUD_ARMOR: Record<string, number> = Object.fromEntries(Object.values(CHUD_DEFS).map((d) => [d.name, d.stats.armor]));
 
 /** A soft round glow, shared by every figure's back light. */
 let glowTexture: Texture | null = null;
@@ -545,10 +551,10 @@ export class UnitView implements EntityView {
     if (this.titleText) this.titleText.visible = this.label.visible;
     if (s.bty || this.poster) this.wanted(s);
 
-    const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}`;
+    const barKey = `${s.hp}|${s.mhp}|${s.sh}|${s.mp}|${s.mmp}|${s.lv}|${ctx.myAd ?? 0}`;
     if (barKey !== this.barKey) {
       this.barKey = barKey;
-      this.drawBars(s);
+      this.drawBars(s, ctx.myAd);
     }
     this.drawBuffs(s);
     const statusKey = (s.st ?? []).join();
@@ -805,7 +811,7 @@ export class UnitView implements EntityView {
     this.badge.position.set(0, -(this.rig ? this.headroom : r) - 44);
   }
 
-  private drawBars(s: EntitySnap): void {
+  private drawBars(s: EntitySnap, myAd?: number): void {
     const g = this.bars.clear();
     const w = s.k === 'champion' ? 84 : s.k === 'chud' ? 44 : 70;
     const h = s.k === 'chud' ? 5 : 9;
@@ -824,6 +830,14 @@ export class UnitView implements EntityView {
     // A notch every 100 health so big and small health pools read differently at a glance.
     for (let v = 100; s.k !== 'chud' && v < mhp; v += 100) {
       g.rect(x + (w * v) / mhp, y, 1, v % 1000 === 0 ? h : h * 0.5).fill({ color: 0x000000, alpha: 0.55 });
+    }
+    // Last hits: a notch where your next hit would leave an enemy Chud, and the bar lit gold when it would kill it.
+    if (myAd && s.k === 'chud' && this.relation === 'enemy' && !s.dead && hp > 0) {
+      const hit = (myAd * 100) / (100 + (CHUD_ARMOR[s.name ?? ''] ?? 0));
+      if (hp <= hit) {
+        g.rect(x - 3, y - 3, w + 6, h + 6).fill({ color: 0xffd166, alpha: 0.45 }).stroke({ width: 2, color: 0xffd166 });
+        g.rect(x, y, Math.max(3, (w * hp) / full), h).fill(0xffffff);
+      } else g.rect(x + (w * hit) / full - 0.75, y - 1, 1.5, h + 2).fill({ color: 0xffffff, alpha: 0.85 });
     }
     if (showMana) g.rect(x, y + h + 2, (w * (s.mp ?? 0)) / (s.mmp ?? 1), 4).fill(this.resourceColor);
     if (this.levelText) {
