@@ -90,7 +90,8 @@ function softGlow(): Texture {
 export interface EntityView {
   readonly container: Container;
   update(s: EntitySnap, dt: number, ctx: ViewContext): void;
-  onAttack?(): void;
+  /** Started a basic attack; a champion's `variant` is which of their swings to play (see animation.ts). */
+  onAttack?(variant?: Anim): void;
   /** Took a hit: a quick flash, and a stagger away from `from` if it was a big one. */
   onHit?(from?: { x: number; y: number }, heavy?: boolean): void;
   /** Cast an ability: the champion strikes a pose for it. */
@@ -120,8 +121,8 @@ export class UnitView implements EntityView {
   private readonly facing = new Container();
   private readonly figure = new Graphics();
   private readonly champ: ChampionId | null = null;
-  /** What this unit does when it attacks. */
-  private readonly attackAnim: Anim | null = null;
+  /** What this unit does when it attacks (a champion's changes swing to swing). */
+  private attackAnim: Anim | null = null;
   /** Seconds into a recall, and the props its routine draws behind and in front of the figure. */
   private recallT = 0;
   private readonly recallUnder = new Graphics();
@@ -618,9 +619,10 @@ export class UnitView implements EntityView {
     for (let i = used; i < this.recallTexts.length; i++) this.recallTexts[i].visible = false;
   }
 
-  onAttack(): void {
+  onAttack(variant?: Anim): void {
     this.pulse = 1;
     this.hitFired = false;
+    if (variant) this.attackAnim = variant;
     if (this.attackAnim) this.anim = { a: this.attackAnim, t: 0 };
   }
 

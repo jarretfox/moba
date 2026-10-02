@@ -11,8 +11,10 @@ import type { Command, EntitySnap, GameEvent, HostMessage, MeSnap, ScoreRow } fr
 import { getSound } from './audio';
 import { onSettings, settings } from './settings';
 import { Camera } from './camera';
-import { MELEE, announceSound, cueFor, spatialize, type SoundCue } from './sfx';
-import { EMOTE_ANIM, wardenWindup } from './render/animation';
+import { announceSound, cueFor, spatialize, type SoundCue } from './sfx';
+import { EMOTE_ANIM, attackAnim, wardenWindup } from './render/animation';
+import { attackLook, nextSwing } from './render/attacks';
+import { castSignature } from './render/signatures';
 import { Bubbles } from './render/bubbles';
 import { typing } from './ui/chat';
 import { loadProfile, recordMatch, saveProfile } from './profile';
@@ -24,7 +26,7 @@ import { Hud } from './hud';
 import { FogLayer } from './render/fog';
 import { Ambience } from './render/ambience';
 import { FxLayer } from './render/fx';
-import { brazierFire, championDeath, footstep, castFlash, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
+import { brazierFire, championDeath, footstep, monsterAura, playSpell, projectileTrail, statusAura, structureCollapse } from './render/spells';
 import { FIRE_HEIGHT, propSpots } from './render/props';
 import { NightLife, duskAt } from './render/nightlife';
 import { Lighting, nightAt, skyAt } from './render/lighting';
@@ -789,28 +791,20 @@ export class GameClient {
         return;
       }
       case 'attack': {
-        this.views.get(ev.src)?.onAttack?.();
+        const src = this.ents.get(ev.src);
+        const tgt = this.ents.get(ev.target);
+        // A champion's swings come in turn (a chop, a sweep, a backhand...), each with its own look: the
+        // weapon's arc (or the shot leaving the hand) as the blow is thrown, and the hit landing on the
+        // target in the champion's own style (render/attacks.ts). Everyone else plays their one move.
+        const swing = src?.champ ? nextSwing(ev.src) : 0;
+        const anim = src?.champ ? attackAnim(src.champ, swing) : undefined;
+        this.views.get(ev.src)?.onAttack?.(anim);
         this.damageLog.noteAttack(ev.src, performance.now() / 1000);
         const shooter = this.ents.get(ev.src);
         if (shooter?.k === 'structure' && this.ents.get(ev.target)?.k === 'champion') this.towerShots.set(ev.src, { target: ev.target, until: performance.now() / 1000 + 1.4 });
         if (shooter?.k === 'structure') this.shootieFires(shooter, this.ents.get(ev.target));
-        // Melee champions' blows leave a slash arc where they land (yours bigger and brighter); ranged ones a
-        // bright twang at the hand as the shot leaves. Either way you can see an attack happen.
-        const src = this.ents.get(ev.src);
-        const tgt = this.ents.get(ev.target);
         const mine = ev.src === this.myId;
-        if (src?.k === 'champion' && src.champ && MELEE.has(src.champ) && tgt) {
-          const a = Math.atan2(tgt.y - src.y, tgt.x - src.x);
-          const reach = Math.min((Math.hypot(tgt.x - src.x, tgt.y - src.y) + tgt.r * 0.4) * 1.1, src.r * 3.6);
-          const color = src.champ === 'barbarian' ? 0xff8a3d : src.champ === 'logan' ? 0xffc04d : 0xc8945a;
-          this.fx.slash(src.x, src.y, a, reach, 1.5, color, mine ? 0.38 : 0.3);
-        } else if (src?.k === 'champion' && src.champ) {
-          const color = CAST_COLORS[src.champ];
-          const hx = src.x + Math.cos(src.f) * src.r * 0.6;
-          const hy = src.y - chestHeight(src) * 0.9;
-          this.fx.flash(hx, hy, mine ? 26 : 18, color, 0.14, 0.85);
-          if (mine) this.fx.particles.burst(5, { shape: 'spark', x: hx, y: hy, life: 0.2, size: 8, size2: 2, stretch: 0.05, color: 0xffffff, color2: color }, [120, 260], src.f, 0.8);
-        }
+        if (src?.k === 'champion' && anim && tgt) attackLook(this.fx, src, tgt, swing, anim, mine, () => this.ents.get(ev.target));
         // Your own attack has an edge you always hear; an enemy champion's at you comes in with a whoosh.
         if (mine && src) this.sound.play('atkEdge', 0.5);
         else if (src?.k === 'champion' && src.tm !== this.myTeam && ev.target === this.myId) this.playCue({ name: 'incoming', at: src, gain: 0.6 });
@@ -890,7 +884,8 @@ export class GameClient {
       case 'cast': {
         const caster = this.ents.get(ev.src);
         this.views.get(ev.src)?.onCast?.(ev.slot);
-        if (caster) castFlash(this.fx, caster);
+        // Their own mark on the ground and round the body (the Oak splits the earth, Daltonomo's diamonds spin...).
+        if (caster) castSignature(this.fx, caster, ev.slot);
         if (ev.src === this.myId) this.casts++;
         if (caster?.champ) this.damageLog.noteCast(ev.src, CHAMPION_INFO[caster.champ].abilities[ev.slot].name, performance.now() / 1000);
         if (caster?.champ && ev.slot === 3) {
