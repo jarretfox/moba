@@ -193,6 +193,24 @@ S('fx:mustard', rng(K_IMP, 'impactSoft_medium_00{}', [0, 1, 2, 3, 4]), over=True
 S('fx:expressCrash', rng(K_IMP, 'impactMetal_heavy_00{}', [0, 1, 3]), over=True, level=-4, **{'with': ['fx:expressCrash+crunch']})
 S('fx:expressCrash+crunch', rng(CRUNCH, 'impactcrunch0{}.mp3', [4, 5]), level=-2)
 
+# ── Summoner spells (D and F, everyone's): League's sounds, more or less. Flash a bright magic snap, Ghost a
+# rush of air, Heal a cure chime, Barrier a force field, Exhaust a dark sap, Ignite a fireball, Cleanse a
+# clean magic ring, Teleport a power-up hum and an arrival, Smite a deep boom under the bolt, Clarity a
+# power-up, Mark a snowball crunch and a whoosh.
+S('fx:flash', rng(RPG80, 'spell_0{}', [1, 2]), level=0, max=0.8)
+S('fx:ghost', [('medieval-fantasy', 'woosh-1'), ('medieval-fantasy', 'woosh-2')], level=-1, max=1.0)
+S('fx:summonerHeal', [('top-down-shooter', 'cure')], level=0, max=1.2)
+S('fx:barrier', rng(K_SCI, 'forceField_00{}', [2, 3, 4]), level=-1, max=1.0)
+S('fx:exhaust', [('space-shooter', 'dark-shoot')], level=-1, max=0.9)
+S('fx:ignite', [(RPG80, 'spell_fire_04'), (None, '105016__julien-matthey__jm-fx-fireball-01')], level=-2, max=1.0)
+S('fx:cleanse', [('ninja-adventure', 'magic-1'), ('ninja-adventure', 'magic')], level=-1, max=1.0)
+S('fx:teleportStart', [('space-shooter', 'power-up-2')], level=-3, max=1.5)
+S('fx:teleportArrive', [('space-shooter', 'power-up-1'), ('space-shooter', 'power-up-3')], level=-1, max=1.2)
+S('fx:smite', rng(K_SCI, 'lowFrequency_explosion_00{}', [0, 1]), over=True, level=-2, max=1.2)
+S('fx:clarity', [('ninja-adventure', 'power-up'), (None, 'magical_3')], level=-1, max=1.2)
+S('fx:markHit', rng(K_IMP, 'footstep_snow_00{}', [0, 1, 2, 3]), over=True, level=1)
+S('fx:markDash', [('western-fps-2d', 'woosh-1'), ('western-fps-2d', 'woosh-2'), ('western-fps-2d', 'woosh-3')], level=0)
+
 out = {}
 for key, (sources, o) in D.items():
     files = [find(pack or 'oga/', name) for pack, name in sources]

@@ -142,7 +142,7 @@ describe('spell looks', () => {
       nowYouSeeMe: true, backstab: true, jackbox: true, boxShot: true, doubleAct: true, cloneBoom: true, lanternLight: true, aegisWard: true, drumBeat: true,
       static: true, spellblade: true, royalPause: true, relic: true,
       mustard: true, manhole: true, steamBurst: true, jaywalk: true, expressHorn: true, expressCrash: true,
-      tip: true, cashRain: true, yachtParty: true, paperwork: true, breach: true, shroomSpread: true, cloneGuide: true, splashZone: true,
+      tip: true, cashRain: true, yachtParty: true, paperwork: true, breach: true, flash: true, ghost: true, summonerHeal: true, barrier: true, exhaust: true, ignite: true, cleanse: true, teleportStart: true, teleportArrive: true, smite: true, clarity: true, markHit: true, markDash: true, shroomSpread: true, cloneGuide: true, splashZone: true,
     };
     for (const kind of Object.keys(kinds) as FxKind[]) {
       const { fx, calls, flush } = fakeFx();

@@ -889,6 +889,100 @@
         "sfx/fx-steamBurst-hiss-3.mp3"
       ],
       "gain": 0.222
+    },
+    "fx:flash": {
+      "files": [
+        "sfx/fx-flash-1.mp3",
+        "sfx/fx-flash-2.mp3"
+      ],
+      "gain": 0.531
+    },
+    "fx:ghost": {
+      "files": [
+        "sfx/fx-ghost-1.mp3",
+        "sfx/fx-ghost-2.mp3"
+      ],
+      "gain": 0.199
+    },
+    "fx:summonerHeal": {
+      "files": [
+        "sfx/fx-summonerHeal-1.mp3"
+      ],
+      "gain": 0.276
+    },
+    "fx:barrier": {
+      "files": [
+        "sfx/fx-barrier-1.mp3",
+        "sfx/fx-barrier-2.mp3",
+        "sfx/fx-barrier-3.mp3"
+      ],
+      "gain": 0.457
+    },
+    "fx:exhaust": {
+      "files": [
+        "sfx/fx-exhaust-1.mp3"
+      ],
+      "gain": 0.637
+    },
+    "fx:ignite": {
+      "files": [
+        "sfx/fx-ignite-1.mp3",
+        "sfx/fx-ignite-2.mp3"
+      ],
+      "gain": 3.293
+    },
+    "fx:cleanse": {
+      "files": [
+        "sfx/fx-cleanse-1.mp3",
+        "sfx/fx-cleanse-2.mp3"
+      ],
+      "gain": 0.222
+    },
+    "fx:teleportStart": {
+      "files": [
+        "sfx/fx-teleportStart-1.mp3"
+      ],
+      "gain": 0.223
+    },
+    "fx:teleportArrive": {
+      "files": [
+        "sfx/fx-teleportArrive-1.mp3",
+        "sfx/fx-teleportArrive-2.mp3"
+      ],
+      "gain": 0.324
+    },
+    "fx:smite": {
+      "files": [
+        "sfx/fx-smite-1.mp3",
+        "sfx/fx-smite-2.mp3"
+      ],
+      "gain": 0.979,
+      "over": true
+    },
+    "fx:clarity": {
+      "files": [
+        "sfx/fx-clarity-1.mp3",
+        "sfx/fx-clarity-2.mp3"
+      ],
+      "gain": 0.27
+    },
+    "fx:markHit": {
+      "files": [
+        "sfx/fx-markHit-1.mp3",
+        "sfx/fx-markHit-2.mp3",
+        "sfx/fx-markHit-3.mp3",
+        "sfx/fx-markHit-4.mp3"
+      ],
+      "gain": 1.021,
+      "over": true
+    },
+    "fx:markDash": {
+      "files": [
+        "sfx/fx-markDash-1.mp3",
+        "sfx/fx-markDash-2.mp3",
+        "sfx/fx-markDash-3.mp3"
+      ],
+      "gain": 0.189
     }
   },
   "voices": {},

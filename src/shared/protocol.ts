@@ -1,6 +1,7 @@
 // Messages between a player's client and the host. The host runs in a Web Worker in the hosting
 // player's tab; their own client talks to it directly, and friends' messages arrive over WebRTC
 // (PeerJS) and are relayed to it by that tab. Nothing from a client is trusted.
+import type { SummonerId } from './summoners';
 import type { ChampionId } from './champions/types';
 import type { PlayerTeam, Slot, Team } from './constants';
 import type { MapId } from './map/mapData';
@@ -38,6 +39,8 @@ export type Command =
   | { k: 'undo' }
   /** Use the item in this inventory slot (its active), aimed at a spot if it needs one. */
   | { k: 'use'; slot: number; x: number; y: number }
+  /** A summoner spell (slot 0 is D, 1 is F), aimed at the cursor. */
+  | { k: 'spell'; slot: number; x: number; y: number }
   /** Mark a spot on the map for your team. */
   | { k: 'ping'; kind: PingKind; x: number; y: number }
   | { k: 'emote'; kind: EmoteKind };
@@ -47,7 +50,7 @@ export type ClientMessage =
   /** `rejoin`: the token from your welcome, to take your champion back after a dropped connection. */
   | { t: 'hello'; name: string; title?: string; rejoin?: string }
   /** Change team and/or champion while in the lobby. */
-  | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId; skin?: number }
+  | { t: 'pick'; team?: PlayerTeam; champion?: ChampionId; skin?: number; spells?: SummonerId[] }
   /** Host only: start the match once everyone has picked. */
   | { t: 'start'; mode: MatchMode }
   /** Host only, in the lobby: change the match settings. */
@@ -133,6 +136,8 @@ export interface LobbyPlayer {
   title?: string;
   /** ARAM All Random: rerolls left. */
   rerolls?: number;
+  /** Their summoner spells (D, then F). */
+  spells: [SummonerId, SummonerId];
 }
 
 export interface LobbyState {
@@ -225,6 +230,12 @@ export type StatusKind =
   | 'sundered'
   | 'burning'
   | 'stasis'
+  /** Summoner spells: Ghost (passes through units), Cleanse's tenacity, Teleport's channel, Ignite's burn, Mark's mark. */
+  | 'ghost'
+  | 'cleansed'
+  | 'teleport'
+  | 'ignited'
+  | 'marked'
   | BuffKind;
 /** Jungle buffs: Ember Toad's and Glowcap's. Then the team buffs the map events pay out (sim/eventBuffs.ts). */
 export type BuffKind = 'ember' | 'glowcap' | 'deepPockets' | 'wicksFavor' | 'royalFavor';
@@ -284,6 +295,8 @@ export interface ScoreRow {
   skin?: number;
   /** Pumpkins eaten (the Howling Hollow; left out when none). */
   pk?: number;
+  /** Their summoner spells (D, then F). */
+  sp?: [SummonerId, SummonerId];
 }
 
 /** Everyone's view of the Warden: when it wakes, and which team is Unchained (Uprising if Willmore or HunnaG took it). */
@@ -298,6 +311,20 @@ export type EntityKind = 'champion' | 'dummy' | 'chud' | 'structure' | 'monster'
 
 /** Cosmetic cues the client turns into effects. They never affect gameplay. */
 export type FxKind =
+  /** Summoner spells: Flash (from x, y to x2, y2), Ghost, Heal (on x2, y2 too, if it found an ally), Barrier, Exhaust and Ignite (caster to target), Cleanse, Teleport starting (at x, y, to x2, y2) and landing (at x, y, from x2, y2), Smite (on the target), Clarity, Mark's snowball hitting, and its dash. */
+  | 'flash'
+  | 'ghost'
+  | 'summonerHeal'
+  | 'barrier'
+  | 'exhaust'
+  | 'ignite'
+  | 'cleanse'
+  | 'teleportStart'
+  | 'teleportArrive'
+  | 'smite'
+  | 'clarity'
+  | 'markHit'
+  | 'markDash'
   /** ARAM: a pumpkin (health relic) eaten. */
   | 'relic'
   /** Item passives: Stormstring's chain lightning (from x, y to x2, y2), a Spellblade hit, the Royal Hourglass going off. */
@@ -393,7 +420,7 @@ export type GameEvent =
   | { e: 'attackStop'; src: number }
   | { e: 'cast'; src: number; slot: Slot; x: number; y: number }
   /** A cast that couldn't go off, and why (only the caster's team is told; their screen says so). */
-  | { e: 'castFail'; src: number; slot: Slot; why: CastFail }
+  | { e: 'castFail'; src: number; slot: Slot; why: CastFail; /** A summoner spell's (0 for D, 1 for F), not an ability's. */ sum?: number }
   | { e: 'heal'; target: number; amount: number }
   | { e: 'death'; id: number }
   | { e: 'level'; id: number; level: number }
@@ -515,6 +542,8 @@ export interface MeSnap {
   undo?: boolean;
   /** What you're attacking right now (the unit your attack order is on), while you have one. */
   tgt?: number;
+  /** Your summoner spells (D, then F): seconds until each is back, and whether a second press would do something now (Mark's dash). */
+  sums: { id: SummonerId; cd: number; armed?: boolean }[];
   /** Seconds until each inventory slot's item can be used again (0 when ready, or when it has no active). */
   itemCd?: number[];
   /** Jungle buffs and the seconds left on each. */

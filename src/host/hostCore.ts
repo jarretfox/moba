@@ -1,3 +1,4 @@
+import { DEFAULT_SUMMONERS, fixSummoners } from '../shared/summoners';
 import { Bot, runBots } from '../shared/bots/bot';
 import { addBots, laneForNewBot } from '../shared/bots/lineup';
 import { Champion } from '../shared/champions/champion';
@@ -111,7 +112,7 @@ export class HostCore {
         if (this.phase === 'playing' && typeof msg.rejoin === 'string' && this.rejoin(connId, msg.rejoin)) return;
         return this.hello(connId, msg.name, msg.title);
       case 'pick':
-        return this.pick(connId, msg.team, msg.champion, msg.skin);
+        return this.pick(connId, msg.team, msg.champion, msg.skin, msg.spells);
       case 'ack':
         if (typeof msg.tick === 'number') this.players.get(connId)?.encoder.ack(msg.tick);
         return;
@@ -175,7 +176,11 @@ export class HostCore {
     if (typeof s.night === 'boolean') next.night = s.night;
     if ((START_GOLD_OPTIONS as readonly unknown[]).includes(s.gold)) next.gold = s.gold as number;
     if (typeof s.fast === 'boolean') next.fast = s.fast;
-    if (isMapId(s.map)) next.map = s.map;
+    if (isMapId(s.map)) {
+      next.map = s.map;
+      // A spell the new map doesn't allow (Smite on ARAM, Mark on the Rift) gives way to an allowed one.
+      for (const p of this.lobby.values()) p.spells = fixSummoners(p.spells, s.map);
+    }
     if ((TEAM_SIZE_OPTIONS as readonly unknown[]).includes(s.teamSize)) next.teamSize = s.teamSize as number;
     if (s.aramPick === 'random' || s.aramPick === 'pick') next.aramPick = s.aramPick;
     if (typeof s.draft === 'boolean') next.draft = s.draft;
@@ -381,15 +386,17 @@ export class HostCore {
     const team = this.humansOn(TEAM.blue) <= this.humansOn(TEAM.red) ? TEAM.blue : TEAM.red;
     if (this.humansOn(team) >= teamSizeOf(this.settings)) return this.send(connId, { t: 'refused', reason: 'That lobby is full.' });
     const clean = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, MAX_NAME) : '';
-    this.lobby.set(connId, { id: connId, name: clean || 'Player', team, champion: null, skin: 0, host: connId === LOCAL_CONN, ...(isTitleId(title) ? { title } : {}) });
+    this.lobby.set(connId, { id: connId, name: clean || 'Player', team, champion: null, skin: 0, spells: [...DEFAULT_SUMMONERS], host: connId === LOCAL_CONN, ...(isTitleId(title) ? { title } : {}) });
     if (this.allRandom) this.rollFor(this.lobby.get(connId)!, true);
     this.broadcastLobby();
   }
 
   /** One of each champion per team: a pick a teammate already has is refused, and switching to a team that has yours clears it. */
-  private pick(connId: string, team: unknown, champion: unknown, skin?: unknown): void {
+  private pick(connId: string, team: unknown, champion: unknown, skin?: unknown, spells?: unknown): void {
     const me = this.lobby.get(connId);
     if (!me || this.phase !== 'lobby') return;
+    // Summoner spells can change any time before the match, draft or not.
+    if (spells !== undefined) me.spells = fixSummoners(spells, this.settings.map);
     if (this.drafting) {
       // Drafting: the teams are set, and a pick is only yours to make on your turn.
       const d = this.draft!;
@@ -453,6 +460,7 @@ export class HostCore {
       champ.skin = p.skin;
       champ.gold = startGold;
       champ.title = p.title;
+      champ.summoners = fixSummoners(p.spells, mapId);
       if (aram) startAtLevel(this.world, champ, ARAM.startLevel);
       // Snapshots are deltas from what each player has confirmed getting, so a lost or late one over the
       // internet costs nothing (shared/snapshotCodec.ts).

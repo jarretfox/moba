@@ -120,7 +120,7 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - **The shop window:** sections for Basics, Boots, Epic and Legendary; filters for Attack, Magic and Defense; each card shows its stats as chips, its passive and active, what it's built from or into, and your price beside the full one.
   - **Undo** takes back the last purchase (every coin and part) or sale, while you're still at the shop.
   - **Wick suggests:** along the top of the shop, your champion's build (the bots' build for them, through the new tree) is ticked off as you go. It offers the next thing to buy, or the dearest part of it you can afford.
-  - **Item actives** (`ACTIVES`), on **D** and **F** (the first two in your inventory) or by clicking the slot. The slot shades over as it cools down.
+  - **Item actives** are **off for now** (2026-10-03: D and F went to summoner spells). The items keep their stats and passives; `ITEM_ACTIVES_ON` in `items.ts` brings the actives back (they'd need other keys). What they did:
     - **Glowworm Lantern, Light the Way** (60s): throws light up to 1400 away. Your team sees everything within 550 of it, brush and over walls, for 6s. It works as a "ward" only your team knows about (`sim/ward.ts`).
     - **Deepstone Aegis, Deepstone Ward** (75s): a shield of 120 plus 10% of max health for 3s, on you and allies within 600.
     - **War Drum, War Beat** (45s): you and allies within 700 run 30% faster for 3s.
@@ -225,6 +225,28 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
 - **HunnaG:** the Mole Hole ping-pong is fixed, the totem is a bit stronger, and its mushroom patch spreads, stays and speeds her up (see her kit).
 - **Daltonomo:** R again guides the double (see his kit). A second press of an ability that's still active (Daltonomo's guide, Willmore surfacing, Scrimby braking) now goes through whatever the cooldown says (`canRecast`, `AbilitySnap.recast`).
 - **Dark Dabber's sounds** were too loud and took over everything (he attacks fast, and his fire and smoke sat on top of the mix). His recorded sounds are 5–11 dB quieter and his long takes are cut short (attack 0.3s, hit 0.45s, fire 0.9s); Hotbox and Sticky Icky's whooshes are softer.
+
+## Summoner spells (2026-10-03)
+
+League's summoner spells: two per player, cast with **D** and **F**, picked in champion select. The data is `shared/summoners.ts`, what they do is `sim/summonerCasts.ts`, and the champion keeps them (`Champion.summoners`, `summonerReady`). League's numbers, with anything that grows by level spread over our 13 levels (`byLevel`).
+
+- **Flash** (300s): blink up to 400 toward the cursor, over walls. Works while rooted, not while stunned. You keep walking where you were going.
+- **Ghost** (210s): 24–48% faster for 10s, and you pass through units (no collision).
+- **Heal** (240s): 80–318 to you and the most hurt allied champion within 850, and 30% speed for 1s for both. Wounds cut it.
+- **Barrier** (180s): a 105–411 shield for 2.5s.
+- **Exhaust** (210s): the enemy champion at the cursor (within 650) is slowed 30% and deals 35% less damage for 2.5s.
+- **Ignite** (180s): the enemy champion at the cursor (within 600) takes 70–410 true damage over 5s, a tick a second, and heals 40% less meanwhile.
+- **Cleanse** (210s): takes off stuns, roots, slows, fears, Exhaust and Ignite, and works while stunned; for 3s after, those land 65% shorter. Not knock-ups or stasis.
+- **Teleport** (300s; the Rift only): a 4s channel, then you appear beside the allied Shootie, Oakner or Chud nearest the cursor, anywhere on the map. Aim it with the camera or with the pointer on the minimap. A violet portal shows where you'll come out (a `teleport` zone, seen by whoever can see the spot), following a Chud as it walks. Moving, acting, another summoner or a stun calls it off, and it's back in 15s; so does its post falling. Damage doesn't.
+- **Smite** (90s; the Rift only): 400–700 true damage to the monster or enemy Chud at the cursor (within 500). Steal the Warden.
+- **Clarity** (240s; ARAM only): 50% of your max mana back, 25% for allies within 600.
+- **Mark** (80s; ARAM only): a snowball skillshot (1600 range); the first enemy it hits takes 15–75 true damage and is marked for 3s. Press it again to dash to them (and attack).
+
+- **Targeting is League's quick cast:** the spell goes off at once at the cursor. Targeted ones take the nearest fitting target within 300 of the cursor that's in reach; with nothing there, nothing happens and nothing goes on cooldown (and you hear why). A press on cooldown just flashes the slot.
+- **Champion select:** a Summoner spells bar under the title, two slots (D and F). Click one for every spell the map allows, with each one's description; picking the spell that's on your other key swaps the two, like League. Your picks are saved in the browser, one pair per map (`blokes.summoners`), and go in by themselves next time; they can change any time before the match, even mid-draft. Everyone's show beside their name in the lobby. A pick is checked by the host (`fixSummoners`): two different spells the map allows, filled from Flash and Heal. Switching the lobby to ARAM swaps out Smite and Teleport (and back, Clarity and Mark).
+- **In the match:** two slots right of R with their cooldowns (minutes:seconds when long), a flash when one's back, and tooltips. Teleport's channel uses the recall bar ("Teleporting"). The Tab scoreboard shows everyone's two spells beside their portrait (and the match report lists them).
+- **Bots** take them by job: top Flash + Ignite, carry Flash + Heal, jungler Flash + Smite, the third laner Flash + Exhaust, ARAM Flash + one of Heal, Ignite, Barrier, Exhaust, Ghost or Clarity (`bots/summonerUse.ts`). They Flash home and Ghost away when they're about to be caught, Heal and Barrier at low health, Cleanse a stun with an enemy close, Exhaust whoever's on them, Ignite someone it would finish, Smite a camp (or the Warden) it can take, and Clarity out of mana. Teleport and Mark are left to people. 30 bots-only matches after: every one finished, median 20.7 minutes, sides 15–15.
+- **Looks and sounds:** each has an effect (`spells.ts`): a gold-white streak for Flash, cold wisps for Ghost, green pillars for Heal, a gold bubble for Barrier, a sour cloud for Exhaust, a thrown spark that sets them alight for Ignite, a white burst for Cleanse, runes and spiralling motes under a Teleport and a violet column where it lands, a bolt from the sky for Smite, a blue wash for Clarity, and a snowball for Mark. Statuses show too (`ignited`, `ghost`, `cleansed`, `teleport`, `marked`). Recorded sounds from the CC0 packs (`sound-design/design.py`): a magic snap, a rush of air, a cure chime, a force field, a dark sap, a fireball, a magic ring, a power-up hum and an arrival, a low boom under the bolt, a power-up, a snowball crunch and a whoosh. Icons are drawn like the rest (`sum:*` in `iconArt.ts`).
 
 ## ARAM: the Howling Hollow
 

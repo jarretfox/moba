@@ -74,7 +74,7 @@ import { Shopkeeper, wickSpot } from './render/shopkeeper';
 import { buildLandmarks } from './render/landmarks';
 import { WickMood, wickLine, type WickMoment } from './wick';
 import { cantBuy, itemChanges, statGains } from './shop';
-import { ACTIVES, ITEMS, activeSlots, sellPrice, type ItemId } from '../shared/items';
+import { ACTIVES, ITEMS, sellPrice, type ItemId } from '../shared/items';
 import { CHUD_DEFS } from '../shared/sim/chud';
 import { EventsView } from './render/events';
 
@@ -1141,7 +1141,8 @@ export class GameClient {
       }
       case 'castFail':
         if (ev.src === this.myId) {
-          this.hud.flash(ev.slot);
+          if (ev.sum !== undefined) this.hud.flashSummoner(ev.sum);
+          else this.hud.flash(ev.slot);
           this.grumble(ev.why);
         }
         return;
@@ -2038,11 +2039,9 @@ export class GameClient {
         this.aiming = null;
         break;
       case 'KeyD':
-      case 'KeyF': {
-        const slot = activeSlots(this.buffer.latest?.me?.items ?? [])[e.code === 'KeyD' ? 0 : 1];
-        if (slot !== undefined) this.useItem(slot, true);
+      case 'KeyF':
+        this.castSummoner(e.code === 'KeyD' ? 0 : 1);
         break;
-      }
       case 'KeyB':
         this.aiming = null;
         this.send({ k: 'recall' });
@@ -2116,6 +2115,28 @@ export class GameClient {
     }
     const p = atCursor ? this.mouseWorld() : { x: self.x, y: self.y };
     this.send({ k: 'use', slot, x: Math.round(p.x), y: Math.round(p.y) });
+  }
+
+  /**
+   * D or F: a summoner spell, cast at the cursor at once (League's quick cast), or at the spot under the
+   * pointer on the minimap (Teleport across the map). One still cooling down just says no.
+   */
+  private castSummoner(slot: number): void {
+    const me = this.buffer.latest?.me;
+    const self = this.ents.get(this.myId);
+    const s = me?.sums[slot];
+    if (!s || !self || self.dead || this.replay) return;
+    const channeling = s.id === 'teleport' && !!self.st?.includes('teleport');
+    if (s.cd > 0 && !s.armed && !channeling) {
+      this.hud.flashSummoner(slot);
+      this.sound.play('deny', 0.5);
+      return;
+    }
+    const p = this.minimap.hoverAt ?? this.mouseWorld();
+    this.aiming = null;
+    this.send({ k: 'spell', slot, x: Math.round(p.x), y: Math.round(p.y) });
+    // Flash and the like move you on the host: let it lead.
+    this.prediction?.release();
   }
 
   private rightClick(initial: boolean): void {

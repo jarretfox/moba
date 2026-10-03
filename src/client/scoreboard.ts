@@ -1,6 +1,7 @@
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { TEAM, type Team } from '../shared/constants';
 import { ITEMS } from '../shared/items';
+import { SUMMONERS } from '../shared/summoners';
 import type { ScoreRow } from '../shared/protocol';
 import { portraitOf } from './render/champions';
 import { iconEl } from './render/icons';
@@ -45,6 +46,13 @@ export function scoreTables(rows: readonly ScoreRow[], myTeam: Team, meId: numbe
       const face = el('img', 'score-face');
       face.src = portraitOf(r.champ, r.skin ?? 0) ?? '';
       face.alt = '';
+      // Their summoner spells, stacked beside the portrait (League's scoreboard).
+      const spells = el('div', 'score-spells');
+      for (const id of r.sp ?? []) {
+        const s = iconEl(SUMMONERS[id].icon, 'score-spell');
+        s.title = SUMMONERS[id].name;
+        spells.append(s);
+      }
       const who = el('div', 'score-who');
       who.append(el('b', '', r.name), el('span', '', `${CHAMPION_INFO[r.champ].name} · Lv ${r.lv}`));
       const items = el('div', 'score-items');
@@ -54,7 +62,7 @@ export function scoreTables(rows: readonly ScoreRow[], myTeam: Team, meId: numbe
         it.title = ITEMS[id].name;
         items.append(it);
       }
-      row.append(face, who, el('div', 'score-kda', `${r.k} / ${r.d} / ${r.a}`), el('div', 'score-num', `${r.cs} CS`), el('div', 'score-num', `${k(r.dmg)} dmg`), el('div', 'score-num gold', `${k(r.gold)}g`), items);
+      row.append(face, spells, who, el('div', 'score-kda', `${r.k} / ${r.d} / ${r.a}`), el('div', 'score-num', `${r.cs} CS`), el('div', 'score-num', `${k(r.dmg)} dmg`), el('div', 'score-num gold', `${k(r.gold)}g`), items);
       table.append(row);
     }
     wrap.append(table);
@@ -72,8 +80,9 @@ export function matchReport(rows: readonly ScoreRow[], winner: Team | undefined,
     lines.push(`${team === TEAM.blue ? 'BLUE' : 'RED'}${winner === team ? ' (won)' : ''}`);
     for (const r of rows.filter((x) => x.team === team)) {
       const items = r.items.map((id) => ITEMS[id].name).join(', ') || 'no items';
+      const spells = r.sp ? ` · ${r.sp.map((id) => SUMMONERS[id].name).join(' + ')}` : '';
       lines.push(
-        `  ${r.name} (${CHAMPION_INFO[r.champ].name}) Lv${r.lv} ${r.k}/${r.d}/${r.a} · CS ${r.cs} · dmg ${k(r.dmg)} · taken ${k(r.taken)} · towers ${k(r.tdmg)} · gold ${k(r.gold)} · ${items}`,
+        `  ${r.name} (${CHAMPION_INFO[r.champ].name}) Lv${r.lv} ${r.k}/${r.d}/${r.a} · CS ${r.cs} · dmg ${k(r.dmg)} · taken ${k(r.taken)} · towers ${k(r.tdmg)} · gold ${k(r.gold)} · ${items}${spells}`,
       );
     }
   }

@@ -18,6 +18,7 @@ import { LineProjectile } from '../sim/projectile';
 import { Warden } from '../sim/warden';
 import { Relic } from '../sim/relics';
 import { eventOrderFor } from './events';
+import { useSummoners } from './summonerUse';
 
 // ─── Tuning: a "decent new player" ────────────────────────────────────────────
 
@@ -168,6 +169,8 @@ export class Bot {
       .filter((u) => u.kind === 'champion' && u.team !== me.team && u.isTargetable() && dist(u.pos, me.pos) < THREAT_RANGE && world.vision.canSee(me.team, u))
       .sort((a, b) => dist(a.pos, me.pos) - dist(b.pos, me.pos));
     const nearest = foes[0];
+    // Summoner spells: Flash or Ghost away, Heal, Barrier, Cleanse, Exhaust, Ignite, Smite, Clarity.
+    useSummoners(world, me, out, nearest, this.state === 'retreat', this.home, this.jungler);
 
     // Never stand in a Shootie's fire.
     if (this.shootieShootingMe(world)) return this.moveTo(out, this.stepBack(400));

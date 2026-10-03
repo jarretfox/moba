@@ -1,3 +1,4 @@
+import { DEFAULT_SUMMONERS, SUMMONERS, SUMMONER_KEYS, fixSummoners, summonersFor, type SummonerId } from '../../shared/summoners';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import { ROLES, ROLE_INFO, ROLE_ORDER } from '../../shared/champions/roles';
 import { SKIN_COUNT, type ChampionId } from '../../shared/champions/types';
@@ -17,12 +18,34 @@ import { ChampionStage } from './stage';
 /** How long (ms) the pointer rests on a champion's card before the showcase changes to them. */
 const HOVER_SETTLE = 220;
 
+/** Where your summoner spell picks are kept between visits, one pair per map. */
+const SPELLS_KEY = 'blokes.summoners';
+
+function savedSpells(map: string): [SummonerId, SummonerId] | null {
+  try {
+    const all = JSON.parse(localStorage.getItem(SPELLS_KEY) ?? '{}') as Record<string, unknown>;
+    return all[map] ? fixSummoners(all[map], map) : null;
+  } catch {
+    return null; // no storage: Flash and Heal it is
+  }
+}
+
+function saveSpells(map: string, spells: [SummonerId, SummonerId]): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(SPELLS_KEY) ?? '{}') as Record<string, unknown>;
+    all[map] = spells;
+    localStorage.setItem(SPELLS_KEY, JSON.stringify(all));
+  } catch {
+    // no storage: it lasts this visit
+  }
+}
+
 export interface LobbyOptions {
   /** Solo: skip the lobby — picking a champion starts the match straight away in this mode. */
   solo?: MatchMode;
   /** Shown to the host so they can share it. */
   code?: string;
-  onPick(pick: { team?: PlayerTeam; champion?: ChampionId; skin?: number }): void;
+  onPick(pick: { team?: PlayerTeam; champion?: ChampionId; skin?: number; spells?: SummonerId[] }): void;
   onStart(mode: MatchMode): void;
   /** The host changed a match setting. */
   onSettings?(settings: Partial<MatchSettings>): void;
@@ -63,6 +86,20 @@ export class LobbyScreen {
   private readonly cardFaces = new Map<ChampionId, HTMLImageElement>();
   /** The champion you're looking at, standing in the showcase. */
   private readonly stage = new ChampionStage(200);
+  /** Your summoner spells (D and F), which slot's choices are open, and the map they're for. */
+  private readonly summonerBar = el('div', 'summoner-bar');
+  private spells: [SummonerId, SummonerId] = [...DEFAULT_SUMMONERS];
+  private openSlot: number | null = null;
+  private spellMap = 'rift';
+  /** The map your saved picks were last sent for (they're sent once per map). */
+  private spellsSent = '';
+  /** A click anywhere else closes the choices. */
+  private readonly closeChoices = (e: PointerEvent) => {
+    if (this.openSlot !== null && !this.summonerBar.contains(e.target as Node)) {
+      this.openSlot = null;
+      this.drawSummoners();
+    }
+  };
 
   constructor(
     root: HTMLElement,
@@ -78,7 +115,10 @@ export class LobbyScreen {
       this.screen.append(code);
     }
     if (!opts.solo) this.screen.append(this.teams);
-    this.screen.append(el('div', 'select-title', 'Choose your champion'));
+    this.screen.append(el('div', 'select-title', 'Choose your champion'), this.summonerBar);
+    document.addEventListener('pointerdown', this.closeChoices);
+    this.spells = savedSpells('rift') ?? this.spells;
+    this.drawSummoners();
     if (!opts.solo) this.screen.append(this.draftBar);
     // Solo, the match starts as soon as you pick, so the settings come first.
     // (The footer, solo, only has something in it in All Random: your roll, and Start.)
@@ -92,6 +132,7 @@ export class LobbyScreen {
 
   update(lobby: LobbyState, you: string): void {
     const me = lobby.players.find((p) => p.id === you);
+    this.syncSpells(lobby, me?.spells);
     this.drawSettings(lobby.settings, !!me?.host);
     const size = lobby.settings ? teamSizeOf(lobby.settings) : 3;
     this.allRandom = lobby.settings?.map === 'aram' && lobby.settings.aramPick === 'random';
@@ -133,7 +174,10 @@ export class LobbyScreen {
             const who = el('span', 'lobby-slot-name', `${p.name}${p.host ? ' ★' : ''}`);
             const title = titleName(p.title);
             if (title) who.append(el('span', 'lobby-slot-title', title));
-            row.append(who, el('span', 'lobby-slot-champ', p.champion ? CHAMPION_INFO[p.champion].name : 'picking…'));
+            const spells = el('span', 'lobby-slot-spells');
+            for (const id of p.spells ?? []) spells.append(iconEl(SUMMONERS[id].icon, 'lobby-spell'));
+            spells.title = (p.spells ?? []).map((id) => SUMMONERS[id].name).join(' + ');
+            row.append(who, spells, el('span', 'lobby-slot-champ', p.champion ? CHAMPION_INFO[p.champion].name : 'picking…'));
           } else {
             row.append(el('span', 'lobby-slot-empty', this.mode === 'bots' ? 'Bot' : 'Empty'));
           }
@@ -306,10 +350,82 @@ export class LobbyScreen {
   }
 
   close(): void {
+    document.removeEventListener('pointerdown', this.closeChoices);
     document.documentElement.classList.remove('in-lobby');
     clearTimeout(this.hoverTimer);
     this.stage.destroy();
     this.screen.remove();
+  }
+
+  /**
+   * Your spells as the host has them. The first time you're in a lobby on a map (and whenever the host
+   * switches maps), the picks you saved for that map go in.
+   */
+  private syncSpells(lobby: LobbyState, mine: [SummonerId, SummonerId] | undefined): void {
+    const map = this.opts.solo === 'practice' ? 'rift' : (lobby.settings?.map ?? 'rift');
+    if (map !== this.spellMap) this.openSlot = null;
+    this.spellMap = map;
+    if (mine) this.spells = mine;
+    if (this.spellsSent !== map) {
+      this.spellsSent = map;
+      const saved = savedSpells(map);
+      if (saved && saved.join() !== this.spells.join()) {
+        this.spells = saved;
+        this.opts.onPick({ spells: saved });
+      }
+    }
+    this.drawSummoners();
+  }
+
+  /** The two spell slots (D and F), and when one's open, every spell this map allows to choose from. */
+  private drawSummoners(): void {
+    const bar = this.summonerBar;
+    bar.replaceChildren(el('span', 'summoner-label', 'Summoner spells'));
+    this.spells.forEach((id, i) => {
+      const s = SUMMONERS[id];
+      const slot = el('button', `summoner-slot${this.openSlot === i ? ' open' : ''}`);
+      slot.append(iconEl(s.icon, 'summoner-ico'), el('kbd', '', SUMMONER_KEYS[i]), el('span', 'summoner-name', s.name));
+      slot.title = `${s.name}: ${s.description}`;
+      slot.addEventListener('click', () => {
+        this.openSlot = this.openSlot === i ? null : i;
+        getSound().play('click', 0.4);
+        this.drawSummoners();
+      });
+      bar.append(slot);
+    });
+    if (this.openSlot === null) return;
+    const open = this.openSlot;
+    const pop = el('div', 'summoner-pop');
+    const grid = el('div', 'summoner-grid');
+    const desc = el('div', 'summoner-desc');
+    const describe = (id: SummonerId) => {
+      const s = SUMMONERS[id];
+      desc.replaceChildren(el('b', '', `${s.name} `), el('span', 'summoner-cd', `${s.cooldown >= 60 ? `${s.cooldown / 60} min` : `${s.cooldown}s`}`), document.createTextNode(` ${s.description}`));
+    };
+    for (const id of summonersFor(this.spellMap)) {
+      const tile = el('button', `summoner-tile${this.spells[open] === id ? ' on' : this.spells.includes(id) ? ' other' : ''}`);
+      tile.append(iconEl(SUMMONERS[id].icon, 'summoner-ico'), el('span', '', SUMMONERS[id].name));
+      tile.addEventListener('pointerenter', () => describe(id));
+      tile.addEventListener('click', () => this.chooseSpell(open, id));
+      grid.append(tile);
+    }
+    describe(this.spells[open]);
+    pop.append(el('div', 'summoner-pop-title', `Pick your ${SUMMONER_KEYS[open]} spell`), grid, desc);
+    bar.append(pop);
+  }
+
+  /** Puts `id` on a key; if it's already on the other one, the two swap (like League's). */
+  private chooseSpell(slot: number, id: SummonerId): void {
+    const next: [SummonerId, SummonerId] = [...this.spells];
+    const other = 1 - slot;
+    if (next[other] === id) next[other] = next[slot];
+    next[slot] = id;
+    this.spells = next;
+    this.openSlot = null;
+    saveSpells(this.spellMap, next);
+    getSound().play('buy', 0.4);
+    this.opts.onPick({ spells: next });
+    this.drawSummoners();
   }
 
   private championCards(): HTMLElement {

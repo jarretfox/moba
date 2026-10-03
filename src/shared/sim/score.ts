@@ -54,5 +54,6 @@ export function scoreRows(world: World): ScoreRow[] {
       gold: Math.round(c.score.goldEarned),
       items: [...c.items],
       ...(c.score.pumpkins ? { pk: c.score.pumpkins } : {}),
+      sp: [...c.summoners],
     }));
 }

@@ -891,6 +891,102 @@ const ART: Record<string, Draw> = {
     rod(g, (g) => g.moveTo(-18, 20).lineTo(-26, 28), 5, PAPER);
     for (const x of [4, 12]) g.moveTo(x, -18).quadraticCurveTo(x - 4, -24, x, -30).stroke({ width: 2, color: WHITE, alpha: 0.6 });
   },
+
+  // ── Summoner spells (keys, not emoji: shared/summoners.ts)
+  'sum:flash': (g) => {
+    // Flash: a burst of gold-white light, sparks thrown off it.
+    const star: number[] = [];
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2 - Math.PI / 2;
+      const r = i % 2 ? 11 : i % 4 ? 22 : 29;
+      star.push(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    g.poly(star).fill(0xffd84a).stroke(ink());
+    g.circle(0, 0, 9).fill(0xfffbe0).stroke({ width: 2, color: GOLD_DARK });
+    for (const [x, y] of [[-22, -20], [24, 16], [20, -24]]) g.circle(x, y, 2.5).fill(WHITE).stroke(ink(1.5));
+  },
+  'sum:ghost': (g) => {
+    // Ghost: a pale little sheet-ghost, sailing past.
+    g.moveTo(-18, 24).lineTo(-18, -4).bezierCurveTo(-18, -32, 18, -32, 18, -4).lineTo(18, 24).lineTo(12, 18).lineTo(6, 24).lineTo(0, 18).lineTo(-6, 24).lineTo(-12, 18).closePath().fill(0xeef7ff).stroke(ink());
+    g.ellipse(-7, -6, 3.5, 5).fill(INK);
+    g.ellipse(7, -6, 3.5, 5).fill(INK);
+    for (const y of [-12, 0, 12]) g.moveTo(-30, y).lineTo(-23, y).stroke({ width: 3, color: 0x9fd8ff, cap: 'round' });
+    g.moveTo(-12, -18).quadraticCurveTo(-15, -8, -13, 2).stroke({ ...shine, color: 0x9fd8ff });
+  },
+  'sum:heal': (g) => {
+    // Heal: a fat green cross on a round of light.
+    g.circle(0, 0, 27).fill(0x2f8f4f).stroke(ink());
+    g.poly([-7, -20, 7, -20, 7, -7, 20, -7, 20, 7, 7, 7, 7, 20, -7, 20, -7, 7, -20, 7, -20, -7, -7, -7]).fill(0xb8ffc8).stroke(ink(2.5));
+    arc(g, 0, 0, 22, Math.PI * 1.1, Math.PI * 1.45).stroke(shine);
+  },
+  'sum:barrier': (g) => {
+    // Barrier: a golden bubble of a shield.
+    g.circle(0, 0, 27).fill({ color: 0xffe9a0, alpha: 0.35 }).stroke(ink());
+    g.circle(0, 0, 27).stroke({ width: 4, color: GOLD });
+    g.circle(0, 0, 19).stroke({ width: 2, color: GOLD_DARK, alpha: 0.6 });
+    g.ellipse(-10, -12, 7, 4).fill({ color: WHITE, alpha: 0.85 });
+    g.circle(0, 6, 7).fill(0xc8962e).stroke(ink(2));
+    g.roundRect(-9, 12, 18, 10, 4).fill(0xc8962e).stroke(ink(2));
+  },
+  'sum:exhaust': (g) => {
+    // Exhaust: a sour purple cloud with a worn-out face.
+    blob(g, [[-12, 4, 13], [4, -4, 16], [16, 8, 11], [0, 12, 12]], 0x8a6aa8);
+    g.moveTo(-8, 2).lineTo(-2, 4).stroke(ink(2.5));
+    g.moveTo(6, 4).lineTo(12, 2).stroke(ink(2.5));
+    g.moveTo(-4, 14).quadraticCurveTo(3, 10, 10, 14).stroke(ink(2.5));
+    for (const [x, y] of [[-20, -18], [-14, -26]]) g.moveTo(x, y).lineTo(x + 6, y).lineTo(x, y + 6).lineTo(x + 6, y + 6).stroke({ width: 2, color: 0xd8b4ff });
+  },
+  'sum:ignite': (g) => {
+    // Ignite: a struck match, flaring.
+    rod(g, (g) => g.moveTo(-18, 24).lineTo(8, -6), 6, WOOD);
+    g.circle(10, -9, 6).fill(0xb3202a).stroke(ink(2.5));
+    g.moveTo(10, -10).bezierCurveTo(-6, -18, 6, -30, 12, -34).bezierCurveTo(16, -24, 30, -18, 10, -10).closePath().fill(0xff7a2f).stroke(ink(2.5));
+    g.moveTo(11, -13).bezierCurveTo(4, -18, 10, -24, 13, -27).bezierCurveTo(15, -21, 22, -18, 11, -13).closePath().fill(0xffd08a);
+  },
+  'sum:cleanse': (g) => {
+    // Cleanse: a chain snapping, and a flash of white where it broke.
+    g.roundRect(-28, -8, 22, 14, 7).stroke(ink(7));
+    g.roundRect(-28, -8, 22, 14, 7).stroke({ width: 4, color: STEEL });
+    g.roundRect(6, -6, 22, 14, 7).stroke(ink(7));
+    g.roundRect(6, -6, 22, 14, 7).stroke({ width: 4, color: STEEL });
+    const burst: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const r = i % 2 ? 6 : 15;
+      burst.push(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    g.poly(burst).fill(WHITE).stroke(ink(2));
+    g.circle(0, 0, 3).fill(0x9fe8ff);
+  },
+  'sum:teleport': (g) => {
+    // Teleport: a violet portal, swirling.
+    g.ellipse(0, 4, 27, 20).fill(0x3a1a6a).stroke(ink());
+    for (let k = 0; k < 3; k++) {
+      const r = 20 - k * 6;
+      arc(g, 0, 4, r, k * 1.2, k * 1.2 + Math.PI * 1.3).stroke({ width: 3, color: k === 0 ? 0xb48aff : k === 1 ? 0xd8c0ff : WHITE, cap: 'round' });
+    }
+    g.circle(0, 4, 3).fill(WHITE);
+    for (const [x, y] of [[-22, -20], [22, -22], [0, -28]]) g.circle(x, y, 2.5).fill(0xd8c0ff).stroke(ink(1.2));
+  },
+  'sum:smite': (g) => {
+    // Smite: a storm cloud's bolt coming down.
+    blob(g, [[-12, -18, 10], [2, -22, 12], [15, -16, 9]], 0x8a94a6);
+    g.poly([2, -12, -10, 8, 0, 8, -6, 28, 12, 0, 2, 0, 8, -12]).fill(0xfff1a8).stroke(ink(2.5));
+    for (const x of [-16, 18]) g.moveTo(x, 18).lineTo(x + (x < 0 ? -6 : 6), 24).stroke({ width: 2.5, color: 0xfff1a8, cap: 'round' });
+  },
+  'sum:clarity': (g) => {
+    // Clarity: a clear blue drop of mana.
+    g.moveTo(0, -28).bezierCurveTo(10, -12, 22, 0, 22, 10).bezierCurveTo(22, 24, 10, 28, 0, 28).bezierCurveTo(-10, 28, -22, 24, -22, 10).bezierCurveTo(-22, 0, -10, -12, 0, -28).closePath().fill(BLUE).stroke(ink());
+    g.moveTo(-10, 4).bezierCurveTo(-12, 12, -8, 18, -2, 20).stroke({ ...shine, width: 3.5 });
+    g.circle(8, 12, 4).fill({ color: 0xbfe0ff, alpha: 0.9 });
+  },
+  'sum:mark': (g) => {
+    // Mark: a snowball, thrown.
+    for (const y of [-10, 0, 10]) g.moveTo(-30, y).lineTo(-16, y).stroke({ width: 3, color: 0x9fd8ff, cap: 'round' });
+    g.circle(6, 0, 20).fill(0xf4fbff).stroke(ink());
+    g.circle(12, 6, 9).fill({ color: 0xc8dcec, alpha: 0.8 });
+    g.circle(0, -7, 5).fill({ color: WHITE, alpha: 0.95 });
+  },
 };
 
 /** The emoji with its invisible "draw as emoji" marks removed, so '🛡️' and '🛡' are the same key. */

@@ -1,3 +1,4 @@
+import { SUMMONERS, SUMMONER_KEYS, TELEPORT, type SummonerId } from '../shared/summoners';
 import { liveDescription, type LiveStats } from './ui/liveNumbers';
 import { atRank, perRank, type ChampionId, type ChampionInfo } from '../shared/champions/types';
 import { SLOT_KEYS, type Slot, type Team } from '../shared/constants';
@@ -43,6 +44,7 @@ const HELP = [
   ['A + click', 'attack-move: walk there, fighting whatever you meet'],
   ['C', 'show your attack range (hold)'],
   ['S', 'stop'],
+  ['D F', 'summoner spells (pick them in champion select)'],
   ['B', 'recall home (4s, breaks if hit)'],
   ['P', 'shop (or click Old Wick)'],
   ['Enter', 'team chat (Shift+Enter: all)'],
@@ -131,6 +133,10 @@ export class Hud {
   private readonly level: HTMLElement;
   private readonly gold: HTMLElement;
   private readonly slots: SlotEls[] = [];
+  /** The summoner spells' slots (D and F): which spell each shows, and its cooldown last frame. */
+  private readonly sums: { root: HTMLElement; icon: HTMLElement; cd: HTMLElement; cdText: HTMLElement }[] = [];
+  private sumIds: (SummonerId | null)[] = [null, null];
+  private readonly lastSumCd = [0, 0];
   private readonly hp: BarEls;
   /** The white chunk behind the health bar showing what you just lost; it drains after a moment. */
   private readonly hpLag: HTMLElement;
@@ -153,6 +159,7 @@ export class Hud {
   private readonly respawnTime: HTMLElement;
   private readonly recall: HTMLElement;
   private readonly recallFill: HTMLElement;
+  private readonly recallLabel: HTMLElement;
   /** When the current recall began (local clock), to fill its bar. */
   private recallStart = 0;
   private readonly escMenu: HTMLElement;
@@ -202,7 +209,7 @@ export class Hud {
           <div class="slots">${SLOT_KEYS.map(
             (k) =>
               `<div class="slot"><button class="up" hidden>+</button><div class="icon"></div><div class="name"></div><div class="cd"></div><div class="cdtext"></div><kbd>${k}</kbd><div class="cost"></div><div class="pips"></div></div>`,
-          ).join('')}</div>
+          ).join('')}<div class="sums">${SUMMONER_KEYS.map((k) => `<div class="sum"><div class="icon"></div><div class="cd"></div><div class="cdtext"></div><kbd>${k}</kbd></div>`).join('')}</div></div>
           <div class="res hp"><div class="lag"></div><div class="fill"></div><span></span></div>
           <div class="res mp"><div class="fill"></div><span></span></div>
           <div class="res xp"><div class="fill"></div><span></span></div>
@@ -249,6 +256,7 @@ export class Hud {
     this.respawnTime = q('.respawn-time');
     this.recall = q('.recall');
     this.recallFill = q('.recall-fill');
+    this.recallLabel = q('.recall-label');
     this.fade = q('.fade');
     this.escMenu = q('.esc-menu');
     q('.esc-settings').append(settingsPanel());
@@ -286,6 +294,11 @@ export class Hud {
       up.addEventListener('click', () => this.onLevelUp?.(i as Slot));
       this.slots.push({ root: el, cd: q('.cd', el), cdText: q('.cdtext', el), cost: q('.cost', el), pips: q('.pips', el), up });
       el.addEventListener('mouseenter', () => this.showTooltip(el, i));
+      el.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
+    });
+    root.querySelectorAll<HTMLElement>('.sums .sum').forEach((el, i) => {
+      this.sums.push({ root: el, icon: q('.icon', el), cd: q('.cd', el), cdText: q('.cdtext', el) });
+      el.addEventListener('mouseenter', () => this.showSummonerTooltip(el, i));
       el.addEventListener('mouseleave', () => (this.tooltip.hidden = true));
     });
     root.querySelectorAll<HTMLElement>('.inv .item').forEach((el, i) => {
@@ -402,6 +415,8 @@ export class Hud {
       this.lastCd[i] = a.cd;
     });
 
+    this.updateSummoners(me);
+
     const low = !self.dead && (self.hp ?? 0) / (self.mhp ?? 1) < 0.3;
     this.set(this.dangerEl, 'class', low ? 'danger on' : 'danger');
 
@@ -413,12 +428,14 @@ export class Hud {
       this.respawnLeft = Math.max(this.respawnLeft, me.respawnIn);
       this.set(this.respawnRing, 'background', `conic-gradient(#e8c46a ${(1 - me.respawnIn / this.respawnLeft) * 360}deg, rgba(255,255,255,0.08) 0)`);
     } else this.respawnLeft = 0;
-    const recalling = !!self.st?.includes('recall');
-    if (this.recall.hidden === recalling) {
-      this.recall.hidden = !recalling;
+    // Recalling or Teleporting: a bar filling up.
+    const channel = self.st?.includes('recall') ? 'recall' : self.st?.includes('teleport') ? 'teleport' : null;
+    if (this.recall.hidden === !!channel) {
+      this.recall.hidden = !channel;
       this.recallStart = performance.now();
+      if (channel) this.set(this.recallLabel, 'text', channel === 'recall' ? 'Recalling' : 'Teleporting');
     }
-    if (recalling) this.recallFill.style.width = pct((performance.now() - this.recallStart) / 1000, RECALL_TIME);
+    if (channel) this.recallFill.style.width = pct((performance.now() - this.recallStart) / 1000, channel === 'recall' ? RECALL_TIME : TELEPORT.channel);
   }
 
   /** One chip per jungle buff, with seconds left. Rebuilt only when the set of buffs changes. */
@@ -945,6 +962,48 @@ export class Hud {
     el.classList.remove('denied');
     void el.offsetWidth; // restart the animation
     el.classList.add('denied');
+  }
+
+  /** The same, for a summoner spell (0 is D, 1 is F). */
+  flashSummoner(slot: number): void {
+    const el = this.sums[slot]?.root;
+    if (el) this.pop(el, 'denied');
+  }
+
+  /** The summoner spells' slots: their pictures, cooldown sweeps, and a flash when one's back. */
+  private updateSummoners(me: MeSnap): void {
+    me.sums.forEach((s, i) => {
+      const el = this.sums[i];
+      if (!el) return;
+      const info = SUMMONERS[s.id];
+      if (this.sumIds[i] !== s.id) {
+        this.sumIds[i] = s.id;
+        el.icon.replaceChildren(iconEl(info.icon));
+      }
+      const cd = s.armed ? 0 : s.cd;
+      this.set(el.cd, 'background', cd > 0 ? `conic-gradient(rgba(4,7,10,.78) ${Math.min(1, cd / info.cooldown) * 360}deg, transparent 0)` : 'none');
+      this.set(el.cdText, 'text', cd > 0 ? (cd < 1 ? cd.toFixed(1) : cd >= 60 ? `${Math.floor(cd / 60)}:${String(Math.floor(cd % 60)).padStart(2, '0')}` : String(Math.ceil(cd))) : '');
+      this.set(el.root, 'class', `sum${cd > 0 ? ' cooling' : ''}${s.armed ? ' armed' : ''}`);
+      if (this.lastSumCd[i] > 0 && cd <= 0) this.pop(el.root, 'ready');
+      this.lastSumCd[i] = cd;
+    });
+  }
+
+  private showSummonerTooltip(anchor: HTMLElement, slot: number): void {
+    const id = this.sumIds[slot];
+    if (!id) return;
+    const s = SUMMONERS[id];
+    const t = this.tooltip;
+    t.replaceChildren(
+      el('div', 'tt-name', `${s.name} [${SUMMONER_KEYS[slot]}]`),
+      el('div', 'tt-meta', `Summoner spell · ${s.cooldown >= 60 ? `${s.cooldown / 60} min` : `${s.cooldown}s`} cooldown`),
+      el('div', 'tt-desc', s.description),
+    );
+    (t.firstChild as HTMLElement).prepend(iconEl(s.icon, 'tt-ico'));
+    t.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    t.style.left = `${Math.max(8, Math.min(window.innerWidth - 328, r.left + r.width / 2 - 160))}px`;
+    t.style.bottom = `${window.innerHeight - r.top + 10}px`;
   }
 
   private showTooltip(anchor: HTMLElement, slot: number): void {

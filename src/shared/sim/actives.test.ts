@@ -3,7 +3,7 @@ import type { Champion } from '../champions/champion';
 import { Marksman } from '../champions/marksman';
 import { learnAll } from '../champions/testing';
 import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
-import { ACTIVES, AEGIS_WARD, DRUM_BEAT, LANTERN_LIGHT, activeSlots, type ItemId } from '../items';
+import { ACTIVES, AEGIS_WARD, DRUM_BEAT, ITEM_ACTIVES_ON, LANTERN_LIGHT, activeSlots, type ItemId } from '../items';
 import { MAP } from '../map/mapData';
 import { dist } from '../math';
 import { applyCommand } from './commands';
@@ -25,7 +25,18 @@ function champ(world: World, team: PlayerTeam, x: number, y: number, items: Item
 
 const sees = (world: World, team: PlayerTeam, id: number) => world.visibleTo(team).some((e) => e.id === id);
 
-describe('item actives', () => {
+describe('item actives, while they are off', () => {
+  it('leave every item without one, so nothing answers a use', () => {
+    expect(Object.keys(ACTIVES)).toEqual([]);
+    const world = new World(MAP);
+    const me = champ(world, TEAM.blue, 3000, 2200, ['lantern', 'aegis', 'hourglass', 'drum']);
+    for (let slot = 0; slot < 4; slot++) expect(me.useItem(world, slot, me.pos)).toBe(false);
+    expect(activeSlots(me.items)).toEqual([]);
+  });
+});
+
+// (Shelved with the actives: these run again once ITEM_ACTIVES_ON is back on.)
+describe.skipIf(!ITEM_ACTIVES_ON)('item actives', () => {
   it('the Glowworm Lantern lights up a spot, brush and all, for a while, and only its team knows', () => {
     const world = new World(MAP);
     const blue = champ(world, TEAM.blue, 3150, 2450, ['lantern']);

@@ -60,6 +60,8 @@ export class Minimap {
   private terrain: HTMLCanvasElement | null = null;
   private readonly faces = new Map<string, HTMLImageElement>();
   private peeking = false;
+  /** Where on the map the pointer is, while it's over the minimap (a summoner spell can be aimed there). */
+  hoverAt: Vec2 | null = null;
   /** The map event to mark, while there is one. */
   event: MinimapEvent | null = null;
   private clock = 0;
@@ -85,8 +87,10 @@ export class Minimap {
       this.onPeek(p);
     });
     this.canvas.addEventListener('pointermove', (e) => {
-      if (this.peeking) this.onPeek(this.toWorld(e));
+      this.hoverAt = this.toWorld(e);
+      if (this.peeking) this.onPeek(this.hoverAt);
     });
+    this.canvas.addEventListener('pointerleave', () => (this.hoverAt = null));
     const stop = () => {
       if (!this.peeking) return;
       this.peeking = false;

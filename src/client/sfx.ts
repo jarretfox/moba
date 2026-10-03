@@ -104,6 +104,20 @@ export const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   paperwork: ['snap', 0.6],
   breach: ['whoosh', 0.8],
   splashZone: ['quake', 0.9],
+  // Summoner spells.
+  flash: ['magic', 0.55],
+  ghost: ['whoosh', 0.5],
+  summonerHeal: ['chime', 0.6],
+  barrier: ['aegis', 0.7],
+  exhaust: ['hitMagic', 0.5],
+  ignite: ['boom', 0.4],
+  cleanse: ['chime', 0.5],
+  teleportStart: ['recall', 0.6],
+  teleportArrive: ['recall', 0.8],
+  smite: ['impact', 0.7],
+  clarity: ['chime', 0.5],
+  markHit: ['hit', 0.6],
+  markDash: ['whoosh', 0.6],
 };
 
 /**

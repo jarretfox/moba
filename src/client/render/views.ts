@@ -1139,6 +1139,12 @@ export class ProjectileView implements EntityView {
       case 'pebble':
         g.circle(0, 0, 6).fill(0xa3a3a3).stroke({ width: 1.5, color: 0x333333 });
         break;
+      case 'snowball':
+        // Mark's snowball.
+        g.circle(0, 0, 16).fill({ color: 0xe6f6ff, alpha: 0.3 });
+        g.circle(0, 0, 10).fill(0xffffff).stroke({ width: 2, color: 0x7fa8c8 });
+        g.circle(-3, -3, 3).fill({ color: 0xd8ecff, alpha: 0.9 });
+        break;
       case 'boulder':
         g.circle(0, 0, 14).fill(0x7d7d7d).stroke({ width: 2, color: 0x333333 });
         g.circle(-4, -4, 4).fill({ color: 0xffffff, alpha: 0.2 });
@@ -1333,6 +1339,18 @@ export class ZoneView implements EntityView {
       for (let i = 0; i < 5; i++) {
         const k = (t * 0.8 + i / 5) % 1;
         g.circle(Math.sin(i * 2.3 + t) * r * 0.3, -k * r * 0.9, 18 + k * 40).fill({ color: 0xffffff, alpha: 0.28 * (1 - k) });
+      }
+      return;
+    }
+    if (this.s.vis === 'teleport') {
+      // Where a Teleport will come out: a violet portal swirling open over the channel.
+      const open = Math.min(1, t / 3.8);
+      g.ellipse(0, 0, r * 1.15, r * 0.52).stroke({ width: 10, color: 0xb48aff, alpha: 0.25 + 0.15 * Math.sin(t * 6) });
+      g.ellipse(0, 0, r, r * 0.45).fill({ color: 0x6a3ac0, alpha: 0.25 + 0.25 * open }).stroke({ width: 4, color: 0xd8c0ff, alpha: 0.95 });
+      g.ellipse(0, 0, r * open, r * 0.45 * open).fill({ color: 0xe6d8ff, alpha: 0.4 });
+      for (let i = 0; i < 6; i++) {
+        const a = t * 2.5 + (i / 6) * Math.PI * 2;
+        g.circle(Math.cos(a) * r * 0.82, Math.sin(a) * r * 0.37, 4).fill({ color: 0xffffff, alpha: 0.9 });
       }
       return;
     }

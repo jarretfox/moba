@@ -1058,6 +1058,143 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       fx.comic(x, y - r * 0.7, 'SPLOOSH!', 0x8ad6ff, true);
       return;
     }
+    // ── Summoner spells
+    case 'flash': {
+      // A crack of gold-white light where you were, a streak to where you are, and a pop on landing.
+      const x2 = ev.x2 ?? x;
+      const y2 = ev.y2 ?? y;
+      const FLASHY = 0xfff3b0;
+      fx.flash(x, y - 30, 70, FLASHY, 0.25, 0.9);
+      fx.flash(x2, y2 - 30, 60, 0xffffff, 0.2, 0.9);
+      p.burst(14, { shape: 'star', x, y: y - 30, life: 0.45, size: 12, size2: 2, color: 0xffffff, color2: GOLD, spin: 6, drag: 0.08 }, [120, 300]);
+      p.burst(10, { shape: 'spark', x: x2, y: y2 - 30, life: 0.3, size: 12, size2: 3, stretch: 0.06, color: 0xffffff, color2: FLASHY }, [160, 320]);
+      fx.custom(0.22, (g, t) => {
+        g.moveTo(x, y - 30).lineTo(x2, y2 - 30).stroke({ width: 14 * (1 - t), color: FLASHY, alpha: 0.55 * (1 - t), cap: 'round' });
+        g.moveTo(x, y - 30).lineTo(x2, y2 - 30).stroke({ width: 4 * (1 - t), color: 0xffffff, alpha: 0.9 * (1 - t), cap: 'round' });
+      }, 'top', true);
+      fx.shockwave(x2, y2, 70, FLASHY, 0.25);
+      return;
+    }
+    case 'ghost': {
+      // Going pale: a cold puff, and wisps peeling off.
+      const r = ev.r ?? 40;
+      clouds(fx, x, y - r * 0.6, r * 1.2, 6, 0xd8f0ff, { shape: 'smoke', alpha: 0.4, life: 0.7 });
+      p.burst(10, { shape: 'mote', x, y: y - r, life: 0.8, size: 10, size2: 2, color: 0xffffff, color2: 0x9fd8ff, drag: 0.3, ay: -80 }, [40, 140]);
+      fx.speedLines(x, y - r * 0.5, r * 1.8, 0xd8f0ff, 8, 0.3);
+      return;
+    }
+    case 'summonerHeal': {
+      // A green swell on you and (a ribbon away) on whoever it caught.
+      const r = ev.r ?? 40;
+      const at = [[x, y]] as [number, number][];
+      if (ev.x2 !== undefined && ev.y2 !== undefined) at.push([ev.x2, ev.y2]);
+      for (const [hx, hy] of at) {
+        fx.flash(hx, hy - r, r * 2.2, 0x7cff9a, 0.35, 0.7);
+        fx.pillar(hx, hy, r * 1.1, 0x7cff9a, 0.5);
+        p.burst(12, { shape: 'heart', x: hx, y: hy - r, life: 0.9, size: 12, size2: 4, color: 0xd8ffd8, color2: 0x3ccf6a, ay: -160, drag: 0.2 }, [40, 120]);
+      }
+      if (at.length > 1) fx.lightning(x, y - r, at[1][0], at[1][1] - r, 0x9fffb8, 0.25, 2);
+      return;
+    }
+    case 'barrier': {
+      // A bubble of gold light round you, there as long as the shield lasts (the shield's own shimmer too).
+      const r = (ev.r ?? 40) * 1.7;
+      const dur = ev.dur ?? 2.5;
+      fx.flash(x, y - r * 0.5, r * 1.2, 0xffe9a0, 0.3, 0.6);
+      fx.custom(dur, (g, t) => {
+        const pop = t < 0.06 ? t / 0.06 : 1;
+        const fade = t > 0.85 ? (1 - t) / 0.15 : 1;
+        g.ellipse(x, y - r * 0.55, r * pop, r * 0.95 * pop).fill({ color: 0xffe9a0, alpha: 0.1 * fade }).stroke({ width: 3, color: 0xffd166, alpha: 0.75 * fade });
+        g.ellipse(x - r * 0.35, y - r * 0.95, r * 0.22, r * 0.12).fill({ color: 0xffffff, alpha: 0.4 * fade });
+      }, 'top', true);
+      return;
+    }
+    case 'exhaust': {
+      // A sour cloud thrown over them: they sag.
+      const x2 = ev.x2 ?? x;
+      const y2 = ev.y2 ?? y;
+      const r = ev.r ?? 40;
+      fx.lightning(x, y - 40, x2, y2 - r, 0xc9a0ff, 0.2, 2);
+      clouds(fx, x2, y2 - r * 0.8, r * 1.3, 7, 0x8a6aa8, { shape: 'smoke', alpha: 0.55, life: 0.9, rise: -20 });
+      p.burst(8, { shape: 'mote', glow: false, x: x2, y: y2 - r * 1.6, life: 0.8, size: 8, size2: 3, color: 0x6a4a8a, ay: 260 }, [20, 60]);
+      fx.comic(x2, y2 - r * 3, 'UGH', 0xb48aff);
+      return;
+    }
+    case 'ignite': {
+      // A thrown spark, and they go up.
+      const x2 = ev.x2 ?? x;
+      const y2 = ev.y2 ?? y;
+      const r = ev.r ?? 40;
+      fx.custom(0.18, (g, t) => {
+        const bx = x + (x2 - x) * t;
+        const by = y - 40 + (y2 - r - (y - 40)) * t - Math.sin(t * Math.PI) * 40;
+        g.circle(bx, by, 8).fill({ color: 0xffd08a, alpha: 0.95 }).circle(bx, by, 18).fill({ color: FIRE, alpha: 0.3 });
+      }, 'top', true);
+      fx.later(0.18, () => {
+        flamesUp(fx, x2, y2 - r * 0.3, r, 6);
+        fx.flash(x2, y2 - r, r * 1.8, FIRE, 0.3, 0.7);
+      });
+      return;
+    }
+    case 'cleanse': {
+      // A white flash that blows everything off: sparkles out, and the chains (if any) gone.
+      const r = ev.r ?? 40;
+      fx.flash(x, y - r, r * 1.8, 0xffffff, 0.25, 0.55);
+      fx.shockwave(x, y, r * 2.6, 0xe6f6ff, 0.35);
+      p.burst(18, { shape: 'star', x, y: y - r, life: 0.6, size: 12, size2: 2, color: 0xffffff, color2: 0x9fe8ff, spin: 5, drag: 0.1 }, [140, 320]);
+      return;
+    }
+    case 'teleportStart': {
+      // Runes under you as the channel starts (the swirl and the light keep going while it lasts: see the status).
+      const r = (ev.r ?? 40) * 2.2;
+      const dur = ev.dur ?? 4;
+      fx.sigil(x, y, r, 0xb48aff, dur, 1.5);
+      fx.flash(x, y - 30, r, 0xd8c0ff, 0.3, 0.6);
+      return;
+    }
+    case 'teleportArrive': {
+      // Out of thin air: a column of violet light and a ring blowing out.
+      const r = ev.r ?? 40;
+      fx.pillar(x, y, r * 1.1, 0xb48aff, 0.5);
+      fx.flash(x, y - r, r * 2, 0xd8c0ff, 0.3, 0.55);
+      fx.shockwave(x, y, r * 4, 0xb48aff, 0.45);
+      p.burst(20, { shape: 'mote', x, y: y - r, life: 0.8, size: 10, size2: 2, color: 0xffffff, color2: 0xb48aff, drag: 0.2 }, [120, 300]);
+      if (ev.x2 !== undefined && ev.y2 !== undefined) p.burst(14, { shape: 'mote', x: ev.x2, y: ev.y2 - r, life: 0.7, size: 9, size2: 2, color: 0xffffff, color2: 0xb48aff, ay: -200 }, [40, 120]);
+      return;
+    }
+    case 'smite': {
+      // A bolt from the sky onto the monster.
+      const r = ev.r ?? 50;
+      fx.lightning(x + rand(-30, 30), y - 520, x, y - r * 0.5, 0xfff6c8, 0.25, 5);
+      fx.lightning(x + rand(-30, 30), y - 520, x, y - r * 0.5, 0xffd166, 0.18, 2);
+      fx.flash(x, y - r * 0.5, r * 2, 0xfff1a8, 0.25, 0.7);
+      blast(fx, x, y - r * 0.4, r * 1.6, 0xfff1a8);
+      fx.scar(x, y, r * 0.9, 'scorch', 0x2a1a08, 6);
+      return;
+    }
+    case 'clarity': {
+      // A cool blue wash out over everyone close.
+      const r = ev.r ?? 600;
+      fx.shockwave(x, y, r, 0x7fc4ff, 0.5);
+      fx.flash(x, y - 40, 90, 0x9fd8ff, 0.3, 0.7);
+      p.burst(18, { shape: 'mote', x, y: y - 40, life: 1, size: 10, size2: 2, color: 0xe6f6ff, color2: 0x3d8bfd, drag: 0.3, ay: -60 }, [80, 260]);
+      return;
+    }
+    case 'markHit': {
+      // The snowball bursts on them.
+      const r = ev.r ?? 40;
+      p.burst(16, { shape: 'mote', glow: false, x, y: y - r, life: 0.6, size: 9, size2: 4, color: 0xffffff, ay: 500 }, [100, 260]);
+      fx.flash(x, y - r, r * 1.6, 0xe6f6ff, 0.25, 0.8);
+      fx.comic(x, y - r * 2.8, 'THWACK', 0x9fd8ff);
+      return;
+    }
+    case 'markDash': {
+      // Off after them in a spray of snow.
+      const a = Math.atan2((ev.y2 ?? y) - y, (ev.x2 ?? x) - x);
+      fx.speedLines(x, y - 30, 60, 0xe6f6ff, 10, 0.3, a + Math.PI, 1.2);
+      p.burst(10, { shape: 'mote', glow: false, x, y: y - 10, life: 0.5, size: 8, size2: 3, color: 0xffffff, ay: 300 }, [60, 160]);
+      return;
+    }
     // ── The Howling Hollow
     case 'relic': {
       // A pumpkin eaten: it bursts in orange chunks and candlelight, and a green warmth rises off whoever got it.
@@ -1267,6 +1404,9 @@ export function projectileTrail(fx: FxLayer, s: EntitySnap, friendly: boolean): 
     case 'junk_sludge':
       spray(fx.rate(45), { shape: 'mote', glow: false, life: 0.55, size: 13, size2: 5, color: 0x6fae2e, ay: 200 }, 10, 30);
       return;
+    case 'snowball':
+      spray(fx.rate(40), { shape: 'mote', glow: false, life: 0.4, size: 7, size2: 3, color: 0xffffff, ay: 120 }, 6, 30);
+      return;
     case 'junk_can':
     case 'junk_boot':
     case 'pebble':
@@ -1338,6 +1478,31 @@ export function statusAura(fx: FxLayer, s: EntitySnap, time: number): void {
       case 'burning':
         // A Rotroot burn: sickly green flames licking up.
         for (let i = 0; i < fx.rate(16); i++) p.emit({ shape: 'glow', ...around(0.8), vx: rand(-10, 10), vy: rand(-110, -50), drag: 0.5, life: rand(0.35, 0.6), size: rand(14, 22), size2: 3, color: 0xe8ffb0, color2: 0x6fae3a, alpha: 0.8 });
+        break;
+      case 'ignited':
+        // Ignite: real orange fire licking up.
+        for (let i = 0; i < fx.rate(22); i++) p.emit({ shape: 'flame', ...around(0.7), vx: rand(-12, 12), vy: rand(-120, -60), drag: 0.4, life: rand(0.3, 0.55), size: rand(16, 26), size2: 4, color: 0xffd08a, color2: 0xff3a10, alpha: 0.85 });
+        break;
+      case 'ghost':
+        // Ghost: pale wisps trailing off behind.
+        for (let i = 0; i < fx.rate(18); i++) {
+          const b = s.f + Math.PI;
+          p.emit({ shape: 'smoke', ...around(0.6), vx: Math.cos(b) * 90, vy: Math.sin(b) * 90 - 20, drag: 0.3, life: 0.5, size: 12, size2: 26, color: 0xe6f6ff, color2: 0x9fd8ff, alpha: 0.35 });
+        }
+        break;
+      case 'cleansed':
+        for (let i = 0; i < fx.rate(6); i++) p.emit({ shape: 'star', ...around(0.9), vy: rand(-50, -20), life: 0.5, size: 9, size2: 2, color: 0xffffff, color2: 0x9fe8ff, spin: 4 });
+        break;
+      case 'teleport':
+        // Teleport's channel: violet motes spiralling up round them.
+        for (let i = 0; i < fx.rate(40); i++) {
+          const a = time * 5 + Math.random() * Math.PI * 2;
+          p.emit({ shape: i % 5 ? 'mote' : 'star', x: s.x + Math.cos(a) * r * 1.3, y: s.y + Math.sin(a) * r * 0.55, vy: rand(-200, -100), drag: 0.4, life: 0.8, size: 9, size2: 2, color: 0xffffff, color2: 0xb48aff, spin: 4 });
+        }
+        break;
+      case 'marked':
+        // Mark: a snowflake hanging over their head.
+        if (Math.random() < fx.dt * 8) p.emit({ shape: 'star', x: s.x, y: s.y - r * 2.6, life: 0.3, size: 16, size2: 10, color: 0xffffff, color2: 0x9fd8ff, spin: 2 });
         break;
       case 'wounds':
         // Wounded: dark drops falling.

@@ -896,5 +896,110 @@
    "oga/x_independent_nu_ljudbank-break_crunch_impact/impcrunch/impactcrunch05.mp3.flac"
   ],
   "level": -2
+ },
+ "fx:flash": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/spell_01.ogg",
+   "oga/x_80-CC0-RPG-SFX_0/spell_02.ogg"
+  ],
+  "level": 0,
+  "max": 0.8
+ },
+ "fx:ghost": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/medieval-fantasy/woosh-1.wav",
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/medieval-fantasy/woosh-2.wav"
+  ],
+  "level": -1,
+  "max": 1.0
+ },
+ "fx:summonerHeal": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/top-down-shooter/cure.wav"
+  ],
+  "level": 0,
+  "max": 1.2
+ },
+ "fx:barrier": {
+  "from": [
+   "kenney/kenney_sci-fi-sounds/Audio/forceField_002.ogg",
+   "kenney/kenney_sci-fi-sounds/Audio/forceField_003.ogg",
+   "kenney/kenney_sci-fi-sounds/Audio/forceField_004.ogg"
+  ],
+  "level": -1,
+  "max": 1.0
+ },
+ "fx:exhaust": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/space-shooter/dark-shoot.wav"
+  ],
+  "level": -1,
+  "max": 0.9
+ },
+ "fx:ignite": {
+  "from": [
+   "oga/x_80-CC0-RPG-SFX_0/spell_fire_04.ogg",
+   "oga/105016__julien-matthey__jm-fx-fireball-01.wav"
+  ],
+  "level": -2,
+  "max": 1.0
+ },
+ "fx:cleanse": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/ninja-adventure/magic-1.ogg",
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/ninja-adventure/magic.wav"
+  ],
+  "level": -1,
+  "max": 1.0
+ },
+ "fx:teleportStart": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/space-shooter/power-up-2.wav"
+  ],
+  "level": -3,
+  "max": 1.5
+ },
+ "fx:teleportArrive": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/space-shooter/power-up-1.wav",
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/space-shooter/power-up-3.wav"
+  ],
+  "level": -1,
+  "max": 1.2
+ },
+ "fx:smite": {
+  "from": [
+   "kenney/kenney_sci-fi-sounds/Audio/lowFrequency_explosion_000.ogg",
+   "kenney/kenney_sci-fi-sounds/Audio/lowFrequency_explosion_001.ogg"
+  ],
+  "over": true,
+  "level": -2,
+  "max": 1.2
+ },
+ "fx:clarity": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/ninja-adventure/power-up.ogg",
+   "oga/magical_3.ogg"
+  ],
+  "level": -1,
+  "max": 1.2
+ },
+ "fx:markHit": {
+  "from": [
+   "kenney/kenney_impact-sounds/Audio/footstep_snow_000.ogg",
+   "kenney/kenney_impact-sounds/Audio/footstep_snow_001.ogg",
+   "kenney/kenney_impact-sounds/Audio/footstep_snow_002.ogg",
+   "kenney/kenney_impact-sounds/Audio/footstep_snow_003.ogg"
+  ],
+  "over": true,
+  "level": 1
+ },
+ "fx:markDash": {
+  "from": [
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/western-fps-2d/woosh-1.ogg",
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/western-fps-2d/woosh-2.ogg",
+   "oga/x_superpowers-asset-packs-soundeffects_2/sound effects/western-fps-2d/woosh-3.ogg"
+  ],
+  "level": 0
  }
 }

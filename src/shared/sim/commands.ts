@@ -44,7 +44,14 @@ export function applyCommand(world: World, unit: Champion, cmd: Command, player 
     return;
   }
   if (unit.dead) return;
+  // A summoner spell sorts that out itself (a press that does nothing interrupts nothing).
+  if (cmd.k === 'spell') {
+    const p = toPoint(world, cmd.x, cmd.y);
+    if (p && (cmd.slot === 0 || cmd.slot === 1)) unit.castSummoner(world, cmd.slot, p);
+    return;
+  }
   if (cmd.k !== 'recall') unit.cancelRecall(); // any other order breaks a recall
+  unit.cutTeleport(world); // and a Teleport channel
   switch (cmd.k) {
     case 'move': {
       const p = toPoint(world, cmd.x, cmd.y);

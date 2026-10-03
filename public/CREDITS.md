@@ -10,10 +10,10 @@ No credit is required for any of these; it's given anyway, with thanks.
 
 ### Kenney (www.kenney.nl)
 
-- **Impact Sounds:** metal, plates, punches, soft impacts, concrete steps.
+- **Impact Sounds:** metal, plates, punches, soft impacts, concrete and snow steps.
 - **RPG Audio:** the axe chop.
 - **Casino Audio:** card fans and shuffles (the bills in Make It Rain).
-- **Sci-fi Sounds:** force fields, slime and thrusters.
+- **Sci-fi Sounds:** force fields, slime, thrusters and a low boom.
 - **Music Jingles:** brass hits and sax licks.
 
 ### OpenGameArt (opengameart.org), CC0
@@ -43,6 +43,8 @@ No credit is required for any of these; it's given anyway, with thanks.
 | Magic Spell SFX | /content/magic-spell-sfx |
 | Teleport Spell | /content/teleport-spell |
 | Boiling water loops | /content/boiling-water-loops |
+| Superpowers Asset Packs: sound effects (Sparklin Labs) | /sites/default/files/superpowers-asset-packs-soundeffects_2.zip |
+| jm-fx-fireball-01 (Julien Matthey) | /sites/default/files/105016__julien-matthey__jm-fx-fireball-01.wav |
 
 ## Visual effects: CC0
 

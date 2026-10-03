@@ -3,7 +3,7 @@ import { TEAM, TICK_RATE } from '../constants';
 import { learnAll } from '../champions/testing';
 import { Marksman } from '../champions/marksman';
 import type { Champion } from '../champions/champion';
-import { BLOODFILL, HAMHOCK, HAT_AP, ITEMS, MOSSHEART, OATH, PRIDE, RECIPES, ROT_BURN, ROYAL_PAUSE, SPELLBLADE, STATIC, SUNDER, THORNS, WOUNDS, ITEM_IDS, type ItemId } from '../items';
+import { BLOODFILL, HAMHOCK, HAT_AP, ITEMS, MOSSHEART, OATH, PRIDE, RECIPES, ROT_BURN, ROYAL_PAUSE, SPELLBLADE, STATIC, SUNDER, THORNS, WOUNDS, ITEM_IDS, type ItemId, ITEM_ACTIVES_ON } from '../items';
 import { MAP } from '../map/mapData';
 import type { GameEvent } from '../protocol';
 import { World } from './world';
@@ -205,7 +205,7 @@ describe('item passives', () => {
     expect(waders.foe.has('stun')).toBe(false);
   });
 
-  it('the Royal Hourglass stops time for you: untouchable and stuck, then back to normal', () => {
+  it.skipIf(!ITEM_ACTIVES_ON)('the Royal Hourglass stops time for you: untouchable and stuck, then back to normal', () => {
     const { world, me, foe } = duel(['hourglass']);
     expect(me.useItem(world, me.items.indexOf('hourglass'), me.pos)).toBe(true);
     expect(world.damage(foe, me, 300, 'true')).toBe(0);

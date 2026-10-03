@@ -296,7 +296,8 @@ export const DRUM_BEAT = { speed: 0.3, duration: 3, radius: 700 };
 /** The Royal Hourglass: time stops for you. Nothing can touch you, and you can't do a thing. */
 export const ROYAL_PAUSE = { duration: 2.5 };
 
-export const ACTIVES: Partial<Record<ItemId, ItemActive>> = {
+/** The item actives, shelved for now (D and F are summoner spells): see ITEM_ACTIVES_ON. */
+const ITEM_ACTIVES: Partial<Record<ItemId, ItemActive>> = {
   lantern: {
     name: 'Light the Way',
     description: `Throw light on a spot: you see everything within ${LANTERN_LIGHT.radius} of it, brush and all, for ${LANTERN_LIGHT.duration}s.`,
@@ -324,7 +325,14 @@ export const ACTIVES: Partial<Record<ItemId, ItemActive>> = {
   },
 };
 
-/** The keys for item actives: the first item in the inventory with one is D, the second F. */
+/**
+ * Item actives are off for now: the items keep their stats and passives, and D and F are summoner spells
+ * (shared/summoners.ts). Turning this back on brings the actives back (they'd need keys other than D and F).
+ */
+export const ITEM_ACTIVES_ON = false;
+export const ACTIVES: Partial<Record<ItemId, ItemActive>> = ITEM_ACTIVES_ON ? ITEM_ACTIVES : {};
+
+/** The keys for item actives (while they're on): the first item in the inventory with one is D, the second F. */
 export const ACTIVE_KEYS = ['D', 'F'] as const;
 
 /** The inventory slots whose items have actives, in order (at most one per key). */

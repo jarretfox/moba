@@ -1,3 +1,4 @@
+import { CLEANSE } from '../summoners';
 import { DT, type Team } from '../constants';
 import { add, angleOf, clamp, dirTo, dist, lerpVec, scale, sub, type Vec2 } from '../math';
 import type { DamageType, EntitySnap, StatusKind } from '../protocol';
@@ -158,9 +159,14 @@ export abstract class Unit implements Entity {
     return (this.has('burrowed') || this.has('underground') || this.has('vanished')) && !this.has('bleed');
   }
 
-  /** Takes part in unit collision. Dashing units pass through everyone. */
+  /** Takes part in unit collision. Dashing units pass through everyone, and so does a Ghost. */
   hasBody(): boolean {
-    return !this.dead && !this.dash;
+    return !this.dead && !this.dash && !this.has('ghost');
+  }
+
+  /** In the middle of a dash or leap. */
+  get dashing(): boolean {
+    return this.dash !== null;
   }
 
   canMove(world: World): boolean {
@@ -249,7 +255,10 @@ export abstract class Unit implements Entity {
 
   addStatus(world: World, kind: StatusKind, duration: number, amount = 0): void {
     if (this.dead) return;
-    if (kind === 'stun' || kind === 'root' || kind === 'slow' || kind === 'fear') duration *= (1 - this.tenacity(world)) * (1 - this.itemTenacity());
+    if (kind === 'stun' || kind === 'root' || kind === 'slow' || kind === 'fear') {
+      duration *= (1 - this.tenacity(world)) * (1 - this.itemTenacity());
+      if (this.has('cleansed')) duration *= 1 - CLEANSE.tenacity; // just Cleansed
+    }
     this.statuses.push({ kind, until: world.time + duration, amount });
     if (kind === 'stun') this.cancelWindup();
   }

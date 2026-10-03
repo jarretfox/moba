@@ -1,3 +1,6 @@
+import { DEFAULT_SUMMONERS, type SummonerId } from '../summoners';
+import { castSummoner, cutTeleport, tickTeleport } from '../sim/summonerCasts';
+import type { Zone } from '../sim/zone';
 import { DT, type PlayerTeam, type Slot } from '../constants';
 import { add, angleOf, dirTo, dist, fromAngle, scale, sub, type Vec2 } from '../math';
 import { ACTIVES, AEGIS_WARD, BLOODFILL, DRUM_BEAT, HAMHOCK, HAT_AP, INVENTORY_SLOTS, LANTERN_LIGHT, MOSSHEART, PRIDE, ROT_BURN, ROYAL_PAUSE, SPELLBLADE, STATIC, SUNDER, THORNS, WADERS, WOUNDS, hasteMultiplier, partsUsed, priceFor, sellPrice, sumItemStats, whyNot, type ItemId } from '../items';
@@ -74,6 +77,13 @@ export abstract class Champion extends Unit {
   private queued: { slot: Slot; aim: Vec2; until: number } | null = null;
   /** A cast on someone out of reach: walking in to cast it once they're close enough. */
   private approach: { slot: Slot; targetId: number; until: number; repathAt: number } | null = null;
+  /** Summoner spells on D and F (picked in champion select; see shared/summoners.ts), and when each is back. */
+  summoners: [SummonerId, SummonerId] = [...DEFAULT_SUMMONERS];
+  readonly summonerReady = [0, 0];
+  /** Teleport channeling: which key, to whom, when it lands, and the marker where it will. */
+  teleporting: { slot: number; targetId: number; at: number; mark: Zone } | null = null;
+  /** Mark's snowball landed: whom on, and until when pressing it again dashes to them. */
+  marked: { slot: number; targetId: number; until: number } | null = null;
 
   constructor(
     world: World,
@@ -88,6 +98,7 @@ export abstract class Champion extends Unit {
 
   update(world: World): void {
     if (!this.dead) this.followThroughCasts(world);
+    if (this.teleporting) tickTeleport(world, this);
     super.update(world);
     if (this.undoLog.length && !this.inShop()) this.undoLog = [];
     if (!this.dead && world.time >= PASSIVE_GOLD.from) {
@@ -463,6 +474,26 @@ export abstract class Champion extends Unit {
     this.recallStartedAt = null;
   }
 
+  // ─── Summoner spells ──────────────────────────────────────────────────────
+
+  /** Presses a summoner spell (0 is D, 1 is F) aimed at `aim` (sim/summonerCasts.ts). */
+  castSummoner(world: World, slot: number, aim: Vec2): boolean {
+    return castSummoner(world, this, slot, aim);
+  }
+
+  /** Calls off a Teleport channel, if there is one. */
+  cutTeleport(world: World): void {
+    cutTeleport(world, this);
+  }
+
+  /** Appears at `dest` at once (Flash, Teleport), still doing what it was doing. */
+  blinkTo(world: World, dest: Vec2): void {
+    if (dist(dest, this.pos) > 1) this.facing = angleOf(sub(dest, this.pos));
+    this.pos = { ...dest };
+    const o = this.order;
+    this.path = o.kind === 'move' || o.kind === 'attackMove' ? world.findPath(this.pos, o.dest) : [];
+  }
+
   protected respawnDelay(world: World): number {
     return (RESPAWN.base + RESPAWN.perLevel * (this.level - 1)) * world.rates.respawn;
   }
@@ -644,6 +675,11 @@ export abstract class Champion extends Unit {
       inShop: this.inShop(),
       ...(this.canUndo ? { undo: true } : {}),
       ...(this.order.kind === 'attack' ? { tgt: this.order.targetId } : {}),
+      sums: this.summoners.map((id, i) => ({
+        id,
+        cd: Math.max(0, Math.round((this.summonerReady[i] - world.time) * 10) / 10),
+        ...(this.marked?.slot === i && world.time <= this.marked.until ? { armed: true } : {}),
+      })),
       ...(this.items.some((id) => ACTIVES[id]) ? { itemCd: this.itemCooldowns(world) } : {}),
       buffs: this.buffsLeft(world).map((b) => ({ kind: b.kind, left: Math.ceil(b.left) })),
       stats: {

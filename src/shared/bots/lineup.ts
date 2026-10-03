@@ -4,6 +4,7 @@ import type { PlayerTeam } from '../constants';
 import type { Lane } from '../map/mapData';
 import type { World } from '../sim/world';
 import { Bot } from './bot';
+import { botSummoners } from './summonerUse';
 
 /**
  * Who fills a team's slots, in order: a solo top lane, a bot lane carry, and a jungler (who helps the bot
@@ -34,7 +35,7 @@ export function addBots(world: World, team: PlayerTeam, count: number, taken: re
   const have = new Set(taken);
   // ARAM: everyone in the one lane, any champion at all.
   const slots: { lane: Lane; picks: ChampionId[]; jungle?: boolean }[] = world.map.aram ? Array.from({ length: count }, () => ({ lane: 'mid' as Lane, picks: [] as ChampionId[] })) : SLOTS.slice(0, count);
-  return slots.map(({ lane, picks, jungle }) => {
+  return slots.map(({ lane, picks, jungle }, i) => {
     let options = (picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[])).filter((id) => !have.has(id));
     if (!options.length) options = (Object.keys(CHAMPION_INFO) as ChampionId[]).filter((id) => !have.has(id));
     if (!options.length) options = picks.length ? picks : (Object.keys(CHAMPION_INFO) as ChampionId[]); // every champion is taken: a repeat beats an empty slot
@@ -43,6 +44,9 @@ export function addBots(world: World, team: PlayerTeam, count: number, taken: re
     const unit = world.add(createChampion(champion, world, team));
     unit.name = `Bot ${CHAMPION_INFO[champion].name.replace(/^The /, '')}`; // "Bot Oak", not "Bot The Oak"
     // The jungle slot only jungles when the whole team is bots (with people on it, they might want to).
-    return new Bot(unit, lane, world, !!jungle && count >= SLOTS.length && world.map.camps.length > 0);
+    const jungles = !!jungle && count >= SLOTS.length && world.map.camps.length > 0;
+    const job = world.map.aram ? 'aram' : jungles ? 'jungle' : i === 0 ? 'top' : i === 1 ? 'carry' : 'partner';
+    unit.summoners = botSummoners(job, unit.info.resource === 'mana', random);
+    return new Bot(unit, lane, world, jungles);
   });
 }
