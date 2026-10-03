@@ -149,7 +149,7 @@ export class World {
     target.hp -= dealt;
     target.lastDamagedAt = this.time;
     recordDamage(source, target, dealt);
-    this.emit({ e: 'dmg', src: source?.id, target: target.id, amount: Math.round(dealt), type });
+    this.emit({ e: 'dmg', src: source?.id, target: target.id, amount: Math.round(dealt), type, ...(opts.basic && !opts.proc ? { b: 1 as const } : {}) });
     if (source?.kind === 'champion') {
       target.championHits.set(source.id, this.time);
       if (target.kind === 'champion' && source.team !== target.team) this.helpCalls.push({ attacker: source, victim: target, time: this.time });

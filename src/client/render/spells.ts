@@ -7,7 +7,7 @@ import { RECALLS } from './recalls';
 import { PALETTE } from './views';
 import { arc } from './draw';
 import { inkOf } from './organic';
-import { drawCrown, drawDiamond, drawMushroom, drawPaw } from './signatures';
+import { SHROOM_SQUASH, drawCrown, drawDiamond, drawMushroom, drawPaw, shroomCount, shroomSize } from './signatures';
 import { chestHeight, standHeight } from './stature';
 
 // What every spell looks like: the building blocks in fx.ts put together per ability, plus the trails
@@ -330,13 +330,29 @@ export function playSpell(fx: FxLayer, ev: FxEvent, friendly: boolean): void {
       // The totem's pulse: a wave of rot, and a fairy ring of mushrooms springing up round it.
       const r = ev.r ?? 400;
       fx.shockwave(x, y, r, VOID, 0.7);
-      fx.motifRing(x, y, r * 0.3, 8, 0.9, (g, i) => drawMushroom(g, 12 + (i % 3) * 3, i, TOXIC), { layer: 'under', squash: 0.5 });
       p.emit({ shape: 'circle', x, y, life: 0.7, size: 40, size2: r * 2, color: 0xd8b4ff, color2: VOID, alpha: 0.8 });
       rune(fx, x, y, 70, 0xd8b4ff, 0.8);
       for (let i = 0; i < 30; i++) {
         const a = (i / 30) * Math.PI * 2;
         p.emit({ shape: i % 3 ? 'mote' : 'leaf', x, y, vx: Math.cos(a) * r * 1.3, vy: Math.sin(a) * r * 1.3, drag: 0.08, life: 0.8, size: 12, size2: 4, color: 0xd8b4ff, color2: TOXIC, spin: 5 });
       }
+      return;
+    }
+    case 'shroomSpread': {
+      // The patch's new edge sprouting, one mushroom after another round the ring; they stay (see ZoneView).
+      const r = ev.r ?? 120;
+      const n = shroomCount(r);
+      fx.motifRing(x, y, r, n, 0.9, (g, i) => drawMushroom(g, shroomSize(i), i, TOXIC), { layer: 'under', squash: SHROOM_SQUASH, stagger: 0.35 });
+      for (let i = 0; i < 10; i++) {
+        const a = Math.random() * Math.PI * 2;
+        p.emit({ shape: 'mote', x: x + Math.cos(a) * r, y: y + Math.sin(a) * r * SHROOM_SQUASH, vy: rand(-50, -20), life: rand(0.5, 0.9), size: 9, size2: 2, color: 0xd8b4ff, color2: TOXIC });
+      }
+      return;
+    }
+    case 'cloneGuide': {
+      // Daltonomo sends his double: a flick of harlequin diamonds where he pointed.
+      fx.motifRing(x, y, 34, 4, 0.45, (g, i) => drawDiamond(g, 9, i), { layer: 'under', spin: 5, squash: 0.5, stagger: 0.1 });
+      p.burst(5, { shape: 'star', x, y: y - 10, life: 0.35, size: 12, size2: 2, color: 0xffffff, color2: 0xb98be0, spin: 6 }, [60, 140]);
       return;
     }
     case 'hop':

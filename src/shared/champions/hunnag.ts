@@ -33,13 +33,22 @@ const SLUDGE_LOB = {
 };
 const MUSHROOM_TOTEM = {
   cost: [70, 70, 70, 70], cooldown: [16, 15, 14, 13], castTime: 0.25,
-  // Toned down after playtests (was 20–50 +15% AP every 1.5s, up 16–22s, so always up at rank 4).
+  // Toned down after playtests (was 20–50 +15% AP every 1.5s, up 16–22s, so always up at rank 4), then
+  // given a little back (was 16–37 +12% AP, 120 + 20 a level health).
   range: 600, radius: 400, lifetime: [12, 13, 14, 15], pulseEvery: 2,
-  heal: [16, 23, 30, 37], apRatio: 0.12, health: (level: number) => 120 + 20 * level, bounty: 25,
+  heal: [20, 28, 36, 44], apRatio: 0.15, health: (level: number) => 140 + 22 * level, bounty: 25,
 };
+/**
+ * The totem's mushroom patch: it starts round the totem and spreads further out with every pulse, up to
+ * the totem's reach. HunnaG walking on it is a little quicker. When the totem goes, the patch withers away
+ * over a few seconds (still quick to walk on till it's gone).
+ */
+export const SHROOMS = { start: 120, grow: 70, speed: 0.12, wither: 3 };
 const MOLE_HOLE = {
   cost: [80, 75, 70, 65], cooldown: [20, 18, 16, 14],
-  range: 700, radius: 55, open: 5, hopCooldown: 1,
+  range: 700, radius: 55, open: 5, hopCooldown: 1.5,
+  /** Walking onto a hole takes you through only if that's where you were walking to (within this much of it). */
+  aimed: 70,
 };
 const THE_DEEP_CALLS = {
   cost: [100, 100, 100], cooldown: [100, 85, 70],
@@ -72,7 +81,7 @@ export const HUNNAG_INFO: ChampionInfo = {
     {
       name: 'Mushroom Totem',
       icon: '🍄',
-      description: `Plant a totem for ${perRank(MUSHROOM_TOTEM.lifetime)}s that gives vision. Every ${MUSHROOM_TOTEM.pulseEvery}s it heals nearby allied champions for ${perRank(MUSHROOM_TOTEM.heal)} (+${pct(MUSHROOM_TOTEM.apRatio)} AP) and adds 1 Rot to nearby enemies. Enemies can destroy it.`,
+      description: `Plant a totem for ${perRank(MUSHROOM_TOTEM.lifetime)}s that gives vision. Every ${MUSHROOM_TOTEM.pulseEvery}s it heals nearby allied champions for ${perRank(MUSHROOM_TOTEM.heal)} (+${pct(MUSHROOM_TOTEM.apRatio)} AP), adds 1 Rot to nearby enemies, and spreads its mushrooms further out. She's ${pct(SHROOMS.speed)} faster on the mushrooms; when the totem goes, they wither over ${SHROOMS.wither}s. Enemies can destroy it.`,
       cost: MUSHROOM_TOTEM.cost,
       cooldown: MUSHROOM_TOTEM.cooldown,
       castTime: MUSHROOM_TOTEM.castTime,
@@ -81,7 +90,7 @@ export const HUNNAG_INFO: ChampionInfo = {
     {
       name: 'Mole Hole',
       icon: '🌀',
-      description: `Dig down and pop up at the target spot. Both holes stay open for ${MOLE_HOLE.open}s, and allied champions can hop between them by walking in. Willmore can use them too, from either team, while he's burrowed.`,
+      description: `Dig down and pop up at the target spot. Both holes stay open for ${MOLE_HOLE.open}s, and allied champions can hop between them by walking onto one. Willmore can use them too, from either team, while he's burrowed.`,
       cost: MOLE_HOLE.cost,
       cooldown: MOLE_HOLE.cooldown,
       castTime: 0,
@@ -209,14 +218,16 @@ export class HunnaG extends Champion {
     }
     for (const u of enemiesInRadius(world, this.team, totem.pos, t.radius)) this.applyRot(world, u);
     world.emit({ e: 'fx', fx: 'pulse', x: Math.round(totem.pos.x), y: Math.round(totem.pos.y), r: t.radius, team: this.team });
+    totem.spread(world);
   }
 
   private moleHole(world: World, aim: Vec2): void {
     const from = world.grid.nearestWalkable(this.pos) ?? { ...this.pos };
     const to = world.grid.nearestWalkable(aim) ?? from;
     const holes = linkedHoles(world, this.team as PlayerTeam, from, to);
-    // She goes through straight away; the holes stay open for whoever follows.
+    // She goes through straight away, and stops at the far end; the holes stay open for whoever follows.
     hop(world, this, holes[0], holes[1]);
+    holes.rest(this, world.time);
   }
 
   private theDeepCalls(world: World, aim: Vec2): void {
@@ -244,6 +255,8 @@ export class MushroomTotem extends Unit {
   readonly immovable = true;
   private nextPulseAt: number;
   private readonly expiresAt: number;
+  /** Its mushroom patch (see SHROOMS): spreads with each pulse, withers when the totem goes. */
+  readonly patch: Zone;
 
   constructor(world: World, readonly owner: HunnaG, pos: Vec2, lifetime: number) {
     const t = MUSHROOM_TOTEM;
@@ -251,6 +264,19 @@ export class MushroomTotem extends Unit {
     super(world.newId(), owner.team, pos, 26, { maxHp: hp, hpRegen: 0, maxMana: 0, manaRegen: 0, ad: 0, ap: 0, armor: 0, mr: 0, attackSpeed: 0, attackRange: 0, moveSpeed: 0 }, 'Mushroom Totem');
     this.nextPulseAt = world.time + t.pulseEvery;
     this.expiresAt = world.time + lifetime;
+    this.patch = world.add(
+      new Zone(world, owner.team, { ...pos }, SHROOMS.start, lifetime + SHROOMS.wither + 1, 'shrooms', (w, zone) => {
+        // Quicker on her own mushrooms.
+        if (!owner.dead && dist(owner.pos, zone.pos) <= zone.radius) owner.addStatus(w, 'speed', 0.25, SHROOMS.speed);
+      }),
+    );
+    world.emit({ e: 'fx', fx: 'shroomSpread', x: Math.round(pos.x), y: Math.round(pos.y), r: SHROOMS.start, team: owner.team });
+  }
+
+  /** The patch spreads further out, up to the totem's reach, its edge sprouting as it goes. */
+  spread(world: World): void {
+    this.patch.radius = Math.min(MUSHROOM_TOTEM.radius, this.patch.radius + SHROOMS.grow);
+    world.emit({ e: 'fx', fx: 'shroomSpread', x: Math.round(this.pos.x), y: Math.round(this.pos.y), r: Math.round(this.patch.radius), team: this.team });
   }
 
   protected think(world: World): void {
@@ -266,6 +292,7 @@ export class MushroomTotem extends Unit {
 
   die(world: World, killer: Unit | null): void {
     super.die(world, killer);
+    this.patch.fadeOut(SHROOMS.wither);
     world.schedule(0.5, () => (this.removed = true));
   }
 
@@ -285,34 +312,50 @@ export function canUseHole(u: Unit, team: number): boolean {
   return u.team === team || u.has('burrowed');
 }
 
-/** Two holes that send whoever walks into one out of the other. */
-function linkedHoles(world: World, team: PlayerTeam, a: Vec2, b: Vec2): [Zone, Zone] {
+/** Whether a unit is walking onto a hole on purpose: it was told to go there (not just passing, or standing by it). */
+function walkingInto(u: Unit, hole: Zone): boolean {
+  return u.order.kind === 'move' && dist(u.order.dest, hole.pos) <= MOLE_HOLE.radius + MOLE_HOLE.aimed;
+}
+
+/**
+ * Two holes: whoever walks onto one on purpose comes out of the other and stops there. Then they can't
+ * go again until they've stepped off it and a moment has passed, so nobody's sent back and forth.
+ * (It used to take anyone who crossed a hole, and leave them walking on to where they'd been going,
+ * which often led straight back over a hole.)
+ */
+function linkedHoles(world: World, team: PlayerTeam, a: Vec2, b: Vec2): [Zone, Zone] & { rest(u: Unit, now: number): void } {
   const m = MOLE_HOLE;
   const holes: Zone[] = [];
-  /** Units that have just come out of (or were standing on) a hole: they must step off before it takes them again. */
-  const resting = new Map<number, number>();
+  /** Units that have just come through: until when they rest, and whether they've stepped off the hole yet. */
+  const resting = new Map<number, { until: number; off: boolean }>();
   const onTick = (w: World, zone: Zone) => {
     const other = holes[0] === zone ? holes[1] : holes[0];
     for (const u of w.units()) {
       if (!canUseHole(u, team)) continue;
-      const inside = dist(u.pos, zone.pos) <= m.radius + u.radius * 0.5;
-      if (!inside) {
-        if ((resting.get(u.id) ?? -Infinity) <= w.time) resting.delete(u.id);
+      const onHole = holes.some((h) => dist(u.pos, h.pos) <= m.radius + u.radius);
+      const r = resting.get(u.id);
+      if (r) {
+        if (!onHole) r.off = true;
+        if (r.off && w.time >= r.until) resting.delete(u.id);
         continue;
       }
-      if (resting.has(u.id)) continue;
+      if (dist(u.pos, zone.pos) > m.radius + u.radius * 0.5 || !walkingInto(u, zone)) continue;
       hop(w, u, zone, other);
-      resting.set(u.id, w.time + m.hopCooldown);
+      resting.set(u.id, { until: w.time + m.hopCooldown, off: false });
     }
   };
   for (const p of [a, b]) holes.push(world.add(new Zone(world, team, p, m.radius, m.open, 'molehole', onTick)));
-  return [holes[0], holes[1]];
+  return Object.assign([holes[0], holes[1]] as [Zone, Zone], {
+    rest: (u: Unit, now: number) => void resting.set(u.id, { until: now + m.hopCooldown, off: false }),
+  });
 }
 
-/** Through the ground from one hole to the other, keeping whatever order the unit had. */
+/** Through the ground from one hole to the other, coming out just past it and stopping there. */
 function hop(world: World, u: Unit, from: Zone, to: Zone): void {
   const offset = dist(from.pos, to.pos) > 1 ? scale(dirTo(from.pos, to.pos), MOLE_HOLE.radius + u.radius + 5) : { x: 0, y: 0 };
   u.pos = world.grid.nearestWalkable(add(to.pos, offset)) ?? { ...to.pos };
-  u.path = u.order.kind === 'move' ? world.findPath(u.pos, u.order.dest) : [];
+  // A walk that was taking them to the hole is done; anything else (chasing someone) carries on from here.
+  if (u.order.kind === 'move' || u.order.kind === 'idle') u.commandStop();
+  else u.path = [];
   world.emit({ e: 'fx', fx: 'hop', x: Math.round(from.pos.x), y: Math.round(from.pos.y), x2: Math.round(u.pos.x), y2: Math.round(u.pos.y), team: u.team as PlayerTeam });
 }

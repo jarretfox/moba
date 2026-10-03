@@ -168,6 +168,17 @@ export const ATTACKS: Record<ChampionId, readonly Anim[]> = {
 export const ATTACK: Record<ChampionId, Anim> = Object.fromEntries(Object.entries(ATTACKS).map(([id, list]) => [id, list[0]])) as Record<ChampionId, Anim>;
 
 /** The move for a champion's `n`th basic attack: their swings taken in turn. */
+/**
+ * A basic attack's move, played so its blow lands `windup` seconds in, when the hit really happens. Like
+ * League's attack animations, it speeds up with attack speed (and slows for a slow one), so what you see
+ * connect is what connects. Within reason: never under a third or over four times its length.
+ */
+export function timedTo(a: Anim, windup: number): Anim {
+  const at = a.dur * (a.hit ?? 0.5);
+  const k = Math.max(1 / 3, Math.min(4, windup / at));
+  return k === 1 ? a : { ...a, dur: a.dur * k };
+}
+
 export function attackAnim(champ: ChampionId, n: number): Anim {
   const list = ATTACKS[champ];
   return list[((n % list.length) + list.length) % list.length];

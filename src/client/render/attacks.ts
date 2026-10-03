@@ -21,9 +21,6 @@ export const MELEE_LOOK: ReadonlySet<ChampionId> = new Set(['barbarian', 'willmo
 /** How fast each ranged champion's basic attack flies (the same numbers as their kits; only the timing of the hit depends on it). */
 const SHOT_SPEED: Partial<Record<ChampionId, number>> = { marksman: 2200, hunnag: 1500, kingrix: 1700, dabber: 2000, havarti: 1700, scrimby: 1600, bigwhale: 1400 };
 
-/** The sim throws the blow (or looses the shot) about this long into an attack: a fifth of the attack time. */
-const WINDUP = 0.22;
-
 const swings = new Map<number, number>();
 
 /** Which of its swings a unit is on: counts up with each basic attack, so they're played in turn. */
@@ -89,7 +86,7 @@ export function blowAt(fx: FxLayer, champ: ChampionId, src: EntitySnap, t: Entit
  * hand) as the blow is thrown, and the hit on the target: at once for a blow by hand, after the flight for
  * a shot. `target()` looks the target up again when the hit lands, since it may have moved on (or died).
  */
-export function attackLook(fx: FxLayer, src: EntitySnap, tgt: EntitySnap, swing: number, anim: Anim, mine: boolean, target: () => EntitySnap | undefined): void {
+export function attackLook(fx: FxLayer, src: EntitySnap, tgt: EntitySnap, swing: number, anim: Anim, mine: boolean, target: () => EntitySnap | undefined, tag?: number): void {
   const champ = src.champ;
   if (!champ) return;
   const melee = meleeNow(champ, src, tgt);
@@ -99,13 +96,13 @@ export function attackLook(fx: FxLayer, src: EntitySnap, tgt: EntitySnap, swing:
     const b = blowAt(fx, champ, src, t, swing, mine);
     LAUNCH[champ](b, melee);
     if (melee) IMPACT[champ](b, true);
-  });
+  }, tag);
   if (melee) return;
   const flight = Math.hypot(tgt.x - src.x, tgt.y - src.y) / (SHOT_SPEED[champ] ?? 1800);
-  fx.later(Math.max(hitAt, WINDUP) + flight, () => {
+  fx.later(hitAt + flight, () => {
     const t = target();
     if (t && !t.dead) IMPACT[champ](blowAt(fx, champ, src, t, swing, mine), false);
-  });
+  }, tag);
 }
 
 /** The blow being thrown: the weapon's arc through the air, or the shot leaving the hand. */

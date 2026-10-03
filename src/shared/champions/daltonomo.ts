@@ -39,6 +39,12 @@ export const JUGGLING_KNIVES = {
 export const DOUBLE_ACT = {
   cost: [100, 100, 100], cooldown: [100, 90, 80], vanish: 0.25, duration: 18, damageShare: 0.5, takes: 1.5,
   explosion: [150, 225, 300], apRatio: 0.7, radius: 250, leash: 900,
+  /**
+   * Press R again while the double's up to guide it: onto an enemy near the cursor (it goes after them),
+   * or to a spot (it walks there and fights whatever's close, then comes back to him). It goes this far
+   * from him when guided, and keeps at it this long.
+   */
+  guideLeash: 1400, guideFor: 6, pick: 140,
 };
 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -84,7 +90,7 @@ export const DALTONOMO_INFO: ChampionInfo = {
     {
       name: 'Double Act',
       icon: '🎭',
-      description: `Vanish for a blink, then there are two of him. The double fights alongside him for ${DOUBLE_ACT.duration}s, dealing ${pct(DOUBLE_ACT.damageShare)} of his damage and taking ${pct(DOUBLE_ACT.takes - 1)} more. When it dies or the act ends, it explodes for ${perRank(DOUBLE_ACT.explosion)} (+${pct(DOUBLE_ACT.apRatio)} AP) magic damage around it.`,
+      description: `Vanish for a blink, then there are two of him. The double fights alongside him for ${DOUBLE_ACT.duration}s, dealing ${pct(DOUBLE_ACT.damageShare)} of his damage and taking ${pct(DOUBLE_ACT.takes - 1)} more. Press again to guide it: onto an enemy at the cursor to go after them, or to a spot to send it there. When it dies or the act ends, it explodes for ${perRank(DOUBLE_ACT.explosion)} (+${pct(DOUBLE_ACT.apRatio)} AP) magic damage around it.`,
       cost: DOUBLE_ACT.cost,
       cooldown: DOUBLE_ACT.cooldown,
       castTime: 0,
@@ -157,6 +163,17 @@ export class Daltonomo extends Champion {
     return slot === 2 ? this.knifeTarget(world, cursor, true) : undefined;
   }
 
+  protected canRecast(_world: World, slot: Slot): boolean {
+    return slot === 3 && !!this.double && !this.double.dead;
+  }
+
+  /** R again while the double's up: guide it to the cursor (the act itself isn't cast again). */
+  protected recast(world: World, slot: Slot, aim: Vec2): boolean {
+    if (!this.canRecast(world, slot)) return false;
+    this.double!.guide(world, aim);
+    return true;
+  }
+
   protected onCastStart(_world: World, slot: Slot): void {
     if (slot !== 0) this.reveal();
   }
@@ -225,6 +242,10 @@ export class Daltonomo extends Champion {
   protected respawn(): void {
     super.respawn();
     this.vanishedUntil = this.empoweredUntil = -Infinity;
+  }
+
+  protected abilityNote(world: World, slot: Slot): string | undefined {
+    return slot === 3 && this.canRecast(world, slot) ? 'Guide' : super.abilityNote(world, slot);
   }
 
   meSnapshot(world: World): MeSnap {
@@ -308,6 +329,51 @@ export class Double extends Unit {
   readonly kind = 'guard';
   private readonly expiresAt: number;
   private exploded = false;
+  /** Where he's sent it (R again), and until when: after an enemy, or to a spot. */
+  private guided: { target?: number; to?: Vec2; until: number } | null = null;
+
+  /** Sends it after the enemy nearest the cursor (if one's close to it), otherwise to the spot. */
+  guide(world: World, aim: Vec2): void {
+    const d = DOUBLE_ACT;
+    const target = world
+      .units()
+      .filter((u) => u.team !== this.team && u.team !== 0 && u.isTargetable() && world.vision.canSee(this.team, u) && dist(u.pos, aim) <= d.pick + u.radius)
+      .sort((a, b) => Number(b.kind === 'champion') - Number(a.kind === 'champion') || dist(a.pos, aim) - dist(b.pos, aim))[0];
+    const spot = world.grid.nearestWalkable(aim) ?? { ...aim };
+    this.guided = target ? { target: target.id, until: world.time + d.guideFor } : { to: spot, until: world.time + d.guideFor };
+    if (target) this.commandAttack(target);
+    else this.commandMove(world, spot);
+    world.emit({ e: 'fx', fx: 'cloneGuide', x: Math.round(target?.pos.x ?? spot.x), y: Math.round(target?.pos.y ?? spot.y), team: this.team });
+  }
+
+  /** Doing what it was sent to do (false once that's done, or it's gone too far from him, or the time's up). */
+  private followGuide(world: World): boolean {
+    const g = this.guided;
+    if (!g) return false;
+    const o = this.owner;
+    if (world.time > g.until || dist(this.pos, o.pos) > DOUBLE_ACT.guideLeash) {
+      this.guided = null;
+      return false;
+    }
+    if (g.target !== undefined) {
+      const t = world.getUnit(g.target);
+      if (!t || t.dead || !t.isTargetable() || !world.vision.canSee(this.team, t)) {
+        this.guided = null;
+        return false;
+      }
+      this.commandAttack(t);
+      return true;
+    }
+    // Sent to a spot: on its way there; once there, it fights whatever's close, or holds the spot.
+    if (dist(this.pos, g.to!) > 40) {
+      if (this.order.kind !== 'move') this.commandMove(world, g.to!);
+      return true;
+    }
+    const near = enemiesInRadius(world, this.team, this.pos, 450).filter((u) => world.vision.canSee(this.team, u)).sort((a, b) => Number(b.kind === 'champion') - Number(a.kind === 'champion') || dist(a.pos, this.pos) - dist(b.pos, this.pos))[0];
+    if (near) this.commandAttack(near);
+    else if (this.order.kind === 'attack') this.commandStop();
+    return true;
+  }
 
   get creditTo(): Unit {
     return this.owner;
@@ -331,6 +397,7 @@ export class Double extends Unit {
 
   protected think(world: World): void {
     if (world.time >= this.expiresAt || this.owner.dead) return this.finale(world);
+    if (this.followGuide(world)) return;
     const o = this.owner;
     // Whatever he's hitting, or the nearest enemy champion close by, or back to his side.
     const order = o.order;

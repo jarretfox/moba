@@ -143,6 +143,10 @@ export class Willmore extends Champion {
 
   // ─── Abilities ────────────────────────────────────────────────────────────
 
+  protected canRecast(_world: World, slot: Slot): boolean {
+    return slot === 1 && this.burrowed;
+  }
+
   protected recast(world: World, slot: Slot): boolean {
     if (slot !== 1 || !this.burrowed) return false;
     if (world.time - this.burrowedAt >= BURROW.minTimeBeforeSurfacing) this.surface(world);

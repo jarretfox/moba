@@ -88,6 +88,8 @@ export abstract class Unit implements Entity {
   private fearFrom: Vec2 | null = null;
   protected attackReadyAt = 0;
   protected windup: { targetId: number; fireAt: number; prevReadyAt: number } | null = null;
+  /** A windup was cut short: the next attack update tells everyone, so the swing they're watching stops. */
+  private swingCut = false;
   /** While casting, the unit can't move or attack until this time. */
   protected lockedUntil = 0;
   protected dash: { from: Vec2; to: Vec2; start: number; end: number } | null = null;
@@ -359,6 +361,11 @@ export abstract class Unit implements Entity {
   // ─── Basic attacks ────────────────────────────────────────────────────────
 
   private updateAttack(world: World): void {
+    // (Before any new swing starts, so the stop never lands on the new one.)
+    if (this.swingCut) {
+      this.swingCut = false;
+      world.emit({ e: 'attackStop', src: this.id });
+    }
     if (this.order.kind !== 'attack') return;
     const target = world.getUnit(this.order.targetId);
     // A target that slips into fog or brush is lost, like in League.
@@ -390,10 +397,11 @@ export abstract class Unit implements Entity {
     this.path = [];
     if (world.time >= this.attackReadyAt && this.canAct(world) && !this.has('burrowed')) {
       const attackTime = 1 / this.stats.attackSpeed;
-      this.windup = { targetId: target.id, fireAt: world.time + attackTime * WINDUP_FRACTION, prevReadyAt: this.attackReadyAt };
+      const windup = attackTime * WINDUP_FRACTION;
+      this.windup = { targetId: target.id, fireAt: world.time + windup, prevReadyAt: this.attackReadyAt };
       this.attackReadyAt = world.time + attackTime;
       this.facing = angleOf(sub(target.pos, this.pos));
-      world.emit({ e: 'attack', src: this.id, target: target.id });
+      world.emit({ e: 'attack', src: this.id, target: target.id, w: Math.round(windup * 1000) / 1000 });
     }
   }
 
@@ -406,6 +414,7 @@ export abstract class Unit implements Entity {
     if (!this.windup) return;
     this.attackReadyAt = this.windup.prevReadyAt;
     this.windup = null;
+    this.swingCut = true;
   }
 
   private chase(world: World, targetPos: Vec2): void {

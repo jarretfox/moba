@@ -6,7 +6,7 @@ import { STARTING_GOLD } from '../sim/progression';
 import { holdsGrudge } from '../sim/warden';
 import { World } from '../sim/world';
 import { Zone } from '../sim/zone';
-import { HunnaG, MushroomTotem, ROT } from './hunnag';
+import { HunnaG, MushroomTotem, ROT, SHROOMS } from './hunnag';
 import { Marksman } from './marksman';
 import { learnAll } from './testing';
 import { Willmore } from './willmore';
@@ -111,6 +111,32 @@ describe('Mushroom Totem', () => {
     expect(foe.gold).toBeGreaterThan(STARTING_GOLD);
   });
 
+  it('spreads its mushrooms further out with every pulse, speeds her up on them, and they wither after it', () => {
+    const { world, h, totem } = plant();
+    const patch = totem.patch;
+    const r0 = patch.radius;
+    run(world, 2.1);
+    expect(patch.radius).toBeGreaterThan(r0);
+    run(world, 2);
+    const r2 = patch.radius;
+    expect(r2).toBeGreaterThan(r0 + 100);
+    // On the mushrooms: quicker. Off them: not.
+    h.pos = add(totem.pos, { x: r2 - 40, y: 0 });
+    run(world, 0.1);
+    expect(h.has('speed')).toBe(true);
+    h.pos = add(totem.pos, { x: r2 + 200, y: 0 });
+    run(world, 0.4);
+    expect(h.has('speed')).toBe(false);
+    // The totem goes: the patch withers over a few seconds, still quick to walk on till it's gone.
+    world.damage(h, totem, 1e6, 'true');
+    h.pos = add(totem.pos, { x: 30, y: 0 });
+    run(world, SHROOMS.wither - 0.5);
+    expect(patch.removed).toBe(false);
+    expect(h.has('speed')).toBe(true);
+    run(world, 1);
+    expect(patch.removed).toBe(true);
+  });
+
   it('withers when its time is up, and only one stands at a time', () => {
     const { world, h, totem } = plant();
     h.abilities[1].readyAt = 0;
@@ -140,41 +166,60 @@ describe('Mole Hole', () => {
     expect(holes(world)).toHaveLength(0);
   });
 
-  it('lets allies walk in one hole and out the other, but not enemies', () => {
+  it('lets allies walk onto one hole and out the other (and stop there), but not enemies', () => {
     const { world, start, end } = dig();
     const ally = world.add(new Marksman(world, TEAM.blue));
-    ally.pos = { ...start };
+    ally.pos = add(start, { x: 150, y: 0 });
+    ally.commandMove(world, { ...start });
     const enemy = world.add(new Marksman(world, TEAM.red));
-    enemy.pos = { x: start.x, y: start.y + 10 };
-    run(world, 0.1);
-    expect(dist(ally.pos, end)).toBeLessThan(180);
-    expect(dist(enemy.pos, start)).toBeLessThan(30);
-    // And it doesn't bounce them straight back, even if they come out right on top of the other hole...
-    ally.pos = { ...end };
-    run(world, 0.5);
-    expect(dist(ally.pos, end)).toBeLessThan(30);
-    // ...though once they've stepped off, walking back in works.
-    ally.pos = add(end, { x: 0, y: 200 });
+    enemy.pos = add(start, { x: 0, y: 150 });
+    enemy.commandMove(world, { ...start });
     run(world, 1);
+    expect(dist(ally.pos, end)).toBeLessThan(180);
+    expect(ally.order.kind).toBe('idle');
+    expect(dist(enemy.pos, start)).toBeLessThan(80);
+    // It doesn't send them straight back, even if they're put right on the other hole and told to walk to it...
     ally.pos = { ...end };
-    run(world, 0.1);
+    ally.commandMove(world, { ...end });
+    run(world, 0.5);
+    expect(dist(ally.pos, end)).toBeLessThan(60);
+    // ...though once they've stepped off and waited a moment, walking back onto it works.
+    ally.pos = add(end, { x: 0, y: 200 });
+    run(world, 1.6);
+    ally.commandMove(world, { ...end });
+    run(world, 1);
     expect(dist(ally.pos, start)).toBeLessThan(180);
+  });
+
+  it("doesn't take anyone just walking across a hole on their way somewhere else", () => {
+    const { world, start } = dig();
+    const ally = world.add(new Marksman(world, TEAM.blue));
+    ally.pos = add(start, { x: 200, y: 0 });
+    ally.commandMove(world, add(start, { x: -300, y: 0 }));
+    run(world, 2);
+    expect(ally.pos.x).toBeLessThan(start.x - 200);
+  });
+
+  it('takes her through once when she casts it, and leaves her at the far end', () => {
+    const { world, h, end } = dig();
+    run(world, 3);
+    expect(dist(h.pos, end)).toBeLessThan(120);
   });
 
   it("lets any burrowed Willmore through, even the enemy's (Kin of the Deep)", () => {
     const { world, start, end } = dig();
     const willmore = learnAll(world.add(new Willmore(world, TEAM.red)));
-    willmore.pos = { x: start.x + 300, y: start.y };
+    willmore.pos = { x: start.x + 200, y: start.y };
     world.step();
-    willmore.pos = { ...start };
-    run(world, 0.1);
-    expect(dist(willmore.pos, start)).toBeLessThan(30); // not burrowed: no entry
+    willmore.commandMove(world, { ...start });
+    run(world, 1);
+    expect(dist(willmore.pos, start)).toBeLessThan(60); // not burrowed: no entry
 
-    willmore.pos = { x: start.x + 300, y: start.y };
+    willmore.pos = { x: start.x + 200, y: start.y };
     willmore.tryCast(world, 1, willmore.pos);
     world.step();
-    willmore.pos = { ...start };
-    run(world, 0.1);
+    willmore.commandMove(world, { ...start });
+    run(world, 1.5);
     expect(dist(willmore.pos, end)).toBeLessThan(180);
   });
 });

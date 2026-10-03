@@ -324,6 +324,8 @@ export type FxKind =
   | 'lob'
   | 'rotBurst'
   | 'pulse'
+  | 'shroomSpread'
+  | 'cloneGuide'
   | 'hop'
   | 'deepMark'
   | 'deepHands'
@@ -383,8 +385,12 @@ export type FxKind =
   | 'splashZone';
 
 export type GameEvent =
-  | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType }
-  | { e: 'attack'; src: number; target: number }
+  /** `b`: a basic attack's hit (not an on-hit proc), which lands with its own feel on screen. */
+  | { e: 'dmg'; src?: number; target: number; amount: number; type: DamageType; b?: 1 }
+  /** A basic attack starting; `w` is the seconds until its blow lands (the windup), so the swing can be timed to it. */
+  | { e: 'attack'; src: number; target: number; w?: number }
+  /** A basic attack cut short before its blow landed (moved, cast, lost the target): the swing on screen stops. */
+  | { e: 'attackStop'; src: number }
   | { e: 'cast'; src: number; slot: Slot; x: number; y: number }
   /** A cast that couldn't go off, and why (only the caster's team is told; their screen says so). */
   | { e: 'castFail'; src: number; slot: Slot; why: CastFail }
@@ -474,6 +480,8 @@ export interface AbilitySnap {
   cd: number;
   /** A word for the slot right now, e.g. "Boot" or "Surface". */
   note?: string;
+  /** A second press would do something right now (steer, surface, brake...): the button works whatever its cooldown. */
+  recast?: boolean;
 }
 
 /** Private state only the owning player receives. */

@@ -129,15 +129,16 @@ S('fx:sigmaStare', rng(K_SCI, 'forceField_00{}', [0, 1]), over=True, level=-2)
 S('fx:ascension', rng(RPGP, 'giant{}', [3, 4]), over=True, level=0, **{'with': ['fx:ascension+brass']})
 S('fx:ascension+brass', rng(K_JIN, 'jingles_HIT{:02d}', [8, 12]), level=-3)
 
-# ── Dark Dabber: smoke and fire.
-S('atkRig', rng(K_SCI, 'slime_00{}', [0, 1]), level=0)
-S('hit:dabber', rng(SPLAT, 'impactsplat0{}.mp3', [2, 4, 6]), level=-1)
-S('cast:dabber:0', rng(TINY, 'compressed-air-spray-0{}', [1, 2]), over=True, level=0)
-S('cast:dabber:1', rng(WATER, 'slime_{:02d}', [3, 7, 11]), over=True, level=-1)
-S('fx:lightItUp', [(TINY, 'lighter-light-01')], over=True, level=0, **{'with': ['fx:lightItUp+fire']})
-S('fx:lightItUp+fire', rng(RPG80, 'spell_fire_0{}', [1, 2, 3]), level=-2)
-S('fx:cloudNine', rng(RPG80, 'spell_fire_0{}', [5, 6, 7]), over=True, level=0, **{'with': ['fx:cloudNine+thrust']})
-S('fx:cloudNine+thrust', rng(K_SCI, 'thrusterFire_00{}', [0, 2]), level=-4)
+# ── Dark Dabber: smoke and fire. Kept well under the others (players found him loud: he attacks fast and
+# his fire and smoke sat on top of everything), and his long takes are cut short.
+S('atkRig', rng(K_SCI, 'slime_00{}', [0, 1]), level=-8, max=0.3)
+S('hit:dabber', rng(SPLAT, 'impactsplat0{}.mp3', [2, 4, 6]), level=-7, max=0.45)
+S('cast:dabber:0', rng(TINY, 'compressed-air-spray-0{}', [1, 2]), over=True, level=-6, max=0.5)
+S('cast:dabber:1', rng(WATER, 'slime_{:02d}', [3, 7, 11]), over=True, level=-7)
+S('fx:lightItUp', [(TINY, 'lighter-light-01')], over=True, level=-5, **{'with': ['fx:lightItUp+fire']})
+S('fx:lightItUp+fire', rng(RPG80, 'spell_fire_0{}', [1, 2, 3]), level=-9, max=0.9)
+S('fx:cloudNine', rng(RPG80, 'spell_fire_0{}', [5, 6, 7]), over=True, level=-6, max=0.9, **{'with': ['fx:cloudNine+thrust']})
+S('fx:cloudNine+thrust', rng(K_SCI, 'thrusterFire_00{}', [0, 2]), level=-11, max=0.8)
 
 # ── Master Paris: a fencer. Thin steel, clashes, café cups.
 S('atkEpee', rng(SWORD, 'sword.{}', [1, 3, 5, 7]), level=0)

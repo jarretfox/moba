@@ -80,8 +80,8 @@ export const FX_SOUNDS: Partial<Record<FxKind, [SoundName, number]>> = {
   cafeBreak: ['magic', 0.35],
   touche: ['snap', 0.5],
   encore: ['magic', 0.8],
-  hotbox: ['whoosh', 0.45],
-  stickyIcky: ['whoosh', 0.4],
+  hotbox: ['whoosh', 0.3],
+  stickyIcky: ['whoosh', 0.28],
   lightItUp: ['boom', 0.55],
   cloudNine: ['magic', 0.8],
   chinCheck: ['whoosh', 0.8],
@@ -130,7 +130,13 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
     case 'dmg': {
       if (ev.target !== myId && ev.src !== myId) return null;
       const t = ents.get(ev.target);
-      if (!t || (t.k !== 'champion' && ev.target !== myId)) return null;
+      if (!t) return null;
+      // Your own basic attacks sound on anything (a Chud, a monster, a Shootie), like League: you hear every hit land.
+      if (t.k !== 'champion' && ev.target !== myId) {
+        const me = ev.b && ev.src === myId ? ents.get(myId) : undefined;
+        if (!me) return null;
+        return { name: 'hit', at: { x: t.x, y: t.y }, gain: 0.32, take: me.champ ? `hit:${me.champ}` : undefined };
+      }
       // Heavy hits land with more weight; magic stings rather than thumps; a hit on you has a deeper body.
       const heavy = ev.amount >= (t.mhp ?? 1000) * HEAVY_HIT;
       const name: SoundName = heavy ? 'hitHeavy' : ev.type === 'magic' ? 'hitMagic' : ev.target === myId ? 'hitMe' : 'hit';
@@ -155,6 +161,8 @@ export function cueFor(ev: GameEvent, ents: ReadonlyMap<number, EntitySnap>, myI
     }
     case 'castFail':
       return ev.src === myId ? { name: 'deny', gain: 0.5 } : null;
+    case 'attackStop':
+      return null;
     case 'level':
       return ev.id === myId ? { name: 'levelUp', gain: 0.7 } : null;
     case 'gold':

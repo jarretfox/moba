@@ -175,6 +175,7 @@ export class Vision {
       case 'heal':
         return byId(ev.target);
       case 'attack':
+      case 'attackStop':
       case 'cast':
         return byId(ev.src);
       case 'castFail':

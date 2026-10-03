@@ -177,6 +177,14 @@ export class Scrimby extends Champion {
     return this.charge !== null;
   }
 
+  protected canRecast(_world: World, slot: Slot): boolean {
+    return slot === 3 && this.charge !== null;
+  }
+
+  protected abilityNote(world: World, slot: Slot): string | undefined {
+    return slot === 3 && this.charge !== null ? 'Brake' : super.abilityNote(world, slot);
+  }
+
   protected recast(world: World, slot: Slot): boolean {
     if (slot !== 3 || !this.charge) return false;
     this.crash(world, null);

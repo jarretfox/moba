@@ -1,3 +1,5 @@
+import { SHROOMS } from '../../shared/champions/hunnag';
+import { SHROOM_SQUASH, drawMushroom, shroomCount, shroomSize } from './signatures';
 import { spriteArt } from './art';
 import { buildFor } from './costumes';
 import { CHUD_DEFS } from '../../shared/sim/chud';
@@ -13,7 +15,7 @@ import { STRUCTURE_DEFS } from '../../shared/sim/structure';
 import { RECALL_TIME as RECALL_SECONDS } from '../../shared/champions/champion';
 import type { Slot } from '../../shared/constants';
 import type { ChampionId } from '../../shared/champions/types';
-import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, type Anim } from './animation';
+import { ATTACK, FIDGETS, UNIT_ATTACK, castAnim, sample, timedTo, type Anim } from './animation';
 import { drawChampionBase, palette } from './champions';
 import { Beast, type BeastKind } from './beasts';
 import { dressChud } from './chudLife';
@@ -101,8 +103,13 @@ function softGlow(): Texture {
 export interface EntityView {
   readonly container: Container;
   update(s: EntitySnap, dt: number, ctx: ViewContext): void;
-  /** Started a basic attack; a champion's `variant` is which of their swings to play (see animation.ts). */
-  onAttack?(variant?: Anim): void;
+  /**
+   * Started a basic attack; a champion's `variant` is which of their swings to play (see animation.ts),
+   * timed so the blow lands `windup` seconds in.
+   */
+  onAttack?(variant?: Anim, windup?: number): void;
+  /** The basic attack was cut short before it landed (moved, cast): the swing stops. */
+  cancelAttack?(): void;
   /** Took a hit: a quick flash, and a stagger away from `from` if it was a big one. */
   onHit?(from?: { x: number; y: number }, heavy?: boolean): void;
   /** Cast an ability: the champion strikes a pose for it. */
@@ -125,6 +132,46 @@ const PACE_WALK = 2.4;
 /** Seconds a Chud's cheer lasts. */
 const CHEER_TIME = 1.5;
 
+/** Where a health bar was drawn: its box, the health that fills it, and the color for its chunk. */
+interface BarSpot {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  full: number;
+  color: number;
+}
+
+/** Seconds the chunk a hit takes out of a health bar holds before it drains. */
+const CHUNK_HOLD = 0.3;
+
+/**
+ * League's health-bar chunk: what a hit just took shows as a pale piece past the health, held a moment
+ * (hits close together pile up into one), then drained away. So you can see each hit land, and how much.
+ */
+class HpChunk {
+  readonly g = new Graphics();
+  private trail = -1;
+  private last = -1;
+  private hold = 0;
+  private shown = false;
+
+  update(hp: number, dt: number, at: BarSpot): void {
+    if (this.last >= 0 && hp < this.last - 0.01) this.hold = CHUNK_HOLD;
+    this.last = hp;
+    if (hp >= this.trail) this.trail = hp;
+    else if ((this.hold -= dt) <= 0) {
+      this.trail = hp + (this.trail - hp) * Math.exp(-dt * 9);
+      if (this.trail - hp < at.full * 0.003) this.trail = hp;
+    }
+    const show = this.trail > hp;
+    if (!show && !this.shown) return;
+    this.shown = show;
+    this.g.clear();
+    if (show) this.g.rect(at.x + (at.w * hp) / at.full, at.y, (at.w * Math.min(this.trail - hp, at.full - hp)) / at.full, at.h).fill({ color: at.color, alpha: 0.95 });
+  }
+}
+
 export class UnitView implements EntityView {
   readonly container = new Container();
   private readonly body = new Graphics();
@@ -132,8 +179,13 @@ export class UnitView implements EntityView {
   private readonly facing = new Container();
   private readonly figure = new Graphics();
   private readonly champ: ChampionId | null = null;
-  /** What this unit does when it attacks (a champion's changes swing to swing). */
+  /** What this unit does when it attacks (a champion's changes swing to swing), as timed for this swing. */
   private attackAnim: Anim | null = null;
+  /** Its own attack move, untimed (the first one it had). */
+  private ownAttack: Anim | null | undefined;
+  /** League's health-bar chunk, and where the bar was last drawn. */
+  private readonly chunk = new HpChunk();
+  private barAt: BarSpot | null = null;
   /** Seconds into a recall, and the props its routine draws behind and in front of the figure. */
   private recallT = 0;
   private readonly recallUnder = new Graphics();
@@ -310,7 +362,7 @@ export class UnitView implements EntityView {
       }
     }
     this.recallBack.blendMode = this.recallFront.blendMode = this.buffGlow.blendMode = 'add';
-    this.container.addChild(this.cast, this.statusRing, this.recallBack, this.recallUnder, this.body, this.facing, ...(this.backlight ? [this.backlight] : []), ...(this.rig ? [this.rig.root, this.wade, this.grass] : []), this.recallOver, this.recallFront, this.buffGlow, this.buffFx, this.bars, this.label);
+    this.container.addChild(this.cast, this.statusRing, this.recallBack, this.recallUnder, this.body, this.facing, ...(this.backlight ? [this.backlight] : []), ...(this.rig ? [this.rig.root, this.wade, this.grass] : []), this.recallOver, this.recallFront, this.buffGlow, this.buffFx, this.bars, this.chunk.g, this.label);
     if (s.k === 'champion') {
       this.levelText = new Text({ text: '', style: { fontFamily: "'Lilita One', 'Nunito', system-ui, sans-serif", fontSize: 12, fill: 0xffe29a } });
       this.levelText.anchor.set(0.5);
@@ -561,6 +613,8 @@ export class UnitView implements EntityView {
       this.barKey = barKey;
       this.drawBars(s, ctx.myAd);
     }
+    if (this.barAt) this.chunk.update(Math.max(0, s.hp ?? 0), dt, this.barAt);
+    this.chunk.g.visible = this.bars.visible;
     this.drawBuffs(s);
     const statusKey = (s.st ?? []).join();
     if (statusKey !== this.statusKey) {
@@ -716,11 +770,19 @@ export class UnitView implements EntityView {
     for (let i = used; i < this.recallTexts.length; i++) this.recallTexts[i].visible = false;
   }
 
-  onAttack(variant?: Anim): void {
+  onAttack(variant?: Anim, windup?: number): void {
     this.pulse = 1;
     this.hitFired = false;
-    if (variant) this.attackAnim = variant;
-    if (this.attackAnim) this.anim = { a: this.attackAnim, t: 0 };
+    if (this.ownAttack === undefined) this.ownAttack = this.attackAnim;
+    const move = variant ?? this.ownAttack;
+    if (!move) return;
+    this.attackAnim = windup ? timedTo(move, windup) : move;
+    this.anim = { a: this.attackAnim, t: 0 };
+  }
+
+  cancelAttack(): void {
+    // Still winding up: drop the swing (once the blow's landed, the follow-through plays out).
+    if (this.anim && this.anim.a === this.attackAnim && !this.hitFired) this.anim = null;
   }
 
   /** Play a move (the Warden winding up a slam). */
@@ -898,6 +960,7 @@ export class UnitView implements EntityView {
     // A shield gets a white stretch after the health; if both don't fit, the bar rescales to hold them.
     const hp = Math.max(0, s.hp ?? 0);
     const full = Math.max(mhp, hp + (s.sh ?? 0));
+    this.barAt = { x, y, w, h, full, color: mix(hpColor, 0xffffff, 0.6) };
     g.rect(x, y, (w * hp) / full, h).fill(hpColor);
     if (s.sh) g.rect(x + (w * hp) / full, y, (w * s.sh) / full, h).fill(0xf2f4f7);
     // A notch every 100 health so big and small health pools read differently at a glance.
@@ -1215,9 +1278,39 @@ function drawTail(g: Graphics, vis: string, relation: Relation): void {
 export class ZoneView implements EntityView {
   readonly container = new Graphics();
   private age = 0;
+  /** HunnaG's mushroom patch: the radius drawn so far, and since when it's grown past that. */
+  private shroomR = 0;
+  private grewAt = 0;
 
-  constructor(private readonly s: EntitySnap) {
-    this.draw(0);
+  constructor(private s: EntitySnap) {
+    if (s.vis !== 'shrooms') this.draw(0);
+  }
+
+  /**
+   * HunnaG's mushroom patch: a ring of mushrooms for each time it's spread, out to its edge, each where the
+   * spreading animation popped it up (spells.ts 'shroomSpread'). A new ring is drawn in once that animation
+   * has put it there; the patch fades as it withers.
+   */
+  private drawShrooms(s: EntitySnap): void {
+    const g = this.container;
+    if (s.r > this.shroomR && this.grewAt === 0) this.grewAt = this.age;
+    if (s.r !== this.shroomR && (this.shroomR === 0 || this.age - this.grewAt >= 0.35)) {
+      this.shroomR = s.r;
+      this.grewAt = 0;
+      g.clear();
+      for (let ring = SHROOMS.start; ring <= s.r + 1; ring += SHROOMS.grow) {
+        const n = shroomCount(ring);
+        // Back of each ring first, so the nearer mushrooms stand in front.
+        const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => Math.sin((a / n) * Math.PI * 2) - Math.sin((b / n) * Math.PI * 2));
+        for (const i of order) {
+          const a = (i / n) * Math.PI * 2;
+          g.translateTransform(Math.cos(a) * ring, Math.sin(a) * ring * SHROOM_SQUASH);
+          drawMushroom(g, shroomSize(i), i, 0x8fd14f);
+          g.resetTransform();
+        }
+      }
+    }
+    this.container.alpha = s.regrow !== undefined ? Math.max(0, Math.min(1, s.regrow / SHROOMS.wither)) : 1;
   }
 
   private draw(t: number): void {
@@ -1259,8 +1352,10 @@ export class ZoneView implements EntityView {
 
   update(s: EntitySnap, dt: number): void {
     this.age += dt;
+    this.s = s;
     this.container.position.set(s.x, s.y);
-    this.draw(this.age);
+    if (s.vis === 'shrooms') this.drawShrooms(s);
+    else this.draw(this.age);
   }
 }
 
@@ -1409,6 +1504,8 @@ export class StructureView implements EntityView {
   private readonly body = new Graphics();
   private readonly light = new Graphics();
   private readonly upper = new Graphics();
+  private readonly chunk = new HpChunk();
+  private barAt: BarSpot | null = null;
   private readonly bars = new Graphics();
   private readonly note: Text;
   private bodyKey = '';
@@ -1445,7 +1542,7 @@ export class StructureView implements EntityView {
     this.windows.blendMode = 'add';
     this.windows.alpha = 0;
     this.fire.blendMode = 'add';
-    this.top.addChild(this.upper, this.wear, this.windows, this.smoke, this.fire, this.crystal, this.bars, this.note);
+    this.top.addChild(this.upper, this.wear, this.windows, this.smoke, this.fire, this.crystal, this.bars, this.chunk.g, this.note);
     this.container.position.set(s.x, s.y);
     this.top.position.set(s.x, s.y);
   }
@@ -1493,6 +1590,8 @@ export class StructureView implements EntityView {
       this.barKey = barKey;
       this.drawBars(s);
     }
+    if (this.barAt) this.chunk.update(s.dead ? 0 : Math.max(0, s.hp ?? 0), dt, this.barAt);
+    this.chunk.g.visible = !s.dead;
     const note = s.regrow ? `Regrows in ${clock(s.regrow)}` : s.role === 'daBase' && !s.dead ? (s.badge ? `${s.badge} DA BASE ${s.badge}` : 'DA BASE') : '';
     if (this.note.text !== note) this.note.text = note;
     this.updateRange(s, ctx.me);
@@ -1598,6 +1697,7 @@ export class StructureView implements EntityView {
     const y = -buildingHeight(s.role ?? 'outerShootie') * s.r - 22;
     const mhp = s.mhp ?? 1;
     const color = s.inv ? PALETTE.invulnerable : this.relation === 'enemy' ? PALETTE.enemy : PALETTE.ally;
+    this.barAt = { x, y, w, h, full: mhp, color: mix(color, 0xffffff, 0.6) };
     g.rect(x - 2, y - 2, w + 4, h + 4).fill({ color: 0x000000, alpha: 0.75 });
     g.rect(x, y, (w * Math.max(0, s.hp ?? 0)) / mhp, h).fill(color);
     for (let v = 500; v < mhp; v += 500) g.rect(x + (w * v) / mhp, y, 1, h * 0.5).fill({ color: 0x000000, alpha: 0.55 });

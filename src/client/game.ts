@@ -1,3 +1,4 @@
+import { STRUCTURE_DEFS } from '../shared/sim/structure';
 import type { Shape } from './render/particles';
 import { BlurFilter, ColorMatrixFilter, Container, DisplacementFilter, Graphics, RenderTexture, Sprite, type Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
@@ -17,7 +18,7 @@ import { getSound } from './audio';
 import { onSettings, settings } from './settings';
 import { Camera } from './camera';
 import { announceSound, cueFor, spatialize, type SoundCue } from './sfx';
-import { EMOTE_ANIM, attackAnim, wardenWindup } from './render/animation';
+import { EMOTE_ANIM, attackAnim, timedTo, wardenWindup } from './render/animation';
 import { attackLook, nextSwing } from './render/attacks';
 import { castSignature } from './render/signatures';
 import { CAST_SOUND } from './sfx';
@@ -129,6 +130,11 @@ export class GameClient {
   private readonly indicator = new Graphics();
   /** A reticle under whatever you're attacking (and your reach round you), while you're attacking it. */
   private readonly targetMark = new Graphics();
+  /** A ring at the feet of the enemy under the cursor (League's hover outline). */
+  private readonly hoverMark = new Graphics();
+  /** Each attacker's swing in progress (the tag its effects wait under), so a swing cut short can be called off. */
+  private readonly swingTags = new Map<number, number>();
+  private swingSeq = 0;
   private markId = -1;
   private markOn = 0;
   private markT = 0;
@@ -428,7 +434,7 @@ export class GameClient {
     // bits on the pit walls raised with the wall tops.
     const landmarks = buildLandmarks(this.map);
     this.underLayer.addChildAt(landmarks.flat, 0);
-    this.underLayer.addChild(this.targetMark, this.reachRing);
+    this.underLayer.addChild(this.hoverMark, this.targetMark, this.reachRing);
     this.wallTops.addChild(landmarks.tall);
     for (const piece of landmarks.standing) this.unitLayer.addChild(piece);
     for (const light of landmarks.lights) this.lighting.addLight(light);
@@ -562,6 +568,14 @@ export class GameClient {
    * ring in the enemy's color with four ticks pointing in, popping in as it lands on something new. Your
    * reach shows faintly round you at the same time, so you can see when you're close enough.
    */
+  /** The enemy a right-click would attack gets a ring at its feet (unless the target reticle's already on it). */
+  private drawHover(e: EntitySnap | null): void {
+    const g = this.hoverMark.clear();
+    if (!e || (e.id === this.markId && this.markOn > 0)) return;
+    const r = e.r * 1.2;
+    g.ellipse(e.x, e.y, r, r * 0.45).fill({ color: PALETTE.enemy, alpha: 0.1 }).stroke({ width: 2.5, color: PALETTE.enemy, alpha: 0.9 });
+  }
+
   private drawTargetMark(dt: number, me: EntitySnap | undefined): void {
     const mine = this.buffer.latest?.me;
     const pending = this.pendingTarget && performance.now() / 1000 < this.pendingTarget.until ? this.pendingTarget.id : undefined;
@@ -753,7 +767,9 @@ export class GameClient {
 
     const mouseWorld = this.mouseWorld();
     if (this.rightHeld && (this.holdTimer -= dt) <= 0) this.rightClick(false);
-    this.setCursor(this.attackMoveArmed || this.enemyAt(mouseWorld) ? 'attack' : !this.replay && this.wicks[this.myTeam - 1]?.hit(mouseWorld) ? 'shop' : '');
+    const hovered = this.enemyAt(mouseWorld);
+    this.setCursor(this.attackMoveArmed || hovered ? 'attack' : !this.replay && this.wicks[this.myTeam - 1]?.hit(mouseWorld) ? 'shop' : '');
+    this.drawHover(this.replay ? null : hovered);
     if (this.aiming !== null && this.myInfo && me && !me.dead) drawIndicator(this.indicator, this.myInfo.abilities[this.aiming], me, mouseWorld);
     else this.indicator.clear();
     this.drawTargetMark(dt, me);
@@ -999,6 +1015,8 @@ export class GameClient {
           this.champFightAt.set(from.id, t);
         }
         if (ev.amount >= 1) this.views.get(ev.target)?.onHit?.(from, !!hit && ev.amount >= (hit.mhp ?? 1000) * 0.08);
+        // Your basic attacks connect: whatever you hit holds for a blink as the blow lands (a big hit holds longer, below).
+        if (ev.b && ev.src === this.myId && hit && ev.amount >= 1 && ev.amount < (hit.mhp ?? 1000) * 0.08) this.views.get(ev.target)?.freeze?.(0.05, 2);
         if (hit && ev.amount >= 1 && (hit.k === 'champion' || hit.k === 'monster' || ev.src === this.myId || ev.target === this.myId)) {
           const heavy = ev.amount >= (hit.mhp ?? 1000) * 0.08;
           this.fx.impact(hit.x, hit.y - chestHeight(hit), hit.r, ev.type, heavy);
@@ -1045,7 +1063,7 @@ export class GameClient {
         const other = this.ents.get(ev.src === this.myId ? ev.target : (ev.src ?? -1));
         if (other?.k === 'champion' && ev.amount >= 1) this.lastFight = performance.now() / 1000;
         const t = this.ents.get(ev.target);
-        if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - standHeight(t), ev.amount, ev.type);
+        if (t && ev.amount >= 1) this.fx.damageNumber(t.x, t.y - standHeight(t), ev.amount, ev.type, ev.b && ev.src === this.myId ? from : undefined);
         return;
       }
       case 'attack': {
@@ -1055,17 +1073,29 @@ export class GameClient {
         // weapon's arc (or the shot leaving the hand) as the blow is thrown, and the hit landing on the
         // target in the champion's own style (render/attacks.ts). Everyone else plays their one move.
         const swing = src?.champ ? nextSwing(ev.src) : 0;
-        const anim = src?.champ ? attackAnim(src.champ, swing) : undefined;
-        this.views.get(ev.src)?.onAttack?.(anim);
+        const move = src?.champ ? attackAnim(src.champ, swing) : undefined;
+        // Timed so the blow lands when the hit really does (`w`, the windup), however fast they attack.
+        const anim = move && ev.w ? timedTo(move, ev.w) : move;
+        this.views.get(ev.src)?.onAttack?.(move, ev.w);
+        const tag = ++this.swingSeq;
+        this.swingTags.set(ev.src, tag);
         this.damageLog.noteAttack(ev.src, performance.now() / 1000);
         const shooter = this.ents.get(ev.src);
         if (shooter?.k === 'structure' && this.ents.get(ev.target)?.k === 'champion') this.towerShots.set(ev.src, { target: ev.target, until: performance.now() / 1000 + 1.4 });
         if (shooter?.k === 'structure') this.shootieFires(shooter, this.ents.get(ev.target));
         const mine = ev.src === this.myId;
-        if (src?.k === 'champion' && anim && tgt) attackLook(this.fx, src, tgt, swing, anim, mine, () => this.ents.get(ev.target));
+        if (src?.k === 'champion' && anim && tgt) attackLook(this.fx, src, tgt, swing, anim, mine, () => this.ents.get(ev.target), tag);
         // Your own attack has an edge you always hear; an enemy champion's at you comes in with a whoosh.
         if (mine && src) this.sound.play('atkEdge', 0.5);
         else if (src?.k === 'champion' && src.tm !== this.myTeam && ev.target === this.myId) this.playCue({ name: 'incoming', at: src, gain: 0.6 });
+        return;
+      }
+      case 'attackStop': {
+        // Cut short before the blow landed (they moved, or cast): no blow, no shot.
+        const tag = this.swingTags.get(ev.src);
+        if (tag !== undefined) this.fx.cancel(tag);
+        this.swingTags.delete(ev.src);
+        this.views.get(ev.src)?.cancelAttack?.();
         return;
       }
       case 'death': {
@@ -1527,6 +1557,11 @@ export class GameClient {
       g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 14, color, alpha: 0.18 * pulse, cap: 'round' });
       g.moveTo(sx, sy).lineTo(t.x, t.y).stroke({ width: 3, color: ours ? 0xffb0a8 : 0xd6ecff, alpha: 0.85 * pulse, cap: 'round' });
       g.circle(t.x, t.y, t.r + 10).stroke({ width: 3, color, alpha: 0.7 * pulse });
+      // It's shooting you: its whole reach lights up red (League's turret warning), so you know to get out.
+      if (t.id === this.myId && s.role) {
+        const reach = STRUCTURE_DEFS[s.role].stats.attackRange + s.r + t.r;
+        g.circle(s.x, s.y, reach).stroke({ width: 5, color: 0xff3b3b, alpha: 0.55 * pulse }).fill({ color: 0xff3b3b, alpha: 0.05 * pulse });
+      }
     }
   }
 
@@ -2208,6 +2243,12 @@ export class GameClient {
     const self = latest?.ents.find((e) => e.id === this.myId);
     const cd = latest?.me?.abilities[slot].cd ?? 0;
     const rank = latest?.me?.abilities[slot].rank ?? 0;
+    // A recast (steer, surface, brake): it goes, whatever the cooldown and mana say.
+    if (latest?.me?.abilities[slot].recast) {
+      const p = this.mouseWorld();
+      this.send({ k: 'cast', slot, x: Math.round(p.x), y: Math.round(p.y) });
+      return;
+    }
     if (rank === 0) {
       this.hud.flash(slot);
       this.hud.nudgeLevel(slot);

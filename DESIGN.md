@@ -44,9 +44,11 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
   - Oakners regrow after 4 minutes. If both are standing again, the base Shootie is shielded again.
   - Structures block movement while standing. Units path around them, and the rubble of a fallen one can be walked over.
   - Skillshots fly over structures; only basic attacks damage them.
-- **Shooties:**
-  - They shoot Chuds before champions, nearest first.
-  - Once locked on, they stay on that target until it dies or leaves range.
+- **Shooties** pick targets by League's turret rules (`nearestTarget` in `sim/structure.ts`):
+  - An enemy champion who hurts one of their champions in range takes over, whatever they were shooting (the call for help).
+  - Otherwise a new target goes by what each enemy is doing: a Chud hitting one of their champions, then a Chud hitting one of their Chuds, then a Chud hitting the Shootie, then a champion hitting one of their Chuds, then the nearest Chud, and last the nearest champion. Summoned things (Daltonomo's double, King Rix's guards, training dummies) count as Chuds.
+  - Once locked on, they stay on that target until it dies or leaves range; only the call for help pulls them off.
+  - When one is shooting you, its whole reach lights up red under the targeting beam, so you know to get out.
   - Each consecutive shot at the same champion hits 40% harder, up to +120%. Standing under an enemy Shootie gets deadly fast.
 - **Winning:** destroy the enemy Da Base. The match freezes on the spot and everyone gets a Victory or Defeat screen with Play again.
 - **Death and going home:**
@@ -209,6 +211,20 @@ A 3v3 browser MOBA for a friend group, heavily inspired by League of Legends wit
     - King Rix: 680 health. He's at 40%.
     - Jordini (66%) and Dark Dabber (63%) are the strongest bots now; Big Whale, King Rix and Willmore the weakest.
   - **ARAM** (120 bots-only 5v5 matches): sides 55–65, median 22 minutes. Master Paris 43% with his bigger adjustment (36% without it), Daltonomo 44%; Big Whale 57%, in his element.
+
+## Playtest round 3 (2026-10-03)
+
+- **Basic attacks that feel like hits.** Players said autos felt weightless: they couldn't tell if or when they were hitting. Everything here is League's approach.
+  - **The blow lands when the hit does.** Swing animations used to run at a fixed speed while the real hit came at a fifth of the attack time, so at most attack speeds what you saw connect and what connected were apart. Now the `attack` event carries the windup (`w`), and the swing is timed to it (`timedTo` in `render/animation.ts`): it speeds up with attack speed and slows for a slow one, like League's attack animations.
+  - **A cancelled attack shows nothing.** Moving or casting during the windup cancels the attack (as in League, which is what orb-walking uses), but the swing and its blow used to play out anyway, landing a hit that did nothing. Now the sim says so (`attackStop`) and the swing stops: no blow, no shot.
+  - **You hear every hit you land.** Your own basic attacks sound on anything (Chuds, monsters, Shooties), each champion with their own impact; before, only hits on champions made a sound.
+  - **The health bar shows what each hit took** (`HpChunk` in `views.ts`): a pale chunk past the health, held 0.3s (hits close together pile up into one), then drained away. On every unit and structure.
+  - **Your hits connect:** whatever you hit holds for a blink (0.05s) as the blow lands, on top of the flash and flinch it already did, and your basic attacks' numbers pop out of the target away from you and fall (`dmg` events mark basic attacks with `b`).
+  - **Hovering an enemy** (what a right-click would attack) rings its feet in red, like League's hover outline. The attack reticle still marks what you're attacking.
+- **Shooties** follow League's turret rules (see Match and map), and light their reach red when they're shooting you.
+- **HunnaG:** the Mole Hole ping-pong is fixed, the totem is a bit stronger, and its mushroom patch spreads, stays and speeds her up (see her kit).
+- **Daltonomo:** R again guides the double (see his kit). A second press of an ability that's still active (Daltonomo's guide, Willmore surfacing, Scrimby braking) now goes through whatever the cooldown says (`canRecast`, `AbilitySnap.recast`).
+- **Dark Dabber's sounds** were too loud and took over everything (he attacks fast, and his fire and smoke sat on top of the mix). His recorded sounds are 5–11 dB quieter and his long takes are cut short (attack 0.3s, hit 0.45s, fire 0.9s); Hotbox and Sticky Icky's whooshes are softer.
 
 ## ARAM: the Howling Hollow
 
@@ -415,8 +431,8 @@ The numbers live at the top of `src/shared/champions/willmore.ts`. No resource: 
 The numbers live at the top of `src/shared/champions/hunnag.ts`. Her spells scale with ability power; the Glowworm Lantern and the new Rotroot Staff (2700: +90 AP, +200 health) are the core AP items.
 - **Passive, Rot:** her spells stack Rot on enemies (up to 4): magic damage every 0.5s for 4s, per stack. The 4th stack bursts for extra magic damage and a 30% slow for 1.5s, and Rot starts over. Rot keeps ticking if she dies.
 - **Q, Sludge Lob:** lobbed at a spot; it lands 0.5s later for magic damage and 1 Rot, and leaves a puddle that slows 30% for 2.5s.
-- **W, Mushroom Totem:** a little mushroom (one at a time, 12–15s) that sees like a ward. Every 2s it heals allied champions nearby (16–37, +12% AP) and adds 1 Rot to nearby enemies. It has health; enemies can knock it down for 25 gold. Chuds and Shooties ignore it.
-- **E, Mole Hole:** she digs down and pops up at the target spot straight away. Both holes stay open for 5s: allied champions hop between them by walking in. Coming out next to (or on) the other hole, you have to step off before it takes you back.
+- **W, Mushroom Totem:** a little mushroom (one at a time, 12–15s) that sees like a ward. Every 2s it heals allied champions nearby (20–44, +15% AP; 140 + 22 a level health) and adds 1 Rot to nearby enemies. Its mushroom patch starts 120 across and spreads 70 further with every pulse (up to its 400 reach); the mushrooms stay where they sprout, and she's 12% faster on them. When the totem expires or is knocked down, the patch withers over 3s, still speeding her until it's gone. It has health; enemies can knock it down for 25 gold. Chuds and Shooties ignore it.
+- **E, Mole Hole:** she digs down and pops up at the target spot straight away, and stops there. Both holes stay open for 5s. An allied champion goes through by being sent onto a hole (a move order ending on or near it); walking across one on the way somewhere else doesn't take you. Whoever comes out stops at the far end, and can't go back through for 1.5s (and only once they've stepped off). It used to take anyone who crossed a hole, and a hop kept their move order, which walked them straight back over it: the ping-pong players kept getting.
 - **R, The Deep Calls:** marks a big circle; 0.75s later hands burst out, dealing magic damage, rooting everyone inside, and giving them full Rot (which bursts at once).
 
 ### Logan Lionheart ✅ implemented
@@ -486,7 +502,7 @@ The numbers live at the top of `src/shared/champions/daltonomo.ts`. Shaco-style.
 - **Q, Now You See Me:** blinks up to 400 and turns invisible for 2.5–3.25s. Attacking or casting reveals him; the next attack within 3.5s always counts as from behind and hits harder.
 - **W, Surprise Box:** up to 2 hidden boxes (40s). When an enemy comes within 300 one springs: everything nearby is feared, and it shoots the nearest enemy (champions first) every 0.8s for 5s.
 - **E, Juggling Knives:** his attacks slow. Cast: a thrown knife at an enemy, 50% more below 30% health, slowing.
-- **R, Double Act:** he blinks out of reach for a moment and a double appears beside him for 18s. To the enemy it looks exactly like him (it's a guard-like unit that sends itself as him). It fights what he fights, deals half his damage, takes 50% more, and explodes when it dies or the act ends.
+- **R, Double Act:** he blinks out of reach for a moment and a double appears beside him for 18s. To the enemy it looks exactly like him (it's a guard-like unit that sends itself as him). It fights what he fights, deals half his damage, takes 50% more, and explodes when it dies or the act ends. **Press R again to guide it** (like Shaco's clone): onto an enemy near the cursor (champions first) to go after them, or to a spot, where it walks and then fights whatever comes within 450. A guide lasts 6s, or until it's 1400 from him; then it comes back to his side. The slot reads "Guide" while the double's up.
 
 ### Scrimby, the Commuter ✅ implemented
 

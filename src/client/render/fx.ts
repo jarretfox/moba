@@ -59,7 +59,7 @@ export class FxLayer {
   /** Numbers and labels: kept out of the bloom pass so they stay crisp. */
   readonly top = new Container();
   private effects: Effect[] = [];
-  private timers: { at: number; fn: () => void }[] = [];
+  private timers: { at: number; fn: () => void; tag?: number }[] = [];
   private glows: { light: Light; strength: number; age: number; life: number }[] = [];
   /** Marks left on the ground, oldest first; only so many at once. */
   private scars: Effect[] = [];
@@ -124,8 +124,14 @@ export class FxLayer {
   }
 
   /** Run something a moment from now (staggered rings, a splash when a lob lands). */
-  later(seconds: number, fn: () => void): void {
-    this.timers.push({ at: this.clock + seconds, fn });
+  /** Runs `fn` in `seconds` (effect time). A `tag` lets `cancel` call it off (a swing cut short). */
+  later(seconds: number, fn: () => void, tag?: number): void {
+    this.timers.push({ at: this.clock + seconds, fn, tag });
+  }
+
+  /** Calls off everything still waiting under `tag`. */
+  cancel(tag: number): void {
+    this.timers = this.timers.filter((t) => t.tag !== tag);
   }
 
   /** How many to spray this frame for something emitting `perSecond`. */
@@ -151,7 +157,9 @@ export class FxLayer {
     return y;
   }
 
-  damageNumber(x: number, y: number, amount: number, type: DamageType): void {
+  damageNumber(x: number, y: number, amount: number, type: DamageType, from?: { x: number }): void {
+    // One of your basic attacks: the number pops out of them away from you and drops, a hit you can count.
+    if (from) return this.hitNumber(x, y, amount, type, from.x > x ? -1 : 1);
     // Bigger hits get bigger numbers that slam in and shudder.
     const weight = Math.min(1, amount / 300);
     const heavy = amount >= 150;
@@ -169,6 +177,22 @@ export class FxLayer {
       const pop = heavy ? 1.8 : 1.4;
       txt.scale.set(t < 0.1 ? pop - (t / 0.1) * (pop - 1) : 1);
       txt.alpha = t < 0.65 ? 1 : 1 - (t - 0.65) / 0.35;
+    }, 'top');
+  }
+
+  /** A basic attack's number: punched out big, hopping off to one side and falling away. */
+  private hitNumber(x: number, y: number, amount: number, type: DamageType, side: number): void {
+    const weight = Math.min(1, amount / 300);
+    const fontSize = 24 + 16 * weight;
+    const txt = new Text({ text: String(amount), style: { fontFamily: FONT, fontSize, fill: DAMAGE_COLORS[type], stroke: { color: 0x000000, width: 5 + 2 * weight } } });
+    txt.anchor.set(0.5);
+    const y0 = y - NUMBER_LIFT + 10;
+    const out = 30 + Math.random() * 25;
+    this.add(txt, 0.75, (t) => {
+      // Up and out, then falling: a little arc.
+      txt.position.set(x + side * (14 + out * t), y0 - 70 * t + 80 * t * t);
+      txt.scale.set(t < 0.08 ? 1.7 - (t / 0.08) * 0.7 : 1 - Math.max(0, t - 0.5) * 0.4);
+      txt.alpha = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
     }, 'top');
   }
 

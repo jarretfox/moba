@@ -449,7 +449,7 @@
         "sfx/atkRig-1.mp3",
         "sfx/atkRig-2.mp3"
       ],
-      "gain": 0.664
+      "gain": 0.278
     },
     "hit:dabber": {
       "files": [
@@ -457,14 +457,14 @@
         "sfx/hit-dabber-2.mp3",
         "sfx/hit-dabber-3.mp3"
       ],
-      "gain": 0.609
+      "gain": 0.319
     },
     "cast:dabber:0": {
       "files": [
         "sfx/cast-dabber-0-1.mp3",
         "sfx/cast-dabber-0-2.mp3"
       ],
-      "gain": 0.306,
+      "gain": 0.1,
       "over": true
     },
     "cast:dabber:1": {
@@ -473,14 +473,14 @@
         "sfx/cast-dabber-1-2.mp3",
         "sfx/cast-dabber-1-3.mp3"
       ],
-      "gain": 0.307,
+      "gain": 0.1,
       "over": true
     },
     "fx:lightItUp": {
       "files": [
         "sfx/fx-lightItUp-1.mp3"
       ],
-      "gain": 3.829,
+      "gain": 2.263,
       "over": true,
       "with": [
         "fx:lightItUp+fire"
@@ -492,7 +492,7 @@
         "sfx/fx-lightItUp-fire-2.mp3",
         "sfx/fx-lightItUp-fire-3.mp3"
       ],
-      "gain": 2.798
+      "gain": 1.159
     },
     "fx:cloudNine": {
       "files": [
@@ -500,7 +500,7 @@
         "sfx/fx-cloudNine-2.mp3",
         "sfx/fx-cloudNine-3.mp3"
       ],
-      "gain": 0.553,
+      "gain": 0.26,
       "over": true,
       "with": [
         "fx:cloudNine+thrust"
@@ -511,7 +511,7 @@
         "sfx/fx-cloudNine-thrust-1.mp3",
         "sfx/fx-cloudNine-thrust-2.mp3"
       ],
-      "gain": 0.45
+      "gain": 0.19
     },
     "atkEpee": {
       "files": [

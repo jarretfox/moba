@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Marksman } from '../champions/marksman';
 import { learnAll } from '../champions/testing';
 import { TEAM, TICK_RATE, type PlayerTeam } from '../constants';
-import { MAP, type Lane, type StructureRole } from '../map/mapData';
+import { MAP, lanePath, type Lane, type StructureRole } from '../map/mapData';
 import { dist } from '../math';
+import { Chud } from './chud';
 import { Dummy } from './dummy';
 import { spawnStructures, type Structure } from './structure';
 import { World, mitigate } from './world';
@@ -149,6 +150,53 @@ describe('Shootie targeting', () => {
 
     expect(shootie.order.kind).toBe('idle');
     expect(blueChamp.hp).toBe(blueChamp.stats.maxHp);
+  });
+
+  // League turret rules: what a Shootie picks when it needs a new target.
+  function lineup(cast: Array<'onChamp' | 'onChud' | 'onShootie' | 'champOnChud' | 'idle' | 'champ'>) {
+    const { world, find } = setup();
+    const shootie = find(TEAM.blue, 'outerShootie', 'top');
+    const blueChamp = champ(world, TEAM.blue, 4500, LANE_Y + 250);
+    const blueChud = world.add(new Chud(world, TEAM.blue, 'melee', 'top', lanePath(world.map, TEAM.blue, 'top')));
+    const hitting = (x: number, victim?: { id: number }) => {
+      const d = world.add(new Dummy(world, { x, y: LANE_Y }, 'Stand-in Chud'));
+      if (victim) d.order = { kind: 'attack', targetId: victim.id };
+      return d;
+    };
+    const who: Record<string, { id: number }> = {};
+    // The nearer they stand, the lower their priority: the order has to win over distance.
+    if (cast.includes('idle')) who.idle = hitting(4420);
+    if (cast.includes('champOnChud') || cast.includes('champ')) {
+      const c = champ(world, TEAM.red, 4460, LANE_Y + 100);
+      if (cast.includes('champOnChud')) c.order = { kind: 'attack', targetId: blueChud.id };
+      who.champOnChud = who.champ = c;
+    }
+    if (cast.includes('onShootie')) who.onShootie = hitting(4600, shootie);
+    if (cast.includes('onChud')) who.onChud = hitting(4700, blueChud);
+    if (cast.includes('onChamp')) who.onChamp = hitting(4800, blueChamp);
+    world.step();
+    return { shootie, world, who };
+  }
+
+  it('picks a new target the League way', () => {
+    const all = ['onChamp', 'onChud', 'onShootie', 'champOnChud', 'idle'] as const;
+    for (let i = 0; i < all.length; i++) {
+      const { shootie, who } = lineup([...all.slice(i)]);
+      expect(shootie.order, `with ${all.slice(i).join(', ')}`).toEqual({ kind: 'attack', targetId: who[all[i]].id });
+    }
+    // A champion standing about comes last, after any Chud.
+    const { shootie, who } = lineup(['champ', 'idle']);
+    expect(shootie.order).toEqual({ kind: 'attack', targetId: who.idle.id });
+  });
+
+  it("keeps its target when a Chud starts on one of our champions (only a champion fight pulls it off)", () => {
+    const { shootie, world, who } = lineup(['idle']);
+    expect(shootie.order).toEqual({ kind: 'attack', targetId: who.idle.id });
+    const blueChamp = champ(world, TEAM.blue, 4500, LANE_Y + 250);
+    const late = world.add(new Dummy(world, { x: 4800, y: LANE_Y }, 'Stand-in Chud'));
+    late.order = { kind: 'attack', targetId: blueChamp.id };
+    run(world, 1);
+    expect(shootie.order).toEqual({ kind: 'attack', targetId: who.idle.id });
   });
 });
 

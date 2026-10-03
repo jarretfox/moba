@@ -48,6 +48,12 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a);
 // ─── Motifs shared with the spells (spells.ts) ───────────────────────────────
 
 /** A little mushroom standing on (0, 0), about `s` tall: a pale stalk and a spotted cap, purple or `color` by turns. */
+/** HunnaG's mushroom patch rings: how many mushrooms on a ring of radius `r`, and how flat the ring lies. */
+export const shroomCount = (r: number): number => Math.max(8, Math.round((Math.PI * 2 * r) / 70));
+export const SHROOM_SQUASH = 0.55;
+/** A mushroom's size on its ring (a bit of variety round the ring). */
+export const shroomSize = (i: number): number => 12 + (i % 3) * 3;
+
 export function drawMushroom(g: Graphics, s: number, i: number, color: number): void {
   g.roundRect(-s * 0.18, -s * 0.9, s * 0.36, s * 0.95, s * 0.1).fill(0xe8e0cc).stroke({ width: 1.5, color: 0x5a4a3a });
   g.ellipse(0, -s * 0.95, s * 0.62, s * 0.4).fill(i % 2 ? 0x7a3fb0 : color).stroke({ width: 1.6, color: i % 2 ? 0x2a1a3a : 0x2d4a14 });

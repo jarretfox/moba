@@ -102,19 +102,36 @@ export class Structure extends Unit {
     return undefined;
   }
 
-  /** Chuds (and the dummies standing in for them) before champions; nearest first within each. */
+  /**
+   * A new target, the way League turrets pick (once they have one, they keep it till it dies or leaves
+   * range, unless a champion fight calls for help): first a Chud hitting one of our champions, then a Chud
+   * hitting one of our Chuds, then a Chud hitting this Shootie, then a champion hitting one of our Chuds,
+   * then the nearest Chud, and last the nearest champion. Summoned things (doubles, guards, the training
+   * dummies) count as Chuds.
+   */
   private nearestTarget(world: World): Unit | undefined {
     let best: Unit | undefined;
     let bestScore = Infinity;
     for (const u of world.units()) {
       if (!this.canShoot(world, u)) continue;
-      const score = dist(u.pos, this.pos) + (u.kind === 'champion' ? 1e6 : 0);
+      const score = this.priority(world, u) * 1e6 + dist(u.pos, this.pos);
       if (score < bestScore) {
         best = u;
         bestScore = score;
       }
     }
     return best;
+  }
+
+  /** Lower goes first (see nearestTarget). */
+  private priority(world: World, u: Unit): number {
+    const victim = u.order.kind === 'attack' ? world.getUnit(u.order.targetId) : undefined;
+    const hitting = victim && victim.team === this.team && !victim.dead ? victim : undefined;
+    if (u.kind === 'champion') return hitting && hitting.kind !== 'champion' && hitting.kind !== 'structure' ? 3 : 5;
+    if (!hitting) return 4;
+    if (hitting.kind === 'champion') return 0;
+    if (hitting === this) return 2;
+    return hitting.kind === 'structure' ? 4 : 1;
   }
 
   private canShoot(world: World, u: Unit): boolean {

@@ -585,6 +585,11 @@ export abstract class Champion extends Unit {
     return false;
   }
 
+  /** Whether a second press would do something right now (the client then sends it whatever the cooldown says). */
+  protected canRecast(_world: World, _slot: Slot): boolean {
+    return false;
+  }
+
   /** Whether the ability has something to work on at this spot (e.g. Down Below needs a victim). */
   protected canCastAt(_world: World, _slot: Slot, _aim: Vec2): boolean {
     return true;
@@ -624,6 +629,7 @@ export abstract class Champion extends Unit {
         const snap: AbilitySnap = { rank: a.rank, cd: Math.max(0, Math.round((a.readyAt - world.time) * 10) / 10) };
         const note = this.abilityNote(world, i as Slot);
         if (note) snap.note = note;
+        if (this.canRecast(world, i as Slot)) snap.recast = true;
         return snap;
       }),
       passiveStacks: 0,

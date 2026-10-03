@@ -129,6 +129,37 @@ describe('Double Act', () => {
     expect(double.removed).toBe(true);
   });
 
+  it('lets him press R again to send the double after the enemy at the cursor', () => {
+    const { world, jester, foe } = setup(700);
+    for (const a of jester.abilities) a.rank = 1;
+    jester.tryCast(world, 3, jester.pos);
+    run(world, 0.5);
+    const double = jester.double!;
+    const me = jester.meSnapshot(world).abilities[3];
+    expect(me.recast).toBe(true);
+    expect(me.note).toBe('Guide');
+    const foeHp = foe.hp;
+    expect(jester.tryCast(world, 3, { x: foe.pos.x + 40, y: foe.pos.y })).toBe(true);
+    expect(double.order).toEqual({ kind: 'attack', targetId: foe.id });
+    run(world, 3);
+    expect(foe.hp).toBeLessThan(foeHp);
+    expect(jester.order.kind).not.toBe('attack'); // he stayed put; only the double went
+  });
+
+  it('or sends it to a spot, where it waits, then lets it come back to him when the time is up', () => {
+    const { world, jester } = setup(3000);
+    for (const a of jester.abilities) a.rank = 1;
+    jester.tryCast(world, 3, jester.pos);
+    run(world, 0.5);
+    const double = jester.double!;
+    const spot = { x: jester.pos.x + 600, y: jester.pos.y };
+    jester.tryCast(world, 3, spot);
+    run(world, 3);
+    expect(dist(double.pos, spot)).toBeLessThan(60);
+    run(world, DOUBLE_ACT.guideFor);
+    expect(dist(double.pos, jester.pos)).toBeLessThan(400);
+  });
+
   it('ends with a bang when its time is up', () => {
     const { world, jester, foe } = setup(3000);
     for (const a of jester.abilities) a.rank = 1;

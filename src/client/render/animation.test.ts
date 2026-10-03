@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHAMPION_INFO } from '../../shared/champions/registry';
 import type { ChampionId } from '../../shared/champions/types';
 import type { Slot } from '../../shared/constants';
-import { ATTACK, EMOTE_ANIM, FIDGETS, UNIT_ATTACK, castAnim, sample, wardenWindup, type Anim } from './animation';
+import { ATTACK, ATTACKS, EMOTE_ANIM, FIDGETS, UNIT_ATTACK, castAnim, sample, timedTo, wardenWindup, type Anim } from './animation';
 
 describe('champion animations', () => {
   it('ease between keyframes and hold the ends', () => {
@@ -34,5 +34,24 @@ describe('champion animations', () => {
         expect(Math.abs(Math.sin(sample(track, 1) / 2))).toBeCloseTo(0);
       }
     }
+  });
+});
+
+describe('basic attacks timed to the hit', () => {
+  it('land their blow exactly when the windup says, slow or fast', () => {
+    for (const list of Object.values(ATTACKS)) {
+      for (const a of list) {
+        for (const windup of [0.12, 0.2, 0.31]) {
+          const timed = timedTo(a, windup);
+          expect(timed.dur * (timed.hit ?? 0.5)).toBeCloseTo(windup, 5);
+        }
+      }
+    }
+  });
+
+  it('stay within reason for an absurd attack speed', () => {
+    const a = ATTACKS.barbarian[0];
+    expect(timedTo(a, 0.001).dur).toBeCloseTo(a.dur / 3, 5);
+    expect(timedTo(a, 10).dur).toBeCloseTo(a.dur * 4, 5);
   });
 });
