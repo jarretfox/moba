@@ -63,6 +63,8 @@ export type ClientMessage =
   | { t: 'draft' }
   /** Your ban, on your turn in a draft. */
   | { t: 'ban'; champion: ChampionId }
+  /** I have the snapshot of this tick: build the next ones on it (see SnapshotDelta). */
+  | { t: 'ack'; tick: number }
   /** Keep-alive, handled by the network layer; never reaches the game. */
   | { t: 'ping' };
 

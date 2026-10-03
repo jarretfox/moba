@@ -5,7 +5,11 @@ import { HostCore } from './hostCore';
 
 function host() {
   const sent: { to: string; msg: HostMessage }[] = [];
-  const core = new HostCore((to, msg) => sent.push({ to, msg }));
+  const core: HostCore = new HostCore((to, msg) => {
+    sent.push({ to, msg });
+    // Acked at once, as a client does on getting it.
+    if (msg.t === 'snap') core.receive(to, { t: 'ack', tick: msg.snap.tick });
+  });
   const snaps = (to: string): SnapshotDelta[] => sent.filter((s) => s.to === to && s.msg.t === 'snap').map((s) => (s.msg as { snap: SnapshotDelta }).snap);
   return { core, sent, snaps };
 }
@@ -44,7 +48,7 @@ describe('the host and the map events', () => {
     core.step();
     expect('event' in snaps(LOCAL_CONN)[n]).toBe(false);
     // The announcement reached both sides.
-    const evts = (to: string) => snaps(to).flatMap((s) => s.ev ?? []).filter((e) => e.e === 'evt');
+    const evts = (to: string) => snaps(to).flatMap((s) => [...(s.ev ?? []), ...(s.evt ?? []).flatMap(([, e]) => e)]).filter((e) => e.e === 'evt');
     expect(evts(LOCAL_CONN).some((e) => e.e === 'evt' && e.k === 'start')).toBe(true);
     expect(evts('peer:a').some((e) => e.e === 'evt' && e.k === 'start')).toBe(true);
   });

@@ -5,6 +5,11 @@ import type { HostWorker } from './hostWorker';
 
 // Players find each other through PeerJS's free public signaling server; after that, game traffic
 // flows directly between browsers over WebRTC (or through PeerJS's relay when a network blocks that).
+// Two channels per friend: a reliable, ordered one for everything (the lobby, commands, chat), and an
+// unordered one for the snapshots and their acks. On an ordered channel one lost packet holds up every
+// snapshot behind it until it's resent (the game freezes, then jumps); unordered, the next one just comes
+// through, and the snapshots are deltas from what the friend has confirmed (shared/snapshotCodec.ts), so
+// a late or missing one costs nothing.
 
 /** Prefix for lobby peer ids, so our codes don't collide with other PeerJS apps. */
 const PEER_PREFIX = 'chudmoba-';
@@ -18,6 +23,8 @@ const CONNECT_TIMEOUT_MS = 15000;
  */
 const HEARTBEAT_MS = 1000;
 const HEARTBEAT_TIMEOUT_MS = 6000;
+/** The label of a friend's second, unordered channel: snapshots one way, acks the other. */
+const SNAP_LABEL = 'snap';
 
 export const normalizeCode = (code: string) => code.trim().toUpperCase();
 
@@ -45,6 +52,8 @@ function openPeer(id?: string): Promise<Peer> {
 /** The hosting side: registers a lobby code and relays friends' messages to and from the host worker. */
 export class PeerHost {
   private peer: Peer | null = null;
+  /** Each friend's unordered snapshot channel, by their peer id, once it's open. */
+  private readonly snaps = new Map<string, DataConnection>();
 
   constructor(private readonly host: HostWorker) {}
 
@@ -69,6 +78,7 @@ export class PeerHost {
   }
 
   private accept(conn: DataConnection): void {
+    if (conn.label === SNAP_LABEL) return this.acceptSnaps(conn);
     // Prefixed so a remote peer can never pose as the host's own local connection.
     const id = `peer:${conn.peer}`;
     let open = false;
@@ -80,10 +90,17 @@ export class PeerHost {
       clearInterval(beat);
       this.host.drop(id);
       conn.close();
+      this.snaps.get(conn.peer)?.close();
+      this.snaps.delete(conn.peer);
     };
     conn.on('open', () => {
       open = true;
-      this.host.route(id, (msg) => void conn.send(msg));
+      // Snapshots on their unordered channel when it's up; everything else (and snapshots until then) here.
+      this.host.route(id, (msg) => {
+        const snaps = this.snaps.get(conn.peer);
+        if (msg.t === 'snap' && snaps?.open) void snaps.send(msg);
+        else void conn.send(msg);
+      });
       conn.on('data', (data) => {
         lastHeard = performance.now();
         if (!isPing(data)) this.host.send(id, data);
@@ -96,6 +113,21 @@ export class PeerHost {
     conn.on('close', drop);
     conn.on('error', drop);
   }
+
+  /** A friend's second channel: their acks come in on it, their snapshots go out on it. Losing it only means falling back to the first. */
+  private acceptSnaps(conn: DataConnection): void {
+    conn.on('open', () => {
+      this.snaps.set(conn.peer, conn);
+      conn.on('data', (data) => {
+        if (!isPing(data)) this.host.send(`peer:${conn.peer}`, data);
+      });
+    });
+    const forget = () => {
+      if (this.snaps.get(conn.peer) === conn) this.snaps.delete(conn.peer);
+    };
+    conn.on('close', forget);
+    conn.on('error', forget);
+  }
 }
 
 /** A friend's link to someone else's lobby. */
@@ -107,15 +139,31 @@ export class PeerLink implements Connection {
   private closed = false;
   private lastHeard = performance.now();
   private readonly beat: ReturnType<typeof setInterval>;
+  /** The unordered channel for snapshots and acks (see the top of the file), once it's open. */
+  private snaps: DataConnection | null = null;
 
   private constructor(
     private readonly peer: Peer,
     private readonly conn: DataConnection,
+    code: string,
   ) {
-    conn.on('data', (data) => {
+    const heard = (data: unknown) => {
       this.lastHeard = performance.now();
       if (!isPing(data)) this.handler?.(data as HostMessage);
+    };
+    conn.on('data', heard);
+    // The second channel: if it never opens, everything just keeps coming over the first.
+    const snaps = peer.connect(peerIdFor(code), { reliable: false, label: SNAP_LABEL });
+    snaps.once('open', () => {
+      if (this.closed) return snaps.close();
+      this.snaps = snaps;
+      snaps.on('data', heard);
     });
+    const lostSnaps = () => {
+      if (this.snaps === snaps) this.snaps = null;
+    };
+    snaps.on('close', lostSnaps);
+    snaps.on('error', lostSnaps);
     conn.on('close', () => this.lost('The host left the game.'));
     conn.on('error', () => this.lost('Lost the connection to the host.'));
     this.beat = setInterval(() => {
@@ -142,7 +190,7 @@ export class PeerLink implements Connection {
           const conn = peer.connect(peerIdFor(code), { reliable: true });
           conn.once('open', () => {
             clearTimeout(timer);
-            resolve(new PeerLink(peer, conn));
+            resolve(new PeerLink(peer, conn, code));
           });
         })
         .catch((err) => {
@@ -153,7 +201,9 @@ export class PeerLink implements Connection {
   }
 
   send(msg: ClientMessage): void {
-    if (this.conn.open) void this.conn.send(msg);
+    // Acks go with the snapshots, on the unordered channel; everything else in order.
+    if (msg.t === 'ack' && this.snaps?.open) void this.snaps.send(msg);
+    else if (this.conn.open) void this.conn.send(msg);
   }
 
   listen(handler: (msg: HostMessage) => void): void {
@@ -168,6 +218,7 @@ export class PeerLink implements Connection {
     if (this.closed) return;
     this.closed = true;
     clearInterval(this.beat);
+    this.snaps?.close();
     this.conn.close();
     this.peer.destroy();
     this.closeHandler?.(reason);

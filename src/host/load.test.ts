@@ -17,8 +17,11 @@ const MINUTES = 4;
 describe('a full 5v5 lobby on one host', () => {
   it('stays within budget for the host and for each friend', () => {
     const sent = new Map<string, { bytes: number; snaps: number; biggest: number }>();
-    const core = new HostCore((to, msg: HostMessage) => {
-      if (to === LOCAL_CONN || msg.t !== 'snap') return;
+    const core: HostCore = new HostCore((to, msg: HostMessage) => {
+      if (msg.t !== 'snap') return;
+      // Each friend's client acks every snapshot it gets (as the game does), so the next is a delta from it.
+      core.receive(to, { t: 'ack', tick: msg.snap.tick });
+      if (to === LOCAL_CONN) return;
       const n = JSON.stringify(msg).length;
       const s = sent.get(to) ?? { bytes: 0, snaps: 0, biggest: 0 };
       s.bytes += n;

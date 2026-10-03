@@ -11,37 +11,80 @@ export const MAX_EXTRAPOLATE = 0.1;
 /** Further than this between two snapshots is a blink or a respawn, not a walk: never carried on. */
 const TELEPORT = 120;
 
+/** How long a look back the clock takes at how snapshots have been arriving (seconds). */
+const WINDOW = 3;
+/** The longest the playback may lag the host to ride out a jittery link (seconds). */
+export const MAX_DELAY = 0.4;
+/** How much faster or slower than real time playback may run while it catches up or eases back. */
+export const SLEW = 0.06;
+/** Further off than this (a tab that slept, a long outage) and the clock just jumps. */
+const SNAP_TO = 0.75;
+
 /**
- * Plays host snapshots back slightly in the past so movement looks smooth even though the host
- * only sends 30 updates a second. Events fire when playback reaches them, which keeps damage
- * numbers in sync with the projectile that caused them.
+ * Plays host snapshots back slightly in the past so movement looks smooth even though updates come
+ * in at 15–30 a second and not always evenly. Events fire when playback reaches them, which keeps
+ * damage numbers in sync with the projectile that caused them.
+ *
+ * The playback clock: how far behind the host to play is worked out from how snapshots have been
+ * arriving lately. The quickest arrivals set where "now" is; the spread of the slower ones (jitter) plus
+ * one update's gap is how much to hold back, at least `minDelay` and at most MAX_DELAY. Playback never
+ * jumps to follow that: it runs up to 6% fast or slow until it's there, so a late burst of snapshots
+ * doesn't throw the world back and forth. (It used to reset whenever one came more than 0.25 s late.)
  */
 export class SnapshotBuffer {
   private snaps: Snapshot[] = [];
-  /** Host time minus local time. */
-  private offset: number | null = null;
+  /** Recent arrivals: when (local seconds), and host time minus local time then. */
+  private arrivals: { at: number; v: number }[] = [];
+  /** Playback time minus local time, and when it was last moved. */
+  private play: number | null = null;
+  private playedAt = 0;
   private firedTick = -1;
   latest: Snapshot | null = null;
+  /** How far behind the host playback is aiming to be right now (for the debug readout). */
+  delay: number;
 
-  constructor(private readonly delay: number) {}
+  constructor(private readonly minDelay: number) {
+    this.delay = minDelay;
+  }
 
   push(s: Snapshot, localNow: number): void {
+    // How late it came counts toward the jitter, even if it's too late to use.
+    this.arrivals.push({ at: localNow, v: s.time - localNow });
+    while (this.arrivals.length && this.arrivals[0].at < localNow - WINDOW) this.arrivals.shift();
+    // Older than one we have (it came late): playback has its successor already.
+    if (this.latest && s.tick <= this.latest.tick) return;
     this.snaps.push(s);
     this.latest = s;
-    const sample = s.time - localNow;
-    if (this.offset === null || Math.abs(sample - this.offset) > 0.25) this.offset = sample;
-    else this.offset += (sample - this.offset) * 0.05;
     while (this.snaps.length > MAX_BUFFERED) {
       const old = this.snaps.shift()!;
       this.firedTick = Math.max(this.firedTick, old.tick);
     }
   }
 
+  /** Where playback is aiming: the quickest recent arrival, held back by the jitter and an update's gap. */
+  private target(): number {
+    const vs = this.arrivals.map((a) => a.v);
+    const best = Math.max(...vs);
+    const late = vs.map((v) => best - v).sort((a, b) => a - b);
+    const jitter = late[Math.floor(late.length * 0.95)] ?? 0;
+    const n = this.snaps.length;
+    const gap = n > 1 ? (this.snaps[n - 1].time - this.snaps[0].time) / (n - 1) : 0;
+    this.delay = Math.min(MAX_DELAY, Math.max(this.minDelay, jitter + gap + 0.01));
+    return best - this.delay;
+  }
+
   /** Interpolated entities at playback time, plus the events playback just passed. */
   sample(localNow: number): { ents: EntitySnap[]; events: GameEvent[] } {
     const snaps = this.snaps;
-    if (!snaps.length || this.offset === null) return { ents: [], events: [] };
-    const t = localNow + this.offset - this.delay;
+    if (!snaps.length || !this.arrivals.length) return { ents: [], events: [] };
+    const want = this.target();
+    if (this.play === null || Math.abs(want - this.play) > SNAP_TO) this.play = want;
+    else {
+      const step = SLEW * Math.max(0, localNow - this.playedAt);
+      this.play += Math.max(-step, Math.min(step, want - this.play));
+    }
+    this.playedAt = localNow;
+    const t = localNow + this.play;
 
     const events: GameEvent[] = [];
     for (const s of snaps) {

@@ -8,8 +8,11 @@ export interface Settings {
   effects: number;
   /** The world's own sounds: wind, birds, water, rain, the night. Low by default; it's a backdrop. */
   ambience: number;
-  /** Low turns off the glow pass and thins out particles and blowing leaves, for slower machines. */
-  quality: 'high' | 'low';
+  /**
+   * Low turns off the glow pass and thins out particles and blowing leaves, for slower machines. Auto (the
+   * default) starts high and steps down during a match if frames run slow.
+   */
+  quality: 'auto' | 'high' | 'low';
   showFps: boolean;
   /** Enemies in orange-yellow instead of red, for red-blind players. */
   colorblind: boolean;
@@ -25,9 +28,11 @@ export interface Settings {
   autoLevel: boolean;
   /** Light up an enemy Chud's health bar when one basic attack from you would kill it. */
   lastHit: boolean;
+  /** Which layout these were saved in (2: graphics has Auto). */
+  v: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, ambience: 0.3, quality: 'high', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1, announcer: true, autoLevel: false, lastHit: true };
+export const DEFAULT_SETTINGS: Settings = { master: 0.8, music: 0.6, effects: 0.8, ambience: 0.3, quality: 'auto', showFps: false, colorblind: false, uiScale: 1, tips: true, panSpeed: 1, announcer: true, autoLevel: false, lastHit: true, v: 2 };
 
 const KEY = 'moba.settings';
 
@@ -41,7 +46,8 @@ export function parseSettings(raw: string | null): Settings {
       const n = v[k];
       if (typeof n === 'number' && Number.isFinite(n)) s[k] = Math.max(0, Math.min(1, n));
     }
-    if (v.quality === 'high' || v.quality === 'low') s.quality = v.quality;
+    // Saves from before Auto stored "high" whether or not anyone chose it: those get Auto.
+    if (v.quality === 'auto' || v.quality === 'low' || (v.quality === 'high' && v.v === 2)) s.quality = v.quality;
     if (typeof v.showFps === 'boolean') s.showFps = v.showFps;
     if (typeof v.colorblind === 'boolean') s.colorblind = v.colorblind;
     if (typeof v.tips === 'boolean') s.tips = v.tips;
@@ -208,6 +214,7 @@ export function settingsPanel(): HTMLElement {
       ['On', () => settings.announcer, () => updateSettings({ announcer: true })],
     ]),
     toggle('Graphics', [
+      ['Auto', () => settings.quality === 'auto', () => updateSettings({ quality: 'auto' })],
       ['High', () => settings.quality === 'high', () => updateSettings({ quality: 'high' })],
       ['Low', () => settings.quality === 'low', () => updateSettings({ quality: 'low' })],
     ]),

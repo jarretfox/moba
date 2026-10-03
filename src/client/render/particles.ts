@@ -253,6 +253,8 @@ export class Particles {
   private live: Live[] = [];
   /** Most alive at once (lower on low graphics). */
   limit = MAX;
+  /** Share of each burst actually sprayed (lower on low graphics; at least one always is). */
+  density = 1;
   /** Particles were added since the batches were last rebuilt. */
   private dirty = false;
 
@@ -283,6 +285,7 @@ export class Particles {
 
   /** `n` particles spraying out of a point: `speed` is [min, max], `spread` an angle range around `angle`. */
   burst(n: number, base: Emit, speed: [number, number], angle = 0, spread = Math.PI * 2): void {
+    n = Math.max(1, Math.round(n * this.density));
     for (let i = 0; i < n; i++) {
       const a = angle + (Math.random() - 0.5) * spread;
       const v = speed[0] + Math.random() * (speed[1] - speed[0]);

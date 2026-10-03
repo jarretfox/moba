@@ -492,16 +492,16 @@ describe('over the wire', () => {
     expect(enc.encode(base).event).toBeUndefined();
     const first = enc.encode({ ...base, tick: 2, event });
     expect(first.event).toEqual(event);
-    expect(dec.decode(first).event).toEqual(event);
+    expect(dec.decode(first)!.event).toEqual(event);
     const same = enc.encode({ ...base, tick: 3, event: { ...event } });
     expect('event' in same).toBe(false);
-    expect(dec.decode(same).event).toEqual(event);
+    expect(dec.decode(same)!.event).toEqual(event);
     const changed = enc.encode({ ...base, tick: 4, event: { ...event, left: 99 } });
     expect(changed.event?.left).toBe(99);
     const gone = enc.encode({ ...base, tick: 5 });
     expect('event' in gone).toBe(true);
     expect(gone.event).toBeUndefined();
-    expect(dec.decode(gone).event).toBeUndefined();
+    expect(dec.decode(gone)!.event).toBeUndefined();
   });
 
   it('keeps the Coat where the team can see it, like any neutral monster, but tells everyone the result', () => {

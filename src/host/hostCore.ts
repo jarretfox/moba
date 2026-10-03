@@ -112,6 +112,9 @@ export class HostCore {
         return this.hello(connId, msg.name, msg.title);
       case 'pick':
         return this.pick(connId, msg.team, msg.champion, msg.skin);
+      case 'ack':
+        if (typeof msg.tick === 'number') this.players.get(connId)?.encoder.ack(msg.tick);
+        return;
       case 'start':
         return this.start(connId, msg.mode);
       case 'cmd': {
@@ -362,7 +365,7 @@ export class HostCore {
     unit.forgetCast();
     unit.commandStop();
     this.lobby.set(connId, { ...back.lobby, id: connId });
-    this.players.set(connId, { unitId: unit.id, team: back.team, queue: [], encoder: new SnapshotEncoder(), remote: connId !== LOCAL_CONN, pendingEv: [] });
+    this.players.set(connId, { unitId: unit.id, team: back.team, queue: [], encoder: new SnapshotEncoder(true), remote: connId !== LOCAL_CONN, pendingEv: [] });
     const fresh = newToken();
     this.tokens.set(connId, fresh);
     this.send(connId, { t: 'welcome', unitId: unit.id, team: back.team, ...this.look, rejoin: fresh, back: true });
@@ -451,7 +454,9 @@ export class HostCore {
       champ.gold = startGold;
       champ.title = p.title;
       if (aram) startAtLevel(this.world, champ, ARAM.startLevel);
-      this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(), remote: p.id !== LOCAL_CONN, pendingEv: [] });
+      // Snapshots are deltas from what each player has confirmed getting, so a lost or late one over the
+      // internet costs nothing (shared/snapshotCodec.ts).
+      this.players.set(p.id, { unitId: champ.id, team: p.team, queue: [], encoder: new SnapshotEncoder(true), remote: p.id !== LOCAL_CONN, pendingEv: [] });
       this.look = { weather, map: mapId, ...(clears !== undefined ? { clears } : {}), ...(settings.night || aram ? { clock: NIGHT_CLOCK } : {}) };
       // Friends over the network get a token to come back with if their connection drops.
       const token = p.id === LOCAL_CONN ? undefined : newToken();

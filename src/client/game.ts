@@ -1,3 +1,4 @@
+import type { Shape } from './render/particles';
 import { BlurFilter, ColorMatrixFilter, Container, DisplacementFilter, Graphics, RenderTexture, Sprite, type Application } from 'pixi.js';
 import { CHAMPION_INFO } from '../shared/champions/registry';
 import { atRank, type ChampionInfo } from '../shared/champions/types';
@@ -94,6 +95,8 @@ const PINNED: ReadonlySet<StatusKind> = new Set<StatusKind>(['stun', 'root', 'fe
 
 /** Speech-bubble ids for Old Wick (blue's, then red's one below it), clear of every entity id. */
 const WICK_ID = -100;
+/** Seconds between the camera's reactions (punch-in, shove, screen ripple) to big hits. */
+const JUICE_GAP = 0.6;
 /**
  * Anything further off the screen than this (world units, past its own size) isn't drawn, and an entity's
  * view isn't updated either until it's back near the screen. Pixi rebuilds a layer's draw list whenever
@@ -186,7 +189,20 @@ export class GameClient {
   /** Settings subscriptions to drop on the way out. */
   private readonly offs: (() => void)[] = [];
   /** The frame loop, as a handle so it can be stopped. */
-  private readonly tick = (ticker: { deltaMS: number }) => this.frame(ticker.deltaMS / 1000);
+  private readonly tick = (ticker: { deltaMS: number }) => {
+    this.watchSpeed(ticker.deltaMS);
+    this.frame(ticker.deltaMS / 1000);
+  };
+  /** Auto graphics: how far it's stepped down this match (see `level`), the frame time it's watching, and for how long it's run slow. */
+  private autoStep = 0;
+  private frameMs = 16.7;
+  private slowFor = 0;
+  private matchFrames = 0;
+  /** The effects are warmed up (see warmUp), and screen filters are on for warming for this many more frames. */
+  private warmed = false;
+  private warmFilters = 0;
+  /** When the camera last reacted to a big hit (punch, shove, ripple): at most once in a while. */
+  private juicedAt = -Infinity;
   /** Seconds added to the match clock for the look of the sky (a match that starts at night). */
   private clockOffset = 0;
   /** When you last pressed Undo in the shop (what comes back then isn't celebrated as a purchase). */
@@ -425,19 +441,12 @@ export class GameClient {
     // default ("normal") let dark parts of the glowing layer draw as a murky copy of it over the view.
     this.bloom.filters = [new BlurFilter({ strength: 10, quality: 3, resolution: 0.35, blendMode: 'add' })];
     this.view.addChild(this.worldLayer, this.lighting.sprite, this.emissive, this.bloom);
-    // Low graphics: no glow pass, fewer particles and raindrops, and a plain-resolution canvas.
     this.offs.push(onSettings((s) => {
       const enemy = PALETTE.enemy;
       setColorblind(s.colorblind);
       if (PALETTE.enemy !== enemy) this.redrawViews();
-      const high = s.quality === 'high';
       this.camera.panScale = s.panSpeed;
-      this.bloom.visible = high;
-      this.fx.density = high ? 1 : 0.45;
-      this.fx.particles.limit = high ? 3000 : 900;
-      if (this.weather) this.weather.density = high ? 1 : 0.4;
-      const resolution = high ? Math.min(window.devicePixelRatio || 1, 2) : 1;
-      if (this.app.renderer.resolution !== resolution) this.app.renderer.resize(this.app.screen.width, this.app.screen.height, resolution);
+      this.applyQuality();
     }));
     app.stage.addChild(this.view, this.ripple.sprite, this.dangle.container);
     this.deathFilter.desaturate();
@@ -463,6 +472,10 @@ export class GameClient {
       }
     } else if (msg.t === 'snap') {
       const snap = this.decoder.decode(msg.snap);
+      // Late or out of order (we already have a newer one): nothing to show.
+      if (!snap) return;
+      // Tell the host we have it, so it builds the next ones on it.
+      if (msg.snap.base !== undefined) this.conn.send({ t: 'ack', tick: snap.tick });
       this.buffer.push(snap, performance.now() / 1000);
       this.highlights.record(snap);
     }
@@ -471,7 +484,7 @@ export class GameClient {
   private setWeather(w: WeatherView): void {
     this.weather = w;
     this.wind.setWeather(w.kind);
-    w.density = settings.quality === 'high' ? 1 : 0.4;
+    w.density = this.level === 0 ? 1 : 0.4;
     // Mist and splashes sit over the trees; frost, puddles and fallen leaves on the ground; snow on the
     // treetops. Nothing goes over the whole screen.
     this.worldLayer.addChildAt(w.world, this.worldLayer.getChildIndex(this.canopy) + 1);
@@ -609,7 +622,54 @@ export class GameClient {
 
   // ─── Per frame ────────────────────────────────────────────────────────────
 
+  /** How much the graphics are doing: 0 everything, 1 no glow pass and a plain-resolution canvas, 2 fewer particles too. */
+  private get level(): number {
+    return settings.quality === 'low' ? 2 : settings.quality === 'high' ? 0 : this.autoStep;
+  }
+
+  /** Puts the graphics level into effect. */
+  private applyQuality(): void {
+    const level = this.level;
+    this.bloom.visible = level === 0;
+    this.fx.density = [1, 0.75, 0.45][level];
+    this.fx.particles.limit = [3000, 1800, 900][level];
+    this.fx.particles.density = [1, 0.75, 0.5][level];
+    if (this.weather) this.weather.density = level === 0 ? 1 : 0.4;
+    const resolution = level === 0 ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    if (this.app.renderer.resolution !== resolution) this.app.renderer.resize(this.app.screen.width, this.app.screen.height, resolution);
+  }
+
+  /**
+   * Auto graphics: if frames run slower than about 48 a second for two seconds of a match, step down a
+   * level (and once more if that wasn't enough). The first seconds of a match (loading) and long gaps (a
+   * hidden tab) don't count, and it never steps back up mid-match, so the look doesn't flicker.
+   */
+  private watchSpeed(ms: number): void {
+    if (settings.quality !== 'auto' || !this.ents.get(this.myId) || ms > 250) return;
+    if (++this.matchFrames < 300 || this.autoStep >= 2) return;
+    this.frameMs += (ms - this.frameMs) * 0.05;
+    this.slowFor = this.frameMs > 21 ? this.slowFor + ms / 1000 : Math.max(0, this.slowFor - ms / 2000);
+    if (this.slowFor < 2) return;
+    this.autoStep++;
+    this.slowFor = 0;
+    this.frameMs = 16.7;
+    this.applyQuality();
+  }
+
+  /**
+   * The first time anything big plays, the GPU has to take in the effect textures and build the shaders
+   * for them and the screen filters: a hitch in the middle of the first fight. So on the first frame they
+   * all play once, invisibly.
+   */
+  private warmUp(): void {
+    this.warmed = true;
+    const shapes: Shape[] = ['glow', 'spark', 'star', 'smoke', 'shard', 'ring', 'mote', 'leaf', 'splat', 'pow', 'puff', 'flame', 'magic', 'twirl', 'slash', 'claw', 'circle', 'flare', 'scorch', 'dirt', 'muzzle', 'zap', 'heart', 'cloud', 'soot', 'blast', 'flash'];
+    for (const shape of shapes) for (const glow of [true, false]) this.fx.particles.emit({ shape, glow, x: this.camera.x, y: this.camera.y, life: 0.1, size: 8, color: 0xffffff, alpha: 0.001 });
+    this.warmFilters = 2;
+  }
+
   private frame(dt: number): void {
+    if (!this.warmed) this.warmUp();
     // Normally the live match; during Play of the Game, the replay.
     const { ents, events } = this.replay ? this.replay.step(dt) : this.buffer.sample(performance.now() / 1000);
     this.ents = new Map(ents.map((e) => [e.id, e]));
@@ -686,7 +746,9 @@ export class GameClient {
     // Less grey while you're watching someone fight.
     this.deathFilter.alpha = this.deadFade * (watching ? 0.55 : 0.85);
     this.ripple.update(dt);
-    const filters = [...(this.deadFade > 0 ? [this.deathFilter] : []), ...(this.ripple.active ? [this.ripple.filter] : [])];
+    // (While warming up: both, doing nothing, so their shaders are built now and not mid-fight.)
+    const warming = this.warmFilters > 0 && this.warmFilters-- > 0;
+    const filters = [...(this.deadFade > 0 || warming ? [this.deathFilter] : []), ...(this.ripple.active || warming ? [this.ripple.filter] : [])];
     if (filters.length !== (this.view.filters?.length ?? 0) || filters.some((f, i) => this.view.filters?.[i] !== f)) this.view.filters = filters;
 
     const mouseWorld = this.mouseWorld();
@@ -1367,7 +1429,7 @@ export class GameClient {
   private blowWind(dt: number): void {
     this.wind.update(dt);
     for (const patch of this.sway) patch.skew.x = this.wind.at(patch.x, patch.y) * 0.07;
-    const stir = settings.quality === 'high';
+    const stir = this.level === 0;
     if (stir && !this.leafNoise.parent) {
       this.leafNoise.renderable = false;
       this.leafNoise.scale.set(6);
@@ -1523,7 +1585,7 @@ export class GameClient {
 
   /** Renders the glowing layer (no numbers or bubbles) into a small texture that's blurred over the view. */
   private renderBloom(w: number, h: number): void {
-    if (settings.quality !== 'high') return;
+    if (this.level !== 0) return;
     if (this.bloomRt.width !== w || this.bloomRt.height !== h) this.bloomRt.resize(w, h);
     this.fx.top.visible = false;
     this.bubbles.container.visible = false;
@@ -1753,14 +1815,21 @@ export class GameClient {
     const near = Math.max(0, 1 - Math.hypot(at.x - this.camera.x, at.y - this.camera.y) / (halfView * 1.4));
     if (near <= 0.05) return;
     if (h.duck) this.sound.duck(h.duck * near);
-    if (h.punch) this.camera.punch(h.punch * near);
+    // The camera only reacts to big hits close to your champion (or close to the middle of the screen if
+    // you have none), and at most once in a while: a teamfight shouldn't throw the view about.
+    const me = this.ents.get(this.myId);
+    const close = me && !me.dead ? Math.max(0, 1 - Math.hypot(at.x - me.x, at.y - me.y) / 650) : near * 0.4;
+    const t = performance.now() / 1000;
+    if (close <= 0.05 || t - this.juicedAt < JUICE_GAP) return;
+    this.juicedAt = t;
+    if (h.punch) this.camera.punch(h.punch * close);
     const r = (ev.fx === 'kneel' ? 260 : ev.r ?? 200) * h.ripple;
-    if (r > 0) this.ripple.start((at.x - this.camera.x) * this.camera.zoom + width / 2, (at.y - this.camera.y) * this.camera.zoom + height / 2, r * this.camera.zoom * 1.8, near);
+    if (r > 0) this.ripple.start((at.x - this.camera.x) * this.camera.zoom + width / 2, (at.y - this.camera.y) * this.camera.zoom + height / 2, r * this.camera.zoom * 1.8, close * 0.7);
     // Shove the view away from the blast.
     const dx = this.camera.x - at.x;
     const dy = this.camera.y - at.y;
     const d = Math.hypot(dx, dy) || 1;
-    this.camera.kick((dx / d) * 10 * near, (dy / d) * 10 * near);
+    this.camera.kick((dx / d) * 8 * close, (dy / d) * 8 * close);
   }
 
   /** Shake the camera for something big, less the further it is from the middle of the screen. */

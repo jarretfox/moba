@@ -45,7 +45,7 @@ describe('snapshot deltas', () => {
     const dec = new SnapshotDecoder();
     let checked = 0;
     for (const snap of blueSnapshots(3)) {
-      const out = dec.decode(enc.encode(snap));
+      const out = dec.decode(enc.encode(snap))!;
       expect(out.tick).toBe(snap.tick);
       expect(out.time).toBeCloseTo(snap.time, 9);
       expect(canonical(out.ents)).toBe(canonical(snap.ents));
@@ -66,10 +66,10 @@ describe('snapshot deltas', () => {
     const rooted: EntitySnap = { id: 7, k: 'champion', tm: 2, x: 10, y: 20, f: 0, r: 35, st: ['root'] };
     dec.decode(enc.encode({ ...base, ents: [rooted] }));
 
-    const free = dec.decode(enc.encode({ ...base, tick: 2, ents: [{ ...rooted, st: undefined, x: 15 }] }));
+    const free = dec.decode(enc.encode({ ...base, tick: 2, ents: [{ ...rooted, st: undefined, x: 15 }] }))!;
     expect(free.ents[0]).toEqual({ id: 7, k: 'champion', tm: 2, x: 15, y: 20, f: 0, r: 35 });
 
-    const gone = dec.decode(enc.encode({ ...base, tick: 3, ents: [] }));
+    const gone = dec.decode(enc.encode({ ...base, tick: 3, ents: [] }))!;
     expect(gone.ents).toEqual([]);
   });
 
@@ -90,4 +90,67 @@ describe('snapshot deltas', () => {
     expect(deltaBytes).toBeLessThan(fullBytes * 0.35);
     expect(deltaBytes / 1024 / seconds).toBeLessThan(20);
   }, 60_000);
+});
+
+describe('over a lossy link (acked deltas)', () => {
+  /** A seeded random, so the bad network is the same every run. */
+  const seeded = (seed: number) => () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+
+  it('rebuild exactly what the host saw from whatever arrives, late, lost or out of order, and play every event once', () => {
+    const rand = seeded(42);
+    const enc = new SnapshotEncoder(true);
+    const dec = new SnapshotDecoder();
+    // Messages in flight: [arrives at (ms), what].
+    let toClient: [number, { delta: ReturnType<SnapshotEncoder['encode']>; truth: Snapshot }][] = [];
+    let toHost: [number, number][] = [];
+    const sentEvents: string[] = [];
+    const playedEvents: string[] = [];
+    let decoded = 0;
+    let lost = 0;
+    let bytes = 0;
+    for (const snap of blueSnapshots(2, 2)) {
+      const now = snap.time * 1000;
+      for (const e of snap.ev) sentEvents.push(JSON.stringify(e));
+      const delta = enc.encode(snap);
+      bytes += JSON.stringify(delta).length;
+      // 15% lost; the rest take 40–260 ms, so they often overtake each other.
+      if (rand() < 0.15) lost++;
+      else toClient.push([now + 40 + rand() * 220, { delta, truth: snap }]);
+      // Deliver what's due, oldest-arriving first.
+      const due = toClient.filter(([at]) => at <= now).sort((a, b) => a[0] - b[0]);
+      toClient = toClient.filter(([at]) => at > now);
+      for (const [, { delta: d, truth }] of due) {
+        const out = dec.decode(d);
+        if (!out) continue;
+        decoded++;
+        expect(canonical(out.ents)).toBe(canonical(truth.ents));
+        expect(out.me).toEqual(truth.me);
+        expect(out.scores).toEqual(truth.scores);
+        expect(out.warden).toEqual(truth.warden);
+        for (const e of out.ev) playedEvents.push(JSON.stringify(e));
+        // The ack: also lost sometimes, also late.
+        if (rand() > 0.15) toHost.push([now + 40 + rand() * 220, out.tick]);
+      }
+      for (const [, tick] of toHost.filter(([at]) => at <= now)) enc.ack(tick);
+      toHost = toHost.filter(([at]) => at > now);
+    }
+    // Every event was played (bar the last moment's, still in flight), exactly once, in order.
+    expect(playedEvents.length).toBeGreaterThan(sentEvents.length * 0.97);
+    expect(playedEvents).toEqual(sentEvents.slice(0, playedEvents.length));
+    expect(decoded).toBeGreaterThan(1000);
+    expect(lost).toBeGreaterThan(100);
+    // Still a modest download, even resending events until they're acked.
+    expect(bytes / 1024 / 120).toBeLessThan(25);
+  }, 60_000);
+
+  it('start from a full snapshot, and send full ones again if the acks stop for long', () => {
+    const enc = new SnapshotEncoder(true);
+    const base = { time: 0, ev: [] };
+    const one: EntitySnap = { id: 1, k: 'chud', tm: 1, x: 0, y: 0, f: 0, r: 20 };
+    expect(enc.encode({ ...base, tick: 2, ents: [one] }).base).toBe(-1);
+    enc.ack(2);
+    expect(enc.encode({ ...base, tick: 4, ents: [{ ...one, x: 5 }] }).base).toBe(2);
+    // No ack for longer than the window: everything again.
+    expect(enc.encode({ ...base, tick: 400, ents: [{ ...one, x: 9 }] }).base).toBe(-1);
+  });
 });
